@@ -1,0 +1,28 @@
+{
+	"name": "maxscript-lsp",
+	"description": "Language server for MaxScript",
+	"version": "1.0.0",
+	"author": "Atelier Bump",
+	"license": "MIT",
+	"engines": {
+		"node": "*"
+	},
+	"repository": {
+		"type": "git",
+		"url": ""
+	},
+	"dependencies": {
+		"ast-monkey-traverse-with-lookahead": "^1.1.6",
+		"moo": "^0.5.1",
+		"nearley": "^2.19.4",
+		"object-path": "^0.11.4",
+		"vscode-languageserver": "^6.1.1",
+		"vscode-languageserver-textdocument": "^1.0.1"
+	},
+	"scripts": {},
+	"devDependencies": {
+		"@types/moo": "^0.5.3",
+		"@types/nearley": "^2.11.1",
+		"@types/object-path": "^0.11.0"
+	}
+}
