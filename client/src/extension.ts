@@ -2,27 +2,39 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
-
 import * as path from 'path';
-import * as vscode from 'vscode';
-import { languages, workspace, ExtensionContext } from 'vscode';
+import
+{
+	commands,
+	ExtensionContext,
+	languages,
+	workspace,
+	window,
+} from 'vscode';
 
-import {
+import
+{
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
 	TransportKind
 } from 'vscode-languageclient';
-
+import * as Path from 'path';
+//------------------------------------------------------------------------------------------
 import { mxsDocumentSemanticTokensProvider, legend } from './mxsSemantics';
-
+import { mxsHelp } from './mxsHelp';
 //------------------------------------------------------------------------------------------
 let client: LanguageClient;
 //------------------------------------------------------------------------------------------
-export const MXS_DOC = { scheme: 'file', language: 'maxscript' };
+export const MXS_DOC = {
+	// scheme: 'file',
+	language: 'maxscript',
+	// pattern: '*.{ms,mcr}'
+};
 //------------------------------------------------------------------------------------------
 
-export function activate(context: ExtensionContext) {
+export function activate(context: ExtensionContext)
+{
 	// The server is implemented in node
 	let serverModule = context.asAbsolutePath(
 		path.join('server', 'out', 'server.js')
@@ -59,13 +71,36 @@ export function activate(context: ExtensionContext) {
 		serverOptions,
 		clientOptions
 	);
-
+	//------------------------------------------------------------------------------------------
+	// MaxScript Help command
+	context.subscriptions.push( commands.registerTextEditorCommand('mxs.help', (textEditor) => { mxsHelp(textEditor); }) );
+	context.subscriptions.push(
+		commands.registerCommand('mxs.minify.files',
+			async () =>
+			{
+				// get files...
+				let files = await window.showOpenDialog({
+					canSelectMany: true,
+					filters: {
+						'MaxScript': ['ms', 'mcr']
+					}
+				});
+				if (files) {
+					let filesPath = files.map(f => Path.normalize(f.fsPath));
+					// execute file minifier
+					await commands.executeCommand('mxs.minify.file', filesPath);
+				} else {
+					// no files
+				}
+			}
+		)
+	);
 	//------------------------------------------------------------------------------------------
 	// FEATURES IMPLEMENTED IN CLIENT...
-	let mxsConfig = (vscode.workspace.getConfiguration('maxscript'));
+	let mxsConfig = (workspace.getConfiguration('maxscript'));
 
 	// semantics
-	if (mxsConfig.get('semantics', true)) {
+	if (mxsConfig.get('Language.Semantics', true)) {
 		context.subscriptions.push(
 			languages.registerDocumentSemanticTokensProvider(
 				MXS_DOC.language!,
@@ -78,7 +113,8 @@ export function activate(context: ExtensionContext) {
 	client.start();
 }
 
-export function deactivate(): Thenable<void> | undefined {
+export function deactivate(): Thenable<void> | undefined
+{
 	if (!client) {
 		return undefined;
 	}

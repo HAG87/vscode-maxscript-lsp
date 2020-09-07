@@ -1,6 +1,6 @@
 {
-	"name": "language-maxscript",
-	"displayName": "Language MaxScript",
+	"name": "language-maxscript-experimental",
+	"displayName": "Language MaxScript (Experimental)",
 	"description": "Autodesk 3ds Max MaxScript language support",
 	"author": "Atelier Bump",
 	"license": "MIT",
@@ -94,7 +94,7 @@
 			{
 				"command": "mxs.minify",
 				"title": "Minify open document",
-				"category": "MaxScript"
+				"category": "MaxScript"				
 			},
 			{
 				"command": "mxs.minify.file",
@@ -147,12 +147,6 @@
 			"type": "object",
 			"title": "Language MaxScript",
 			"properties": {
-				"languageServerMaxScript.maxNumberOfProblems": {
-					"scope": "resource",
-					"type": "number",
-					"default": 100,
-					"description": "Controls the maximum number of problems produced by the server."
-				},
 				"languageServerMaxScript.trace.server": {
 					"scope": "window",
 					"type": "string",
@@ -164,40 +158,47 @@
 					"default": "off",
 					"description": "Traces the communication between VS Code and the language server."
 				},
-				"languageServerMaxScript.gotosymbol": {
+				"languageServerMaxScript.GoToSymbol": {
+					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Enable Document Symbols and Diagnostics."
 				},
-				"languageServerMaxScript.gotodefinition": {
+				"languageServerMaxScript.GoToDefinition": {
+					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Enable Document Definitions."
 				},
-				"languageServerMaxScript.diagnostics": {
+				"languageServerMaxScript.Diagnostics": {
+					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Enable Document diagnostics"
 				},
-				"languageServerMaxScript.completions": {
+				"languageServerMaxScript.Completions": {
+					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Enable suggest completions"
 				},
-				"languageServerMaxScript.semantics": {
+				"maxscript.Language.Semantics": {
+					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Enable Semantic highlight"
 				},
-				"languageServerMaxScript.minprefix": {
+				"languageServerMaxScript.MinifyFilePrefix": {
+					"scope": "resource",
 					"type": "string",
 					"default": "min_",
 					"description": "Prefix for code minify output"
 				},
-				"help.Provider": {
+				"maxscript.Help.Provider": {
+					"scope": "resource",
 					"type": "string",
-					"default": "http://help.autodesk.com/view/3DSMAX/2018/ENU/",
-					"description": "maxScript help source"
+					"default": "http://help.autodesk.com/view/3DSMAX/2021/ENU/",
+					"description": "MaxScript help source"
 				}
 			}
 		}
@@ -216,5 +217,6 @@
 		"eslint": "^6.4.0",
 		"mocha": "^6.2.2",
 		"typescript": "^3.9.7"
-	}
+	},
+	"dependencies": {}
 }

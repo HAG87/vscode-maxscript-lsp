@@ -1,17 +1,17 @@
 'use strict';
 import {
-	createConnection,
-	TextDocuments,
-	Diagnostic,
-	DiagnosticSeverity,
-	ProposedFeatures,
-	InitializeParams,
-	DidChangeConfigurationNotification,
+	// createConnection,
+	// TextDocuments,
+	// Diagnostic,
+	// DiagnosticSeverity,
+	// ProposedFeatures,
+	// InitializeParams,
+	// DidChangeConfigurationNotification,
 	CompletionItem,
 	CompletionItemKind,
-	TextDocumentPositionParams,
-	TextDocumentSyncKind,
-	InitializeResult,
+	// TextDocumentPositionParams,
+	// TextDocumentSyncKind,
+	// InitializeResult,
 	Range
 } from 'vscode-languageserver';
 
@@ -40,7 +40,7 @@ export default class mxsCompletion {
 	 */
 	static provideCompletionItems(document: TextDocument, position: Position): CompletionItem[] {
 
-		let lineText = document.getText(Range.create(position.line, -1, position.line, Number.MAX_VALUE));
+		// let lineText = document.getText(Range.create(position.line, -1, position.line, Number.MAX_VALUE));
 		let lineTillCurrentPosition = document.getText(Range.create(position.line, -1, position.line, position.character));
 
 		// escape strings - NOT WORKING RIGHT

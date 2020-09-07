@@ -5,56 +5,56 @@
 import {
 	createConnection,
 	TextDocuments,
-	Diagnostic,
-	DiagnosticSeverity,
+	// Diagnostic,
+	// DiagnosticSeverity,
 	ProposedFeatures,
 	InitializeParams,
 	DidChangeConfigurationNotification,
 	CompletionItem,
-	SymbolInformation,
+	DefinitionRequest,
+	Definition,
+	DefinitionLink,
+	// SymbolInformation,
 	TextDocumentPositionParams,
 	TextDocumentSyncKind,
-	TextDocumentIdentifier,
+	// TextDocumentIdentifier,
 	DocumentSymbolParams,
+	DefinitionParams,
 	InitializeResult,
 	ExecuteCommandParams,
-	Command
+	// Command,
+	Range,
+	Location,
+	Position,
+	// ShowMessageNotification
 } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import * as Path from 'path';
 
-import {
-	TextDocument
-} from 'vscode-languageserver-textdocument';
-//------------------------------------------------------------------------------------------
-// Create a connection for the server. The connection uses Node's IPC as a transport.
-// Also include all preview / proposed LSP features.
-let connection = createConnection(ProposedFeatures.all);
-//------------------------------------------------------------------------------------------
-
-// Create a simple text document manager. The text document manager
-// supports full document sync only
-let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
-
-let hasConfigurationCapability: boolean = false;
-let hasWorkspaceFolderCapability: boolean = false;
-let hasDiagnosticRelatedInformationCapability: boolean = false;
-let hasDiagnosticCapability: boolean = false;
-let hasDocumentSymbolCapability: boolean = false;
 //------------------------------------------------------------------------------------------
 import mxsCompletion from './mxsCompletions';
 import {mxsDocumentSymbols} from './mxsOutline';
 // import {mxsDiagnosticCollection} from './mxsDiagnostics';
+import mxsMinifier from './mxsMin';
+import * as utils from './utils';
+import {Commands} from './mxsCommands';
 //------------------------------------------------------------------------------------------
-
-const MXS_MINDOC = Command.create('Minify open document','mxs.minify');
-const MXS_MINFILE = Command.create('Minify file','mxs.minify.file');
-const MXS_MINFILES = Command.create('Minify files...','mxs.minify.files');
-
-const commands = [
-	MXS_MINDOC,
-	MXS_MINFILE,
-	MXS_MINFILES
-];
-
+// Create a connection for the server. The connection uses Node's IPC as a transport.
+// Also include all preview / proposed LSP features.
+export let connection = createConnection(ProposedFeatures.all);
+//------------------------------------------------------------------------------------------
+// Create a simple text document manager. The text document manager
+// supports full document sync only
+let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
+let currentTextDocument: TextDocument;
+//------------------------------------------------------------------------------------------
+let hasConfigurationCapability: boolean                = false;
+let hasWorkspaceFolderCapability: boolean              = false;
+let hasDiagnosticRelatedInformationCapability: boolean = false;
+let hasDiagnosticCapability: boolean                   = false;
+let hasDocumentSymbolCapability: boolean               = false;
+let hasDefinitionCapability: boolean                   = false;
+//------------------------------------------------------------------------------------------
 connection.onInitialize((params: InitializeParams) => {
 	let capabilities = params.capabilities;
 	// capabilities.textDocument?.documentSymbol
@@ -64,23 +64,27 @@ connection.onInitialize((params: InitializeParams) => {
 	hasConfigurationCapability = !!(
 		capabilities.workspace && !!capabilities.workspace.configuration
 	);
-	/*
 	hasWorkspaceFolderCapability = !!(
 		capabilities.workspace && !!capabilities.workspace.workspaceFolders
 	);
-	*/
 	hasDiagnosticCapability = !!(
 		capabilities.textDocument &&
 		capabilities.textDocument.publishDiagnostics 
 	);
+	/*
 	hasDiagnosticRelatedInformationCapability = !!(
 		capabilities.textDocument &&
 		capabilities.textDocument.publishDiagnostics &&
 		capabilities.textDocument.publishDiagnostics.relatedInformation
 	);
+	*/
 	hasDocumentSymbolCapability = !!(
 		capabilities.textDocument &&
 		capabilities.textDocument.documentSymbol
+	);
+	hasDefinitionCapability = !!(
+		capabilities.textDocument &&
+		capabilities.textDocument.definition
 	);
 	//...
 	const result: InitializeResult = {
@@ -92,22 +96,30 @@ connection.onInitialize((params: InitializeParams) => {
 				triggerCharacters: ['.']
 			},
 			documentSymbolProvider: true,
-			//definitionProvider: true
-			// COMPLETE CAPABILITIES HERE
+			definitionProvider: true,
+			// declarationProvider: true,
+			// referencesProvider: true,
+			// typeDefinitionProvider: true,
+			// implementationProvider: true,
+			// ...
 			executeCommandProvider: {
-				commands: commands.map(command => command.command)
+				commands:[
+					Commands.MXS_MINDOC.command,
+					Commands.MXS_MINFILE.command,
+					// Commands.MXS_MINFILES.command
+				]
 			}
 		}
 	};
-	/*
+	// /*
 	if (hasWorkspaceFolderCapability) {
 		result.capabilities.workspace = {
 			workspaceFolders: {
-				supported: true
+				supported: false
 			}
 		};
 	}
-	*/
+	// */
 	return result;
 });
 
@@ -116,26 +128,39 @@ connection.onInitialized(() => {
 		// Register for all configuration changes.
 		connection.client.register(DidChangeConfigurationNotification.type, undefined);
 	}
+	/*
 	if (hasWorkspaceFolderCapability) {
 		connection.workspace.onDidChangeWorkspaceFolders(_event => {
 			connection.console.log('Workspace folder change event received.');
 		});
 	}
+	*/
 });
 
-// The example settings
+// Settings
 interface MaxScriptSettings {
-	maxNumberOfProblems: number;
-	// add settings here
+	GoToSymbol: boolean;
+	GoToDefinition: boolean;
+	Diagnostics: boolean;
+	Completions: boolean;
+	// semantics: boolean;
+	MinifyFilePrefix: string;
+	// ...
 }
 
-// WHAT IS THE MEANING OF THIS??
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 // Please note that this is not the case when using this server with the client provided in this example
 // but could happen with other clients.
 
 // put default settings here
-const defaultSettings: MaxScriptSettings = { maxNumberOfProblems: 1000 };
+const defaultSettings: MaxScriptSettings = {
+	GoToSymbol:      true,
+	GoToDefinition:  true,
+	Diagnostics:     true,
+	Completions:     true,
+	//semantics:     true,
+	MinifyFilePrefix: 'min_',
+};
 let globalSettings: MaxScriptSettings = defaultSettings;
 
 // Cache the settings of all open documents
@@ -150,7 +175,6 @@ connection.onDidChangeConfiguration(change => {
 			(change.settings.languageServerMaxScript || defaultSettings)
 		);
 	}
-
 	// Revalidate all open text documents
 	documents.all().forEach(validateDocument);
 });
@@ -175,16 +199,6 @@ documents.onDidClose(e => {
 	documentSettings.delete(e.document.uri);
 });
 //------------------------------------------------------------------------------------------
-
-// The content of a text document has changed. This event is emitted
-// when the text document first opened or when its content has changed.
-let currentTextDocument: TextDocument;
-
-documents.onDidChangeContent(change => {
-	currentTextDocument = change.document;
-	// validateDocument(change.document);
-});
-
 async function parseDocument(document: TextDocument) {
 	return await mxsDocumentSymbols.parseDocument(document);
 }
@@ -199,72 +213,36 @@ function diagnoseDocument(document: TextDocument) {
 	}
 	*/
 }
+//------------------------------------------------------------------------------------------
+// The content of a text document has changed. This event is emitted
+// when the text document first opened or when its content has changed.
+
+documents.onDidChangeContent(change => {
+	currentTextDocument = change.document;
+	// validateDocument(change.document);
+});
+
+// documents.onDidClose
+// documents.onDidOpen
+// documents.onDidSave
+
 
 async function validateDocument(textDocument: TextDocument): Promise<void> {
 	connection.console.log('We received a content change event');
 	let settings = await getDocumentSettings(textDocument.uri);
-	
 	/*
 		- settings...
 		- parser
 		- symbols and diagnostics
-		- use the stored AST for the minifier: mxsDocumentSymbols.msxParser.parsedCST
 	*/
-	diagnoseDocument(textDocument);
-	
-	/*
-	// In this simple example we get the settings for every validate run.
-	let settings = await getDocumentSettings(textDocument.uri);
-
-	// The validator creates diagnostics for all uppercase words length 2 and more
-	let text = textDocument.getText();
-	let pattern = /\b[A-Z]{2,}\b/g;
-	let m: RegExpExecArray | null;
-
-	let problems = 0;
-	let diagnostics: Diagnostic[] = [];
-	while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
-		problems++;
-		let diagnostic: Diagnostic = {
-			severity: DiagnosticSeverity.Warning,
-			range: {
-				start: textDocument.positionAt(m.index),
-				end: textDocument.positionAt(m.index + m[0].length)
-			},
-			message: `${m[0]} is all uppercase.`,
-			source: 'ex'
-		};
-		if (hasDiagnosticRelatedInformationCapability) {
-			diagnostic.relatedInformation = [
-				{
-					location: {
-						uri: textDocument.uri,
-						range: Object.assign({}, diagnostic.range)
-					},
-					message: 'Spelling matters'
-				},
-				{
-					location: {
-						uri: textDocument.uri,
-						range: Object.assign({}, diagnostic.range)
-					},
-					message: 'Particularly for names'
-				}
-			];
-		}
-		diagnostics.push(diagnostic);
-	}
-
-	// Send the computed diagnostics to VSCode.
-	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-	// */
+	diagnoseDocument(textDocument);	
+	//...
 }
-
-connection.onDidChangeWatchedFiles(_change => {
-	// Monitored files have change in VSCode
-	connection.console.log('We received an file change event');
-});
-
+//------------------------------------------------------------------------------------------
+// connection.onDidChangeWatchedFiles(_change => {
+// Monitored files have change in VSCode
+// connection.console.log('We received an file change event');
+// });
 //------------------------------------------------------------------------------------------
 // Update the parsed document, and diagnostics on Symbols request... ?
 connection.onDocumentSymbol( async (_DocumentSymbolParams:DocumentSymbolParams) => {
@@ -273,30 +251,97 @@ connection.onDocumentSymbol( async (_DocumentSymbolParams:DocumentSymbolParams) 
 	*/
 	// connection.console.log('We received a DocumentSymbol request');
 	let doc = documents.get(_DocumentSymbolParams.textDocument.uri)!;
-	// let documentSymbols = await mxsDocumentSymbols.parseDocument(doc);
-	// connection.sendDiagnostics({ uri: doc.uri, diagnostics: mxsDocumentSymbols.documentDiagnostics });
 	let documentSymbols = await parseDocument(doc);
 	diagnoseDocument(doc);
-	// return await mxsDocumentSymbols.parseDocument(doc);
 	return documentSymbols;
 });
-
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
 		return mxsCompletion.provideCompletionItems(currentTextDocument, _textDocumentPosition.position);
 	}
 );
-// This handler resolves additional information for the item selected in
-// the completion list.
+// This handler resolves additional information for the item selected in the completion list.
 // connection.onCompletionResolve(
 //...
 // 	}
 // );
 
+// connection.onSelectionRanges
+// connection.onTypeDefinition
 
-connection.onExecuteCommand( async (params: ExecuteCommandParams) => {
-	console.log('Command executed!');
+
+connection.onDefinition( async (_DefinitionParams: DefinitionParams) => {
+	connection.console.log('We received an DefinitionParams event');
+
+	let document = documents.get(_DefinitionParams.textDocument.uri)!;
+	let position = _DefinitionParams.position;
+
+	// this is the word near the current position
+	// let word = utils.getWordAtPosition(document, position);
+
+	// method 1: regex match the file
+	// method 2: search the parse tree for a match
+	// method 2.1: implement Workspace capabilities
+	
+	let defLocation = Location.create(document.uri, Range.create(position, position));
+
+	return defLocation;
+});
+
+// This handler porvides commands execution
+connection.onExecuteCommand(async (arg: ExecuteCommandParams) => {
+	let settings = await getDocumentSettings(currentTextDocument.uri);
+
+	if (arg.command === Commands.MXS_MINDOC.command && arg.arguments) {
+		try {
+
+			let path = utils.uriToPath(currentTextDocument.uri)!;
+			let newPath = utils.prefixFile(path, settings.MinifyFilePrefix);
+			// connection.console.log(utils.uriToPath(currentTextDocument.uri)!);
+			await mxsMinifier.MinifyDoc(mxsDocumentSymbols.msxParser.parsedCST || currentTextDocument.getText(), newPath);
+
+			connection.window.showInformationMessage(`MaxScript minify: Document saved as ${Path.basename(newPath)}`);
+		} catch (err) {
+			connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: ${err.message}`);
+		}
+	} else if (arg.command === Commands.MXS_MINFILE.command && arg.arguments) {
+		if (arg.arguments[0]!) {
+			connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: invalid command arguments`);
+			return;
+		}		
+		try {
+			// arguments can be an array of paths or an URI
+			let filenames: { src: string, dest: string }[];
+
+			if ('path' in arg.arguments[0]) {
+				let path = utils.uriToPath(arg.arguments[0].path)!;
+				let newPath = utils.prefixFile(path, settings.MinifyFilePrefix);
+				filenames = [
+					{ src: path, dest: newPath }
+				];
+			} else {
+				filenames = arg.arguments[0].map((path: string) => {
+					return {
+						src: path,
+						dest: utils.prefixFile(path, settings.MinifyFilePrefix)
+					};
+				});
+			}
+			// connection.console.log(JSON.stringify(filenames, null, 2));
+			for (let paths of filenames) {
+				// do it for each file...
+				try {
+					await mxsMinifier.MinifyFile(paths.src, paths.dest);
+					connection.window.showInformationMessage(`MaxScript minify: Document saved as ${Path.basename(paths.dest)}`);
+				} catch (err) {
+					connection.window.showErrorMessage(`MaxScript minify: Failed at ${Path.basename(paths.dest)}. Reason: ${err.message}`);
+				}
+			}
+		} catch (err) {
+			connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: ${err.message}`);
+		}
+	}
 });
 //------------------------------------------------------------------------------------------
 // Make the text document manager listen on the connection

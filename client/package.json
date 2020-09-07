@@ -18,7 +18,7 @@
 	},
 	"devDependencies": {
 		"@types/moo": "^0.5.3",
-		"@types/vscode": "^1.45.0",
+		"@types/vscode": "^1.48.0",
 		"vscode-test": "^1.4.0"
 	}
 }
