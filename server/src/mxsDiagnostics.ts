@@ -1,23 +1,23 @@
 'use strict';
-import {
+import
+{
 	Diagnostic,
 	// DiagnosticRelatedInformation,
 	DiagnosticSeverity,
-	// Location,
 } from 'vscode-languageserver';
-import {
-	TextDocument
-} from 'vscode-languageserver-textdocument';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 //--------------------------------------------------------------------------------
 import * as moo from 'moo';
 import { tokenDefinitions } from './schema/mxsTokenDefs';
 import { getTokenRange } from './mxsProvideSymbols';
 //--------------------------------------------------------------------------------
-const tokenListToValues = (tokenList: Dictionary<string>[]): string[] => {
+const tokenListToValues = (tokenList: Dictionary<string>[]): string[] =>
+{
 	return [...new Set((tokenList).map(item => item.type))];
 };
 //--------------------------------------------------------------------------------
-interface Dictionary<T> {
+interface Dictionary<T>
+{
 	[key: string]: T;
 }
 type ErrorDetail = {
@@ -25,7 +25,8 @@ type ErrorDetail = {
 	expected: Dictionary<string>[];
 
 };
-export interface ParserFatalError extends Error {
+export interface ParserFatalError extends Error
+{
 	token: moo.Token;
 	offset: number;
 	details: Dictionary<string>[];
@@ -33,8 +34,10 @@ export interface ParserFatalError extends Error {
 /**
  * ParserError extends js Error
  */
-export class ParserError extends Error {
-	constructor(message?: string) {
+export class ParserError extends Error
+{
+	constructor(message?: string)
+	{
 		// 'Error' breaks prototype chain here
 		super(message);
 		// restore prototype chain
@@ -57,14 +60,16 @@ export const mxsDiagnosticCollection: Diagnostic[] = [];
  * Provide basic error message
  * @param {token} token Offending token, from error
  */
-const basicDiagnostics = (token: moo.Token): string => {
+const basicDiagnostics = (token: moo.Token): string =>
+{
 	return `Unexpected \"${token.value}\" at position: ${token.offset}`;
 };
 /**
  * Provide a message that list possible solutions
  * @param {token[]} tokenList List of possible tokens
  */
-const correctionList = (tokenList: Dictionary<string>[]): string => {
+const correctionList = (tokenList: Dictionary<string>[]): string =>
+{
 	// get a list of the types
 	let list = tokenListToValues(tokenList);
 	let tokenDesc = list.map((item: string) => tokenDefinitions[item]).sort();
@@ -76,7 +81,8 @@ const correctionList = (tokenList: Dictionary<string>[]): string => {
  * Diagnostics generic message
  * @param error Error throw from parser
  */
-export function parsingErrorMessage(error: ParserFatalError): string {
+export function parsingErrorMessage(error: ParserFatalError): string
+{
 	return ([basicDiagnostics(error.token)].concat(correctionList(error.details)).join('\n'));
 }
 /**
@@ -84,12 +90,14 @@ export function parsingErrorMessage(error: ParserFatalError): string {
  * @param document Document that emiited the parsing error
  * @param error parser error type
  */
-export function provideParserDiagnostic(document: TextDocument, error: ParserError): Diagnostic[] {
+export function provideParserDiagnostic(document: TextDocument, error: ParserError): Diagnostic[]
+{
 	if (!document) { return []; }
 	let diagnostics: Diagnostic[];
 	let tokenList = [...error.tokens];
 	diagnostics = tokenList.map(
-		t => {
+		t =>
+		{
 			let vsRange = getTokenRange(document, t);
 			let diag = Diagnostic.create(
 				vsRange,
@@ -111,7 +119,8 @@ export function provideParserDiagnostic(document: TextDocument, error: ParserErr
  * @param document current document
  * @param CST parsed CST
  */
-export function provideTokenDiagnostic(document: TextDocument, errTokens: moo.Token[] | undefined): Diagnostic[] {
+export function provideTokenDiagnostic(document: TextDocument, errTokens: moo.Token[] | undefined): Diagnostic[]
+{
 	if (!errTokens) { return []; }
 	let diagnostics: Diagnostic[] = errTokens.map(
 		t => ({
@@ -132,12 +141,13 @@ export function provideTokenDiagnostic(document: TextDocument, errTokens: moo.To
  */
 export function setDiagnostics(
 	diagnostic?: Diagnostic[],
-	collection: Diagnostic[] = mxsDiagnosticCollection): void {
+	collection: Diagnostic[] = mxsDiagnosticCollection): void
+{
 
 	if (diagnostic) {
 		collection.concat(diagnostic);
 	} else {
-		// collection = [];
+		collection = [];
 	}
 	// collection.forEach(document => {
 	// 	workspace.fs.stat(document).then(stat => {

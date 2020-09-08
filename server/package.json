@@ -12,6 +12,9 @@
 		"url": ""
 	},
 	"dependencies": {
+		"ast-get-object": "^1.9.14",
+		"ast-get-values-by-key": "^2.6.69",
+		"ast-monkey-traverse": "^1.12.17",
 		"ast-monkey-traverse-with-lookahead": "^1.1.9",
 		"moo": "^0.5.1",
 		"nearley": "^2.19.6",

@@ -64,41 +64,41 @@ function visit(node, callbackMap) {
 }
 //-----------------------------------------------------------------------------------
 let tokensValue = {
-	global_typed: (node) => node.text,
-	hex: (node) => node.text,
-	identity: (node) => node.text,
-	locale: (node) => node.text,
-	name: (node) => node.text,
-	number: (node) => node.text,
-	path: (node) => node.text,
-	string: (node) => node.text,
-	time: (node) => node.text,
-	typed_iden: (node) => node.text,
-	property: (node) => node.value,
-	params: (node) => node.value,
-	math: (node) => node.value,
-	assign: (node) => node.value,
-	comparison: (node) => node.value,
-	keyword: (node) => node.text,
-	kw_bool: (node) => node.text,
-	kw_on: (node) => node.text,
-	kw_return: (node) => node.text,
-	kw_exit: (node) => node.text,
-	kw_scope: (node) => node.text,
+	global_typed : (node) => node.text,
+	hex          : (node) => node.text,
+	identity     : (node) => node.text,
+	locale       : (node) => node.text,
+	name         : (node) => node.text,
+	number       : (node) => node.text,
+	path         : (node) => node.text,
+	string       : (node) => node.text,
+	time         : (node) => node.text,
+	typed_iden   : (node) => node.text,
+	property     : (node) => node.value,
+	params       : (node) => node.value,
+	math         : (node) => node.value,
+	assign       : (node) => node.value,
+	comparison   : (node) => node.value,
+	keyword      : (node) => node.text,
+	kw_bool      : (node) => node.text,
+	kw_on        : (node) => node.text,
+	kw_return    : (node) => node.text,
+	kw_exit      : (node) => node.text,
+	kw_scope     : (node) => node.text,
 	kw_uicontrols: (node) => node.text,
-	kw_group: (node) => node.text,
-	kw_objectset: (node) => node.text,
-	kw_context: (node) => node.text,
-	kw_function: (node) => node.text,
-	kw_time: (node) => node.text,
-	kw_tool: (node) => node.text,
-	kw_utility: (node) => node.text,
-	kw_rollout: (node) => node.text,
-	kw_level: (node) => node.text,
-	kw_global: (node) => node.text,
-	kw_local: (node) => node.text,
-	kw_do: (node) => node.text,
-	kw_then: (node) => node.text,
+	kw_group     : (node) => node.text,
+	kw_objectset : (node) => node.text,
+	kw_context   : (node) => node.text,
+	kw_function  : (node) => node.text,
+	kw_time      : (node) => node.text,
+	kw_tool      : (node) => node.text,
+	kw_utility   : (node) => node.text,
+	kw_rollout   : (node) => node.text,
+	kw_level     : (node) => node.text,
+	kw_global    : (node) => node.text,
+	kw_local     : (node) => node.text,
+	kw_do        : (node) => node.text,
+	kw_then      : (node) => node.text,
 	// Error tokens
 	error: (node) => node.text,
 };
@@ -364,7 +364,7 @@ function exprTerm(exprArr) {
  * @param {string[] | undefined} arr
  */
 function joinStatements(arr) {
-	if (!arr || arr.length === 0) return '';
+	if (!arr || arr.length === 0) {return '';}
 	return arr.reduce((acc, curr) => {
 		let term = curr || '';
 		return (acc + spaceLR(acc, term) + term);
@@ -376,7 +376,7 @@ function joinStatements(arr) {
  * @param {string} str2 Right string
  */
 function spaceLR(str1, str2) {
-	if (!str2 || !str1) return '';
+	if (!str2 || !str1) {return '';}
 	return /[\w_$?-]$/gmi.test(str1) && /^(?:[\w_-]|::)/gmi.test(str2) ? ' ' : '';
 }
 /**
@@ -400,7 +400,7 @@ function spaceAlphaNum(str) {
  * @param {any} node CST node
  */
 function isNode(node) {
-	return (typeof node === 'object' && node != undefined);
+	return (typeof node === 'object' && node !== undefined);
 }
 /**
  * filter nodes by type property

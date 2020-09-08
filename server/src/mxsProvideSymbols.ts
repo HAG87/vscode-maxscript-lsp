@@ -7,20 +7,17 @@ import {
 	SymbolKind,
 	DocumentSymbol
 } from 'vscode-languageserver';
-import {
-	TextDocument,
-} from 'vscode-languageserver-textdocument';
+import { TextDocument, } from 'vscode-languageserver-textdocument';
 // const { find, get, set, drop, info, del, arrayFirstOnly, traverse, } = require('ast-monkey');
 // const { pathNext, pathPrev, pathUp } = require('ast-monkey-util');
-const traverse2 = require('ast-monkey-traverse-with-lookahead');
+const traverse = require('ast-monkey-traverse');
+const getObj = require('ast-get-object');
+const getAllValuesByKey = require('ast-get-values-by-key');
+// const traverse = require('ast-monkey-traverse-with-lookahead');
 const objectPath = require('object-path');
 //-----------------------------------------------------------------------------------
 // import { parentPath, findParentName } from './astUtils';
 const { parentPath, findParentName } = require('./lib/astUtils.js');
-//-----------------------------------------------------------------------------------
-interface Dictionary<T> {
-	[key: string]: T;
-}
 //-----------------------------------------------------------------------------------
 /**
  * Maps values from type > vcode kind enumeration
@@ -54,49 +51,71 @@ const SymbolKindMatch: Dictionary<SymbolKind> = {
 	'Include'               : SymbolKind.Module,
 };
 //-----------------------------------------------------------------------------------
-function hasKey<O>(obj: O, key: keyof any): key is keyof O {
-	return key in obj;
-}
-
 /**
- * Type to represent a text range with start and end offset
+ * Generic dictionary Interface
  */
-// export type Trange = { start: number; end: number };
-interface Trange<T> {
+interface Dictionary<T> {
+	[key: string]: T;
+}
+/**
+ * Interface that defines a range in a string with a start and an end offset
+ */
+interface iRange<T> {
 	start: T;
 	end: T;
 }
-interface Tpos {
+/**
+ * Interface that defines a position in a string with a line and offset number
+ */
+interface iPos {
 	line: number;
 	col: number;
+}
+
+interface NodeMap {
+	node: any;
+	childs: NodeMap[];
+}
+//-----------------------------------------------------------------------------------
+function hasKey<O>(obj: O, key: keyof any): key is keyof O {
+	return key in obj;
+}
+function isNode(node:  any | undefined) {
+	return (typeof node === 'object' && node !== undefined);
 }
 //-----------------------------------------------------------------------------------
 /**
  * Functions for getting the range of a statement. Grouped in a static class for coherency
  */
-export abstract class range {
-	static fromStartEndOffsets(startOff: number, endOff: number, value1: string): Trange<number> {
+export abstract class range
+{
+	static fromStartEndOffsets(startOff: number, endOff: number, value1: string): iRange<number>
+	{
 		return {
 			start: startOff,
 			end: (endOff + value1.length)
 		};
 	}
-	static fromOffset(offset: number, value: string): Trange<number> {
+	static fromOffset(offset: number, value: string): iRange<number>
+	{
 		return {
 			start: offset,
 			end: (offset + value.length)
 		};
 	}
-	static offsetFromTokenLineCol(src: string | string[], node: any) {
+	static offsetFromTokenLineCol(src: string | string[], node: any)
+	{
 
 		let lines = Array.isArray(src) ? src : src.split('\n');
 
-		let charcount = lines.slice(0, node.line - 1).reduce((prev, next) => {
+		let charcount = lines.slice(0, node.line - 1).reduce((prev, next) =>
+		{
 			return prev + next.length + 1;
 		}, 0);
 		return (charcount += node.col - 1);
 	}
-	static fromLineCol(src: string | string[], node: any) {
+	static fromLineCol(src: string | string[], node: any)
+	{
 		let offset = range.offsetFromTokenLineCol(src, node);
 		return {
 			start: offset,
@@ -107,11 +126,13 @@ export abstract class range {
 	 * Get the range of the statement from the offset of the first and last child of the node
 	 * @param node CST node
 	 */
-	static fromChilds(node: any): Trange<number> {
+	static fromChilds(node: any): iRange<number>
+	{
 		// let paths: any[] = [];
 		let childs: any[] = [];
 		// traverse the node to collect first and last child offset
-		traverse2(node, (key1: string, val1: null, innerObj: any, stop: any) => {
+		traverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
+		{
 			const current = val1 !== null ? val1 : key1;
 			if (key1 === 'offset') {
 				// paths.push(parentPath(innerObj.path));
@@ -126,17 +147,18 @@ export abstract class range {
 		let last = childs[childs.length - 1];
 
 		return range.fromStartEndOffsets(start, last.offset, last.text);
-	}	
+	}
 	/**
 	 *  Get the range of the statement from the line-column of the first and last child of the node
 	 * @param source Reference, the original string.
 	 * @param node CST node
 	 */
-	static fromChildsLC(node: any): Trange<Tpos>
+	static fromChildsLC(node: any): iRange<iPos>
 	{
 		let childs: any[] = [];
 		// traverse the node to collect first and last child offset
-		traverse2(node, (key1: string, val1: null, innerObj: any, stop: any) => {
+		traverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
+		{
 			const current = val1 !== null ? val1 : key1;
 			if (key1 === 'line') {
 				childs.push(innerObj.parent);
@@ -145,19 +167,20 @@ export abstract class range {
 		});
 		let last = childs[childs.length - 1];
 
-		let start = {line: childs[0].line, col: childs[0].col};
-		let end = {line: last.line, col: last.col};
-		return {start: start, end: end};
+		let start = { line: childs[0].line, col: childs[0].col };
+		let end = { line: last.line, col: last.col };
+		return { start: start, end: end };
 	}
 	/**
 	 * Get the position of the last child
 	 * @param node CST node
 	 */
-	static lastChildPos(node: any): Tpos
+	static lastChildPos(node: any): iPos
 	{
 		let childs: any[] = [];
 		// traverse the node to collect first and last child offset
-		traverse2(node, (key1: string, val1: null, innerObj: any, stop: any) => {
+		traverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
+		{
 			const current = val1 !== null ? val1 : key1;
 			if (key1 === 'line') {
 				childs.push(innerObj.parent);
@@ -165,25 +188,26 @@ export abstract class range {
 			return current;
 		});
 		let last = childs[childs.length - 1];
-		return {line: last.line, col: last.col};
+		return { line: last.line, col: last.col };
 	}
 }
 //-----------------------------------------------------------------------------------
-export function getTokenRange(document: TextDocument, token: moo.Token) {
-	let startPosition = Position.create( token.line - 1, token.col );
-	let endOffset = token.col + (token.text.length || token.value.length);
-	let endPosition= Position.create(token.line - 1, endOffset - 1);
+
+export function getTokenRange(document: TextDocument, token: moo.Token)
+{
+	let startPosition = Position.create(token.line - 1, token.col - 1);
+	let endOffset = token.col + (token.text.length || token.value.length) - 2;
+	let endPosition = Position.create(token.line - 1, endOffset);
 
 	return Range.create(startPosition, endPosition);
 }
 
-export function getDocumentPositions(document: TextDocument, node: any) {
+export function getDocumentPositions(document: TextDocument, node: any)
+{
 	let startPosition: Position;
 	let endPosition: Position;
 
 	if (node.loc) {
-		// document.validatePosition()
-		// range from loc: {start: number, end?: number}
 		startPosition = Position.create(
 			node.loc.start.line - 1,
 			node.loc.start.col - 1
@@ -205,17 +229,22 @@ export function getDocumentPositions(document: TextDocument, node: any) {
 			sRange.end.line - 1,
 			sRange.end.col - 1
 		);
-
 	}
 
 	return Location.create(
 		document.uri,
-		Range.create( startPosition, endPosition)
+		Range.create(startPosition, endPosition)
 	);
 }
 //-----------------------------------------------------------------------------------
 //DECLARATIONS
 //-----------------------------------------------------------------------------------
+
+export function getFromCST(CST: any | any[], keyValPair: object)
+{
+	return getObj(CST, keyValPair);	
+}
+
 /**
  * collect Nodes visiting the Tree
  * collects all node types in the filter.
@@ -224,33 +253,26 @@ export function getDocumentPositions(document: TextDocument, node: any) {
  * @param {any[]} CST Abstract Syntax tree source
  * @param {string} filter Object with keys:[] to be collected.
  */
-export function collectStatementsFromCST(CST: any[], filter: string = 'id') {
+export function collectStatementsFromCST(CST: any | any[], key: string = 'id')
+{
 	let statements: string[] = [];
 	//traverse the CST
-	traverse2(CST, (key1: string, val1: null, innerObj: { path: string }, stop: any) => {
+	traverse(CST, (key1: string, val1: null, innerObj: { path: string }, stop: any) =>
+	{
 		const current = val1 !== null ? val1 : key1;
-		if (key1 === filter) {statements.push(parentPath(innerObj.path));}
+		if (key1 === key) { statements.push(parentPath(innerObj.path)); }
 		return current;
 	});
 	return statements;
 }
 
-function isNode(node:  any | undefined) {
-	return (typeof node === 'object' && node !== undefined);
-}
-
-interface NodeMap {
-	node: any;
-	childs: NodeMap[];
-}
-
-export function ReCollectStatementsFromCST(node: any) {
-
+export function ReCollectStatementsFromCST(node: any | any[], key: string = 'id')
+{
 	return _visit(node, undefined);
 
-	function _visit(node: any, parent: any | undefined) {
-
-		if (!node) {return [];}
+	function _visit(node: any, parent: any | undefined)
+	{
+		if (!node) { return []; }
 
 		let childStack: NodeMap[] = [];
 		// get the node keys
@@ -267,18 +289,18 @@ export function ReCollectStatementsFromCST(node: any) {
 					// visit each node in the array
 					if (isNode(child[j])) {
 						let res = _visit(child[j], node);
-						if (res) {childStack = childStack.concat(res);}
+						if (res) { childStack = childStack.concat(res); }
 					}
 				}
 			} else if (isNode(child)) {
 				let res = _visit(child, node);
-				if (res) {childStack = childStack.concat(res);}
+				if (res) { childStack = childStack.concat(res); }
 			}
 		}
 		// if (isNode(node) && childStack.length > 0) {
 		// }
-		if ('id' in node ) {			
-			return <NodeMap>{node: node, childs: childStack};
+		if (key in node) {
+			return <NodeMap>{ node: node, childs: childStack };
 		} else {
 			return childStack.length > 0 ? childStack : [];
 		}
@@ -353,16 +375,17 @@ export async function ReCollectSymbols(document: TextDocument, nodes: NodeMap[] 
 	});
 }
 //-----------------------------------------------------------------------------------
-// INVALID TOKENS
 /**
  * Return errorSymbol from invalid tokens
  * @param {object} CST the CST
  */
-export function collectTokens(CST: any, key: string = 'type', value?: any) {
+export function collectTokens(CST: any, key: string = 'type', value?: any)
+{
 	let Tokens: moo.Token[] = [];
 
 	if (value) {
-		traverse2(CST, (key1: string, val1: string | null, innerObj: { parent: any }) => {
+		traverse(CST, (key1: string, val1: string | null, innerObj: { parent: any }) =>
+		{
 			const current = val1 !== null ? val1 : key1;
 			if (key1 === key && val1 === value) {
 				Tokens.push(innerObj.parent);
@@ -370,7 +393,8 @@ export function collectTokens(CST: any, key: string = 'type', value?: any) {
 			return current;
 		});
 	} else {
-		traverse2(CST, (key1: string, val1: string | null, innerObj: { parent: any }) => {
+		traverse(CST, (key1: string, val1: string | null, innerObj: { parent: any }) =>
+		{
 			const current = val1 !== null ? val1 : key1;
 			if (key1 === key) {
 				Tokens.push(innerObj.parent);

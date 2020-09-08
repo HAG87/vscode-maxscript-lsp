@@ -20,13 +20,13 @@ const UIcontrols = [
 	'subrollout', 'timer', 'dotnetcontrol'
 ];
 const kwContext = [
-	"animate",
-	"redraw",
-	"quiet",
-	"printallelements",
-	"mxscallstackcaptureenabled",
-	"dontrepeatmessages",
-	"macrorecorderemitterenabled"
+	'animate',
+	'redraw',
+	'quiet',
+	'printallelements',
+	'mxscallstackcaptureenabled',
+	'dontrepeatmessages',
+	'macrorecorderemitterenabled'
 ];
 const kwObjectSet = [
 	'objects', 'geometry', 'lights', 'cameras', 'helpers',

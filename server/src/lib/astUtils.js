@@ -1,5 +1,5 @@
-"use strict";
-const objectPath = require("object-path");
+'use strict';
+const objectPath = require('object-path');
 // const traverse2 = require('ast-monkey-traverse-with-lookahead');
 //-----------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------
@@ -10,8 +10,8 @@ const objectPath = require("object-path");
  * @param {int} level Level to retrieve
  */
 function parentPath(path, level = 1) {
-	if (typeof path === "string") {
-		if (!path.includes(".")) {
+	if (typeof path === 'string') {
+		if (!path.includes('.')) {
 			return path;
 		} else {
 			let pathTree = path.split('.');
@@ -34,7 +34,7 @@ function findParentName (CST, path, key = 'id.value.text') {
 	// this is faster than using ats-money find method
 	let roots = path.split('.');
 	// no parent!
-	if (roots.length < 2) return;
+	if (roots.length < 2) {return;}
 	// GET THE FIRST NODE WITH AN ID KEY
 	while (roots.length > 0) {
 		let thePath = roots.join('.');		
