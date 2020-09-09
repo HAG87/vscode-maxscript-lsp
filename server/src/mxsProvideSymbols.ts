@@ -245,6 +245,11 @@ export function getFromCST(CST: any | any[], keyValPair: object)
 	return getObj(CST, keyValPair);	
 }
 
+export function getNodesByKeyFromCST(CST: any | any[], key: string | string[])
+{
+	let st = getAllValuesByKey(CST, key);
+	return st;
+}
 /**
  * collect Nodes visiting the Tree
  * collects all node types in the filter.

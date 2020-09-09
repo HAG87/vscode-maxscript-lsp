@@ -4,7 +4,7 @@
 	"description": "Autodesk 3ds Max MaxScript language support",
 	"author": "Atelier Bump",
 	"license": "MIT",
-	"version": "1.50.0",
+	"version": "1.20.0",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/HAG87/vscode-maxscript-lsp"
@@ -94,7 +94,7 @@
 			{
 				"command": "mxs.minify",
 				"title": "Minify open document",
-				"category": "MaxScript"				
+				"category": "MaxScript"
 			},
 			{
 				"command": "mxs.minify.file",
@@ -212,11 +212,15 @@
 	},
 	"devDependencies": {
 		"@types/mocha": "^5.2.7",
+		"@types/moo": "^0.5.3",
+		"@types/nearley": "^2.11.1",
 		"@types/node": "^12.12.55",
+		"@types/object-path": "^0.11.0",
 		"@typescript-eslint/parser": "^2.34.0",
 		"eslint": "^6.4.0",
 		"mocha": "^6.2.2",
-		"typescript": "^3.9.7"
+		"typescript": "^3.9.7",
+		"vscode-languageserver-types": "^3.15.1"
 	},
 	"dependencies": {}
 }

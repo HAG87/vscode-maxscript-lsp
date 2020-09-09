@@ -64,43 +64,42 @@ function visit(node, callbackMap) {
 }
 //-----------------------------------------------------------------------------------
 let tokensValue = {
-	global_typed : (node) => node.text,
-	hex          : (node) => node.text,
-	identity     : (node) => node.text,
-	locale       : (node) => node.text,
-	name         : (node) => node.text,
-	number       : (node) => node.text,
-	path         : (node) => node.text,
-	string       : (node) => node.text,
-	time         : (node) => node.text,
-	typed_iden   : (node) => node.text,
-	property     : (node) => node.value,
-	params       : (node) => node.value,
-	math         : (node) => node.value,
-	assign       : (node) => node.value,
-	comparison   : (node) => node.value,
-	keyword      : (node) => node.text,
-	kw_bool      : (node) => node.text,
-	kw_on        : (node) => node.text,
-	kw_return    : (node) => node.text,
-	kw_exit      : (node) => node.text,
-	kw_scope     : (node) => node.text,
+	global_typed:  (node) => node.text,
+	hex:           (node) => node.text,
+	identity:      (node) => node.text,
+	locale:        (node) => node.text,
+	name:          (node) => node.text,
+	number:        (node) => node.text,
+	path:          (node) => node.text,
+	string:        (node) => node.text,
+	time:          (node) => node.text,
+	typed_iden:    (node) => node.text,
+	property:      (node) => node.value,
+	params:        (node) => node.value,
+	math:          (node) => node.value,
+	assign:        (node) => node.value,
+	comparison:    (node) => node.value,
+	keyword:       (node) => node.text,
+	kw_bool:       (node) => node.text,
+	kw_on:         (node) => node.text,
+	kw_return:     (node) => node.text,
+	kw_exit:       (node) => node.text,
+	kw_scope:      (node) => node.text,
 	kw_uicontrols: (node) => node.text,
-	kw_group     : (node) => node.text,
-	kw_objectset : (node) => node.text,
-	kw_context   : (node) => node.text,
-	kw_function  : (node) => node.text,
-	kw_time      : (node) => node.text,
-	kw_tool      : (node) => node.text,
-	kw_utility   : (node) => node.text,
-	kw_rollout   : (node) => node.text,
-	kw_level     : (node) => node.text,
-	kw_global    : (node) => node.text,
-	kw_local     : (node) => node.text,
-	kw_do        : (node) => node.text,
-	kw_then      : (node) => node.text,
-	// Error tokens
-	error: (node) => node.text,
+	kw_group:      (node) => node.text,
+	kw_objectset:  (node) => node.text,
+	kw_context:    (node) => node.text,
+	kw_function:   (node) => node.text,
+	kw_time:       (node) => node.text,
+	kw_tool:       (node) => node.text,
+	kw_utility:    (node) => node.text,
+	kw_rollout:    (node) => node.text,
+	kw_level:      (node) => node.text,
+	kw_global:     (node) => node.text,
+	kw_local:      (node) => node.text,
+	kw_do:         (node) => node.text,
+	kw_then:       (node) => node.text,
+	error:         (node) => node.text,
 };
 let visitorPatterns = {
 	// TOKENS
@@ -130,12 +129,12 @@ let visitorPatterns = {
 			return `#{${stack.elements}}`;
 		}
 	},
-	ObjectPoint4(node, stack) { return `[${stack.elements.join(',')}]`; },
-	ObjectPoint3(node, stack) { return `[${stack.elements.join(',')}]`; },
-	ObjectPoint2(node, stack) { return `[${stack.elements.join(',')}]`; },
+	ObjectPoint4: (node, stack) => `[${stack.elements.join(',')}]`,
+	ObjectPoint3: (node, stack) => `[${stack.elements.join(',')}]`,
+	ObjectPoint2: (node, stack) => `[${stack.elements.join(',')}]`,
 	// Accesors
-	AccessorIndex(node, stack) { return `${stack.operand}[${stack.index}]`; },
-	AccessorProperty(node, stack) { return `${stack.operand}.${stack.property}`; },
+	AccessorIndex: (node, stack) => `${stack.operand}[${stack.index}]`,
+	AccessorProperty: (node, stack) => `${stack.operand}.${stack.property}`,
 	// Call
 	CallExpression(node, stack) {
 		let args = joinStatements(stack.args);
@@ -149,10 +148,8 @@ let visitorPatterns = {
 		return `${stack.operand}${stack.operator}${stack.value}`;
 	},
 	// STATEMENTS
-	BlockStatement(node, stack) {
-		// CHECK SEMICOLONS AT END!!!
-		return `(${exprTerm(stack.body)})`;
-	},
+	// CHECK SEMICOLONS AT END!!!
+	BlockStatement: (node, stack) => `(${exprTerm(stack.body)})`,
 	// Struct
 	Struct(node, stack) {
 		let body;
@@ -180,9 +177,7 @@ let visitorPatterns = {
 		let body = exprTerm(stack.body);
 		return joinStatements([decl, args, params, '=', body]);
 	},
-	FunctionReturn(node, stack) {
-		return joinStatements(['return', exprTerm(stack.body)]);
-	},
+	FunctionReturn: (node, stack) => joinStatements(['return', exprTerm(stack.body)]),
 	// Plugin
 	EntityPlugin(node, stack) {
 		let body = exprTerm(stack.body);
@@ -266,10 +261,10 @@ let visitorPatterns = {
 			return `${left}${spaceAlphaNum(stack.operator)}${right}`;
 		} else {
 			let space =
-			/[-]$/gmi.test(stack.operator)
-				&& /^[-]/gmi.test(right)
-				? ' ' : '';
-			
+				/[-]$/gmi.test(stack.operator)
+					&& /^[-]/gmi.test(right)
+					? ' ' : '';
+
 			return `${left}${stack.operator}${space}${right}`;
 		}
 	},
@@ -364,7 +359,7 @@ function exprTerm(exprArr) {
  * @param {string[] | undefined} arr
  */
 function joinStatements(arr) {
-	if (!arr || arr.length === 0) {return '';}
+	if (!arr || arr.length === 0) { return ''; }
 	return arr.reduce((acc, curr) => {
 		let term = curr || '';
 		return (acc + spaceLR(acc, term) + term);
@@ -376,7 +371,7 @@ function joinStatements(arr) {
  * @param {string} str2 Right string
  */
 function spaceLR(str1, str2) {
-	if (!str2 || !str1) {return '';}
+	if (!str2 || !str1) { return ''; }
 	return /[\w_$?-]$/gmi.test(str1) && /^(?:[\w_-]|::)/gmi.test(str2) ? ' ' : '';
 }
 /**
@@ -392,7 +387,7 @@ function spaceSE(str, end = true) {
 function spaceAlphaNum(str) {
 	let start = /^[\w]/gmi.test(str) ? ' ' : '';
 	let end = /[\w]$/gmi.test(str) ? ' ' : '';
-	return `${start}${str}${end}`; 
+	return `${start}${str}${end}`;
 
 }
 /**

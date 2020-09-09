@@ -3,19 +3,19 @@
 	"description": "Language server for MaxScript",
 	"version": "1.0.0",
 	"author": "Atelier Bump",
+	"publisher": "atelierbump",
 	"license": "MIT",
 	"engines": {
 		"node": "*"
 	},
 	"repository": {
 		"type": "git",
-		"url": ""
+		"url": "https://github.com/HAG87/vscode-maxscript-lsp"
 	},
 	"dependencies": {
 		"ast-get-object": "^1.9.14",
 		"ast-get-values-by-key": "^2.6.69",
 		"ast-monkey-traverse": "^1.12.17",
-		"ast-monkey-traverse-with-lookahead": "^1.1.9",
 		"moo": "^0.5.1",
 		"nearley": "^2.19.6",
 		"object-path": "^0.11.4",
@@ -24,9 +24,5 @@
 		"vscode-uri": "^2.1.2"
 	},
 	"scripts": {},
-	"devDependencies": {
-		"@types/moo": "^0.5.3",
-		"@types/nearley": "^2.11.1",
-		"@types/object-path": "^0.11.0"
-	}
+	"devDependencies": {}
 }
