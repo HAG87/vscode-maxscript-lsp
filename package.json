@@ -2,6 +2,7 @@
 	"name": "language-maxscript-experimental",
 	"displayName": "Language MaxScript (Experimental)",
 	"description": "Autodesk 3ds Max MaxScript language support",
+	"icon": "mxs.png",
 	"author": "Atelier Bump",
 	"license": "MIT",
 	"version": "1.20.0",
@@ -11,13 +12,15 @@
 	},
 	"homepage": "https://github.com/HAG87/vscode-maxscript-lsp",
 	"publisher": "atelierbump",
-	"categories": [],
+	"categories": [
+		"Programming Languages"
+	],
 	"keywords": [
 		"MaxScript",
 		"max script"
 	],
 	"engines": {
-		"vscode": "^1.43.0"
+		"vscode": "^1.45.0"
 	},
 	"activationEvents": [
 		"onLanguage:maxscript",

@@ -52,6 +52,7 @@ let currentTextDocument: TextDocument;
 //------------------------------------------------------------------------------------------
 let hasConfigurationCapability: boolean = false;
 let hasWorkspaceFolderCapability: boolean = false;
+let hasCompletionCapability: Boolean = false;
 let hasDiagnosticRelatedInformationCapability: boolean = false;
 let hasDiagnosticCapability: boolean = false;
 let hasDocumentSymbolCapability: boolean = false;
@@ -84,6 +85,10 @@ connection.onInitialize((params: InitializeParams) =>
 	hasDefinitionCapability = !!(
 		capabilities.textDocument &&
 		capabilities.textDocument.definition
+	);
+	hasCompletionCapability = !!(
+		capabilities.textDocument &&
+		capabilities.textDocument.completion
 	);
 	//...
 	const result: InitializeResult = {
@@ -211,7 +216,9 @@ async function validateDocument(textDocument: TextDocument): Promise<void>
 		- symbols and diagnostics
 	*/
 	// reset diagnostics
-	diagnoseDocument(textDocument);
+	if (hasDiagnosticCapability) {
+		diagnoseDocument(textDocument);
+	}
 	//...
 }
 //------------------------------------------------------------------------------------------
@@ -255,8 +262,8 @@ documents.onDidChangeContent(change =>
 // Update the parsed document, and diagnostics on Symbols request... ?
 connection.onDocumentSymbol(async (_DocumentSymbolParams: DocumentSymbolParams) =>
 {
+	if (!hasDocumentSymbolCapability) {return;}
 	// connection.console.log('We received a DocumentSymbol request');
-
 	// let doc = documents.get(_DocumentSymbolParams.textDocument.uri)!;
 	let document = currentTextDocument;
 	let documentSymbols = await parseDocument(document);
@@ -267,16 +274,17 @@ connection.onDocumentSymbol(async (_DocumentSymbolParams: DocumentSymbolParams) 
 });
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
-	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] =>
+	(_textDocumentPosition: TextDocumentPositionParams) =>
 	{
+		if (!hasCompletionCapability) {return;}
 		return mxsCompletion.provideCompletionItems(currentTextDocument, _textDocumentPosition.position);
 	}
 );
 // This handler provides Definition results
 connection.onDefinition(async (_DefinitionParams: DefinitionParams) =>
 {
-	connection.console.log('We received an DefinitionParams event');
-
+	// connection.console.log('We received an DefinitionParams event');
+	if (!hasDefinitionCapability) { return; }
 	// let document = documents.get(_DefinitionParams.textDocument.uri)!;
 	let document = currentTextDocument;
 	let position = _DefinitionParams.position;
@@ -303,21 +311,19 @@ connection.onDefinition(async (_DefinitionParams: DefinitionParams) =>
 connection.onExecuteCommand(async (arg: ExecuteCommandParams) =>
 {
 	let settings = await getDocumentSettings(currentTextDocument.uri);
-
-	if (arg.command === Commands.MXS_MINDOC.command && arg.arguments) {
+	console.log(arg.command);
+	if (arg.command === Commands.MXS_MINDOC.command) {
 		try {
-
 			let path = utils.uriToPath(currentTextDocument.uri)!;
 			let newPath = utils.prefixFile(path, settings.MinifyFilePrefix);
 			// connection.console.log(utils.uriToPath(currentTextDocument.uri)!);
 			await mxsMinifier.MinifyDoc(mxsDocumentSymbols.msxParser.parsedCST || currentTextDocument.getText(), newPath);
-
 			connection.window.showInformationMessage(`MaxScript minify: Document saved as ${Path.basename(newPath)}`);
 		} catch (err) {
 			connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: ${err.message}`);
 		}
-	} else if (arg.command === Commands.MXS_MINFILE.command && arg.arguments) {
-		if (arg.arguments[0]!) {
+	} else if (arg.command === Commands.MXS_MINFILE.command && arg.arguments !== undefined) {
+		if (arg.arguments?.[0] === undefined) {
 			connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: invalid command arguments`);
 			return;
 		}

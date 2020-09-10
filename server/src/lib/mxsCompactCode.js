@@ -1,113 +1,120 @@
+'use strict';
+/**
+ * Check if value is node
+ * @param {any} node CST node
+ */
+const isNode = (node) =>  typeof node === 'object' && node != null;
+/**
+ * filter nodes by type property
+ * @param {any} node CST node
+ */
+const getNodeType = (node) => node !== undefined && ('type' in node) ? node.type : undefined;
 /**
  * Visit and reduce CST to compact code
  * @param {any} node CST node
  * @param {any} callbackMap Patterns function
  */
-function visit(node, callbackMap) {
-	return _visit(node, null, null, 0, 0);
-	function _visit(node, parent, key, level = 0) {
-		const nodeType = getNodeType(node);
-		// captured values
-		let stack = {};
-		// get the node keys
-		const keys = Object.keys(node);
-		// loop through the keys
-		for (let i = 0; i < keys.length; i++) {
-			// child is the value of each key
-			let key = keys[i];
-			const child = node[key];
-			// could be an array of nodes or just an object
-			if (Array.isArray(child)) {
-				// value is an array, visit each item
-				let collection = [];
-				for (let j = 0; j < child.length; j++) {
-					if (isNode(child[j])) {
-						collection.push(
-							_visit(child[j], node, key, level + 1)
-							// setImmediate(_visit, child[j], node, key, level + 1)
-						);
-					}
-					else {
-						// not object array items. i.e. null values
-					}
-				}
-				stack[key] = collection;
-				// console.log(stack);
-			}
-			else if (isNode(child)) {
-				// value is an object, visit it
-				stack[key] = _visit(child, node, key, level + 1);
-				// stack[key] = setImmediate(_visit, child, node, key, level + 1);
-				// console.log(stack);
-			}
-			/*
-			else if (child === String || child === Number) {
-				// eslint-disable-next-line no-empty
-				//...
-			}
-			//*/
-		}
-		let res;
-		if (nodeType && nodeType in callbackMap) {
-			// setImmediate( () => callbackMap[nodeType](node, stack));
-			res = callbackMap[nodeType](node, stack);
-		}
-		else if (nodeType) {
-			res = node;
-		}
-		else if (Array.isArray(node)) {
-			res = keys.map(x => stack[x]).join(';');
-		}
-		//--------------------------------
-		return res;
-	}
+// Basic expressions
+/*
+function unary(right, op) {
+	return `${op}${spaceLR(op, right)}${right}`;
 }
-//-----------------------------------------------------------------------------------
-let tokensValue = {
-	global_typed:  (node) => node.text,
-	hex:           (node) => node.text,
-	identity:      (node) => node.text,
-	locale:        (node) => node.text,
-	name:          (node) => node.text,
-	number:        (node) => node.text,
-	path:          (node) => node.text,
-	string:        (node) => node.text,
-	time:          (node) => node.text,
-	typed_iden:    (node) => node.text,
-	property:      (node) => node.value,
-	params:        (node) => node.value,
-	math:          (node) => node.value,
-	assign:        (node) => node.value,
-	comparison:    (node) => node.value,
-	keyword:       (node) => node.text,
-	kw_bool:       (node) => node.text,
-	kw_on:         (node) => node.text,
-	kw_return:     (node) => node.text,
-	kw_exit:       (node) => node.text,
-	kw_scope:      (node) => node.text,
-	kw_uicontrols: (node) => node.text,
-	kw_group:      (node) => node.text,
-	kw_objectset:  (node) => node.text,
-	kw_context:    (node) => node.text,
-	kw_function:   (node) => node.text,
-	kw_time:       (node) => node.text,
-	kw_tool:       (node) => node.text,
-	kw_utility:    (node) => node.text,
-	kw_rollout:    (node) => node.text,
-	kw_level:      (node) => node.text,
-	kw_global:     (node) => node.text,
-	kw_local:      (node) => node.text,
-	kw_do:         (node) => node.text,
-	kw_then:       (node) => node.text,
-	error:         (node) => node.text,
+function binary(left, right, op) {
+	return `${left}${spaceLR(left, op)}${op}${spaceLR(op, right)}${right}`;
+}
+//*/
+function binaryNode(node) {
+	let _left  = node.left || '';
+	let _right = node.right || '';
+	let left   = `${_left}${spaceLR(_left, node.operator)}`;
+	let right  = `${spaceLR(node.operator, _right)}${_right}`;
+	return `${left}${node.operator}${right}`;
+}
+function exprTerm(exprArr) {
+	return (Array.isArray(exprArr) ? exprArr.join(';') : exprArr);
+}
+/**
+ * Join string array
+ * @param {string[] | undefined} arr
+ */
+function joinStatements(arr) {
+	if (!arr || arr.length === 0) {return '';}
+	return arr.reduce((acc, curr) => {
+		let term = curr || '';
+		return (acc + spaceLR(acc, term) + term);
+	});
+}
+/**
+ * Insert whitespace between alphanumerics
+ * @param {string} str1 Left string
+ * @param {string} str2 Right string
+ */
+function spaceLR(str1, str2) {
+	if (!str2 || !str1) {return '';}
+	return /[\w_$?-]$/gmi.test(str1) && /^(?:[\w_-]|::)/gmi.test(str2) ? ' ' : '';
+}
+/**
+ * Wrap string in spaces if alphanumeric
+ * @param {string} str contained string
+ * @param {bool} end Add ws at end
+ */
+function spaceSE(str, end = true) {
+	let _start = /^(?:[\w_-]|::)/gmi.test(str) ? ' ' : '';
+	let _end = /[\w_$?-]$/gmi.test(str) && end ? ' ' : '';
+	return `${_start}${str}${_end}`;
+}
+function spaceAlphaNum(str) {
+	let start = /^[\w]/gmi.test(str) ? ' ' : '';
+	let end = /[\w]$/gmi.test(str) ? ' ' : '';
+	return `${start}${str}${end}`; 
+
+}
+const tokensValue = {
+	global_typed : node => node.text,
+	hex          : node => node.text,
+	identity     : node => node.text,
+	locale       : node => node.text,
+	name         : node => node.text,
+	number       : node => node.text,
+	path         : node => node.text,
+	string       : node => node.text,
+	time         : node => node.text,
+	typed_iden   : node => node.text,
+	property     : node => node.value,
+	params       : node => node.value,
+	math         : node => node.value,
+	assign       : node => node.value,
+	comparison   : node => node.value,
+	keyword      : node => node.text,
+	kw_bool      : node => node.text,
+	kw_on        : node => node.text,
+	kw_return    : node => node.text,
+	kw_exit      : node => node.text,
+	kw_scope     : node => node.text,
+	kw_uicontrols: node => node.text,
+	kw_group     : node => node.text,
+	kw_objectset : node => node.text,
+	kw_context   : node => node.text,
+	kw_function  : node => node.text,
+	kw_time      : node => node.text,
+	kw_tool      : node => node.text,
+	kw_utility   : node => node.text,
+	kw_rollout   : node => node.text,
+	kw_level     : node => node.text,
+	kw_global    : node => node.text,
+	kw_local     : node => node.text,
+	kw_do        : node => node.text,
+	kw_then      : node => node.text,
+	// Error tokens
+	error: (node) => node.text,
 };
-let visitorPatterns = {
+const visitorPatterns = {
 	// TOKENS
 	...tokensValue,
 	// LITERALS
-	Literal: (node, stack) => stack.value,
-	Identifier: (node, stack) => stack.value,
-	BitRange: (node, stack) => `${stack.start}..${stack.end}`,
+	Literal    (node, stack) {return stack.value;},
+	Identifier (node, stack) {return stack.value;},
+	BitRange   (node, stack) { return `${stack.start}..${stack.end}`;},
 	// Declaration
 	Declaration(node, stack) {
 		return stack.value ? `${stack.id}=${stack.value}` : stack.id;
@@ -129,12 +136,12 @@ let visitorPatterns = {
 			return `#{${stack.elements}}`;
 		}
 	},
-	ObjectPoint4: (node, stack) => `[${stack.elements.join(',')}]`,
-	ObjectPoint3: (node, stack) => `[${stack.elements.join(',')}]`,
-	ObjectPoint2: (node, stack) => `[${stack.elements.join(',')}]`,
+	ObjectPoint4(node, stack) { return `[${stack.elements.join(',')}]`; },
+	ObjectPoint3(node, stack) { return `[${stack.elements.join(',')}]`; },
+	ObjectPoint2(node, stack) { return `[${stack.elements.join(',')}]`; },
 	// Accesors
-	AccessorIndex: (node, stack) => `${stack.operand}[${stack.index}]`,
-	AccessorProperty: (node, stack) => `${stack.operand}.${stack.property}`,
+	AccessorIndex(node, stack) { return `${stack.operand}[${stack.index}]`; },
+	AccessorProperty(node, stack) { return `${stack.operand}.${stack.property}`; },
 	// Call
 	CallExpression(node, stack) {
 		let args = joinStatements(stack.args);
@@ -148,8 +155,10 @@ let visitorPatterns = {
 		return `${stack.operand}${stack.operator}${stack.value}`;
 	},
 	// STATEMENTS
-	// CHECK SEMICOLONS AT END!!!
-	BlockStatement: (node, stack) => `(${exprTerm(stack.body)})`,
+	BlockStatement(node, stack) {
+		// CHECK SEMICOLONS AT END!!!
+		return `(${exprTerm(stack.body)})`;
+	},
 	// Struct
 	Struct(node, stack) {
 		let body;
@@ -177,7 +186,9 @@ let visitorPatterns = {
 		let body = exprTerm(stack.body);
 		return joinStatements([decl, args, params, '=', body]);
 	},
-	FunctionReturn: (node, stack) => joinStatements(['return', exprTerm(stack.body)]),
+	FunctionReturn(node, stack) {
+		return joinStatements(['return', exprTerm(stack.body)]);
+	},
 	// Plugin
 	EntityPlugin(node, stack) {
 		let body = exprTerm(stack.body);
@@ -261,15 +272,15 @@ let visitorPatterns = {
 			return `${left}${spaceAlphaNum(stack.operator)}${right}`;
 		} else {
 			let space =
-				/[-]$/gmi.test(stack.operator)
-					&& /^[-]/gmi.test(right)
-					? ' ' : '';
-
+			/[-]$/gmi.test(stack.operator)
+				&& /^[-]/gmi.test(right)
+				? ' ' : '';
+			
 			return `${left}${stack.operator}${space}${right}`;
 		}
 	},
-	LogicalExpression: (node, stack) => binaryNode(stack),
-	UnaryExpression: (node, stack) => `${stack.operator}${stack.right}`,
+	LogicalExpression(node, stack) {return binaryNode(stack);},
+	UnaryExpression(node, stack) {return `${stack.operator}${stack.right}`;},
 	// STATEMENTS
 	IfStatement(node, stack) {
 		let test = stack.test;
@@ -335,76 +346,74 @@ let visitorPatterns = {
 		return joinStatements([prefix, context, ...stack.args]);
 	},
 };
-// Basic expressions
-/*
-function unary(right, op) {
-	return `${op}${spaceLR(op, right)}${right}`;
-}
-function binary(left, right, op) {
-	return `${left}${spaceLR(left, op)}${op}${spaceLR(op, right)}${right}`;
-}
-//*/
-function binaryNode(node) {
-	let _left = node.left || '';
-	let _right = node.right || '';
-	let left = `${_left}${spaceLR(_left, node.operator)}`;
-	let right = `${spaceLR(node.operator, _right)}${_right}`;
-	return `${left}${node.operator}${right}`;
-}
-function exprTerm(exprArr) {
-	return (Array.isArray(exprArr) ? exprArr.join(';') : exprArr);
-}
+//-----------------------------------------------------------------------------------
 /**
- * Join string array
- * @param {string[] | undefined} arr
+ * 	Visitor pattern function to transform MaxScript CST to minified code 
+ * @param {any} node CST
+ * @param {any} callbackMap rules
  */
-function joinStatements(arr) {
-	if (!arr || arr.length === 0) { return ''; }
-	return arr.reduce((acc, curr) => {
-		let term = curr || '';
-		return (acc + spaceLR(acc, term) + term);
-	});
-}
-/**
- * Insert whitespace between alphanumerics
- * @param {string} str1 Left string
- * @param {string} str2 Right string
- */
-function spaceLR(str1, str2) {
-	if (!str2 || !str1) { return ''; }
-	return /[\w_$?-]$/gmi.test(str1) && /^(?:[\w_-]|::)/gmi.test(str2) ? ' ' : '';
-}
-/**
- * Wrap string in spaces if alphanumeric
- * @param {string} str contained string
- * @param {bool} end Add ws at end
- */
-function spaceSE(str, end = true) {
-	let _start = /^(?:[\w_-]|::)/gmi.test(str) ? ' ' : '';
-	let _end = /[\w_$?-]$/gmi.test(str) && end ? ' ' : '';
-	return `${_start}${str}${_end}`;
-}
-function spaceAlphaNum(str) {
-	let start = /^[\w]/gmi.test(str) ? ' ' : '';
-	let end = /[\w]$/gmi.test(str) ? ' ' : '';
-	return `${start}${str}${end}`;
-
-}
-/**
- * Check if value is node
- * @param {any} node CST node
- */
-function isNode(node) {
-	return (typeof node === 'object' && node !== undefined);
-}
-/**
- * filter nodes by type property
- * @param {any} node CST node
- */
-function getNodeType(node) {
-	return ('type' in node) ? node.type : undefined;
+function visit(node, callbackMap) {
+	return _visit(node, null, null, 0, 0);
+	function _visit(node, parent, key, level = 0) {
+		const nodeType = getNodeType(node);
+		// captured values
+		let stack = {};
+		// get the node keys
+		const keys = Object.keys(node);
+		// loop through the keys
+		for (let i = 0; i < keys.length; i++) {
+			// child is the value of each key
+			let key = keys[i];
+			const child = node[key];
+			// could be an array of nodes or just an object
+			if (Array.isArray(child)) {
+				// value is an array, visit each item
+				let collection = [];
+				for (let j = 0; j < child.length; j++) {
+					if (isNode(child[j])) {
+						collection.push(
+							_visit(child[j], node, key, level + 1)
+							// setImmediate(_visit, child[j], node, key, level + 1)
+						);
+					}
+					// else {
+					// not object array items. i.e. null values
+					// }
+				}
+				stack[key] = collection;
+				// console.log(stack);
+			}
+			else if (isNode(child)) {
+				// value is an object, visit it
+				stack[key] = _visit(child, node, key, level + 1);
+				// stack[key] = setImmediate(_visit, child, node, key, level + 1);
+				// console.log(stack);
+			}
+			// else if (child === String || child === Number) {
+			// eslint-disable-next-line no-empty
+			//...
+			// }
+		}
+		let res;
+		if (nodeType !== undefined && nodeType in callbackMap) {
+			// setImmediate( () => callbackMap[nodeType](node, stack));
+			res = callbackMap[nodeType](node, stack);
+		}
+		else if (nodeType) {
+			res = node;
+		}
+		else if (Array.isArray(node)) {
+			res = keys.map(x => stack[x]).join(';');
+		}
+		//--------------------------------
+		return res;
+	}
 }
 //-----------------------------------------------------------------------------------
+/**
+ * Minify MaxScript code
+ * @param {any} cst MaxScript parser cst
+ */
 function mxsMinify(cst) {
 	return visit(cst, visitorPatterns);
 }

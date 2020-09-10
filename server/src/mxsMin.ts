@@ -30,7 +30,6 @@ export default class mxsMinifier {
 				err ? reject(err) : resolve(data);
 			});
 		});
-
 	}
 
 	static async MinifyData(data: any | any[] | string)
@@ -61,8 +60,7 @@ export default class mxsMinifier {
 
 	static async MinifyFile(src: string, dest: string)
 	{
-		// for (let path of paths) {}
-		let data = mxsMinifier.minifyRead(src);
+		let data = await mxsMinifier.minifyRead(src);
 		let minify = await mxsMinifier.MinifyData(data);
 		await mxsMinifier.minifyWrite(dest, minify);
 	}
