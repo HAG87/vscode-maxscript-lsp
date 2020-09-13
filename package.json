@@ -1,6 +1,6 @@
 {
-	"name": "language-maxscript-experimental",
-	"displayName": "Language MaxScript (Experimental)",
+	"name": "language-maxscript",
+	"displayName": "Language MaxScript",
 	"description": "Autodesk 3ds Max MaxScript language support",
 	"icon": "mxs.png",
 	"author": "Atelier Bump",

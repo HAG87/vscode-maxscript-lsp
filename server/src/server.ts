@@ -5,7 +5,7 @@
 import
 {
 	// Command,
-	CompletionItem,
+	// CompletionItem,
 	createConnection,
 	// Definition,
 	// DefinitionLink,
@@ -249,7 +249,6 @@ documents.onDidChangeContent(change =>
 	currentTextDocument = change.document;
 	// validateDocument(change.document);
 });
-
 // documents.onDidClose
 // documents.onDidOpen
 // documents.onDidSave
