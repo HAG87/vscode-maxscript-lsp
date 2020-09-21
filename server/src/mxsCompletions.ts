@@ -10,7 +10,7 @@ import { TextDocument, } from 'vscode-languageserver-textdocument';
 import { maxCompletions } from './schema/mxsSchema';
 import { mxClassMembers } from './schema/mxsSchema-clases';
 import { mxInterfaceMembers } from './schema/mxsSchema-interfaces';
-import { mxStructsMembers } from './schema/msxSchema-structs';
+import { mxStructsMembers } from './schema/mxsSchema-structs';
 
 /** A static collection of completion items*/
 const mxCompletions = new Array<CompletionItem>(...maxCompletions);
