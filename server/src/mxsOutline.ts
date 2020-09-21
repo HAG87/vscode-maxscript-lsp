@@ -2,7 +2,7 @@
 // import * as cp from 'child_process';
 import
 {
-	CancellationToken,
+	// CancellationToken,
 	Diagnostic,
 	SymbolInformation,
 	DocumentSymbol,
