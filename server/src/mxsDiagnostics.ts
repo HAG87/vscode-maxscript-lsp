@@ -8,8 +8,9 @@ import
 import { TextDocument } from 'vscode-languageserver-textdocument';
 //--------------------------------------------------------------------------------
 import * as moo from 'moo';
-import { tokenDefinitions } from './schema/mxsTokenDefs';
 import { getTokenRange } from './mxsProvideSymbols';
+import { ItokenDefinitions } from './schema/mxsTokenDefs';
+import * as fs from 'fs';
 //--------------------------------------------------------------------------------
 const tokenListToValues = (tokenList: Dictionary<string>[]): string[] =>
 {
@@ -50,6 +51,7 @@ export class ParserError extends Error
 	details: ErrorDetail[] = [];
 }
 
+const tokenDefinitions: ItokenDefinitions = JSON.parse(fs.readFileSync('./schema/mxsTokenDefs.json').toString('utf8'));
 //--------------------------------------------------------------------------------
 /**
  * Diagnostics collection.

@@ -11,6 +11,7 @@ contributing.md
 **/testFixture/**
 **/out/test/**
 **/src/**
+**/out/support
 client/node_modules/**
 !client/node_modules/moo/**
 !client/node_modules/vscode-jsonrpc/**

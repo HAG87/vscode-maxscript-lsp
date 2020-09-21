@@ -1,4 +1,4 @@
-interface ItokenDefinitions {
+export interface ItokenDefinitions {
 	[key: string] : string;
 }
 export const tokenDefinitions: ItokenDefinitions = {
