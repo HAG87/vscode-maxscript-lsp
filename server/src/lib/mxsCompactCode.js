@@ -1,3 +1,4 @@
+/* eslint-disable eqeqeq */
 'use strict';
 /**
  * Check if value is node
