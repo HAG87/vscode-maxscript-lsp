@@ -11,8 +11,9 @@ import
 	Position,
 	SymbolInformation,
 	DocumentSymbol,
-	TextDocument
 } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+
 import {getFromCST, getTokenRange} from './mxsProvideSymbols';
 import * as utils from './utils';
 //------------------------------------------------------------------------------------------
