@@ -14,3 +14,4 @@ export async function mxsHelp(textEditor: TextEditor, ) {
 	await commands.executeCommand('vscode.open', uri);
 	// }
 }
+export default mxsHelp;
