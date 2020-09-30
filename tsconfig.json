@@ -1,18 +1,18 @@
 {
 	"compilerOptions": {
-		"module": "commonjs",
-		"target": "es2019",
-		"lib": ["ES2019"],
+		"module": "esnext",
+		"target": "esnext",
+		"lib": ["ESNext"],
 		"outDir": "out",
-		"rootDir": "src",
-		"sourceMap": true
+		"sourceMap": true,
+		"esModuleInterop": true,
+		"composite": true,
 	},
 	"include": [
 		"src"
 	],
 	"exclude": [
-		"node_modules",
-		".vscode-test"
+		"node_modules"
 	],
 	"references": [
 		{ "path": "./client" },
