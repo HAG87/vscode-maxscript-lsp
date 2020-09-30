@@ -10,6 +10,7 @@
 
 const path = require('path');
 const mergeOptions = require('merge-options');
+// const nodeExternals = require('webpack-node-externals');
 
 module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 
@@ -22,7 +23,10 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 		},
 		resolve: {
 			mainFields: ['module', 'main'],
-			extensions: ['.ts', '.js'] // support ts-files and js-files
+			extensions: ['.ts', '.js'],
+			alias: {
+				// 'node_modules': path.join(__dirname, '/node_modules/'),
+			}
 		},
 		module: {
 			rules: [{
@@ -38,17 +42,21 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 						}
 					}
 				}]
+			},
+			{
+				test: /node_modules/,
+				use: 'umd-compat-loader'
 			}]
 		},
-		externals: {
-			'vscode': 'commonjs vscode', // ignored because it doesn't exist
+		externals:
+		{
+			'vscode': 'commonjs vscode' // ignored because it doesn't exist
 		},
 		output: {
-			// all output goes into `dist`.
-			// packaging depends on that and this must always be like it
 			filename: '[name].js',
+			chunkFilename: '[name].js',
 			path: path.join(extConfig.context, 'out'),
-			libraryTarget: 'commonjs',
+			libraryTarget: 'commonjs2',
 		},
 		// yes, really source maps
 		devtool: 'source-map'

@@ -18,6 +18,21 @@
 			}
 		},
 		{
+			"type": "extensionHost",
+			"request": "launch",
+			"name": "Launch Client - production",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				// "--disable-extensions",
+				"--extensionDevelopmentPath=${workspaceRoot}"
+			],
+			"outFiles": ["${workspaceRoot}/client/out/**/*.js"],
+			// "preLaunchTask": {
+			// 	"type": "npm",
+			// 	"script": "watch"
+			// }
+		},
+		{
 			"type": "node",
 			"request": "attach",
 			"name": "Attach to Server",
@@ -43,6 +58,10 @@
 	"compounds": [
 		{
 			"name": "Client + Server",
+			"configurations": ["Launch Client", "Attach to Server"]
+		},
+		{
+			"name": "PROD: Client + Server",
 			"configurations": ["Launch Client", "Attach to Server"]
 		}
 	]
