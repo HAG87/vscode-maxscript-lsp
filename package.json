@@ -220,20 +220,15 @@
 		"webpack": "npm run clean && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js"
 	},
 	"devDependencies": {
-		"@types/mocha": "^5.2.7",
-		"@types/moo": "^0.5.3",
-		"@types/nearley": "^2.11.1",
-		"@types/node": "^12.12.58",
-		"@types/object-path": "^0.11.0",
 		"@typescript-eslint/parser": "^2.34.0",
 		"eslint": "^6.4.0",
 		"merge-options": "^3.0.3",
-		"mocha": "^6.2.2",
 		"ts-loader": "^8.0.3",
 		"typescript": "^3.9.7",
-		"vscode-languageserver-types": "^3.15.1",
+		"umd-compat-loader": "^2.1.2",
 		"webpack": "^4.44.1",
-		"webpack-cli": "^3.3.12"
+		"webpack-cli": "^3.3.12",
+		"webpack-node-externals": "^2.5.2"
 	},
 	"dependencies": {}
 }
