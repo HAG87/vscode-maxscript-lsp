@@ -27,26 +27,28 @@ module.exports = withDefaults({
 		'ast-monkey-traverse': 'commonjs ast-monkey-traverse',
 		'ast-compare': 'commonjs ast-compare',
 		'object-path' : 'commonjs object-path',
-		'vscode-languageserver' : 'commonjs vscode-languageserver',
-		'vscode-languageserver-textdocument': 'commonjs vscode-languageserver-textdocument',
-		'vscode-uri': 'commonjs vscode-uri',
+		// 'vscode-languageserver' : 'commonjs vscode-languageserver',
+		// 'vscode-languageserver-textdocument': 'commonjs vscode-languageserver-textdocument',
+		// 'vscode-uri': 'commonjs vscode-uri',
 		'lodash': 'commonjs lodash',
 		'matcher': 'commonjs matcher',
 		'moo': 'commonjs moo',
 		'nearley': 'commonjs nearley',
-	}
-	// */
+	},
+	//*/
+	/*
 	optimization: {
-		/*
 		runtimeChunk: 'single',
 		splitChunks: {
-			minSize: 0,
 			maxInitialRequests: Infinity,
+			minSize: 0,
 			cacheGroups: {
 				vendor: {
 					chunks: 'all',
-					// name: 'vendors',
-					test: /[\\/]node_modules[\\/]/,
+					minChunks:1,
+					enforce: true
+					test: /[\\/]node_modules[\\/](!vscode-languageserver)(!vscode-languageserver-textdocument)(!vscode-uri)[\\/]/,
+					name: 'vendor',
 					name(module) {
 						// get the name. E.g. node_modules/packageName/not/this/part.js
 						// or node_modules/packageName
@@ -54,29 +56,9 @@ module.exports = withDefaults({
 						// npm package names are URL-safe, but some servers don't like @ symbols
 						return `${packageName.replace('@', '')}`;
 					},
-					minChunks:1,
-					enforce: true
-				}
-			}
-		},
-		//*/
-		/*
-		splitChunks: {
-			chunks: 'all',
-			maxInitialRequests: Infinity,
-			minSize: 0,
-			cacheGroups: {
-				vscodeLsVendor: {
-					test: /[\\/]node_modules[\\/](vscode-languageserver|vscode-languageserver-textdocument|vscode-uri)[\\/]/,
-					name: 'vscodevendor'
-				},
-				vendor: {
-					test: /[\\/]node_modules[\\/](!vscode-languageserver)(!vscode-languageserver-textdocument)(!vscode-uri)[\\/]/,
-					name: 'vendor'
 				},
 			},
 		},
-		// */
 	}
 	// */
 });

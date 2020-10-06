@@ -1,19 +1,17 @@
 {
 	"compilerOptions": {
-		"module": "esnext",
-		"target": "esnext",
-		"lib": ["ESNext"],
+		"module": "commonJS",
+		"target": "ES6",
+		"lib": ["ES6"],
 		"outDir": "out",
+		"rootDir": "src",
 		"sourceMap": true,
 		"esModuleInterop": true,
 		"composite": true,
+		"strict": true
 	},
-	"include": [
-		"src"
-	],
-	"exclude": [
-		"node_modules"
-	],
+	"include": ["src"],
+	"exclude": [ "node_modules" ],
 	"references": [
 		{ "path": "./client" },
 		{ "path": "./server" }

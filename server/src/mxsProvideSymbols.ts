@@ -8,19 +8,20 @@ import {
 	DocumentSymbol
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-// @ts-ignore
-// import astMonkeyTraverse from 'ast-monkey-traverse';
-// @ts-ignore
-// import getObj from 'ast-get-object';
-// @ts-ignore
-// import getAllValuesByKey from 'ast-get-values-by-key';
-// @ts-ignore
-// import objectPath = require('object-path');
 
-const astMonkeyTraverse = require('ast-monkey-traverse');
-const getObj = require('ast-get-object');
-const getAllValuesByKey = require('ast-get-values-by-key');
-const objectPath = require('object-path');
+//@ts-ignore
+import astMonkeyTraverse = require('ast-monkey-traverse');
+//@ts-ignore
+import getObj = require('ast-get-object');
+//@ts-ignore
+import getAllValuesByKey = require('ast-get-values-by-key');
+//@ts-ignore
+import objectPath from 'object-path';
+
+// const astMonkeyTraverse = require('ast-monkey-traverse');
+// const getObj = require('ast-get-object');
+// const getAllValuesByKey = require('ast-get-values-by-key');
+// const objectPath = require('object-path');
 
 //-----------------------------------------------------------------------------------
 import { parentPath, findParentName } from './lib/astUtils';

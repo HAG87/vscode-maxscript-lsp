@@ -4,6 +4,7 @@
 .gitignore
 .travis.yml
 .vscode/**
+node_modules/**
 **/*.map
 **/*.ts
 **/tsconfig.base.json
