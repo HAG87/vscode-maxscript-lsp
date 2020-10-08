@@ -418,4 +418,4 @@ function visit(node, callbackMap) {
 function mxsMinify(cst) {
 	return visit(cst, visitorPatterns);
 }
-module.exports = { mxsMinify, visit, visitorPatterns };
+export { mxsMinify, visit, visitorPatterns };

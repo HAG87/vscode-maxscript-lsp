@@ -1,7 +1,6 @@
 'use strict';
-const objectPath = require('object-path');
-// const traverse2 = require('ast-monkey-traverse-with-lookahead');
-//-----------------------------------------------------------------------------------
+
+import objectPath from 'object-path';
 //-----------------------------------------------------------------------------------
 /**
  * Retrieve an object-path notation pruning n branches/leafs
@@ -30,14 +29,14 @@ function parentPath(path, level = 1) {
  * @param {object} ast The CST
  * @param {string} path The path of the current node/leaf
  */
-function findParentName (CST, path, key = 'id.value.text') {
+function findParentName(CST, path, key = 'id.value.text') {
 	// this is faster than using ats-money find method
 	let roots = path.split('.');
 	// no parent!
-	if (roots.length < 2) {return;}
+	if (roots.length < 2) { return; }
 	// GET THE FIRST NODE WITH AN ID KEY
 	while (roots.length > 0) {
-		let thePath = roots.join('.');		
+		let thePath = roots.join('.');
 		let theNode = objectPath.get(CST, thePath);
 		if (theNode && 'id' in theNode) {
 			return objectPath.get(CST, thePath.concat('.', key));
@@ -56,9 +55,9 @@ function findParentName (CST, path, key = 'id.value.text') {
 	return;
 }
 //-----------------------------------------------------------------------------------
-const objFromKeys = (arr, def) => arr.reduce((ac,a) => ({...ac,[a]:def}),{});
+const objFromKeys = (arr, def) => arr.reduce((ac, a) => ({ ...ac, [a]: def }), {});
 //-----------------------------------------------------------------------------------
-module.exports = {
+export {
 	// range,
 	parentPath,
 	findParentName,
