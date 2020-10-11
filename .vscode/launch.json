@@ -26,11 +26,7 @@
 				// "--disable-extensions",
 				"--extensionDevelopmentPath=${workspaceRoot}"
 			],
-			"outFiles": ["${workspaceRoot}/client/out/**/*.js"],
-			// "preLaunchTask": {
-			// 	"type": "npm",
-			// 	"script": "watch"
-			// }
+			"outFiles": ["${workspaceRoot}/client/out/**/*.js"]
 		},
 		{
 			"type": "node",
@@ -52,7 +48,6 @@
 		// 	],
 		// 	"outFiles": ["${workspaceRoot}/client/out/test/**/*.js"],
 		// 	"sourceMaps": true
-
 		// }
 	],
 	"compounds": [
@@ -62,7 +57,7 @@
 		},
 		{
 			"name": "PROD: Client + Server",
-			"configurations": ["Launch Client", "Attach to Server"]
+			"configurations": ["Launch Client - production", "Attach to Server"]
 		}
 	]
 }

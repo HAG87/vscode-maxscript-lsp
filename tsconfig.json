@@ -1,14 +1,13 @@
 {
+	"extends": "./tsconfig.base.json",
 	"compilerOptions": {
 		"module": "commonJS",
-		"target": "ES6",
-		"lib": ["ES6"],
-		"outDir": "out",
-		"rootDir": "src",
+		"target": "ES2019",
+		"lib": ["ES6", "ES2019"],
+		// "outDir": "out",
+		// "rootDir": "src",
 		"sourceMap": true,
-		"esModuleInterop": true,
-		"composite": true,
-		"strict": true
+		// "baseUrl": ".",
 	},
 	"include": ["src"],
 	"exclude": [ "node_modules" ],
