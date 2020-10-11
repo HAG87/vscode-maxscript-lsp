@@ -5,15 +5,21 @@
  * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-import * as lsp from 'vscode-languageserver';
+import {
+	TextDocumentItem,
+	TextDocumentContentChangeEvent,
+	Position,
+	Range
+} from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
-export class LspDocument implements lsp.TextDocument {
+export class LspDocument implements TextDocument {
 
-    protected document: lsp.TextDocument;
+    protected document: TextDocument;
 
-    constructor(doc: lsp.TextDocumentItem) {
+    constructor(doc: TextDocumentItem) {
     	const { uri, languageId, version, text } = doc;
-    	this.document = lsp.TextDocument.create(uri, languageId, version, text);
+    	this.document = TextDocument.create(uri, languageId, version, text);
     }
 
     get uri(): string {
@@ -28,15 +34,15 @@ export class LspDocument implements lsp.TextDocument {
     	return this.document.version;
     }
 
-    getText(range?: lsp.Range): string {
+    getText(range?: Range): string {
     	return this.document.getText(range);
     }
 
-    positionAt(offset: number): lsp.Position {
+    positionAt(offset: number): Position {
     	return this.document.positionAt(offset);
     }
 
-    offsetAt(position: lsp.Position): number {
+    offsetAt(position: Position): number {
     	return this.document.offsetAt(position);
     }
 
@@ -49,13 +55,13 @@ export class LspDocument implements lsp.TextDocument {
     	return this.getText(lineRange);
     }
 
-    getLineRange(line: number): lsp.Range {
+    getLineRange(line: number): Range {
     	const lineStart = this.getLineStart(line);
     	const lineEnd = this.getLineEnd(line);
-    	return lsp.Range.create(lineStart, lineEnd);
+    	return Range.create(lineStart, lineEnd);
     }
 
-    getLineEnd(line: number): lsp.Position {
+    getLineEnd(line: number): Position {
     	const nextLineOffset = this.getLineOffset(line + 1);
     	return this.positionAt(nextLineOffset - 1);
     }
@@ -65,11 +71,11 @@ export class LspDocument implements lsp.TextDocument {
     	return this.offsetAt(lineStart);
     }
 
-    getLineStart(line: number): lsp.Position {
-    	return lsp.Position.create(line, 0);
+    getLineStart(line: number): Position {
+    	return Position.create(line, 0);
     }
 
-    applyEdit(version: number, change: lsp.TextDocumentContentChangeEvent): void {
+    applyEdit(version: number, change: TextDocumentContentChangeEvent): void {
     	const content = this.getText();
     	let newContent = change.text;
     	if ('range' in change) {
@@ -77,7 +83,7 @@ export class LspDocument implements lsp.TextDocument {
     		const end = this.offsetAt(change.range.end);
     		newContent = content.substr(0, start) + change.text + content.substr(end);
     	}
-    	this.document = lsp.TextDocument.create(this.uri, this.languageId, version, newContent);
+    	this.document = TextDocument.create(this.uri, this.languageId, version, newContent);
     }
 
 }
@@ -106,7 +112,7 @@ export class LspDocuments {
     	return document;
     }
 
-    open(file: string, doc: lsp.TextDocumentItem): boolean {
+    open(file: string, doc: TextDocumentItem): boolean {
     	if (this.documents.has(file)) {
     		return false;
     	}
@@ -124,5 +130,4 @@ export class LspDocuments {
     	this._files.splice(this._files.indexOf(file), 1);
     	return document;
     }
-
 }

@@ -322,7 +322,7 @@ connection.onExecuteCommand(async (arg: ExecuteCommandParams) =>
 			connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: ${err.message}`);
 		}
 	} else if (arg.command === Commands.MXS_MINFILE.command && arg.arguments !== undefined) {
-		if (arg.arguments?.[0] === undefined) {
+		if (!Array.isArray(arg.arguments) || Array.isArray(arg.arguments) && arg.arguments[0] === undefined) {
 			connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: invalid command arguments`);
 			return;
 		}

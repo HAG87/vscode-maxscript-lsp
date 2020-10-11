@@ -5,8 +5,14 @@ import {
 } from 'crypto';
 //-----------------------------------------------------------------------------------
 import * as nearley from 'nearley';
-import grammar = require('./lib/grammar.js');
-import mxLexer = require('./lib/mooTokenize.js');
+import * as moo from 'moo';
+
+// import grammar from './lib/grammar';
+// import mxLexer from './lib/mooTokenize.js';
+
+const grammar = require('./lib/grammar');
+const mxLexer = require('./lib/mooTokenize');
+
 import { ParserError } from './mxsDiagnostics';
 //-----------------------------------------------------------------------------------
 function replaceWithWS(str: string) {
@@ -69,8 +75,8 @@ export class mxsParseSource {
 		}
 		// feed the tokenizer
 		mxLexer.reset(this.__source);
-		let token;
-		let toks = [];
+		let token: moo.Token | undefined;
+		let toks:moo.Token[] = [];
 		while ((token = mxLexer.next())) {
 			toks.push(token);
 		}

@@ -1,6 +1,7 @@
 'use strict';
 
-import objectPath from 'object-path';
+const objectPath = require('object-path');
+// import * as objectPath from 'object-path';
 //-----------------------------------------------------------------------------------
 /**
  * Retrieve an object-path notation pruning n branches/leafs
