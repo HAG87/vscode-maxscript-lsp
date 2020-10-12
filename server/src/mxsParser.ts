@@ -1,5 +1,6 @@
 'use strict';
-import {
+import
+{
 	BinaryLike,
 	createHash
 } from 'crypto';
@@ -15,14 +16,16 @@ const mxLexer = require('./lib/mooTokenize');
 
 import { ParserError } from './mxsDiagnostics';
 //-----------------------------------------------------------------------------------
-function replaceWithWS(str: string) {
+function replaceWithWS(str: string)
+{
 	let ref = [...str];
 	return ref.reduce((acc, next) => { return acc + ' '; }, '');
 }
 /**
  * main class to manage the parser. Implements 'nearley' parser and 'moo' tokenizer
  */
-export class mxsParseSource {
+export class mxsParseSource
+{
 	// fields
 	parserInstance!: nearley.Parser;
 	// hash: string;
@@ -30,14 +33,16 @@ export class mxsParseSource {
 	private __parserState: any;
 	private __parsedCST: any;
 	// constructor
-	constructor(source: string | undefined) {
+	constructor(source: string | undefined)
+	{
 		this.__source = source || '';
 		this.reset();
 		// this.hash = mxsParseSource.HashSource(this.__source);
 		// this.ParseSource();
 	}
 	/** Declare a new parser instance */
-	private _declareParser() {
+	private _declareParser()
+	{
 		return new nearley.Parser(
 			nearley.Grammar.fromCompiled(grammar),
 			{
@@ -47,14 +52,16 @@ export class mxsParseSource {
 	/** get the source Stream */
 	get source() { return this.__source; }
 	/**	Set new source, and re-parse */
-	set source(newSource) {
+	set source(newSource)
+	{
 		this.__source = newSource;
 		// this.reset();
 		// this.hash = mxsParseSource.HashSource(this.__source);
 		// this.ParseSource();
 	}
 	/** Get the parsed CST, if any */
-	get parsedCST() {
+	get parsedCST()
+	{
 		return this.__parsedCST;
 	}
 	/** Reset the parser * */
@@ -64,9 +71,11 @@ export class mxsParseSource {
 	 * @param {moo.lexer} lexer
 	 * @param {string} source
 	 */
-	TokenizeStream(filter?: string[]) {
+	TokenizeStream(filter?: string[])
+	{
 		if (filter instanceof Array) {
-			mxLexer.next = (next => () => {
+			mxLexer.next = (next => () =>
+			{
 				let tok;
 				// IGNORING COMMENTS....
 				while ((tok = next.call(mxLexer)) && (filter.includes)) /* empty statement */ { }
@@ -76,7 +85,7 @@ export class mxsParseSource {
 		// feed the tokenizer
 		mxLexer.reset(this.__source);
 		let token: moo.Token | undefined;
-		let toks:moo.Token[] = [];
+		let toks: moo.Token[] = [];
 		while ((token = mxLexer.next())) {
 			toks.push(token);
 		}
@@ -88,7 +97,8 @@ export class mxsParseSource {
 	 * @param {nearley.parser} parserInstance Instance of initialized parser
 	 * @param {Integer} tree Index of the parsed tree I want in return, results are multiple when the parser finds and ambiguity
 	 */
-	ParseSource() {
+	ParseSource()
+	{
 		// Set a clean state - DISABLED FOR WORKAROUND OF PROBLEM -> ERROR RECOVERY DECLARES A CLEAN PARSER INSTANCE
 		this.reset();
 		// this.__parserState = this.parserInstance.save();
@@ -107,7 +117,8 @@ export class mxsParseSource {
 	/**
 	 * Parser with error recovery
 	 */
-	private parseWithErrors() {
+	private parseWithErrors()
+	{
 		//-------------------------------------------------
 		// NEW METHOD TOKENIZING THE INPUT, COULD BE A WAY TO FEED TOKENS TO THE PARSER?
 		// console.log('parser - error');
@@ -151,7 +162,8 @@ export class mxsParseSource {
 		}
 		// console.log('parser - error - ended');
 		// console.log(this.parserInstance.results.length);
-		let reportSuccess = () => {
+		let reportSuccess = () =>
+		{
 			// console.log('parser report! - OK');
 			let newErr = new ParserError('Parser failed. Partial parsings has been recovered.');
 			newErr.name = 'ERR_RECOVER';
@@ -160,7 +172,8 @@ export class mxsParseSource {
 			newErr.details = errorReport;
 			return newErr;
 		};
-		let reportFailure = () => {
+		let reportFailure = () =>
+		{
 			// console.log('parser report! - BAD ');
 			let newErr = new ParserError('Parser failed. Unrecoverable errors.');
 			newErr.name = 'ERR_FATAL';
@@ -178,9 +191,12 @@ export class mxsParseSource {
 	/**
 	 * UNFINISHED: ASYNC Parser 
 	 */
-	async ParseSourceAsync(source = this.__source) {
-		let parser = () => {
-			return new Promise((resolve, reject) => {
+	async ParseSourceAsync(source = this.__source)
+	{
+		let parser = () =>
+		{
+			return new Promise((resolve, reject) =>
+			{
 				// delay execution
 				// setTimeout( () => {
 				// console.log("parser called");
@@ -196,16 +212,20 @@ export class mxsParseSource {
 			});
 		};
 
-		return new Promise((resolve, reject) => {
+		return new Promise((resolve, reject) =>
+		{
 			parser()
-				.then((result) => {
+				.then((result) =>
+				{
 					this.__parsedCST = result;
 					return resolve(result);
-				}, () => {
+				}, () =>
+				{
 					// console.log('source contain errors. Attemp to recover');
 					return this.parseWithErrorsAsync();
 				})
-				.then((result) => {
+				.then((result) =>
+				{
 					if (result) {
 						// console.log("returning results of error recovery.");
 						this.__parsedCST = result.result;
@@ -219,7 +239,8 @@ export class mxsParseSource {
 	/**
 	 * UNFINISHED: ASYNC Error recovery
 	 */
-	private parseWithErrorsAsync(): Promise<{ result: any; error: ParserError }> {
+	private parseWithErrorsAsync(): Promise<{ result: any; error: ParserError }>
+	{
 		// private parseWithErrorsAsync():Promise<ParserError> {
 		let mxsParser = this._declareParser();
 		let src = this.TokenizeStream();
@@ -229,7 +250,8 @@ export class mxsParseSource {
 		let badTokens: any[] = [];
 		let errorReport: any[] = [];
 
-		let reportSuccess = () => {
+		let reportSuccess = () =>
+		{
 			// console.log('parser report! - OK');
 			let newErr = new ParserError('Parser failed. Partial parsings has been recovered.');
 			newErr.name = 'ERR_RECOVER';
@@ -238,7 +260,8 @@ export class mxsParseSource {
 			newErr.details = errorReport;
 			return newErr;
 		};
-		let reportFailure = () => {
+		let reportFailure = () =>
+		{
 			// console.log('parser report! - BAD ');
 			let newErr = new ParserError('Parser failed. Unrecoverable errors.');
 			newErr.name = 'ERR_FATAL';
@@ -248,8 +271,10 @@ export class mxsParseSource {
 			return newErr;
 		};
 
-		let errParser = (callback: any) => {
-			let parsings = (src: import('moo').Token[], next: number, total: number): any | undefined => {
+		let errParser = (callback: any) =>
+		{
+			let parsings = (src: import('moo').Token[], next: number, total: number): any | undefined =>
+			{
 				try {
 					mxsParser.feed(src[next].text);
 				} catch (err) {
@@ -280,8 +305,10 @@ export class mxsParseSource {
 			};
 			parsings(src, 0, total);
 		};
-		let parseResults = () => {
-			return new Promise((resolve, reject) => {
+		let parseResults = () =>
+		{
+			return new Promise((resolve, reject) =>
+			{
 				// console.log('Error recovery done.');
 				try {
 					errParser((res: any | undefined) => resolve(res));
@@ -291,9 +318,11 @@ export class mxsParseSource {
 			});
 		};
 
-		return new Promise((resolve, reject) => {
+		return new Promise((resolve, reject) =>
+		{
 			parseResults()
-				.then((result) => {
+				.then((result) =>
+				{
 					this.__parsedCST = result;
 					if (result) {
 						return resolve({ result: <any>result, error: reportSuccess() });
@@ -305,12 +334,14 @@ export class mxsParseSource {
 		});
 	}
 
-	private PossibleTokens(parserInstance: nearley.Parser) {
+	private PossibleTokens(parserInstance: nearley.Parser)
+	{
 		var possibleTokens: any[] = [];
 		var lastColumnIndex = parserInstance.table.length - 2;
 		var lastColumn = parserInstance.table[lastColumnIndex];
 		var expectantStates = lastColumn.states
-			.filter(function (state: { rule: { symbols: { [x: string]: any } }; dot: string | number }) {
+			.filter(function (state: { rule: { symbols: { [x: string]: any } }; dot: string | number })
+			{
 				var nextSymbol = state.rule.symbols[state.dot];
 				return nextSymbol && typeof nextSymbol !== 'string';
 			});
@@ -318,11 +349,13 @@ export class mxsParseSource {
 		// - which shows you how this state came to be, step by step.
 		// If there is more than one derivation, we only display the first one.
 		var stateStacks = expectantStates
-			.map((state: any) => {
+			.map((state: any) =>
+			{
 				return parserInstance.buildFirstStateStack(state, []);
 			});
 		// Display each state that is expecting a terminal symbol next.
-		stateStacks.forEach(function (stateStack: any[]) {
+		stateStacks.forEach(function (stateStack: any[])
+		{
 			var state = stateStack[0];
 			var nextSymbol = state.rule.symbols[state.dot];
 			possibleTokens.push(nextSymbol);
@@ -330,7 +363,8 @@ export class mxsParseSource {
 		return possibleTokens;
 	}
 	/** MD5 hash */
-	static HashSource(source: BinaryLike): string {
+	static HashSource(source: BinaryLike): string
+	{
 		return createHash('md5').update(source).digest('hex');
 	}
 }

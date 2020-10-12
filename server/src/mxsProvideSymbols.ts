@@ -22,6 +22,7 @@ import objectPath from 'object-path';
 // const getObj = require('ast-get-object');
 // const getAllValuesByKey = require('ast-get-values-by-key');
 //-----------------------------------------------------------------------------------
+//@ts-ignore
 import { parentPath, findParentName } from './lib/astUtils';
 //-----------------------------------------------------------------------------------
 /**

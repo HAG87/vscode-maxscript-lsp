@@ -37,7 +37,7 @@ import mxsCompletion from './mxsCompletions';
 import { mxsDocumentSymbols } from './mxsOutline';
 // import {mxsDiagnosticCollection} from './mxsDiagnostics';
 import mxsMinifier from './mxsMin';
-import * as utils from './utils';
+import * as utils from './lib/utils';
 import { Commands } from './mxsCommands';
 import mxsDefinitions from './mxsDefinitions';
 //------------------------------------------------------------------------------------------

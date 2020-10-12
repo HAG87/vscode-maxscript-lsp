@@ -1,15 +1,16 @@
 'use strict';
 
-const objectPath = require('object-path');
-// import * as objectPath from 'object-path';
+// const objectPath = require('object-path');
+import objectPath from 'object-path';
 //-----------------------------------------------------------------------------------
 /**
  * Retrieve an object-path notation pruning n branches/leafs
  * Partially extracted from ast-monkey-util
  * @param {string} path The path of the current node/key
- * @param {int} level Level to retrieve
+ * @param {number} [level] Level to retrieve
  */
-function parentPath(path, level = 1) {
+function parentPath(path: string, level: number = 1)
+{
 	if (typeof path === 'string') {
 		if (!path.includes('.')) {
 			return path;
@@ -27,10 +28,12 @@ function parentPath(path, level = 1) {
 //-----------------------------------------------------------------------------------
 /**
  * Looks for a key in the inmediate parent, going up the tree, returns the value of the first match, if any.
- * @param {object} ast The CST
+ * @param {any} CST The CST
  * @param {string} path The path of the current node/leaf
+ * @param {string} [key] Key value to search for
  */
-function findParentName(CST, path, key = 'id.value.text') {
+function findParentName(CST: any, path: string, key: string = 'id.value.text')
+{
 	// this is faster than using ats-money find method
 	let roots = path.split('.');
 	// no parent!
@@ -56,10 +59,11 @@ function findParentName(CST, path, key = 'id.value.text') {
 	return;
 }
 //-----------------------------------------------------------------------------------
-const objFromKeys = (arr, def) => arr.reduce((ac, a) => ({ ...ac, [a]: def }), {});
+/** @type {any} */
+const objFromKeys = (arr: any[], def: any) => arr.reduce((ac: any, a: any) => ({ ...ac, [a]: def }), {});
 //-----------------------------------------------------------------------------------
-export {
-	// range,
+export
+{
 	parentPath,
 	findParentName,
 	objFromKeys

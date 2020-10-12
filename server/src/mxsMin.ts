@@ -1,6 +1,7 @@
 'use strict';
 import * as fs from 'fs';
 //--------------------------------------------------------------------------------
+//@ts-ignore
 import { mxsMinify } from './lib/mxsCompactCode';
 import { mxsParseSource } from './mxsParser';
 //--------------------------------------------------------------------------------

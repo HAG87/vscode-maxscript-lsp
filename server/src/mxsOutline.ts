@@ -120,7 +120,11 @@ export class mxsDocumentSymbolProvider
 							// this.activeDocument = document;
 							resolve(result);
 						},
-						err => reject(err)
+						err =>
+						{
+							console.log(err.message);
+							reject(err);
+						}
 					);
 				// } else {
 				// reject();
