@@ -2,20 +2,21 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./out",
-    "rootDir": ".",
+    // "rootDir": "./src",
+    "rootDir": "./",
     "moduleResolution": "node",
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports" : true,
     "allowJs": true,
-    "resolveJsonModule": true,
     "baseUrl": ".",
-    /*
     "paths": {
-      "ast-compare": ["node_modules/ast-compare/dist"],
-      "ast-get-object": ["node_modules/ast-get-object/dist"]
+      "~lib/*": ["./src/lib/*"],
+      "*": ["./src/types"]
     }
-    */
   },
   // /*
+  // WORKAROUND: This is needed if allowJs:true AND import a ES6 module with dependencies...
+  // To disable allowJS maybe I need to have all de js code in commonJS, since is not transpile by tsc or ts-loader
   "files": [
     "node_modules/ast-compare/dist/ast-compare.esm.js",
     "node_modules/ast-contains-only-empty-space/dist/ast-contains-only-empty-space.esm.js",
@@ -24,6 +25,6 @@
     "node_modules/ast-monkey-traverse/dist/ast-monkey-traverse.esm.js"
   ],
   // */
-  "include": [ "src" ],
+  "include": ["src"],
   "exclude": ["node_modules", ".vscode-test", "out"]
 }

@@ -12,7 +12,7 @@
 	"engines": {
 		"vscode": "^1.45.0"
 	},
-	"main": "./client/out/extension",
+	"main": "out/extension.js",
 	"dependencies": {
 		"moo": "^0.5.1",
 		"vscode-languageclient": "^6.1.3"

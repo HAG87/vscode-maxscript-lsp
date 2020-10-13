@@ -12,7 +12,7 @@
 		"type": "git",
 		"url": "https://github.com/HAG87/vscode-maxscript-lsp"
 	},
-	"main": "./server/out/server",
+	"main": "out/server.js",
 	"dependencies": {
 		"ast-get-object": "^1.9.18",
 		"ast-get-values-by-key": "^2.7.0",

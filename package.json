@@ -27,7 +27,7 @@
 		"onCommand:mxs.minify.file",
 		"onCommand:mxs.minify.files"
 	],
-	"main": "./client/out/extension",
+	"main": "./client/out/extension.js",
 	"contributes": {
 		"languages": [
 			{
@@ -227,7 +227,7 @@
 		"ts-loader": "^8.0.4",
 		"tsconfig-paths-webpack-plugin": "^3.3.0",
 		"typescript": "^3.9.7",
-		"webpack": "^4.44.2",
+		"webpack": "^5.0.0-rc.6",
 		"webpack-cli": "^3.3.12",
 		"webpack-node-externals": "^2.5.2"
 	},
