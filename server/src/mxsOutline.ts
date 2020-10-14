@@ -2,7 +2,7 @@
 // import * as cp from 'child_process';
 import
 {
-	// CancellationToken,
+	CancellationToken,
 	Diagnostic,
 	SymbolInformation,
 	DocumentSymbol,
@@ -104,33 +104,30 @@ export class mxsDocumentSymbolProvider
 		return SymbolInfCol;
 	}
 
-	async parseDocument(document: TextDocument): Promise<SymbolInformation[] | DocumentSymbol[]>
+	// private wait = (delay: number, value?: any) => new Promise(resolve => setTimeout(resolve, delay, value));
+
+	async parseDocument(document: TextDocument, cancelation: CancellationToken): Promise<SymbolInformation[] | DocumentSymbol[]>
 	{
 		// this.activeDocument = undefined;
 		return new Promise((resolve, reject) =>
 		{
-			setTimeout(() =>
-			{
-				// if (document) {
-				this._getDocumentSymbols(document)
-					.then(
-						result =>
-						{
-							// console.log('parser pass!');
-							// this.activeDocument = document;
-							resolve(result);
-						},
-						err =>
-						{
-							console.log(err.message);
-							reject(err);
-						}
-					);
-				// } else {
-				// reject();
-				// }
-			}, 500);
-		});
+			// this.later(500).then(
+			// () => {
+			cancelation.onCancellationRequested(async () => reject('Cancellation requested'));
+			this._getDocumentSymbols(document)
+				.then(
+					result =>
+					{
+						resolve(result);
+					})
+				.catch(
+					err =>
+					{
+						reject(err);
+					});
+		}
+		);
+		// });
 	}
 }
 

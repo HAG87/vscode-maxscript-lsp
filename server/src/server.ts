@@ -4,6 +4,7 @@
  * ------------------------------------------------------------------------------------------ */
 import
 {
+	CancellationToken,
 	// Command,
 	// CompletionItem,
 	createConnection,
@@ -189,9 +190,9 @@ function getDocumentSettings(resource: string): Thenable<MaxScriptSettings>
 //------------------------------------------------------------------------------------------
 let currentDocumentSymbols: DocumentSymbol[] | SymbolInformation[] = [];
 
-async function parseDocument(document: TextDocument)
+async function parseDocument(document: TextDocument, cancelation:CancellationToken)
 {
-	return await mxsDocumentSymbols.parseDocument(document);
+	return await mxsDocumentSymbols.parseDocument(document, cancelation);
 }
 
 function diagnoseDocument(document: TextDocument)
@@ -259,13 +260,13 @@ documents.onDidChangeContent(change =>
 // });
 //------------------------------------------------------------------------------------------
 // Update the parsed document, and diagnostics on Symbols request... ?
-connection.onDocumentSymbol(async (_DocumentSymbolParams: DocumentSymbolParams) =>
+connection.onDocumentSymbol(async (_DocumentSymbolParams: DocumentSymbolParams, cancelation) =>
 {
 	if (!hasDocumentSymbolCapability) {return;}
 	// connection.console.log('We received a DocumentSymbol request');
 	// let doc = documents.get(_DocumentSymbolParams.textDocument.uri)!;
 	let document = currentTextDocument;
-	let documentSymbols = await parseDocument(document);
+	let documentSymbols = await parseDocument(document, cancelation);
 	diagnoseDocument(document);
 
 	currentDocumentSymbols = documentSymbols;
@@ -273,7 +274,7 @@ connection.onDocumentSymbol(async (_DocumentSymbolParams: DocumentSymbolParams) 
 });
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
-	(_textDocumentPosition: TextDocumentPositionParams) =>
+	(_textDocumentPosition: TextDocumentPositionParams, cancelation) =>
 	{
 		if (!hasCompletionCapability) {return;}
 		return mxsCompletion.provideCompletionItems(currentTextDocument, _textDocumentPosition.position);
