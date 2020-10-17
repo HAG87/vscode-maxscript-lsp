@@ -2,7 +2,6 @@
 import
 {
 	// CancellationToken,
-	// Command,
 	Definition,
 	DefinitionLink,
 	Location,
@@ -11,17 +10,19 @@ import
 	Position,
 	SymbolInformation,
 	DocumentSymbol,
-	TextDocument
 } from 'vscode-languageserver';
-import {getFromCST, getTokenRange} from './mxsProvideSymbols';
-import * as utils from './utils';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+
+import { getFromCST, getTokenRange } from './mxsProvideSymbols';
+import { getlineNumberofChar, getWordAtPosition } from './lib/utils';
 //------------------------------------------------------------------------------------------
 export default class mxsDefinitions
 {
 	/**
 	 * Regex method to find first occurence of word in document
-	 * @param document 
-	 * @param word 
+	 * @param {TextDocument} document 
+	 * @param {string} word 
+	 * @returns {Location | undefined} Word location or undefined
 	 */
 	private static getDocumentDefinitionMatch(
 		document: TextDocument,
@@ -39,7 +40,7 @@ export default class mxsDefinitions
 		let lastLine = lastLineMatch.exec(prevData);
 
 		if (lastLine?.[0]) {
-			let line = utils.getlineNumberofChar(prevData, pos);
+			let line = getlineNumberofChar(prevData, pos);
 			if (line > -1) {
 				line = line > 0 ? line - 1 : line;
 				let start = Position.create(line, lastLine[0].length);
@@ -53,13 +54,11 @@ export default class mxsDefinitions
 	}
 	/**
 	 * DocumentSymbols[] query
-	 * @param id 
-	 * @param array 
+	 * @param {string} id
+	 * @param {any[]} array
+	 * @returns { DocumentSymbol | undefined} Found node or undefined
 	 */
-	private static findNode(
-		id: string,
-		array: any[]
-	): DocumentSymbol | undefined
+	private static findNode(id: string, array: any[]): DocumentSymbol | undefined
 	{
 		let _visit = (id: string, array: any[]): DocumentSymbol | undefined =>
 		{
@@ -75,8 +74,9 @@ export default class mxsDefinitions
 	}
 	/**
 	 * Regex Match
-	 * @param document 
-	 * @param searchword 
+	 * @param {TextDocument} document
+	 * @param {string} searchword
+	 * @returns {Location | undefined} Word location
 	 */
 	private static wordMatch(document: TextDocument, searchword: string)
 	{
@@ -84,9 +84,10 @@ export default class mxsDefinitions
 	}
 	/**
 	 * DocumentSymbol Match
-	 * @param document 
-	 * @param DocumentSymbols 
-	 * @param searchword 
+	 * @param {TextDocument} document 
+	 * @param {DocumentSymbol[]} DocumentSymbols 
+	 * @param {string} searchword 
+	 * @returns {LocationLink | undefined} DocumentSymbol location
 	 */
 	private static symbolMatch(document: TextDocument, DocumentSymbols: DocumentSymbol[], searchword: string)
 	{
@@ -99,9 +100,10 @@ export default class mxsDefinitions
 	}
 	/**
 	 * CAST query Match
-	 * @param document 
-	 * @param CST 
-	 * @param searchword 
+	 * @param {TextDocument} document 
+	 * @param {any | any[]} CST 
+	 * @param {string} searchword 
+	 * @returns {LocationLink | undefined}
 	 */
 	private static cstMatch(document: TextDocument, CST: any | any[], searchword: string)
 	{
@@ -115,7 +117,15 @@ export default class mxsDefinitions
 		}
 		return undefined;
 	}
-
+	/**
+	 * Get Document definitions
+	 * @async
+	 * @param {TextDocument} document 
+	 * @param {Position} position 
+	 * @param {any[]} parseCST 
+	 * @param {DocumentSymbol[] | SymbolInformation[]} DocumentSymbols
+	 * @returns {Promise<Definition | DefinitionLink[]>}
+	 */
 	static async getDocumentDefinitions(
 		document: TextDocument,
 		position: Position,
@@ -125,22 +135,13 @@ export default class mxsDefinitions
 	{
 		return new Promise((resolve, reject) =>
 		{
-			let word = utils.getWordAtPosition(document, position, '--');
-			if (!word) { reject('No input word.'); return; }
-			
-			console.log(word);
-			
-			// /*
-			// debug
-			// let Match = mxsDefinitions.symbolMatch(document,DocumentSymbols as DocumentSymbol[], word);
-			// console.log('symbolMatch');
-			// let Match = mxsDefinitions.cstMatch(document, parseCST, word);
-			// console.log('cstMatch');
-			// let Match = mxsDefinitions.wordMatch(document, word);
-			// console.log('wordMatch');
-			// Match !== undefined ? resolve([Match]) : reject('No matches.');
-			// */
-			// /*
+			// try to avoid words inside inline comments
+			let word = getWordAtPosition(document, position, '--');
+			if (!word) {
+				reject('No input word.');
+				return;
+			}
+
 			if (DocumentSymbols !== undefined) {
 				//FIXME: PROBLEM WITH CHARACTER OFFSET! - MAYBE LINE NUMBER - MAYBE HAS TO DO WITH WHITESPACE
 				// console.log('symbolMatch');
@@ -148,7 +149,7 @@ export default class mxsDefinitions
 				if (symbolMatch !== undefined) {
 					resolve([symbolMatch]);
 				} else if (parseCST !== undefined) {
-					// search the parse tree
+					// search the parse tree -- DISABLED
 					// console.log('cstMatch');
 					// let cstMatch = mxsDefinitions.cstMatch(document, parseCST, word);
 					// cstMatch !== undefined ? resolve([cstMatch]) : reject('No matches.');
@@ -162,7 +163,6 @@ export default class mxsDefinitions
 				// console.log(JSON.stringify(wordMatch, null, 2));
 				wordMatch !== undefined ? resolve(wordMatch) : reject('No matches.');
 			}
-			// */
 		});
 	}
 }

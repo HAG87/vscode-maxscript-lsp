@@ -1,5 +1,6 @@
 'use strict';
-import {
+import
+{
 	CancellationToken,
 	DocumentSemanticTokensProvider,
 	SemanticTokens,
@@ -11,7 +12,8 @@ import {
 import * as moo from 'moo';
 import maxAPI from './schema/mxsAPI';
 //-------------------------------------------------------------------------------------------------------------
-const caseInsensitiveKeywords = (map: { [k: string]: string | string[] }) => {
+const caseInsensitiveKeywords = (map: { [k: string]: string | string[] }) =>
+{
 	const transform = moo.keywords(map);
 	return (text: string) => transform(text.toLowerCase());
 };
@@ -22,8 +24,8 @@ let lexer = moo.compile({
 	commentBLK: { match: /\/\*(?:.|[\n\r])*?\*\//, lineBreaks: true },
 	// there is a problem with the strings
 	string: [
-		{ match: /@"(?:\\"|[^"])*?(?:"|\\")/, lineBreaks: true},
-		{ match: /"(?:\\["\\rntsx]|[^"])*?"/, lineBreaks: true},
+		{ match: /@"(?:\\"|[^"])*?(?:"|\\")/, lineBreaks: true },
+		{ match: /"(?:\\["\\rntsx]|[^"])*?"/, lineBreaks: true },
 		// { match: /"""[^]*?"""/, lineBreaks: true, value: x => x.slice(3, -3)},
 	],
 	//string:  /"(?:\\["\\]|[^\n"\\])*"/,
@@ -37,7 +39,7 @@ let lexer = moo.compile({
 	// parameter <param_name>:
 	parameter: { match: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[ \t]*[:])/ },
 	param: { match: /:{1}/ },
-	property: { match: /\.[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/},
+	property: { match: /\.[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/ },
 
 	globalTyped: { match: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/ },
 	// a mounstrosity
@@ -83,19 +85,20 @@ let lexer = moo.compile({
 	NL: { match: /(?:\r|\r\n|\n)+/, lineBreaks: true },
 	// [\$?`] COMPLETE WITH UNWANTED CHARS HERE THAT CAN BREAK THE TOKENIZER
 	error: [
-		{ match: /[¿¡!`´]/, /* error: true  */},
-		{ match: /[?\\]{2,}/},
+		{ match: /[¿¡!`´]/, /* error: true  */ },
+		{ match: /[?\\]{2,}/ },
 		// { match: /[?]{2,}/},
 	],
 	// This contains the rest of the stack in case of error.
-	fatalError : moo.error
+	fatalError: moo.error
 });
 //-------------------------------------------------------------------------------------------------------------
 const tokenTypes = new Map<string, number>();
 const tokenModifiers = new Map<string, number>();
 const tokenTypesSet = new Set<string>();
 
-export const legend = (function () {
+export const legend = (function ()
+{
 	const tokenTypesLegend = [
 		'comment', 'keyword', 'regexp', 'operator', 'namespace',
 		'type', 'struct', 'class', 'interface', 'enum', 'typeParameter', 'function',
@@ -116,7 +119,8 @@ export const legend = (function () {
 	return new SemanticTokensLegend(tokenTypesLegend, tokenModifiersLegend);
 })();
 
-interface IParsedToken {
+interface IParsedToken
+{
 	line: number;
 	startCharacter: number;
 	length: number;
@@ -124,18 +128,22 @@ interface IParsedToken {
 	tokenModifiers: string[];
 }
 
-export class mxsDocumentSemanticTokensProvider implements DocumentSemanticTokensProvider {
-	async provideDocumentSemanticTokens(document: TextDocument, token: CancellationToken): Promise<SemanticTokens> {
+export class mxsDocumentSemanticTokensProvider implements DocumentSemanticTokensProvider
+{
+	async provideDocumentSemanticTokens(document: TextDocument, token: CancellationToken): Promise<SemanticTokens>
+	{
 		const allTokens = this._parseText(document.getText());
 
 		const builder = new SemanticTokensBuilder();
-		allTokens.forEach((token) => {
+		allTokens.forEach((token) =>
+		{
 			builder.push(token.line, token.startCharacter, token.length, this._encodeTokenType(token.tokenType), this._encodeTokenModifiers(token.tokenModifiers));
 		});
 		return builder.build();
 	}
 	// This comes directly from the extension-example
-	private _encodeTokenType(tokenType: string): number {
+	private _encodeTokenType(tokenType: string): number
+	{
 		if (tokenTypes.has(tokenType)) {
 			return tokenTypes.get(tokenType)!;
 		} else if (tokenType === 'notInLegend') {
@@ -144,7 +152,8 @@ export class mxsDocumentSemanticTokensProvider implements DocumentSemanticTokens
 		return 0;
 	}
 	// This comes directly from the extension-example
-	private _encodeTokenModifiers(strTokenModifiers: string[]): number {
+	private _encodeTokenModifiers(strTokenModifiers: string[]): number
+	{
 		let result = 0;
 		for (let i = 0; i < strTokenModifiers.length; i++) {
 			const tokenModifier = strTokenModifiers[i];
@@ -157,12 +166,14 @@ export class mxsDocumentSemanticTokensProvider implements DocumentSemanticTokens
 		return result;
 	}
 	// using moo for tokenizing the source
-	private _parseText(text: string): IParsedToken[] {
+	private _parseText(text: string): IParsedToken[]
+	{
 		let r: IParsedToken[] = [];
 
 		let getTokens = this._tokenize(text);
 
-		getTokens.forEach(token => {
+		getTokens.forEach(token =>
+		{
 			let typing = token.type.split('_');
 			r.push({
 				line: token.line - 1,
@@ -175,12 +186,12 @@ export class mxsDocumentSemanticTokensProvider implements DocumentSemanticTokens
 		return r;
 	}
 	// this will need to catch errors. currently it tries to dump all errors to a token and skip them.
-	private _tokenize(text: string): any[] {
-		let toks = [];
-		let save_state;
+	private _tokenize(text: string): any[]
+	{
+		let toks: moo.Token[] = [];
 		// feed the tokenizer
 		lexer.reset(text);
-		let _token;
+		let _token: moo.Token | undefined;
 
 		while (_token = lexer.next()) {
 			// filter tokens here

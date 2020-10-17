@@ -7,7 +7,7 @@ import
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 //--------------------------------------------------------------------------------
-import * as moo from 'moo';
+import moo from 'moo';
 import { tokenDefinitions } from './schema/mxsTokenDefs';
 import { getTokenRange } from './mxsProvideSymbols';
 //--------------------------------------------------------------------------------

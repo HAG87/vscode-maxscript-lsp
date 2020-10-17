@@ -1,15 +1,16 @@
 'use strict';
-const objectPath = require('object-path');
-// const traverse2 = require('ast-monkey-traverse-with-lookahead');
-//-----------------------------------------------------------------------------------
+
+// const objectPath = require('object-path');
+import objectPath from 'object-path';
 //-----------------------------------------------------------------------------------
 /**
  * Retrieve an object-path notation pruning n branches/leafs
  * Partially extracted from ast-monkey-util
  * @param {string} path The path of the current node/key
- * @param {int} level Level to retrieve
+ * @param {number} [level] Level to retrieve
  */
-function parentPath(path, level = 1) {
+function parentPath(path: string, level: number = 1)
+{
 	if (typeof path === 'string') {
 		if (!path.includes('.')) {
 			return path;
@@ -27,17 +28,19 @@ function parentPath(path, level = 1) {
 //-----------------------------------------------------------------------------------
 /**
  * Looks for a key in the inmediate parent, going up the tree, returns the value of the first match, if any.
- * @param {object} ast The CST
+ * @param {any} CST The CST
  * @param {string} path The path of the current node/leaf
+ * @param {string} [key] Key value to search for
  */
-function findParentName (CST, path, key = 'id.value.text') {
+function findParentName(CST: any, path: string, key: string = 'id.value.text')
+{
 	// this is faster than using ats-money find method
 	let roots = path.split('.');
 	// no parent!
-	if (roots.length < 2) {return;}
+	if (roots.length < 2) { return; }
 	// GET THE FIRST NODE WITH AN ID KEY
 	while (roots.length > 0) {
-		let thePath = roots.join('.');		
+		let thePath = roots.join('.');
 		let theNode = objectPath.get(CST, thePath);
 		if (theNode && 'id' in theNode) {
 			return objectPath.get(CST, thePath.concat('.', key));
@@ -56,10 +59,11 @@ function findParentName (CST, path, key = 'id.value.text') {
 	return;
 }
 //-----------------------------------------------------------------------------------
-const objFromKeys = (arr, def) => arr.reduce((ac,a) => ({...ac,[a]:def}),{});
+/** @type {any} */
+const objFromKeys = (arr: any[], def: any) => arr.reduce((ac: any, a: any) => ({ ...ac, [a]: def }), {});
 //-----------------------------------------------------------------------------------
-module.exports = {
-	// range,
+export
+{
 	parentPath,
 	findParentName,
 	objFromKeys

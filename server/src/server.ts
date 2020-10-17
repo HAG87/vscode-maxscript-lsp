@@ -4,12 +4,14 @@
  * ------------------------------------------------------------------------------------------ */
 import
 {
+	CancellationToken,
 	// Command,
 	// CompletionItem,
 	createConnection,
 	// Definition,
 	// DefinitionLink,
 	DefinitionParams,
+	Diagnostic,
 	// DefinitionRequest,
 	// Diagnostic,
 	// DiagnosticSeverity,
@@ -34,10 +36,10 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as Path from 'path';
 //------------------------------------------------------------------------------------------
 import mxsCompletion from './mxsCompletions';
-import { mxsDocumentSymbols } from './mxsOutline';
+import { mxsDocumentSymbols, ParserResult} from './mxsOutline';
 // import {mxsDiagnosticCollection} from './mxsDiagnostics';
 import mxsMinifier from './mxsMin';
-import * as utils from './utils';
+import * as utils from './lib/utils';
 import { Commands } from './mxsCommands';
 import mxsDefinitions from './mxsDefinitions';
 //------------------------------------------------------------------------------------------
@@ -189,15 +191,32 @@ function getDocumentSettings(resource: string): Thenable<MaxScriptSettings>
 //------------------------------------------------------------------------------------------
 let currentDocumentSymbols: DocumentSymbol[] | SymbolInformation[] = [];
 
-async function parseDocument(document: TextDocument)
+function parseDocument(document: TextDocument, cancelation: CancellationToken)
 {
-	return await mxsDocumentSymbols.parseDocument(document);
+	return new Promise<SymbolInformation[] | DocumentSymbol[]>((resolve, reject) =>
+	{
+		mxsDocumentSymbols.parseDocument(document, cancelation).then(
+			result =>
+			{
+				diagnoseDocument(document, result.diagnostics);
+				resolve(result.symbols);
+			}
+		)
+			.catch(
+				error =>
+				{
+					reject([]);
+				}
+			);
+	});
+
+	// return await mxsDocumentSymbols.parseDocument(document, cancelation);
 }
 
-function diagnoseDocument(document: TextDocument)
+function diagnoseDocument(document: TextDocument, diagnose: Diagnostic[])
 {
 	// connection.console.log('We received a Diagnostic update event');
-	connection.sendDiagnostics({ uri: document.uri, diagnostics: mxsDocumentSymbols.documentDiagnostics });
+	connection.sendDiagnostics({ uri: document.uri, diagnostics: diagnose });
 	/*
 	if (mxsDiagnosticCollection.length !== 0) {	
 		connection.console.log('We have diagnostics!');
@@ -217,7 +236,8 @@ async function validateDocument(textDocument: TextDocument): Promise<void>
 	*/
 	// reset diagnostics
 	if (hasDiagnosticCapability) {
-		diagnoseDocument(textDocument);
+		let resetDiagnostic:Diagnostic[] = [];
+		diagnoseDocument(textDocument, resetDiagnostic);
 	}
 	//...
 }
@@ -259,23 +279,18 @@ documents.onDidChangeContent(change =>
 // });
 //------------------------------------------------------------------------------------------
 // Update the parsed document, and diagnostics on Symbols request... ?
-connection.onDocumentSymbol(async (_DocumentSymbolParams: DocumentSymbolParams) =>
+connection.onDocumentSymbol(async (_DocumentSymbolParams: DocumentSymbolParams, cancelation) =>
 {
-	if (!hasDocumentSymbolCapability) {return;}
+	if (!hasDocumentSymbolCapability) { return; }
 	// connection.console.log('We received a DocumentSymbol request');
-	// let doc = documents.get(_DocumentSymbolParams.textDocument.uri)!;
-	let document = currentTextDocument;
-	let documentSymbols = await parseDocument(document);
-	diagnoseDocument(document);
-
-	currentDocumentSymbols = documentSymbols;
-	return documentSymbols;
+	
+	return await parseDocument(currentTextDocument, cancelation);
 });
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
-	(_textDocumentPosition: TextDocumentPositionParams) =>
+	(_textDocumentPosition: TextDocumentPositionParams, cancelation) =>
 	{
-		if (!hasCompletionCapability) {return;}
+		if (!hasCompletionCapability) { return; }
 		return mxsCompletion.provideCompletionItems(currentTextDocument, _textDocumentPosition.position);
 	}
 );
@@ -295,12 +310,12 @@ connection.onDefinition(async (_DefinitionParams: DefinitionParams) =>
 		await mxsDefinitions.getDocumentDefinitions(
 			document,
 			position,
+			//TODO: CHANGE THIS
 			mxsDocumentSymbols.msxParser.parsedCST,
 			currentDocumentSymbols
 		);
 	return definitions;
 });
-
 // This handler resolves additional information for the item selected in the completion list.
 // connection.onCompletionResolve
 // connection.onSelectionRanges
@@ -310,19 +325,19 @@ connection.onDefinition(async (_DefinitionParams: DefinitionParams) =>
 connection.onExecuteCommand(async (arg: ExecuteCommandParams) =>
 {
 	let settings = await getDocumentSettings(currentTextDocument.uri);
-	console.log(arg.command);
 	if (arg.command === Commands.MXS_MINDOC.command) {
 		try {
 			let path = utils.uriToPath(currentTextDocument.uri)!;
 			let newPath = utils.prefixFile(path, settings.MinifyFilePrefix);
 			// connection.console.log(utils.uriToPath(currentTextDocument.uri)!);
+			//TODO: CHANGE THIS
 			await mxsMinifier.MinifyDoc(mxsDocumentSymbols.msxParser.parsedCST || currentTextDocument.getText(), newPath);
 			connection.window.showInformationMessage(`MaxScript minify: Document saved as ${Path.basename(newPath)}`);
 		} catch (err) {
 			connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: ${err.message}`);
 		}
 	} else if (arg.command === Commands.MXS_MINFILE.command && arg.arguments !== undefined) {
-		if (arg.arguments?.[0] === undefined) {
+		if (!Array.isArray(arg.arguments) || Array.isArray(arg.arguments) && arg.arguments[0] === undefined) {
 			connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: invalid command arguments`);
 			return;
 		}

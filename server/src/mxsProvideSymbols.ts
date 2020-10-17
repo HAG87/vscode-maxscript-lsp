@@ -7,17 +7,23 @@ import {
 	SymbolKind,
 	DocumentSymbol
 } from 'vscode-languageserver';
-import { TextDocument, } from 'vscode-languageserver-textdocument';
-// const { find, get, set, drop, info, del, arrayFirstOnly, traverse, } = require('ast-monkey');
-// const { pathNext, pathPrev, pathUp } = require('ast-monkey-util');
-const traverse = require('ast-monkey-traverse');
-const getObj = require('ast-get-object');
-const getAllValuesByKey = require('ast-get-values-by-key');
-// const traverse = require('ast-monkey-traverse-with-lookahead');
-const objectPath = require('object-path');
+import { TextDocument } from 'vscode-languageserver-textdocument';
+
+//@ts-ignore
+import getObj from 'ast-get-object';
+//@ts-ignore
+import getAllValuesByKey from 'ast-get-values-by-key';
+//@ts-ignore
+import astMonkeyTraverse from 'ast-monkey-traverse';
+//@ts-ignore
+import objectPath from 'object-path';
+
+// const astMonkeyTraverse = require('ast-monkey-traverse');
+// const getObj = require('ast-get-object');
+// const getAllValuesByKey = require('ast-get-values-by-key');
 //-----------------------------------------------------------------------------------
-// import { parentPath, findParentName } from './astUtils';
-const { parentPath, findParentName } = require('./lib/astUtils.js');
+//@ts-ignore
+import { parentPath, findParentName } from './lib/astUtils';
 //-----------------------------------------------------------------------------------
 /**
  * Maps values from type > vcode kind enumeration
@@ -131,7 +137,7 @@ export abstract class range
 		// let paths: any[] = [];
 		let childs: any[] = [];
 		// traverse the node to collect first and last child offset
-		traverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
+		astMonkeyTraverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
 		{
 			const current = val1 !== null ? val1 : key1;
 			if (key1 === 'offset') {
@@ -157,7 +163,7 @@ export abstract class range
 	{
 		let childs: any[] = [];
 		// traverse the node to collect first and last child offset
-		traverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
+		astMonkeyTraverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
 		{
 			const current = val1 !== null ? val1 : key1;
 			if (key1 === 'line') {
@@ -179,7 +185,7 @@ export abstract class range
 	{
 		let childs: any[] = [];
 		// traverse the node to collect first and last child offset
-		traverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
+		astMonkeyTraverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
 		{
 			const current = val1 !== null ? val1 : key1;
 			if (key1 === 'line') {
@@ -262,10 +268,10 @@ export function collectStatementsFromCST(CST: any | any[], key: string = 'id')
 {
 	let statements: string[] = [];
 	//traverse the CST
-	traverse(CST, (key1: string, val1: null, innerObj: { path: string }, stop: any) =>
+	astMonkeyTraverse(CST, (key1: string, val1: null, innerObj: { path: string }, stop: any) =>
 	{
 		const current = val1 !== null ? val1 : key1;
-		if (key1 === key) { statements.push(parentPath(innerObj.path)); }
+		if (key1 === key) { statements.push(parentPath(innerObj.path)!); }
 		return current;
 	});
 	return statements;
@@ -325,7 +331,7 @@ export function collectSymbols(document: TextDocument, CST: any, paths: string[]
 		let theSymbol: SymbolInformation = {
 			name: currentNode.id.value.text || currentNode.id.text || '[unnamed]',
 			kind: SymbolKindMatch[currentNode.type] || SymbolKind.Method,
-			containerName: findParentName(CST, parentPath(path, 1)) || ' ',
+			containerName: findParentName(CST, parentPath(path, 1)!) || ' ',
 			location: getDocumentPositions(document, currentNode),
 		};
 		return theSymbol;
@@ -389,7 +395,7 @@ export function collectTokens(CST: any, key: string = 'type', value?: any)
 	let Tokens: moo.Token[] = [];
 
 	if (value) {
-		traverse(CST, (key1: string, val1: string | null, innerObj: { parent: any }) =>
+		astMonkeyTraverse(CST, (key1: string, val1: string | null, innerObj: { parent: any }) =>
 		{
 			const current = val1 !== null ? val1 : key1;
 			if (key1 === key && val1 === value) {
@@ -398,7 +404,7 @@ export function collectTokens(CST: any, key: string = 'type', value?: any)
 			return current;
 		});
 	} else {
-		traverse(CST, (key1: string, val1: string | null, innerObj: { parent: any }) =>
+		astMonkeyTraverse(CST, (key1: string, val1: string | null, innerObj: { parent: any }) =>
 		{
 			const current = val1 !== null ? val1 : key1;
 			if (key1 === key) {

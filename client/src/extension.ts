@@ -22,7 +22,7 @@ import
 import * as Path from 'path';
 //------------------------------------------------------------------------------------------
 import { mxsDocumentSemanticTokensProvider, legend } from './mxsSemantics';
-import { mxsHelp } from './mxsHelp';
+import mxsHelp from './mxsHelp';
 //------------------------------------------------------------------------------------------
 let client: LanguageClient;
 //------------------------------------------------------------------------------------------

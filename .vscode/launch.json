@@ -18,6 +18,17 @@
 			}
 		},
 		{
+			"type": "extensionHost",
+			"request": "launch",
+			"name": "Launch Client - production",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				// "--disable-extensions",
+				"--extensionDevelopmentPath=${workspaceRoot}"
+			],
+			"outFiles": ["${workspaceRoot}/client/out/**/*.js"]
+		},
+		{
 			"type": "node",
 			"request": "attach",
 			"name": "Attach to Server",
@@ -37,13 +48,16 @@
 		// 	],
 		// 	"outFiles": ["${workspaceRoot}/client/out/test/**/*.js"],
 		// 	"sourceMaps": true
-
 		// }
 	],
 	"compounds": [
 		{
 			"name": "Client + Server",
 			"configurations": ["Launch Client", "Attach to Server"]
+		},
+		{
+			"name": "PROD: Client + Server",
+			"configurations": ["Launch Client - production", "Attach to Server"]
 		}
 	]
 }
