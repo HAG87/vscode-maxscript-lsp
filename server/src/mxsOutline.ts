@@ -7,11 +7,7 @@ import
 	SymbolInformation,
 	DocumentSymbol,
 } from 'vscode-languageserver';
-import
-{
-	TextDocument,
-	// Position
-} from 'vscode-languageserver-textdocument';
+import { TextDocument, } from 'vscode-languageserver-textdocument';
 import
 {
 	provideParserDiagnostic,
@@ -22,14 +18,18 @@ import
 import
 {
 	// collectStatementsFromCST,
+	// collectSymbols,
 	ReCollectStatementsFromCST,
 	ReCollectSymbols,
-	// collectSymbols,
 	collectTokens
 } from './mxsProvideSymbols';
 import { mxsParseSource } from './mxsParser';
 //--------------------------------------------------------------------------------
-
+export interface ParserResult
+{
+	symbols: SymbolInformation[] | DocumentSymbol[]
+	diagnostics: Diagnostic[]
+}
 /**
  * Provide document symbols. Impements the parser.
  * TODO:
@@ -45,7 +45,8 @@ export class mxsDocumentSymbolProvider
 	// activeDocument!: TextDocument | undefined;
 	/** Current document symbols */
 	// activeDocumentSymbols: SymbolInformation[] = [];
-	documentDiagnostics!: Diagnostic[];
+	/** Current document diagnostics */
+	// documentDiagnostics!: Diagnostic[];
 
 	private async documentSymbolsFromCST(
 		document: TextDocument,
@@ -60,7 +61,7 @@ export class mxsDocumentSymbolProvider
 		return Symbols;
 	}
 
-	private async _getDocumentSymbols(document: TextDocument)
+	private async _getDocumentSymbols(document: TextDocument): Promise<ParserResult>
 	{
 
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
@@ -73,9 +74,7 @@ export class mxsDocumentSymbolProvider
 			SymbolInfCol = await this.documentSymbolsFromCST(document, this.msxParser.parsedCST);
 			diagnostics.push(...provideTokenDiagnostic(document, collectTokens(this.msxParser.parsedCST, 'type', 'error')));
 		} catch (err) {
-			console.log(err.message);
 			if (err.recoverable !== undefined) {
-				// console.log('parse error! recover?: '+ err.recoverable);
 				if (err.recoverable === true) {
 					//recovered from error
 					SymbolInfCol = await this.documentSymbolsFromCST(document, this.msxParser.parsedCST, { remapLocations: true });
@@ -84,29 +83,22 @@ export class mxsDocumentSymbolProvider
 					// throw err;
 				} else {
 					// fatal error
-					// console.log('parse error! recover?: '+ err.recoverable);
 					diagnostics.push(...provideParserDiagnostic(document, <ParserError>err));
-					// throw err;
 				}
 			} else {
 				// not a parser error
-				// setDiagnostics(undefined);
-				this.documentDiagnostics = diagnostics;
-				// console.log(err.message);
 				throw err;
 			}
 		}
-		// setDiagnostics
-		// setDiagnostics(diagnostics.length !== 0 ? diagnostics : undefined);
-		this.documentDiagnostics = diagnostics;
-		// return
-		// return SymbolInfCol.length > 0 ? SymbolInfCol : undefined;
-		return SymbolInfCol;
+		return {
+			symbols: SymbolInfCol,
+			diagnostics: diagnostics
+		};
 	}
 
 	// private wait = (delay: number, value?: any) => new Promise(resolve => setTimeout(resolve, delay, value));
 
-	async parseDocument(document: TextDocument, cancelation: CancellationToken): Promise<SymbolInformation[] | DocumentSymbol[]>
+	async parseDocument(document: TextDocument, cancelation: CancellationToken): Promise<ParserResult>
 	{
 		// this.activeDocument = undefined;
 		return new Promise((resolve, reject) =>
