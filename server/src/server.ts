@@ -5,29 +5,17 @@
 import
 {
 	CancellationToken,
-	// Command,
-	// CompletionItem,
 	createConnection,
-	// Definition,
-	// DefinitionLink,
 	DefinitionParams,
 	Diagnostic,
-	// DefinitionRequest,
-	// Diagnostic,
-	// DiagnosticSeverity,
 	DidChangeConfigurationNotification,
 	DocumentSymbol,
 	DocumentSymbolParams,
 	ExecuteCommandParams,
 	InitializeParams,
 	InitializeResult,
-	// Location,
-	// Position,
 	ProposedFeatures,
-	// Range,
-	// ShowMessageNotification,
 	SymbolInformation,
-	// TextDocumentIdentifier,
 	TextDocumentPositionParams,
 	TextDocuments,
 	TextDocumentSyncKind,
@@ -35,13 +23,12 @@ import
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as Path from 'path';
 //------------------------------------------------------------------------------------------
-import mxsCompletion from './mxsCompletions';
+import * as mxsCompletion from './mxsCompletions';
 import { mxsDocumentSymbols, ParserResult} from './mxsOutline';
-// import {mxsDiagnosticCollection} from './mxsDiagnostics';
-import mxsMinifier from './mxsMin';
+import * as mxsMinifier from './mxsMin';
 import * as utils from './lib/utils';
 import { Commands } from './mxsCommands';
-import mxsDefinitions from './mxsDefinitions';
+import * as mxsDefinitions from './mxsDefinitions';
 //------------------------------------------------------------------------------------------
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -52,13 +39,13 @@ export let connection = createConnection(ProposedFeatures.all);
 let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 let currentTextDocument: TextDocument;
 //------------------------------------------------------------------------------------------
-let hasConfigurationCapability: boolean = false;
-let hasWorkspaceFolderCapability: boolean = false;
-let hasCompletionCapability: Boolean = false;
+let hasConfigurationCapability:                boolean = false;
+let hasWorkspaceFolderCapability:              boolean = false;
+let hasCompletionCapability:                   Boolean = false;
 let hasDiagnosticRelatedInformationCapability: boolean = false;
-let hasDiagnosticCapability: boolean = false;
-let hasDocumentSymbolCapability: boolean = false;
-let hasDefinitionCapability: boolean = false;
+let hasDiagnosticCapability:                   boolean = false;
+let hasDocumentSymbolCapability:               boolean = false;
+let hasDefinitionCapability:                   boolean = false;
 //------------------------------------------------------------------------------------------
 connection.onInitialize((params: InitializeParams) =>
 {
@@ -145,12 +132,12 @@ connection.onInitialized(() =>
 // Settings
 interface MaxScriptSettings
 {
-	GoToSymbol: boolean;
-	GoToDefinition: boolean;
-	Diagnostics: boolean;
-	Completions: boolean;
-	// semantics: boolean;
+	GoToSymbol:       boolean;
+	GoToDefinition:   boolean;
+	Diagnostics:      boolean;
+	Completions:      boolean;
 	MinifyFilePrefix: string;
+	// semantics: boolean;
 	// ...
 }
 
@@ -160,12 +147,13 @@ interface MaxScriptSettings
 
 // put default settings here
 const defaultSettings: MaxScriptSettings = {
-	GoToSymbol: true,
-	GoToDefinition: true,
-	Diagnostics: true,
-	Completions: true,
-	//semantics:     true,
+	GoToSymbol:       true,
+	GoToDefinition:   true,
+	Diagnostics:      true,
+	Completions:      true,
 	MinifyFilePrefix: 'min_',
+	//semantics:     true,
+	//...
 };
 
 let globalSettings: MaxScriptSettings = defaultSettings;
@@ -191,25 +179,30 @@ function getDocumentSettings(resource: string): Thenable<MaxScriptSettings>
 //------------------------------------------------------------------------------------------
 let currentDocumentSymbols: DocumentSymbol[] | SymbolInformation[] = [];
 
-function parseDocument(document: TextDocument, cancelation: CancellationToken)
+function parseDocument(document: TextDocument, cancelation: CancellationToken):Thenable<DocumentSymbol[] | SymbolInformation[]>
 {
-	return new Promise<SymbolInformation[] | DocumentSymbol[]>((resolve, reject) =>
+	return new Promise<SymbolInformation[] | DocumentSymbol[]>((resolve) =>
 	{
-		mxsDocumentSymbols.parseDocument(document, cancelation).then(
-			result =>
-			{
-				diagnoseDocument(document, result.diagnostics);
-				resolve(result.symbols);
-			}
-		)
+		mxsDocumentSymbols.parseDocument(document, cancelation)
+			.then(
+				result =>
+				{
+					diagnoseDocument(document, result.diagnostics);
+					resolve(result.symbols);
+				},
+				() => {
+					diagnoseDocument(document, []);
+					resolve([]);
+				}
+			)
 			.catch(
 				error =>
 				{
-					reject([]);
+					diagnoseDocument(document, []);
+					resolve([]);
 				}
 			);
 	});
-
 	// return await mxsDocumentSymbols.parseDocument(document, cancelation);
 }
 
@@ -217,12 +210,6 @@ function diagnoseDocument(document: TextDocument, diagnose: Diagnostic[])
 {
 	// connection.console.log('We received a Diagnostic update event');
 	connection.sendDiagnostics({ uri: document.uri, diagnostics: diagnose });
-	/*
-	if (mxsDiagnosticCollection.length !== 0) {	
-		connection.console.log('We have diagnostics!');
-		connection.sendDiagnostics({ uri: document.uri, diagnostics: mxsDocumentSymbols.documentDiagnostics });
-	}
-	*/
 }
 
 async function validateDocument(textDocument: TextDocument): Promise<void>
@@ -235,10 +222,7 @@ async function validateDocument(textDocument: TextDocument): Promise<void>
 		- symbols and diagnostics
 	*/
 	// reset diagnostics
-	if (hasDiagnosticCapability) {
-		let resetDiagnostic:Diagnostic[] = [];
-		diagnoseDocument(textDocument, resetDiagnostic);
-	}
+	if (hasDiagnosticCapability) { diagnoseDocument(textDocument, []); }
 	//...
 }
 //------------------------------------------------------------------------------------------
@@ -273,18 +257,22 @@ documents.onDidChangeContent(change =>
 // documents.onDidOpen
 // documents.onDidSave
 
+// This handler resolves additional information for the item selected in the completion list.
+// connection.onCompletionResolve
+// connection.onSelectionRanges
+// connection.onTypeDefinition
+
 // connection.onDidChangeWatchedFiles(_change => {
-// Monitored files have change in VSCode
-// connection.console.log('We received an file change event');
+//	 Monitored files have change in VSCode
+//	 connection.console.log('We received an file change event');
 // });
 //------------------------------------------------------------------------------------------
 // Update the parsed document, and diagnostics on Symbols request... ?
 connection.onDocumentSymbol(async (_DocumentSymbolParams: DocumentSymbolParams, cancelation) =>
 {
 	if (!hasDocumentSymbolCapability) { return; }
-	// connection.console.log('We received a DocumentSymbol request');
-	
-	return await parseDocument(currentTextDocument, cancelation);
+	currentDocumentSymbols = await parseDocument(currentTextDocument, cancelation);
+	return currentDocumentSymbols;
 });
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
@@ -306,6 +294,7 @@ connection.onDefinition(async (_DefinitionParams: DefinitionParams) =>
 	// method 1: regex match the file
 	// method 2: search the parse tree for a match
 	// method 2.1: implement Workspace capabilities
+	
 	let definitions =
 		await mxsDefinitions.getDocumentDefinitions(
 			document,
@@ -316,10 +305,6 @@ connection.onDefinition(async (_DefinitionParams: DefinitionParams) =>
 		);
 	return definitions;
 });
-// This handler resolves additional information for the item selected in the completion list.
-// connection.onCompletionResolve
-// connection.onSelectionRanges
-// connection.onTypeDefinition
 
 // This handler porvides commands execution
 connection.onExecuteCommand(async (arg: ExecuteCommandParams) =>
@@ -379,6 +364,5 @@ connection.onExecuteCommand(async (arg: ExecuteCommandParams) =>
 // Make the text document manager listen on the connection
 // for open, change and close text document events
 documents.listen(connection);
-
 // Listen on the connection
 connection.listen();

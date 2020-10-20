@@ -105,7 +105,7 @@ export function provideParserDiagnostic(document: TextDocument, error: ParserErr
 				DiagnosticSeverity.Error
 			);
 			diag.source = 'MaxScript';
-			diag.code = error.name;
+			// diag.code = error.name;
 			// DISABLED: List of possible tokens
 			// let list = tokenListToValues(error.alternatives);
 			// let tokenDesc: string[] = list.map(item => tokenDefinitions[item]).sort();
@@ -124,7 +124,7 @@ export function provideTokenDiagnostic(document: TextDocument, errTokens: moo.To
 	if (!errTokens) { return []; }
 	let diagnostics: Diagnostic[] = errTokens.map(
 		t => ({
-			code: 'ERR_TOKEN',
+			// code: 'ERR_TOKEN',
 			message: `Unexpected token: ${t.text}`,
 			range: getTokenRange(document, t),
 			severity: DiagnosticSeverity.Warning,

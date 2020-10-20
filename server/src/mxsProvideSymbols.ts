@@ -14,7 +14,7 @@ import getObj from 'ast-get-object';
 //@ts-ignore
 import getAllValuesByKey from 'ast-get-values-by-key';
 //@ts-ignore
-import astMonkeyTraverse from 'ast-monkey-traverse';
+import traverse from 'ast-monkey-traverse';
 //@ts-ignore
 import objectPath from 'object-path';
 
@@ -137,9 +137,9 @@ export abstract class range
 		// let paths: any[] = [];
 		let childs: any[] = [];
 		// traverse the node to collect first and last child offset
-		astMonkeyTraverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
+		traverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
 		{
-			const current = val1 !== null ? val1 : key1;
+			const current = val1 ?? key1;
 			if (key1 === 'offset') {
 				// paths.push(parentPath(innerObj.path));
 				childs.push(innerObj.parent);
@@ -163,9 +163,9 @@ export abstract class range
 	{
 		let childs: any[] = [];
 		// traverse the node to collect first and last child offset
-		astMonkeyTraverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
+		traverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
 		{
-			const current = val1 !== null ? val1 : key1;
+			const current = val1 ?? key1;
 			if (key1 === 'line') {
 				childs.push(innerObj.parent);
 			}
@@ -185,9 +185,9 @@ export abstract class range
 	{
 		let childs: any[] = [];
 		// traverse the node to collect first and last child offset
-		astMonkeyTraverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
+		traverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
 		{
-			const current = val1 !== null ? val1 : key1;
+			const current = val1 ?? key1;
 			if (key1 === 'line') {
 				childs.push(innerObj.parent);
 			}
@@ -202,7 +202,7 @@ export abstract class range
 export function getTokenRange(document: TextDocument, token: moo.Token)
 {
 	let startPosition = Position.create(token.line - 1, token.col - 1);
-	let endOffset = token.col + (token.text.length || token.value.length) - 2;
+	let endOffset = token.col + (token.text.length || token.value.length) - 1;
 	let endPosition = Position.create(token.line - 1, endOffset);
 
 	return Range.create(startPosition, endPosition);
@@ -268,9 +268,9 @@ export function collectStatementsFromCST(CST: any | any[], key: string = 'id')
 {
 	let statements: string[] = [];
 	//traverse the CST
-	astMonkeyTraverse(CST, (key1: string, val1: null, innerObj: { path: string }, stop: any) =>
+	traverse(CST, (key1: string, val1: null, innerObj: { path: string }, stop: any) =>
 	{
-		const current = val1 !== null ? val1 : key1;
+		const current = val1 ?? key1;
 		if (key1 === key) { statements.push(parentPath(innerObj.path)!); }
 		return current;
 	});
@@ -390,23 +390,22 @@ export async function ReCollectSymbols(document: TextDocument, nodes: NodeMap[] 
  * Return errorSymbol from invalid tokens
  * @param {object} CST the CST
  */
-export function collectTokens(CST: any, key: string = 'type', value?: any)
+export function collectTokens(CST: any, key: string = 'type', value?: string)
 {
 	let Tokens: moo.Token[] = [];
-
 	if (value) {
-		astMonkeyTraverse(CST, (key1: string, val1: string | null, innerObj: { parent: any }) =>
+		traverse(CST, (key1: string, val1: string | null, innerObj: { parent: any }) =>
 		{
-			const current = val1 !== null ? val1 : key1;
+			const current = val1 ?? key1;
 			if (key1 === key && val1 === value) {
 				Tokens.push(innerObj.parent);
 			}
 			return current;
 		});
 	} else {
-		astMonkeyTraverse(CST, (key1: string, val1: string | null, innerObj: { parent: any }) =>
+		traverse(CST, (key1: string, val1: string | null, innerObj: { parent: any }) =>
 		{
-			const current = val1 !== null ? val1 : key1;
+			const current = val1 ?? key1;
 			if (key1 === key) {
 				Tokens.push(innerObj.parent);
 			}

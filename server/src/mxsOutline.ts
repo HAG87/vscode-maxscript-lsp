@@ -1,5 +1,4 @@
 'use strict';
-// import * as cp from 'child_process';
 import
 {
 	CancellationToken,
@@ -11,14 +10,10 @@ import { TextDocument, } from 'vscode-languageserver-textdocument';
 import
 {
 	provideParserDiagnostic,
-	// setDiagnostics,
 	provideTokenDiagnostic,
-	ParserError
 } from './mxsDiagnostics';
 import
 {
-	// collectStatementsFromCST,
-	// collectSymbols,
 	ReCollectStatementsFromCST,
 	ReCollectSymbols,
 	collectTokens
@@ -63,32 +58,32 @@ export class mxsDocumentSymbolProvider
 
 	private async _getDocumentSymbols(document: TextDocument): Promise<ParserResult>
 	{
-
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
 		let diagnostics: Diagnostic[] = [];
 
-		try {
-			// feed the parser
-			this.msxParser.source = document.getText();
-			await this.msxParser.ParseSourceAsync();
-			SymbolInfCol = await this.documentSymbolsFromCST(document, this.msxParser.parsedCST);
-			diagnostics.push(...provideTokenDiagnostic(document, collectTokens(this.msxParser.parsedCST, 'type', 'error')));
-		} catch (err) {
-			if (err.recoverable !== undefined) {
-				if (err.recoverable === true) {
-					//recovered from error
-					SymbolInfCol = await this.documentSymbolsFromCST(document, this.msxParser.parsedCST, { remapLocations: true });
-					diagnostics.push(...provideTokenDiagnostic(document, collectTokens(this.msxParser.parsedCST, 'type', 'error')));
-					diagnostics.push(...provideParserDiagnostic(document, <ParserError>err));
-					// throw err;
-				} else {
-					// fatal error
-					diagnostics.push(...provideParserDiagnostic(document, <ParserError>err));
-				}
-			} else {
-				// not a parser error
-				throw err;
+		// feed the parser
+		this.msxParser.source = document.getText();
+		let results = await this.msxParser.ParseSourceAsync();
+		// catch errors?
+		// the parser either finished at the first run, or recovered from an error, we have a CST...
+		if (results.result !== undefined) {
+			if (results.error === undefined) {
+				// no problems so far...
+				SymbolInfCol = await this.documentSymbolsFromCST(document, this.msxParser.parsedCST);
+				// check for trivial errors
+				diagnostics.push(...provideTokenDiagnostic(document, collectTokens(this.msxParser.parsedCST, 'type', 'error')));
 			}
+			else {
+				//recovered from error
+				SymbolInfCol = await this.documentSymbolsFromCST(document, this.msxParser.parsedCST, { remapLocations: true });
+				diagnostics.push(...provideTokenDiagnostic(document, collectTokens(this.msxParser.parsedCST, 'type', 'error')));
+				diagnostics.push(...provideParserDiagnostic(document, results.error));
+			}
+		} else if (results.error !== undefined) {
+			// fatal error
+			diagnostics.push(...provideParserDiagnostic(document, results.error));
+		} else {
+			// no results... what?
 		}
 		return {
 			symbols: SymbolInfCol,
@@ -96,9 +91,7 @@ export class mxsDocumentSymbolProvider
 		};
 	}
 
-	// private wait = (delay: number, value?: any) => new Promise(resolve => setTimeout(resolve, delay, value));
-
-	async parseDocument(document: TextDocument, cancelation: CancellationToken): Promise<ParserResult>
+	parseDocument(document: TextDocument, cancelation: CancellationToken): Promise<ParserResult>
 	{
 		// this.activeDocument = undefined;
 		return new Promise((resolve, reject) =>
@@ -108,17 +101,10 @@ export class mxsDocumentSymbolProvider
 			cancelation.onCancellationRequested(async () => reject('Cancellation requested'));
 			this._getDocumentSymbols(document)
 				.then(
-					result =>
-					{
-						resolve(result);
-					})
-				.catch(
-					err =>
-					{
-						reject(err);
-					});
-		}
-		);
+					result => resolve(result),
+					reason => reject(reason))
+				.catch(err => reject(err));
+		});
 		// });
 	}
 }

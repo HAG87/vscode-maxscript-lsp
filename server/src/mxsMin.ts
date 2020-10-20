@@ -5,64 +5,62 @@ import * as fs from 'fs';
 import { mxsMinify } from './lib/mxsCompactCode';
 import { mxsParseSource } from './mxsParser';
 //--------------------------------------------------------------------------------
-export default class mxsMinifier {
-	// COMPACT THE CODE
-	// make this async...
-	private static minCode(parserTree: any[])
+// make this async...
+function minCode(parserTree: any[])
+{
+	return mxsMinify(parserTree);
+}
+
+function minifyWrite(path: string, data: string)
+{
+
+	return new Promise((resolve, reject) =>
 	{
-		return mxsMinify(parserTree);
-	}
-
-	private static minifyWrite(path: string, data: string) {
-
-		return new Promise((resolve, reject) => {
-			fs.writeFile(path, Buffer.from(data, 'utf8'),
-				(err) => {
-					err ? reject(err) : resolve();
-				}
-			);
-		});
-	}
-
-	private static minifyRead(path: string)
-	{
-		return new Promise((resolve, reject) => {
-			fs.readFile(path, 'utf8', (err, data) => {
-				err ? reject(err) : resolve(data);
-			});
-		});
-	}
-
-	static async MinifyData(data: any | any[] | string)
-	{
-		if (typeof data === 'string') {
-			// try {
-			let parser = new mxsParseSource(data);
-			await parser.ParseSourceAsync();
-			if (Array.isArray(parser.parsedCST) && parser.parsedCST.length > 0) {
-				return mxsMinifier.minCode(parser.parsedCST);
-			} else {
-				throw new Error('Parser failed.');
+		fs.writeFile(path, Buffer.from(data, 'utf8'),
+			(err) =>
+			{
+				err ? reject(err) : resolve();
 			}
-			// }
-			// catch (err) {
-			// throw err;
-			// }
-		} else {
-			return mxsMinifier.minCode(data);
-		}
-	}
+		);
+	});
+}
 
-	static async MinifyDoc(data: any | any[] | string, savePath:string)
-	{ 
-		let minify = await mxsMinifier.MinifyData(data);
-		await mxsMinifier.minifyWrite(savePath, minify);
-	}
-
-	static async MinifyFile(src: string, dest: string)
+function minifyRead(path: string)
+{
+	return new Promise((resolve, reject) =>
 	{
-		let data = await mxsMinifier.minifyRead(src);
-		let minify = await mxsMinifier.MinifyData(data);
-		await mxsMinifier.minifyWrite(dest, minify);
+		fs.readFile(path, 'utf8', (err, data) =>
+		{
+			err ? reject(err) : resolve(data);
+		});
+	});
+}
+
+export async function MinifyData(data: any | any[] | string)
+{
+	if (typeof data === 'string') {
+		// try {
+		let parser = new mxsParseSource(data);
+		await parser.ParseSourceAsync();
+		if (Array.isArray(parser.parsedCST) && parser.parsedCST.length > 0) {
+			return minCode(parser.parsedCST);
+		} else {
+			throw new Error('Parser failed.');
+		}
+	} else {
+		return minCode(data);
 	}
+}
+
+export async function MinifyDoc(data: any | any[] | string, savePath: string)
+{
+	let minify = await MinifyData(data);
+	await minifyWrite(savePath, minify);
+}
+
+export async function MinifyFile(src: string, dest: string)
+{
+	let data = await minifyRead(src);
+	let minify = await MinifyData(data);
+	await minifyWrite(dest, minify);
 }

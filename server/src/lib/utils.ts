@@ -131,3 +131,10 @@ export function pathToUri(filepath: string, documents: LspDocuments | undefined)
 	const document = documents && documents.get(fileUri.fsPath);
 	return document ? document.uri : fileUri.toString();
 }
+
+/**
+ * Generic wait function
+ * @param delay 
+ * @param value 
+ */
+export const wait = (delay: number, value?: any) => new Promise(resolve => setTimeout(resolve, delay, value));
