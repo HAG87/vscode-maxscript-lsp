@@ -5,8 +5,8 @@ export interface MaxScriptSettings {
 	GoToDefinition: boolean;
 	Diagnostics: boolean;
 	Completions: boolean;
-	// semantics: boolean;
 	MinifyFilePrefix: string;
+	semantics?: boolean;
 	// ...
 }
 
