@@ -1,9 +1,9 @@
 // moo tokenizer
-const moo = require('moo');
+import { keywords, compile } from 'moo';
 //-----------------------------------------------------------------------------------
 // CASE INSENSITIVE FOR KEYWORKDS
 const caseInsensitiveKeywords = map => {
-	const transform = moo.keywords(map);
+	const transform = keywords(map);
 	return text => transform(text.toLowerCase());
 };
 //-----------------------------------------------------------------------------------
@@ -96,95 +96,96 @@ const keywordsDB = {
 };
 //-----------------------------------------------------------------------------------
 // Moo Lexer
-var mxLexer = moo.compile({
+var mxLexer = compile({
 	// the comments
-	comment_SL: { match: /--.*$/ },
+	comment_SL: /--.*$/,
 	comment_BLK: { match: /\/\*(?:.|[\n\r])*?\*\//, lineBreaks: true, },
 	// strings
 	string: [
-		{ match: /@"(?:\\"|[^"])*?(?:"|\\")/, lineBreaks: true},
-		{ match: /"(?:\\["\\rntsx]|[^"])*?"/, lineBreaks: true},
-		// { match: /"""[^]*?"""/, lineBreaks: true, value: x => x.slice(3, -3)},
+		{ match: /@"(?:\\"|[^"])*?(?:"|\\")/, lineBreaks: true },
+		{ match: /"(?:\\["\\rntsx]|[^"])*?"/, lineBreaks: true },
 	],
 	// whitespace -  also matches line continuations
 	ws: { match: /(?:[ \t]+|(?:[\\][ \t\r\n]+))/, lineBreaks: true },
-	// newline: { match: /(?:[\r\n]|[\\]\s*[\r\n])+/, lineBreaks: true },
 	newline: { match: /(?:[\r\n]+)/, lineBreaks: true },
 
 	// path_name $mounstrosity*/_?
 	path: [
-		{ match: /[$](?:[A-Za-z0-9_*?/\\]|\.\.\.)+/ },
-		{ match: /[$]/ }
+		/[$](?:[A-Za-z0-9_*?/\\]|\.\.\.)+/,
+		'$'
 	],
 	// strings ~RESOURCE~
-	locale: { match: /~[A-Za-z0-9_]+~/},
+	locale: /~[A-Za-z0-9_]+~/,
 	// parameter <param_name>:
-	global_typed: { match: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/ },
+	global_typed: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
+
 	// params: { match: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[ \t]*[:][^:])/ },
 	// property <object>.<property>
 	// property: { match: /\.[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/, value: x => x.slice(1) },
 	// ::global variable
+
 	// IDENTIFIERS
 	identity: [
-		{ match: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[ \t]*[:][^:])/ },
-		{ match: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=\.)/},
-		{ match: /(?<=\.)[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/},
+		/[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[ \t]*[:][^:])/,
+		/[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=\.)/,
+		/(?<=\.)[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
 		{
 			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
 			type: caseInsensitiveKeywords(keywordsDB)
 		}
 	],
-	param: { match: /:{1}/ },
+	param: ':',
 	// a mounstrosity
-	typed_iden: { match: /'(?:\\['\\rn]|[^'\\\n])*?'/},
+	typed_iden: /'(?:\\['\\rn]|[^'\\\n])*?'/,
 	// array marker #(...) | #{...}
-	arraydef: { match: /#[ \t]*\(/ },
-	bitarraydef: { match: /#[ \t]*{/ },
+	arraydef: /#[ \t]*\(/,
+	bitarraydef: /#[ \t]*\{/,
 	// PARENS
-	lparen: { match: /\(/ },
-	rparen: { match: /\)/ },
+	emptyparens: /\([\s\t]*\)/,
+	lparen: '(',
+	rparen: ')',
 	// BRACKETS, BRACES...
-	lbracket: { match: /\[/ },
-	rbracket: { match: /\]/ },
-	lbrace: { match: /\{/ },
-	rbrace: { match: /\}/ },
+	emptybracket: /\[[\s\t]*\]/,
+	lbracket: '[',
+	rbracket: ']',
+	lbrace: '{',
+	rbrace: '}',
 	// Operators.
 	comparison: ['==', '!=', '>', '<', '>=', '<='],
 	assign: ['=', '+=', '-=', '*=', '/='],
 	// unary: {match: /(?<=[^\w)-])-(?![-\s])/},
-	math: ['+', '-', '*', '/', '^'],
 	// time format
 	time: [
-		{ match: /(?:[-]?(?:[0-9]+[.])?[0-9]+[msft])+/ },
-		{ match: /(?:[-]?(?:[0-9]+[.])[0-9]*[msft])+/ },
-		{ match: /[0-9]+[:][0-9]+[.][0-9]*/ }
+		/(?:[-]?(?:[0-9]+\.)?[0-9]+[msft])+/,
+		/(?:[-]?(?:[0-9]+\.)[0-9]*[msft])+/,
+		/[0-9]+[:][0-9]+\.[0-9]*/
 	],
 	// number formats
-	bitrange: { match: /[.]{2}/ },
+	bitrange: '..',
 	hex: { match: /0[xX][0-9a-fA-F]+/ },
 	number: [
-		{ match: /(?:[-]?[0-9]*)[.](?:[0-9]+(?:[eEdD][+-]?[0-9]+)?)/ }, // 123.123d-6
-		{ match: /(?:[-]?[0-9]+\.(?!\.))/ }, // 123.
-		{ match: /[-]?[0-9]+(?:[LP]|[eEdD][+-]?[0-9]+)?/ }, // 456 | 123e-5 | integers
-		{ match: /(?:(?<!\.)[-]?\.[0-9]+(?:[eEdD][+-]?[0-9]+)?)/ }, // -.789e-9
+		/(?:[-]?[0-9]*)[.](?:[0-9]+(?:[eEdD][+-]?[0-9]+)?)/,
+		/(?:[-]?[0-9]+\.(?!\.))/,
+		/[-]?[0-9]+(?:[LP]|[eEdD][+-]?[0-9]+)?/,
+		/(?:(?<!\.)[-]?\.[0-9]+(?:[eEdD][+-]?[0-9]+)?)/
 	],
+	unaryminus: /-[^\s\t\r\n]/,
+	math: ['+', '-', '*', '/', '^'],
 	// #name literals .. should go higher??
 	name: [
-		{ match: /#[A-Za-z0-9_]+\b/ },
-		{ match: /#'[A-Za-z0-9_]+'/ },
+		/#[A-Za-z0-9_]+\b/,
+		/#'[A-Za-z0-9_]+'/
 	],
 	// DELIMITERS
-	delimiter: { match: /\./ },
-	sep: { match: /,/ },
-	// NEWLINES
-	statement: { match: /;/ },
-	// [\$?`] COMPLETE WITH UNWANTED CHARS HERE THAT CAN BREAK THE TOKENIZER
-	error: [
-		{ match: /[¿¡!`´]/, error: true},
-		{ match: /[/?\\]{2,}/ },
-	],
+	delimiter: '.',
+	sep: ',',
+	statement: ';',
 	// This contains the rest of the stack in case of error.
+	error: [
+		{ match: /[¿¡!`´]/, error: true },
+		/[/?\\]{2,}/
+	],
 	// fatalError: moo.error
 });
 //-----------------------------------------------------------------------------------
-module.exports = mxLexer;
+export default mxLexer;

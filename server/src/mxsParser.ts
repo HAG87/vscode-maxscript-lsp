@@ -12,7 +12,7 @@ import moo from 'moo';
 // import mxLexer from './lib/mooTokenize.js';
 
 const grammar = require('./lib/grammar');
-const mxLexer = require('./lib/mooTokenize');
+const mxsTokenizer = require('./lib/mooTokenize');
 
 import { ParserError } from './mxsDiagnostics';
 //-----------------------------------------------------------------------------------
@@ -38,22 +38,22 @@ function HashSource(source: BinaryLike): string
  * @param source Data to tokenize
  * @param filter keywords to exclude in tokens
  */
-function TokenizeStream(source: string, filter?: string[]): moo.Token[]
+export function TokenizeStream(source: string, filter?: string[], Tokenizer = mxsTokenizer): moo.Token[]
 {
 	if (filter instanceof Array) {
-		mxLexer.next = (next => () =>
+		Tokenizer.next = (next => () =>
 		{
 			let tok;
 			// IGNORING COMMENTS....
-			while ((tok = next.call(mxLexer)) && (filter.includes)) /* empty statement */ { }
+			while ((tok = next.call(Tokenizer)) && (filter.includes)) /* empty statement */ { }
 			return tok;
-		})(mxLexer.next);
+		})(Tokenizer.next);
 	}
 	// feed the tokenizer
-	mxLexer.reset(source);
+	Tokenizer.reset(source);
 	let token: moo.Token | undefined;
 	let toks: moo.Token[] = [];
-	while ((token = mxLexer.next())) {
+	while ((token = Tokenizer.next())) {
 		toks.push(token);
 	}
 	return toks;
