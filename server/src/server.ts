@@ -263,13 +263,14 @@ connection.onDocumentSymbol(
 				.then(
 					result =>
 					{
+						// connection.console.log('--> symbols sucess ');
 						diagnoseDocument(document, result.diagnostics);
 						resolve(result.symbols);
 					},
-					reason =>
+					// reason =>
+					() =>
 					{
-						connection.console.log('SOME REJECTION HAPPENED ON DOCSYMBOLS: ' + reason);
-
+						// connection.console.log('SOME REJECTION HAPPENED ON DOCSYMBOLS: ' + reason);
 						diagnoseDocument(document, []);
 						resolve();
 					}
@@ -277,7 +278,7 @@ connection.onDocumentSymbol(
 				.catch(
 					error =>
 					{
-						connection.console.log('SOME ERROR HAPPENED ON DOCSYMBOLS: ' + error);
+						// connection.console.log('SOME ERROR HAPPENED ON DOCSYMBOLS: ' + error);
 						diagnoseDocument(document, []);
 						resolve();
 					}
@@ -297,28 +298,30 @@ connection.onCompletion(
 	}
 );
 // This handler provides Definition results
+// unhandled: Error defaults to no results 
 connection.onDefinition(
 	async (_DefinitionParams: DefinitionParams) =>
 	{
 		let settings = await getDocumentSettings(currentTextDocument.uri);
 		if (!Capabilities.hasDefinitionCapability && !settings.GoToDefinition) { return; }
 
-		// let document = documents.get(_DefinitionParams.textDocument.uri)!;
-		// let document = currentTextDocument;
-
 		// method 1: regex match the file
 		// method 2: search the parse tree for a match
 		// method 2.1: implement Workspace capabilities
 
-		let definitions =
-			await mxsDefinitions.getDocumentDefinitions(
-				documents.get(_DefinitionParams.textDocument.uri)!,
-				_DefinitionParams.position,
-				//TODO: CHANGE THIS
-				mxsDocumentSymbols.msxParser.parsedCST,
-				currentDocumentSymbols
-			);
-		return definitions;
+		try {
+			let definitions =
+				await mxsDefinitions.getDocumentDefinitions(
+					documents.get(_DefinitionParams.textDocument.uri)!,
+					_DefinitionParams.position,
+					mxsDocumentSymbols.msxParser.parsedCST,
+					currentDocumentSymbols
+				);
+			return definitions;
+		} catch (err) {
+			// connection.console.log('MaxScript Definitions unhandled error: ' + err.message);
+			return [];
+		}
 	});
 //------------------------------------------------------------------------------------------
 /* Commands */

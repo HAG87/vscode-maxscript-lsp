@@ -131,37 +131,45 @@ export function getDocumentDefinitions(
 	position: Position,
 	parseCST?: any[],
 	DocumentSymbols?: DocumentSymbol[] | SymbolInformation[]
-): Promise<Definition | DefinitionLink[]>
+): Promise<Definition | DefinitionLink[] | undefined>
 {
 	return new Promise((resolve, reject) =>
 	{
 		// try to avoid words inside inline comments
 		let word = getWordAtPosition(document, position, '--');
 		if (!word) {
+			// console.log('DEFINITIONS: No input word.');
 			reject('No input word.');
 			return;
 		}
 
+		// use documentSymbols
+		//FIXME: PROBLEM WITH CHARACTER OFFSET! - MAYBE LINE NUMBER - MAYBE HAS TO DO WITH WHITESPACE
+		// console.log('DEFINITIONS: symbols available');
+
 		if (DocumentSymbols !== undefined) {
-			//FIXME: PROBLEM WITH CHARACTER OFFSET! - MAYBE LINE NUMBER - MAYBE HAS TO DO WITH WHITESPACE
-			// console.log('symbolMatch');
 			let _symbolMatch = symbolMatch(document, DocumentSymbols as DocumentSymbol[], word);
 			if (_symbolMatch !== undefined) {
 				resolve([_symbolMatch]);
-			} else if (parseCST !== undefined) {
-				// search the parse tree -- DISABLED
-				// console.log('cstMatch');
-				// let cstMatch = mxsDefinitions.cstMatch(document, parseCST, word);
-				// cstMatch !== undefined ? resolve([cstMatch]) : reject('No matches.');
-				// return no matches
-				reject('No matches.');
+				return;
 			}
-		} else {
-			// search the parse tree
-			// console.log('wordMatch');
-			let _wordMatch = wordMatch(document, word);
-			// console.log(JSON.stringify(wordMatch, null, 2));
-			_wordMatch !== undefined ? resolve(_wordMatch) : reject('No matches.');
 		}
+
+		// use the parse tree -- DISABLED
+		/*
+		console.log('DEFINITIONS: symbols un-available, using CST');
+		if (parseCST !== undefined) {
+			let _cstMatch = cstMatch(document, parseCST, word);
+			if (_cstMatch !== undefined) {
+				resolve([_cstMatch]);
+				return;
+			}
+		}
+		*/
+		// fallback to regex match
+		// console.log('DEFINITIONS: symbols un-available, using regex');
+
+		let _wordMatch = wordMatch(document, word);
+		_wordMatch !== undefined ? resolve(_wordMatch) : reject('No matches.');
 	});
 }

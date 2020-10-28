@@ -63,8 +63,8 @@ export class mxsDocumentSymbolProvider
 
 		// feed the parser
 		this.msxParser.source = document.getText();
+		// try {
 		let results = await this.msxParser.ParseSourceAsync();
-		// catch errors?
 		// the parser either finished at the first run, or recovered from an error, we have a CST...
 		if (results.result !== undefined) {
 			if (results.error === undefined) {
@@ -72,23 +72,24 @@ export class mxsDocumentSymbolProvider
 				SymbolInfCol = await this.documentSymbolsFromCST(document, this.msxParser.parsedCST);
 				// check for trivial errors
 				diagnostics.push(...provideTokenDiagnostic(document, collectTokens(this.msxParser.parsedCST, 'type', 'error')));
-			}
-			else {
+			} else {
 				//recovered from error
 				SymbolInfCol = await this.documentSymbolsFromCST(document, this.msxParser.parsedCST, { remapLocations: true });
 				diagnostics.push(...provideTokenDiagnostic(document, collectTokens(this.msxParser.parsedCST, 'type', 'error')));
 				diagnostics.push(...provideParserDiagnostic(document, results.error));
 			}
 		} else if (results.error !== undefined) {
-			// fatal error
+			// fatal parser error
 			diagnostics.push(...provideParserDiagnostic(document, results.error));
-		} else {
-			// no results... what?
 		}
 		return {
 			symbols: SymbolInfCol,
 			diagnostics: diagnostics
 		};
+		// } catch (err) {
+		// 	console.log('MaxScript Parser unhandled error: ' + err.message);
+		// 	throw err;
+		// }
 	}
 
 	parseDocument(document: TextDocument, cancelation: CancellationToken): Promise<ParserResult>
