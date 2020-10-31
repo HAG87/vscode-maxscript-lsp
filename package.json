@@ -148,9 +148,9 @@
 		},
 		"configuration": {
 			"type": "object",
-			"title": "Language MaxScript",
+			"title": "MaxScript",
 			"properties": {
-				"languageServerMaxScript.trace.server": {
+				"MaxScript.trace.server": {
 					"scope": "window",
 					"type": "string",
 					"enum": [
@@ -161,43 +161,49 @@
 					"default": "off",
 					"description": "Traces the communication between VS Code and the language server."
 				},
-				"languageServerMaxScript.GoToSymbol": {
+				"MaxScript.GoToSymbol": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Enable Document Symbols and Diagnostics."
 				},
-				"languageServerMaxScript.GoToDefinition": {
+				"MaxScript.GoToDefinition": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Enable Document Definitions."
 				},
-				"languageServerMaxScript.Diagnostics": {
+				"MaxScript.Diagnostics": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Enable Document diagnostics"
 				},
-				"languageServerMaxScript.Completions": {
+				"MaxScript.Completions": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Enable suggest completions"
 				},
-				"maxscript.Language.Semantics": {
+				"MaxScript.formatter.indentOnly": {
 					"scope": "resource",
 					"type": "boolean",
-					"default": true,
-					"description": "Enable Semantic highlight"
+					"default": false,
+					"description": "Indent code lines only, disable formatting for all other matters"
 				},
-				"languageServerMaxScript.MinifyFilePrefix": {
+				"MaxScript.MinifyFilePrefix": {
 					"scope": "resource",
 					"type": "string",
 					"default": "min_",
 					"description": "Prefix for code minify output"
 				},
-				"maxscript.Help.Provider": {
+				"MaxScript.language.semantics": {
+					"scope": "resource",
+					"type": "boolean",
+					"default": true,
+					"description": "Enable Semantic highlight"
+				},
+				"MaxScript.help.provider": {
 					"scope": "resource",
 					"type": "string",
 					"default": "http://help.autodesk.com/view/3DSMAX/2021/ENU/",

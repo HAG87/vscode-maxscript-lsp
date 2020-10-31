@@ -1,7 +1,6 @@
 'use strict';
 import
 {
-	// CancellationToken,
 	Definition,
 	DefinitionLink,
 	Location,
@@ -10,6 +9,7 @@ import
 	Position,
 	SymbolInformation,
 	DocumentSymbol,
+	CancellationToken,
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 //------------------------------------------------------------------------------------------
@@ -129,12 +129,16 @@ function cstMatch(document: TextDocument, CST: any | any[], searchword: string)
 export function getDocumentDefinitions(
 	document: TextDocument,
 	position: Position,
+	cancellation: CancellationToken,
+	DocumentSymbols?: DocumentSymbol[] | SymbolInformation[],
 	parseCST?: any[],
-	DocumentSymbols?: DocumentSymbol[] | SymbolInformation[]
 ): Promise<Definition | DefinitionLink[] | undefined>
 {
 	return new Promise((resolve, reject) =>
 	{
+		// cancellation request
+		cancellation.onCancellationRequested(async () => reject('Cancellation requested'));
+
 		// try to avoid words inside inline comments
 		let word = getWordAtPosition(document, position, '--');
 		if (!word) {
@@ -166,6 +170,7 @@ export function getDocumentDefinitions(
 			}
 		}
 		*/
+		
 		// fallback to regex match
 		// console.log('DEFINITIONS: symbols un-available, using regex');
 

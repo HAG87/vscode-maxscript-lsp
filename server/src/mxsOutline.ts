@@ -92,14 +92,15 @@ export class mxsDocumentSymbolProvider
 		// }
 	}
 
-	parseDocument(document: TextDocument, cancelation: CancellationToken): Promise<ParserResult>
+	parseDocument(document: TextDocument, cancellation: CancellationToken): Promise<ParserResult>
 	{
 		// this.activeDocument = undefined;
 		return new Promise((resolve, reject) =>
 		{
 			// this.later(500).then(
 			// () => {
-			cancelation.onCancellationRequested(async () => reject('Cancellation requested'));
+			// cancellation request
+			cancellation.onCancellationRequested(async () => reject('Cancellation requested'));
 			this._getDocumentSymbols(document)
 				.then(
 					result => resolve(result),

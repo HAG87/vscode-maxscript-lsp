@@ -17,9 +17,9 @@ import
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
-	TransportKind
+	TransportKind,
+	RequestType
 } from 'vscode-languageclient';
-import * as Path from 'path';
 //------------------------------------------------------------------------------------------
 import { mxsDocumentSemanticTokensProvider, legend } from './mxsSemantics';
 import mxsHelp from './mxsHelp';
@@ -28,10 +28,20 @@ let client: LanguageClient;
 //------------------------------------------------------------------------------------------
 export const MXS_DOC = {
 	// scheme: 'file',
-	language: 'maxscript',
 	// pattern: '*.{ms,mcr}'
+	language: 'maxscript',
 };
 //------------------------------------------------------------------------------------------
+interface MinifyDocParams
+{
+	command: string
+	uri: string[];
+}
+
+namespace MinifyDocRequest
+{
+	export const type = new RequestType<MinifyDocParams, string[] | null, void>('MaxScript/minify');
+}
 
 export function activate(context: ExtensionContext)
 {
@@ -72,35 +82,64 @@ export function activate(context: ExtensionContext)
 		clientOptions
 	);
 	//------------------------------------------------------------------------------------------
-	// MaxScript Help command
-	context.subscriptions.push( commands.registerTextEditorCommand('mxs.help', (textEditor) => { mxsHelp(textEditor); }) );
 	context.subscriptions.push(
+		// MaxScript Help command
+		commands.registerTextEditorCommand('mxs.help', (textEditor) => { mxsHelp(textEditor); }),
+		// minify commands
 		commands.registerCommand('mxs.minify.files',
-			async () =>
+			async args =>
 			{
-				// get files...
-				let files = await window.showOpenDialog({
+				window.showOpenDialog({
 					canSelectMany: true,
 					filters: {
 						'MaxScript': ['ms', 'mcr']
 					}
-				});
-				if (files) {
-					let filesPath = files.map(f => Path.normalize(f.fsPath));
-					// execute file minifier
-					await commands.executeCommand('mxs.minify.file', filesPath);
-				} else {
-					// no files
+				}).then(
+					async uris =>
+					{
+						if (uris === undefined) { return; }
+
+						let params: MinifyDocParams = {
+							command: 'mxs.minify.files',
+							uri: uris?.map(x => client.code2ProtocolConverter.asUri(x))
+						};
+						await client.sendRequest(MinifyDocRequest.type, params);
+					}
+				);
+			}),
+		commands.registerCommand('mxs.minify',
+			async () =>
+			{
+				let activeEditorUri = window.activeTextEditor?.document.uri;
+
+				if (activeEditorUri === undefined
+					|| activeEditorUri.scheme !== 'file'
+					|| window.activeTextEditor?.document.isDirty) {
+					await window.showInformationMessage('MaxScript minify: Save your file first.');
+					return;
 				}
-			}
-		)
+				let params: MinifyDocParams = {
+					command: 'mxs.minify',
+					uri: [client.code2ProtocolConverter.asUri(activeEditorUri)]
+				};
+				await client.sendRequest(MinifyDocRequest.type, params);
+			}),
+		commands.registerCommand('mxs.minify.file',
+			async args =>
+			{
+				let params: MinifyDocParams = {
+					command: 'mxs.minify.file',
+					uri: [client.code2ProtocolConverter.asUri(args)]
+				};
+				await client.sendRequest(MinifyDocRequest.type, params);
+			})
 	);
 	//------------------------------------------------------------------------------------------
 	// FEATURES IMPLEMENTED IN CLIENT...
-	let mxsConfig = (workspace.getConfiguration('maxscript'));
+	let mxsConfig = (workspace.getConfiguration('MaxScript'));
 
 	// semantics
-	if (mxsConfig.get('Language.Semantics', true)) {
+	if (mxsConfig.get('language.semantics', true)) {
 		context.subscriptions.push(
 			languages.registerDocumentSemanticTokensProvider(
 				MXS_DOC.language!,
