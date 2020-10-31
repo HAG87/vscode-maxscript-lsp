@@ -28,22 +28,26 @@ const keywords = ['kw_about', 'kw_case', 'kw_catch', 'kw_collect', 'kw_compare',
 	'kw_struct', 'kw_submenu', 'kw_then', 'kw_tool', 'kw_try', 'kw_undo', 'kw_utility',
 	'kw_when', 'kw_where', 'kw_while', 'kw_with'];
 
-const filterCurrent = ['newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces'];
-const filterAhead = ['newline', 'delimiter', 'sep', 'param', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces'];
+const filterCurrent = ['newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange'];
+const filterAhead   = ['newline', 'delimiter', 'sep', 'param', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange'];
 
-const IndentTokens = ['lparen', 'arraydef', 'lbracket', 'lbrace', 'bitarraydef'];
+const IndentTokens   = ['lparen', 'arraydef', 'lbracket', 'lbrace', 'bitarraydef'];
 const UnIndentTokens = ['rparen', 'rbracket', 'rbrace'];
 
 // Helpers
 const getRange = (line: number, col: number, length: number) => Range.create(Position.create(line, col), Position.create(line, col + length));
 const getPos = (line: number, col: number) => Position.create(line, col);
 
-// this should be promisified
-/**
- * Simple code formater: context unaware, just reflow whitespace and indentation of balanced pairs 
- * @param document vscode document to format
- */
-export function mxsSimpleTextEditFormatter(document: TextDocument)
+
+interface SimpleFormatterActions
+{
+	wsReIndent: (t: Token, i: number) => TextEdit | undefined
+	wsIndent  : (t: Token, i: number) => TextEdit | undefined
+	wsClean   : (t: Token) => TextEdit | undefined
+	wsAdd     : (t: Token) => TextEdit | undefined
+}
+
+function mxsSimpleTextEditFormatter(source: string, action: SimpleFormatterActions)
 {
 	return new Promise<TextEdit[]>((resolve, reject) =>
 	{
@@ -53,11 +57,17 @@ export function mxsSimpleTextEditFormatter(document: TextDocument)
 		let prevLine: number = 1;
 
 		// token stream. if this fail will throw an error
-		let tokenizedSource = mxsTokenizer(document.getText(), undefined, mooTokenizer);
+		let tokenizedSource: Token[] = mxsTokenizer(source, undefined, mooTokenizer);
+
 		// return if no results
 		if (tokenizedSource && !tokenizedSource.length) {
 			reject(edits);
 		}
+
+		let Add = (res: TextEdit | undefined) =>
+		{
+			if (res) { edits.push(res); }
+		};
 		// main loop
 		for (let i = 0; i < tokenizedSource.length; i++) {
 			// current token
@@ -69,34 +79,25 @@ export function mxsSimpleTextEditFormatter(document: TextDocument)
 			if (ctok.type === undefined) { break; }
 
 			// decrease indentation
-			if (ntok !== undefined && UnIndentTokens.includes(ntok.type!)) { indentation--; }
+			if (ntok !== undefined && UnIndentTokens.includes(ntok.type!) && indentation >= 0) { indentation--; }
 
 			// reindent at newline. skip empty lines
 			if (ctok.line > prevLine && ctok.type !== 'newline') {
 				// if token is 'ws', replace
 				if (ctok.type === 'ws') {
-					edits.push(
-						TextEdit.replace(getRange(ctok.line - 1, ctok.col - 1, ctok.text.length), '\t'.repeat(indentation))
-					);
+					Add(action.wsReIndent(ctok, indentation));
 				} else {
 					// if not 'ws', reindent
-					edits.push(
-						TextEdit.insert(getPos(ctok.line - 1, ctok.col - 1), '\t'.repeat(indentation))
-					);
+					Add(action.wsIndent(ctok, indentation));
 				}
 			} else {
 				// tokens belonging to the same line
-				// /*
 				// clean whitespace
-				//TODO: check for illegal whitespaces
+				// TODO: check for illegal whitespaces
 				if (ctok.type === 'ws') {
-					// /*
 					if (/^[\s\t]{2,}$/m.test(ctok.toString())) {
-						edits.push(
-							TextEdit.replace(getRange(ctok.line - 1, ctok.col - 1, ctok.text.length), ' ')
-						);
+						Add(action.wsClean(ctok));
 					}
-					// */
 					// skip last token
 				} else if (ntok !== undefined) {
 					/*
@@ -125,9 +126,7 @@ export function mxsSimpleTextEditFormatter(document: TextDocument)
 
 					if (!fCurrent && !fNext) {
 						// deal with missing whitespaces
-						edits.push(
-							TextEdit.insert(getPos(ctok.line - 1, ctok.col + ctok.value.length - 1), ' ')
-						);
+						Add(action.wsAdd(ctok));
 					}
 				}
 			}
@@ -138,4 +137,57 @@ export function mxsSimpleTextEditFormatter(document: TextDocument)
 		// return edits;
 		resolve(edits);
 	});
+}
+
+
+interface SimpleFormatterSettings
+{
+	IndentOnly: boolean
+}
+/**
+ * Simple code formater: context unaware, just reflow whitespace and indentation of balanced pairs 
+ * @param document vscode document to format
+ */
+export async function mxsSimpleDocumentFormatter(document: TextDocument, settings: SimpleFormatterSettings)
+{
+	let TextEditActions: SimpleFormatterActions =
+	{
+		wsReIndent: (t, i) => TextEdit.replace(getRange(t.line - 1, t.col - 1, t.text.length), '\t'.repeat(i)),
+		wsIndent  : (t, i) => TextEdit.insert(getPos(t.line - 1, t.col - 1), '\t'.repeat(i)),
+		wsClean   : t => !settings.IndentOnly ? TextEdit.replace(getRange(t.line - 1, t.col - 1, t.text.length), ' '): undefined,
+		wsAdd     : t => !settings.IndentOnly ? TextEdit.insert(getPos(t.line - 1, t.col + t.value.length - 1), ' ') : undefined,
+	};
+
+	return await mxsSimpleTextEditFormatter(document.getText(), TextEditActions);
+}
+
+/**
+ * Simple code formater: context unaware. Range formatting -- UNFINISHED
+ * @param document 
+ * @param range 
+ */
+export async function mxsSimpleRangeFormatter(document: TextDocument, range: Range, settings: SimpleFormatterSettings)
+{
+	// positions
+	// let start = range.start;
+	// let end = range.end;
+
+	// offsets --- use only line offset
+	let offLine = range.start.line;
+	// let offChar = range.start.character;
+
+	/*
+	TODO:
+	- This needs to be context-aware... 
+	- keep existent indentation
+	*/
+	let TextEditActions: SimpleFormatterActions =
+	{
+		wsReIndent: (t, i) => TextEdit.replace(getRange(t.line + offLine - 1, t.col - 1, t.text.length), '\t'.repeat(i)),
+		wsIndent  : (t, i) => TextEdit.insert(getPos(t.line + offLine - 1, t.col - 1), '\t'.repeat(i)),
+		wsClean   : t => !settings.IndentOnly ? TextEdit.replace(getRange(t.line + offLine - 1, t.col - 1, t.text.length), ' '): undefined,
+		wsAdd     : t => !settings.IndentOnly ? TextEdit.insert(getPos(t.line + offLine - 1, t.col + t.value.length - 1), ' ') : undefined,
+	};
+
+	return await mxsSimpleTextEditFormatter(document.getText(range), TextEditActions);
 }

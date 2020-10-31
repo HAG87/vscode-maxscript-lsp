@@ -1,12 +1,14 @@
 'use strict';
 // Settings
-export interface MaxScriptSettings {
+export interface MaxScriptSettings
+{
 	GoToSymbol: boolean;
 	GoToDefinition: boolean;
 	Diagnostics: boolean;
 	Completions: boolean;
 	MinifyFilePrefix: string;
-	semantics?: boolean;
+	formatter: { indentOnly: boolean }
+	// language?: { semantics: boolean };
 	// ...
 }
 
@@ -16,10 +18,11 @@ export interface MaxScriptSettings {
 
 // put default settings here
 export const defaultSettings: MaxScriptSettings = {
-	GoToSymbol:      true,
-	GoToDefinition:  true,
-	Diagnostics:     true,
-	Completions:     true,
-	//semantics:     true,
+	GoToSymbol: true,
+	GoToDefinition: true,
+	Diagnostics: true,
+	Completions: true,
 	MinifyFilePrefix: 'min_',
+	formatter: { indentOnly: true }
+	//language?: { semantics: true },
 };

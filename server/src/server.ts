@@ -229,24 +229,41 @@ connection.onDidChangeWatchedFiles(_change => {
 });
 */
 //------------------------------------------------------------------------------------------
-/*
-let options: FormattingOptions = {
-	tabSize: 5,
-	insertSpaces: false,
-	insertFinalNewline: true,
-	trimTrailingWhitespace: true,
-	trimFinalNewlines : true
-};
-*/
-/**	Document formatter */
+// Document formatter
 connection.onDocumentFormatting(
-	async (_DocumentFormattingParams: DocumentFormattingParams) =>
+	async params =>
+	{
+		/* let options: FormattingOptions = {
+			tabSize: 5,
+			insertSpaces: false,
+			insertFinalNewline: true,
+			trimTrailingWhitespace: true,
+			trimFinalNewlines : true
+		}; */
+		if (!Capabilities.hasDocumentFormattingCapability && !globalSettings.formatter.indentOnly) { return; }
+		// let settings = await getDocumentSettings(_DocumentFormattingParams.textDocument.uri);
+
+		let document = documents.get(params.textDocument.uri)!;
+		try {
+			return await mxsSimpleDocumentFormatter(document, { IndentOnly: globalSettings.formatter.indentOnly });
+		} catch (err) {
+			// in case of error, swallow it and return undefined (no result)
+			return;
+		}
+	});
+/*
+// Document Range formatter - WIP
+connection.onDocumentRangeFormatting(
+	async (_DocumentRangeFormattingParams: DocumentRangeFormattingParams) =>
 	{
 		if (!Capabilities.hasDocumentFormattingCapability) { return; }
-
-		let document = documents.get(_DocumentFormattingParams.textDocument.uri)!;
-		return await mxsSimpleTextEditFormatter(document);
+		let document = documents.get(_DocumentRangeFormattingParams.textDocument.uri)!;
+		return await mxsSimpleRangeFormatter(
+			document,
+			_DocumentRangeFormattingParams.range
+		));
 	});
+// */
 //------------------------------------------------------------------------------------------
 // Update the parsed document, and diagnostics on Symbols request... ?
 // unhandled: Error defaults to no results 
