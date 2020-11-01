@@ -2,6 +2,12 @@
 
 All notable changes to the "language-maxscript" extension will be documented in this file.
 
+## [1.21.0]
+
+- Fixed crash in "go to Definition" feature
+- Added: Code formatter. This is a simple implementation, designed to deal with indentation on balanced character pairs and whitespace. It will only indent blocks if they are enclosed in braces.
+- Several optimizations
+
 ## [1.20.0]
 
 *This work is still experimental*
