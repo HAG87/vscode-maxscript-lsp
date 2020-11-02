@@ -100,7 +100,6 @@ var mxLexer = compile({
 	// the comments
 	comment_SL: /--.*$/,
 	comment_BLK: { match: /\/\*(?:.|[\n\r])*?\*\//, lineBreaks: true, },
-	// strings
 	string: [
 		{ match: /@"(?:\\"|[^"])*?(?:"|\\")/, lineBreaks: true },
 		{ match: /"(?:\\["\\rntsx]|[^"])*?"/, lineBreaks: true },
@@ -114,18 +113,12 @@ var mxLexer = compile({
 		/[$](?:[A-Za-z0-9_*?/\\]|\.\.\.)+/,
 		'$'
 	],
-	// strings ~RESOURCE~
-	locale: /~[A-Za-z0-9_]+~/,
-	// parameter <param_name>:
-	global_typed: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
-
-	// params: { match: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[ \t]*[:][^:])/ },
-	// property <object>.<property>
-	// property: { match: /\.[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/, value: x => x.slice(1) },
-	// ::global variable
-
-	// IDENTIFIERS
 	identity: [
+		/'(?:\\['\\rn]|[^'\\\n])*?'/,
+		/#[A-Za-z0-9_]+\b/,
+		/#'[A-Za-z0-9_]+'/,
+		/~[A-Za-z0-9_]+~/,
+		/::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
 		/[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[ \t]*[:][^:])/,
 		/[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=\.)/,
 		/(?<=\.)[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
@@ -135,47 +128,34 @@ var mxLexer = compile({
 		}
 	],
 	param: ':',
-	// a mounstrosity
-	typed_iden: /'(?:\\['\\rn]|[^'\\\n])*?'/,
-	// array marker #(...) | #{...}
+	// PARENS
 	arraydef: /#[ \t]*\(/,
 	bitarraydef: /#[ \t]*\{/,
-	// PARENS
 	emptyparens: /\([\s\t]*\)/,
 	lparen: '(',
 	rparen: ')',
-	// BRACKETS, BRACES...
 	emptybracket: /\[[\s\t]*\]/,
 	lbracket: '[',
 	rbracket: ']',
 	lbrace: '{',
 	rbrace: '}',
-	// Operators.
-	comparison: ['==', '!=', '>', '<', '>=', '<='],
-	assign: ['=', '+=', '-=', '*=', '/='],
-	// unary: {match: /(?<=[^\w)-])-(?![-\s])/},
-	// time format
+	
 	time: [
 		/(?:[-]?(?:[0-9]+\.)?[0-9]+[msft])+/,
 		/(?:[-]?(?:[0-9]+\.)[0-9]*[msft])+/,
 		/[0-9]+[:][0-9]+\.[0-9]*/
 	],
-	// number formats
 	bitrange: '..',
-	hex: { match: /0[xX][0-9a-fA-F]+/ },
 	number: [
+		/0[xX][0-9a-fA-F]+/,
 		/(?:[-]?[0-9]*)[.](?:[0-9]+(?:[eEdD][+-]?[0-9]+)?)/,
 		/(?:[-]?[0-9]+\.(?!\.))/,
 		/[-]?[0-9]+(?:[LP]|[eEdD][+-]?[0-9]+)?/,
 		/(?:(?<!\.)[-]?\.[0-9]+(?:[eEdD][+-]?[0-9]+)?)/
 	],
-	unaryminus: /-[^\s\t\r\n]/,
-	math: ['+', '-', '*', '/', '^'],
-	// #name literals .. should go higher??
-	name: [
-		/#[A-Za-z0-9_]+\b/,
-		/#'[A-Za-z0-9_]+'/
-	],
+	// unary: {match: /(?<=[^\w)-])-(?![-\s])/},
+	unaryminus: /-(?![-\s\t\r\n])/,
+	operator: ['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='],
 	// DELIMITERS
 	delimiter: '.',
 	sep: ',',
