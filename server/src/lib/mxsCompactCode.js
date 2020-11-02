@@ -10,11 +10,7 @@ const isNode = (node) =>  typeof node === 'object' && node != null;
  * @param {any} node CST node
  */
 const getNodeType = (node) => node !== undefined && ('type' in node) ? node.type : undefined;
-/**
- * Visit and reduce CST to compact code
- * @param {any} node CST node
- * @param {any} callbackMap Patterns function
- */
+
 // Basic expressions
 /*
 function unary(right, op) {
@@ -70,51 +66,51 @@ function spaceAlphaNum(str) {
 	return `${start}${str}${end}`; 
 
 }
-const tokensValue = {
-	global_typed : node => node.text,
-	hex          : node => node.text,
-	identity     : node => node.text,
-	locale       : node => node.text,
-	name         : node => node.text,
-	number       : node => node.text,
-	path         : node => node.text,
-	string       : node => node.text,
-	time         : node => node.text,
-	typed_iden   : node => node.text,
-	property     : node => node.value,
-	params       : node => node.value,
-	math         : node => node.value,
-	assign       : node => node.value,
-	comparison   : node => node.value,
-	keyword      : node => node.text,
-	kw_bool      : node => node.text,
-	kw_on        : node => node.text,
-	kw_return    : node => node.text,
-	kw_exit      : node => node.text,
-	kw_scope     : node => node.text,
-	kw_uicontrols: node => node.text,
-	kw_group     : node => node.text,
-	kw_objectset : node => node.text,
-	kw_context   : node => node.text,
-	kw_function  : node => node.text,
-	kw_time      : node => node.text,
-	kw_tool      : node => node.text,
-	kw_utility   : node => node.text,
-	kw_rollout   : node => node.text,
-	kw_level     : node => node.text,
-	kw_global    : node => node.text,
-	kw_local     : node => node.text,
-	kw_do        : node => node.text,
-	kw_then      : node => node.text,
-	// Error tokens
-	error: (node) => node.text,
+
+let tokensValue = {
+	global_typed (node) { return node.text; },
+	hex          (node) { return node.text; },
+	identity     (node) { return node.text; },
+	locale       (node) { return node.text; },
+	name         (node) { return node.text; },
+	number       (node) { return node.text; },
+	path         (node) { return node.text; },
+	string       (node) { return node.text; },
+	time         (node) { return node.text; },
+	typed_iden   (node) { return node.text; },
+	property     (node) { return node.value; },
+	params       (node) { return node.value; },
+	math         (node) { return node.value; },
+	assign       (node) { return node.value; },
+	comparison   (node) { return node.value; },
+	keyword      (node) { return node.text; },
+	kw_bool      (node) { return node.text; },
+	kw_on        (node) { return node.text; },
+	kw_return    (node) { return node.text; },
+	kw_exit      (node) { return node.text; },
+	kw_scope     (node) { return node.text; },
+	kw_uicontrols(node) { return node.text; },
+	kw_group     (node) { return node.text; },
+	kw_objectset (node) { return node.text; },
+	kw_context   (node) { return node.text; },
+	kw_function  (node) { return node.text; },
+	kw_time      (node) { return node.text; },
+	kw_tool      (node) { return node.text; },
+	kw_utility   (node) { return node.text; },
+	kw_rollout   (node) { return node.text; },
+	kw_level     (node) { return node.text; },
+	kw_global    (node) { return node.text; },
+	kw_local     (node) { return node.text; },
+	kw_do        (node) { return node.text; },
+	kw_then      (node) { return node.text; },
+	error        (node) { return node.text; },
 };
 const visitorPatterns = {
 	// TOKENS
 	...tokensValue,
 	// LITERALS
-	Literal    (node, stack) {return stack.value;},
-	Identifier (node, stack) {return stack.value;},
+	Literal    (node, stack) { return stack.value;},
+	Identifier (node, stack) { return stack.value;},
 	BitRange   (node, stack) { return `${stack.start}..${stack.end}`;},
 	// Declaration
 	Declaration(node, stack) {
