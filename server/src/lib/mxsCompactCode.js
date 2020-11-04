@@ -68,42 +68,45 @@ function spaceAlphaNum(str) {
 }
 
 let tokensValue = {
+	assign       (node) { return node.value; },
+	comparison   (node) { return node.value; },
+	error        (node) { return node.text; },
 	global_typed (node) { return node.text; },
 	hex          (node) { return node.text; },
 	identity     (node) { return node.text; },
+	keyword      (node) { return node.text; },
+	kw_as        (node) { return node.text; },
+	kw_bool      (node) { return node.text; },
+	kw_context   (node) { return node.text; },
+	kw_do        (node) { return node.text; },
+	kw_exit      (node) { return node.text; },
+	kw_function  (node) { return node.text; },
+	kw_global    (node) { return node.text; },
+	kw_group     (node) { return node.text; },
+	kw_level     (node) { return node.text; },
+	kw_local     (node) { return node.text; },
+	kw_not       (node) { return node.text; },
+	kw_objectset (node) { return node.text; },
+	kw_on        (node) { return node.text; },
+	kw_return    (node) { return node.text; },
+	kw_undo      (node) { return node.text; },
+	kw_rollout   (node) { return node.text; },
+	kw_scope     (node) { return node.text; },
+	kw_then      (node) { return node.text; },
+	kw_time      (node) { return node.text; },
+	kw_tool      (node) { return node.text; },
+	kw_uicontrols(node) { return node.text; },
+	kw_utility   (node) { return node.text; },
 	locale       (node) { return node.text; },
+	math         (node) { return node.value; },
 	name         (node) { return node.text; },
 	number       (node) { return node.text; },
+	params       (node) { return node.value; },
 	path         (node) { return node.text; },
+	property     (node) { return node.value; },
 	string       (node) { return node.text; },
 	time         (node) { return node.text; },
 	typed_iden   (node) { return node.text; },
-	property     (node) { return node.value; },
-	params       (node) { return node.value; },
-	math         (node) { return node.value; },
-	assign       (node) { return node.value; },
-	comparison   (node) { return node.value; },
-	keyword      (node) { return node.text; },
-	kw_bool      (node) { return node.text; },
-	kw_on        (node) { return node.text; },
-	kw_return    (node) { return node.text; },
-	kw_exit      (node) { return node.text; },
-	kw_scope     (node) { return node.text; },
-	kw_uicontrols(node) { return node.text; },
-	kw_group     (node) { return node.text; },
-	kw_objectset (node) { return node.text; },
-	kw_context   (node) { return node.text; },
-	kw_function  (node) { return node.text; },
-	kw_time      (node) { return node.text; },
-	kw_tool      (node) { return node.text; },
-	kw_utility   (node) { return node.text; },
-	kw_rollout   (node) { return node.text; },
-	kw_level     (node) { return node.text; },
-	kw_global    (node) { return node.text; },
-	kw_local     (node) { return node.text; },
-	kw_do        (node) { return node.text; },
-	kw_then      (node) { return node.text; },
-	error        (node) { return node.text; },
 };
 const visitorPatterns = {
 	// TOKENS
@@ -174,7 +177,7 @@ const visitorPatterns = {
 		}
 		return `struct ${stack.id}(${body})`;
 	},
-	StructScope: (node, stack) => stack.value,
+	StructScope(node, stack) {return stack.value;},
 	// Functions
 	Function(node, stack) {
 		let decl = `${node.mapped ? 'mapped ' : ''}${stack.keyword} ${stack.id}`;
@@ -397,6 +400,7 @@ function visit(node, callbackMap) {
 			res = callbackMap[nodeType](node, stack);
 		}
 		else if (nodeType) {
+			// this handles unmapped nodes
 			res = node;
 		}
 		else if (Array.isArray(node)) {

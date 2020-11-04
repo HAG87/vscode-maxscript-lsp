@@ -23,7 +23,7 @@
         return node;
     }
     // Offset is not reilable, changed to line - col
-    const getLoc = (start, end?) => {
+    const getLoc = (start, end) => {
         if (!start) {return null;}
 
         let startOffset = start.loc ? start.loc.start : {line: start.line, col: start.col};
@@ -607,15 +607,15 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             {% d => ({
                 type:  'CaseStatement',
                 test:  d[1],
-                cases: merge(d[5], d[6]),
-                loc:   getLoc(d[0][0], d[7])
+                cases: merge(d[5], flatten(d[6])),
+                loc:   getLoc(d[0][0], d[8])
             })%}
 
     case_src -> expr _  {% d => d[0] %} | __ {% id %}
 
     case_item
         -> (factor | %params) (":" _) expr
-        {% d => ({type:'CaseClause', case: d[0], body: d[2] })%}
+        {% d => ({type:'CaseClause', case: d[0][0], body: d[2] })%}
 #---------------------------------------------------------------
 # FOR EXPRESSION --- OK # TODO: FINISH LOCATION
     for_loop
@@ -787,7 +787,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
     prod -> prod _S ("*"|"/") _ exp
             {% d => ({
                 type:     'MathExpression',
-                operator: d[2],
+                operator: d[2][0],
                 left:     d[0],
                 right:    d[4]
             })%}
