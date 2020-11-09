@@ -65,7 +65,7 @@ export function TokenizeStream(source: string, filter?: string[], Tokenizer = mx
  * @param parserInstance Instance of initialized parser
  * @param tree Index of the parsed tree I want in return, results are multiple when the parser finds and ambiguity
  */
-function ParseSource(source: string, parserInstance: nearley.Parser): parserResult
+function ParseSourceSync(source: string, parserInstance: nearley.Parser): parserResult
 {
 	// Set a clean state - DISABLED FOR WORKAROUND OF PROBLEM -> ERROR RECOVERY DECLARES A CLEAN PARSER INSTANCE
 	// this.reset();
@@ -73,7 +73,7 @@ function ParseSource(source: string, parserInstance: nearley.Parser): parserResu
 		parserInstance.feed(source);
 		return parserInstance.results[0];
 	} catch (err) {
-		return ParseWithErrors(source, parserInstance);
+		return ParseWithErrorsSync(source, parserInstance);
 	}
 }
 
@@ -82,7 +82,7 @@ function ParseSource(source: string, parserInstance: nearley.Parser): parserResu
  * @param source 
  * @param parserInstance nearley parser instance
  */
-function ParseWithErrors(source: string, parserInstance: nearley.Parser): parserResult
+function ParseWithErrorsSync(source: string, parserInstance: nearley.Parser): parserResult
 {
 	// New method tokenizing the input could be a way to feed tokens to the parser
 	let src = TokenizeStream(source);
@@ -232,7 +232,10 @@ function parseWithErrorsAsync(source: string, parserInstance: nearley.Parser): P
 
 	let errParser = (callback: any) =>
 	{
-		let parsings = (src: import('moo').Token[], next: number, total: number): any | undefined =>
+		let parsings = (
+			src: import('moo').Token[],
+			next: number, total: number
+		): any | undefined =>
 		{
 			try {
 				parserInstance.feed(src[next].text);
@@ -301,12 +304,12 @@ export class mxsParseSource
 	parserInstance!: nearley.Parser;
 	private __source: string;
 	// private __parserState: any;
-	// private __parsedCST: any;
+	
 	// constructor
 	constructor(source: string | undefined)
 	{
 		this.__source = source || '';
-		this.reset();
+		// this.reset();
 		// this.ParseSource();
 	}
 	/** Declare a new parser instance */
@@ -328,10 +331,8 @@ export class mxsParseSource
 	set source(newSource)
 	{
 		this.__source = newSource;
-		this.ParseSourceAsync();
+		// this.ParseSource();
 	}
-	/** Get the parsed CST, if any */
-	// get parsedCST() { return this.__parsedCST; }
 
 	/**
 	 * Tokenize mxs string
@@ -343,16 +344,16 @@ export class mxsParseSource
 	/**
 	 * Parser 
 	 */
-	ParseSourceAsync(source = this.__source, recovery = true): Promise<parserResult>
+	ParseSource(source = this.__source, recovery = true): Promise<parserResult>
 	{
 		return new Promise((resolve, reject) =>
 		{
 			this.reset();
+
 			ParseSourceAsync(source, this.parserInstance)
 				.then(
 					result =>
 					{
-						// this.__parsedCST = result.result;
 						resolve(result);
 					},
 					reason =>
@@ -360,19 +361,17 @@ export class mxsParseSource
 						// console.log('PARSER HAS FAILED! ATTEMP TO RECOVER');
 						this.reset();
 						if (recovery) {
-							parseWithErrorsAsync(source, this.parserInstance)
-								.then(result =>
-								{
-									// console.log('PARSER HAS RECOVERED FROM ERROR');
-									// this.__parsedCST = result.result;
-									resolve(result);
-								})
-								.catch(error => reject(error));
+							return parseWithErrorsAsync(source, this.parserInstance);
 						} else {
 							reject(reason);
 						}
 					}
 				)
+				.then(result =>
+				{
+					// console.log('PARSER HAS RECOVERED FROM ERROR');
+					resolve(<parserResult>result);
+				})
 				.catch(err => reject(err));
 		});
 	}
