@@ -351,7 +351,8 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 class:  d[0],
                 id:     d[2],
                 text:   (d[3] != null ? d[3][1] : null),
-                params: flatten(d[4])
+                params: flatten(d[4]),
+                loc: getLoc(d[0])
             })%}
 #---------------------------------------------------------------
 # MACROSCRIPT --- SHOULD AVOID LEFT RECURSION ?
