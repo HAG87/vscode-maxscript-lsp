@@ -1,5 +1,6 @@
 'use strict';
-import {
+import
+{
 	Location,
 	Range,
 	Position,
@@ -18,8 +19,6 @@ import traverse from 'ast-monkey-traverse';
 //@ts-ignore
 import objectPath from 'object-path';
 
-// import cloneDeep from 'clone-deep';
-
 import * as moo from 'moo';
 // const astMonkeyTraverse = require('ast-monkey-traverse');
 // const getObj = require('ast-get-object');
@@ -32,67 +31,109 @@ import { parentPath, findParentName } from './lib/astUtils';
  * Maps values from type > vcode kind enumeration
  */
 const SymbolKindMatch: Dictionary<SymbolKind> = {
-	'EntityRcmenu'          : SymbolKind.Object,
-	'EntityRcmenu_submenu'  : SymbolKind.Constructor,
+	'EntityRcmenu': SymbolKind.Object,
+	'EntityRcmenu_submenu': SymbolKind.Constructor,
 	'EntityRcmenu_separator': SymbolKind.Object,
-	'EntityRcmenu_menuitem' : SymbolKind.Constructor,
-	'EntityPlugin'          : SymbolKind.Object,
-	'EntityPlugin_params'   : SymbolKind.Object,
-	'PluginParam'           : SymbolKind.Constructor,
-	'EntityTool'            : SymbolKind.Object,
-	'EntityUtility'         : SymbolKind.Object,
-	'EntityRollout'         : SymbolKind.Object,
-	'EntityRolloutGroup'    : SymbolKind.Object,
-	'EntityRolloutControl'  : SymbolKind.Constructor,
-	'EntityMacroscript'     : SymbolKind.Object,
-	'Struct'                : SymbolKind.Struct,
-	'Event'                 : SymbolKind.Event,
-	'Function'              : SymbolKind.Function,
-	'AssignmentExpression'  : SymbolKind.Method,
-	'CallExpression'        : SymbolKind.Method,
-	'ParameterAssignment'   : SymbolKind.Property,
-	'AccessorProperty'      : SymbolKind.Property,
-	'AccessorIndex'         : SymbolKind.Property,
-	'Literal'               : SymbolKind.Constant,
-	'Identifier'            : SymbolKind.Property,
-	'VariableDeclaration'   : SymbolKind.Variable,
-	'Declaration'           : SymbolKind.Variable,
-	'Include'               : SymbolKind.Module,
+	'EntityRcmenu_menuitem': SymbolKind.Constructor,
+	'EntityPlugin': SymbolKind.Object,
+	'EntityPlugin_params': SymbolKind.Object,
+	'PluginParam': SymbolKind.Constructor,
+	'EntityTool': SymbolKind.Object,
+	'EntityUtility': SymbolKind.Object,
+	'EntityRollout': SymbolKind.Object,
+	'EntityRolloutGroup': SymbolKind.Object,
+	'EntityRolloutControl': SymbolKind.Constructor,
+	'EntityMacroscript': SymbolKind.Object,
+	'Struct': SymbolKind.Struct,
+	'Event': SymbolKind.Event,
+	'Function': SymbolKind.Function,
+	'AssignmentExpression': SymbolKind.Method,
+	'CallExpression': SymbolKind.Method,
+	'ParameterAssignment': SymbolKind.Property,
+	'AccessorProperty': SymbolKind.Property,
+	'AccessorIndex': SymbolKind.Property,
+	'Literal': SymbolKind.Constant,
+	'Identifier': SymbolKind.Property,
+	'VariableDeclaration': SymbolKind.Variable,
+	'Declaration': SymbolKind.Variable,
+	'Include': SymbolKind.Module,
 };
 //-----------------------------------------------------------------------------------
 /**
  * Generic dictionary Interface
  */
-interface Dictionary<T> {
+interface Dictionary<T>
+{
 	[key: string]: T;
 }
 /**
  * Interface that defines a range in a string with a start and an end offset
  */
-interface iRange<T> {
+interface iRange<T>
+{
 	start: T;
 	end: T;
 }
 /**
  * Interface that defines a position in a string with a line and offset number
  */
-interface iPos {
+interface iPos
+{
 	line: number;
 	col: number;
 }
 
-interface NodeMap {
+interface NodeMap
+{
 	type: string;
 	id: any;
-	loc: any | null;
-	childs: NodeMap[];
+	loc: any;
+	children: NodeMap[];
+}
+
+interface nodeSymbol
+{
+	/**
+	 * The name of this symbol. Will be displayed in the user interface and therefore must not be
+	 * an empty string or a string only consisting of white spaces.
+	 */
+	name: string;
+	/**
+	 * More detail for this symbol, e.g the signature of a function.
+	 */
+	detail?: string;
+	/**
+	 * The kind of this symbol.
+	 */
+	kind: SymbolKind;
+	/**
+	 * Indicates if this symbol is deprecated.
+	 */
+	deprecated?: boolean;
+	/**
+	 * The range enclosing this symbol not including leading/trailing whitespace but everything else
+	 * like comments. This information is typically used to determine if the the clients cursor is
+	 * inside the symbol to reveal in the symbol in the UI.
+	 */
+	range: Range;
+	/**
+	 * The range that should be selected and revealed when this symbol is being picked, e.g the name of a function.
+	 * Must be contained by the the `range`.
+	 */
+	selectionRange: Range;
+	/**
+	 * Children of this symbol, e.g. properties of a class.
+	 */
+	children?: DocumentSymbol[] | NodeMap[];
 }
 //-----------------------------------------------------------------------------------
-function hasKey<O>(obj: O, key: keyof any): key is keyof O {
+function hasKey<O>(obj: O, key: keyof any): key is keyof O
+{
 	return key in obj;
 }
-function isNode(node:  any | undefined) {
-	return (typeof node === 'object' && node !== undefined);
+function isNode(node: any | undefined)
+{
+	return (node != null && typeof node === 'object');
 }
 //-----------------------------------------------------------------------------------
 /**
@@ -203,49 +244,156 @@ export abstract class range
 	}
 }
 //-----------------------------------------------------------------------------------
+function equalizeRange(ref: Range, rec: Range/*, document: TextDocument*/)
+{
+	let compare = (a: Position, b: Position) =>
+	{
+		let res = Position.create(0, 0);
 
-export function getTokenRange(document: TextDocument, token: moo.Token)
+		// line position of B can be less or eq
+		if (a.line > b.line) {
+			res.line = b.line;
+			// char of B can be more if line is less
+			res.character = b.character;
+
+		} else {
+			// line of B is more than line of A
+			res.line = a.line;
+			// also, character must not be more than A
+			res.character = b.character > a.character ? a.character : b.character;
+
+			/*
+			let ext = document.getText(
+				{
+					start:
+					{
+						line: a.line,
+						character: 0
+					},
+					end:
+					{
+						line: a.line,
+						character: Number.MAX_SAFE_INTEGER
+					}
+				}
+			);
+
+			// here B character must be less or eq than A line length.
+			res.character = b.character > ext.length ?  ext.length : b.character;
+			*/
+		}
+		return res;
+	};
+
+	return <Range>{
+		start: compare(ref.start, rec.start),
+		end: compare(ref.end, rec.end)
+	};
+}
+//TODO: Check document ranges...
+export function getTokenRange(token: moo.Token, document?: TextDocument)
 {
 	let startPosition = Position.create(token.line - 1, token.col - 1);
 	let endOffset = token.col + (token.text.length || token.value.length) - 1;
 	let endPosition = Position.create(token.line - 1, endOffset);
 
-	return Range.create(startPosition, endPosition);
+	let tokenRange = Range.create(startPosition, endPosition);
+
+	if (document) {
+		let sel = document.getText(tokenRange);
+		// console.log({ text: sel, range: tokenRange });
+	}
+	return tokenRange;
 }
 
-export function getDocumentPositions(document: TextDocument, node: any)
+function getDocumentPositions(node: NodeMap)
 {
+	let defaultPos = Position.create(0, 0);
+
+	let startPosition: Position = defaultPos;
+	let endPosition: Position = defaultPos;
+
+	/*
 	let startPosition: Position;
 	let endPosition: Position;
+	*/
+
+	let startPosFromNode = (node: any) =>
+	{
+		if (!node) { return; }
+		// if (!node.loc) { return; }
+
+		if (node.loc && node.loc.start) {
+			return Position.create(
+				node.loc.start.line - 1,
+				node.loc.start.col - 1
+			);
+		} else if (node.id) {
+			let token: moo.Token = node.id.value;
+			return Position.create(
+				token.line - 1,
+				token.col - 1
+			);
+		}
+		return;
+	};
+
+	let endPosFromNode = (node: any) =>
+	{
+		if (!node) { return; }
+		// if (!node.loc) { return; }
+
+		if (node.loc && node.loc.end) {
+			return Position.create(
+				node.loc.end.line - 1,
+				node.loc.end.col - 1
+			);
+		} else if (node.id) {
+			let token: moo.Token = node.id.value;
+			return Position.create(
+				token.line - 1,
+				token.col + (token.toString()).length - 1
+			);
+		}
+		return;
+	};
 
 	if (node.loc) {
 		startPosition = Position.create(
 			node.loc.start.line - 1,
 			node.loc.start.col - 1
 		);
-		// get position of last child
-		let childsRange = range.lastChildPos(node);
-		endPosition = Position.create(
-			childsRange.line - 1,
-			childsRange.col - 1
-		);
+
+		if (node.loc.end) {
+			endPosition = Position.create(
+				node.loc.end.line - 1,
+				node.loc.end.col - 1
+			);
+			// get position of last child
+		} else {
+			// children should have a location.or an id..
+			endPosition =
+				endPosFromNode(node.children[node.children.length - 1]) || startPosition || defaultPos;
+		}
 	} else {
-		// range from childsLC
-		let sRange = range.fromChildsLC(node);
-		startPosition = Position.create(
-			sRange.start.line - 1,
-			sRange.start.col - 1
-		);
-		endPosition = Position.create(
-			sRange.end.line - 1,
-			sRange.end.col - 1
-		);
+		// node should have an id..
+		// or use the first child
+		startPosition =
+			startPosFromNode(node) || startPosFromNode(node.children[0]) || defaultPos;
+		endPosition =
+			endPosFromNode(node.children[node.children.length - 1]) || endPosFromNode(node) || startPosition || defaultPos;
 	}
 
-	return Location.create(
+	return <Range>{
+		start: startPosition,
+		end: endPosition
+	};
+	/*
+	Location.create(
 		document.uri,
 		Range.create(startPosition, endPosition)
 	);
+	*/
 }
 //-----------------------------------------------------------------------------------
 //DECLARATIONS
@@ -253,7 +401,7 @@ export function getDocumentPositions(document: TextDocument, node: any)
 
 export function getFromCST(CST: any | any[], keyValPair: object)
 {
-	return getObj(CST, keyValPair);	
+	return getObj(CST, keyValPair);
 }
 
 export function getNodesByKeyFromCST(CST: any | any[], key: string | string[])
@@ -261,39 +409,48 @@ export function getNodesByKeyFromCST(CST: any | any[], key: string | string[])
 	let st = getAllValuesByKey(CST, key);
 	return st;
 }
+//-----------------------------------------------------------------------------------
 /**
  * collect Nodes visiting the Tree
  * collects all node types in the filter.
  * I'm retrieving only the paths, because will need to get the parents location later.
  * I will not be using this for now, since vscode only cares about definitions, I can later reference-search that definition
- * @param {any[]} CST Abstract Syntax tree source
- * @param {string} filter Object with keys:[] to be collected.
+ * @param {any[]} nodes Abstract Syntax tree source
+ * @param {string} keyFilter Object with keys:[] to be collected.
  */
-export function collectStatementsFromCST(CST: any | any[], key: string = 'id')
+export async function deriveSymbolsTree(nodes: any | any[], keyFilter: string = 'id')
 {
-	let statements: string[] = [];
-	//traverse the CST
-	traverse(CST, (key1: string, val1: null, innerObj: { path: string }, stop: any) =>
+	// start with a root dummy...
+	let stack = <NodeMap>{
+		type: 'main',
+		id: null,
+		loc: {
+			start: {
+				line: 0,
+				col: 0
+			},
+			end: null
+		},
+		children: []
+	};
+
+	async function _visit(node: any, parent: any | null, key: string | null, index: number | null)
 	{
-		const current = val1 ?? key1;
-		if (key1 === key) { statements.push(parentPath(innerObj.path)!); }
-		return current;
-	});
-	return statements;
-}
-
-
-export function ReCollectStatementsFromCST(node: any | any[], keyFilter: string = 'id')
-{
-
-	// let src = cloneDeep(node);
-
-	function _visit(node: any, parent: any | null, key: string | null, index: number | null)
-	{
-		if (!node) { return []; }
-		
-		let childStack: NodeMap[] = [];
-
+		// if (!node) { return []; }
+		let _node: NodeMap;
+		if (isNode(node) && keyFilter in node) {
+			// TODO: deal with siblings...
+			_node = {
+				type: node.type,
+				id: node[keyFilter],
+				loc: node.loc || null,
+				children: []
+			};
+			parent.children.push(_node);
+		} else {
+			_node = parent;
+		}
+		//--------------------------------------------------------
 		// get the node keys
 		const keys = Object.keys(node);
 		// loop through the keys
@@ -308,82 +465,124 @@ export function ReCollectStatementsFromCST(node: any | any[], keyFilter: string 
 
 					// visit each node in the array
 					if (isNode(child[j])) {
-
-
-						let res = _visit(child[j], node, key, j);
-
-						if (res) { childStack = childStack.concat(res); }
-
-					} else {
-						// remove the node
+						await _visit(child[j], _node, key, j);
 					}
 				}
 			} else if (isNode(child)) {
-
-				let res = _visit(child, node, key, null);
-
-				if (res) { childStack = childStack.concat(res); }
-
-			} else {
-				// remove the node
+				await _visit(child, _node, key, null);
 			}
 		}
-		// if (isNode(node) && childStack.length > 0) {
-		// }
+	}
+	await _visit(nodes, stack, null, 0);
+	return stack;
+}
 
-		// if (key == null) { return [];}
 
-		if (keyFilter in node) {
-			return <NodeMap>{
-				type: node.type,
-				id: node[keyFilter] ,
-				loc:  node.loc || null,
-				childs: childStack
+/**
+ * For each element of the collection, return a valid DocumentSymbol node. 
+ * @param nodes the CST
+ * @param filterKey 
+ */
+export async function transformSymbolsTree(nodes: any, filterKey = 'id', document?: TextDocument)
+{
+	// console.log('transform the treee!!');
+	// /*
+	async function _visit(node: any, parent: any | null, key: string | null, index: number | null)
+	{
+		if (!Array.isArray(node) && filterKey in node) {
+
+			let loc = getDocumentPositions(<NodeMap>node);
+			let safeRange = equalizeRange(
+				loc,
+				getTokenRange(node.id.value, document)
+			);
+			/*
+			let safeRange = loc;
+			if (document) {
+				let sel = getTokenRange(node.id.value, document);
+				safeRange = equalizeRange(loc, sel, document);
+			}
+			*/
+			let _node: nodeSymbol = {
+				name: node.id != null ? node.id.value.toString() : 'anonymous',
+				detail: node.type || 'unknown',
+				kind: node.type != null ? (SymbolKindMatch[node.type] || SymbolKind.Method) : SymbolKind.Method,
+				range: loc,
+				selectionRange: safeRange || loc,
+				// selectionRange: loc,
+				// children: node.children
 			};
-		} else {
-			return childStack.length > 0 ? childStack : [];
+
+			if (node.children.length > 0) {
+				_node.children = node.children;
+			}
+
+			// if (node.type === 'Declaration') {
+			// 	console.log(_node);
+			// }
+
+			if (parent != null && key != null && key !== '') {
+				if (index != null) {
+					parent[key][index] = _node;
+				} else {
+					parent[key] = _node;
+				}
+			}
 		}
 
+		//--------------------------------------------------------
+		// get the node keys
+		const keys = Object.keys(node);
+		// loop through the keys
+		for (let i = 0; i < keys.length; i++) {
+			// child is the value of each key
+			let key = keys[i];
+			const child = node[key];
+			// could be an array of nodes or just an object
+			if (Array.isArray(child)) {
+				// value is an array, visit each item
+				for (let j = 0; j < child.length; j++) {
+					// visit each node in the array
+					if (isNode(child[j])) {
+						await _visit(child[j], node, key, j);
+					}
+				}
+			} else if (isNode(child)) {
+				await _visit(child, node, key, null);
+			}
+		}
 	}
-	
-	return _visit(node, null, null, 0);
 
 
-}
-//-----------------------------------------------------------------------------------
-/**
- * For each element of a object-path collection, return a valid {name|parent|kind|location} node
- * TODO: Implement DocumentSymbol instead
- * @param {any[]} CST the CST
- * @param {string[]} paths Collection of object-paths
- */
-export function collectSymbols(document: TextDocument, CST: any, paths: string[])
-{
-	let returnSymbol = (CST: any, path: string) => {
-		
-		let currentNode = objectPath.get(CST, path);
+	await _visit(nodes, null, null, 0);
+
+	// console.log(nodes);
+
+	// console.log('-----EXIT------');
+
+	if (Array.isArray(nodes)) {
+		return <DocumentSymbol[]>nodes;
+	} else {
+		return <DocumentSymbol[]>[nodes];
+	}
+	/*
+	return new Promise<DocumentSymbol | DocumentSymbol[]>((resolve, reject) =>
+	{
+		// _transformStatements(Array.isArray(nodes) ? nodes : [nodes])
+		_visit(nodes, null, null, 0)
+			.then(
+				() => {
+					console.log(nodes);
+					resolve(nodes);
+				},
+				() => reject()
+			);
+	});
+	// */
 
 
-		let theSymbol: SymbolInformation = {
-			name: currentNode.id.value.text || currentNode.id.text || '[unnamed]',
-			kind: SymbolKindMatch[currentNode.type] || SymbolKind.Method,
-			containerName: findParentName(CST, parentPath(path, 1)!) || ' ',
-			location: getDocumentPositions(document, currentNode),
-		};
-		return theSymbol;
-	};
 
-	let theSymbols = paths.map(
-		path => {
-			return returnSymbol(CST, path);
-		});
-
-	return theSymbols;
-}
-
-export async function ReCollectSymbols(document: TextDocument, nodes: NodeMap[] | NodeMap):Promise<DocumentSymbol[]>
-{
-
+	/*
 	let _transformStatements = (_nodes: NodeMap[]):Promise<DocumentSymbol[]> => {
 		return new Promise((resolve, reject) =>
 		{
@@ -393,7 +592,7 @@ export async function ReCollectSymbols(document: TextDocument, nodes: NodeMap[] 
 					let symbolLoc = getDocumentPositions(document, node);
 					// let symbolName = node.id.value.toString();
 					// let symbolKind = SymbolKindMatch[node.type] || SymbolKind.Method;
-
+	
 					let theSymbol = DocumentSymbol.create(
 						node.id.value.toString(),
 						node.type,
@@ -415,7 +614,7 @@ export async function ReCollectSymbols(document: TextDocument, nodes: NodeMap[] 
 			resolve(SymbolCollection);
 		});
 	};
-
+	
 	return new Promise((resolve, reject) => {
 		_transformStatements(Array.isArray(nodes) ? nodes : [nodes])
 			.then(
@@ -423,6 +622,7 @@ export async function ReCollectSymbols(document: TextDocument, nodes: NodeMap[] 
 				(err) => reject(err)
 			);
 	});
+	*/
 }
 //-----------------------------------------------------------------------------------
 /**

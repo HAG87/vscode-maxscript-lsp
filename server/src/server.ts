@@ -24,6 +24,7 @@ import
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as Path from 'path';
+// import * as assert from 'assert';
 //------------------------------------------------------------------------------------------
 import { MaxScriptSettings, defaultSettings } from './settings';
 import { mxsCapabilities } from './capabilities';
@@ -45,9 +46,9 @@ let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 export let Capabilities = new mxsCapabilities();
 //------------------------------------------------------------------------------------------
 // Current document
-// let currentTextDocument: TextDocument;
 /* Store the current document Symbols for later use*/
 let currentDocumentSymbols: DocumentSymbol[] | SymbolInformation[] = [];
+let currentTextDocument: TextDocument;
 //------------------------------------------------------------------------------------------
 connection.onInitialize(
 	(params: InitializeParams) =>
@@ -291,6 +292,10 @@ connection.onDocumentSymbol(
 					result =>
 					{
 						// connection.console.log('--> symbols sucess ');
+						//-----------------------------------
+						currentDocumentSymbols = result.symbols;
+						currentTextDocument = document;
+						//-----------------------------------
 						diagnoseDocument(document, result.diagnostics);
 						resolve(result.symbols);
 					},
@@ -344,7 +349,7 @@ connection.onDefinition(
 					documents.get(params.textDocument.uri)!,
 					params.position,
 					cancellation,
-					currentDocumentSymbols,
+					params.textDocument.uri === currentTextDocument.uri ? currentDocumentSymbols : undefined,
 					// mxsDocumentSymbols.msxParser.parsedCST
 				);
 			return definitions;

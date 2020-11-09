@@ -2,6 +2,7 @@
 import
 {
 	CancellationToken,
+	CancellationTokenSource,
 	Diagnostic,
 	SymbolInformation,
 	DocumentSymbol,
@@ -14,8 +15,8 @@ import
 } from './mxsDiagnostics';
 import
 {
-	ReCollectStatementsFromCST,
-	ReCollectSymbols,
+	deriveSymbolsTree,
+	transformSymbolsTree,
 	collectTokens
 } from './mxsProvideSymbols';
 import { mxsParseSource } from './mxsParser';
@@ -25,6 +26,8 @@ export interface ParserResult
 	symbols: SymbolInformation[] | DocumentSymbol[]
 	diagnostics: Diagnostic[]
 }
+
+// type cancellationToken = { cancel: () => void};
 /**
  * Provide document symbols. Impements the parser.
  * TODO:
@@ -44,16 +47,42 @@ export class mxsDocumentSymbolProvider
 	// documentDiagnostics!: Diagnostic[];
 
 	private async documentSymbolsFromCST(
-		document: TextDocument,
 		CST: any,
-		options = { remapLocations: false }
+		document?: TextDocument
+		// options = { remapLocations: false },
+		// token?: CancellationToken
 	): Promise<SymbolInformation[] | DocumentSymbol[]>
 	{
-		let CSTstatements = ReCollectStatementsFromCST(CST);
-		let Symbols = await ReCollectSymbols(document, CSTstatements);
-		// let CSTstatements = collectStatementsFromCST(CST);		
-		// let Symbols = collectSymbols(document, CST, CSTstatements);
-		return Symbols;
+		let deriv = await deriveSymbolsTree(CST);
+
+		// let tr = await transformSymbolsTree(deriv.children);
+		// console.log('Document deriveTree request - sucess');
+		// console.log(tr);
+
+		return await transformSymbolsTree(deriv.children, 'id', document);
+
+		// let Symbols: DocumentSymbol[] = [];
+		// return [];
+
+		/*
+		return new Promise((resolve, reject) =>
+		{
+			token!.onCancellationRequested(async () =>
+			{
+				console.log('cancelation requested');
+				reject('Cancellation requested');
+			});
+
+			deriveSymbolsTree(CST)
+				.then(result => {
+					console.log(result);
+					
+					return transformSymbolsTree(result.children);})
+				.then(result => resolve(result))
+				.catch(err => reject(err));
+		});
+		// */
+
 	}
 
 	private async _getDocumentSymbols(document: TextDocument): Promise<ParserResult>
@@ -61,20 +90,37 @@ export class mxsDocumentSymbolProvider
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
 		let diagnostics: Diagnostic[] = [];
 
+		// let token: CancellationTokenSource = new CancellationTokenSource();
+		
+		
+		//TODO: Implement cancellation token, in the parser?
+		/*
+		var p = Promise.race([
+			fetch('/resource-that-may-take-a-while'),
+			new Promise(function (resolve, reject) {
+				setTimeout(() => reject(new Error('request timeout')), 5000)
+			})
+		])
+		p.then(response => console.log(response))
+		p.catch(error => console.log(error))
+		*/
+		
 		// feed the parser
 		this.msxParser.source = document.getText();
 		// try {
-		let results = await this.msxParser.ParseSourceAsync();
+		let results = await this.msxParser.ParseSource();
 		// the parser either finished at the first run, or recovered from an error, we have a CST...
+		// console.log('Document parsing request - sucess');
 		if (results.result !== undefined) {
 			if (results.error === undefined) {
 				// no problems so far...
-				SymbolInfCol = await this.documentSymbolsFromCST(document, results.result);
+				//TODO: { remapLocations: true } was intended to fix locations in recovered results, deprecated now with current parser code.
+				SymbolInfCol = await this.documentSymbolsFromCST(results.result, document);		
 				// check for trivial errors
 				diagnostics.push(...provideTokenDiagnostic(document, collectTokens(results.result, 'type', 'error')));
 			} else {
 				//recovered from error
-				SymbolInfCol = await this.documentSymbolsFromCST(document, results.result, { remapLocations: true });
+				SymbolInfCol = await this.documentSymbolsFromCST(results.result);
 				diagnostics.push(...provideTokenDiagnostic(document, collectTokens(results.result, 'type', 'error')));
 				diagnostics.push(...provideParserDiagnostic(document, results.error));
 			}
@@ -92,22 +138,18 @@ export class mxsDocumentSymbolProvider
 		// }
 	}
 
-	parseDocument(document: TextDocument, cancellation: CancellationToken): Promise<ParserResult>
+	parseDocument(document: TextDocument, token: CancellationToken): Promise<ParserResult>
 	{
-		// this.activeDocument = undefined;
 		return new Promise((resolve, reject) =>
 		{
-			// this.later(500).then(
-			// () => {
-			// cancellation request
-			cancellation.onCancellationRequested(async () => reject('Cancellation requested'));
+			token.onCancellationRequested(async () => reject('Cancellation requested'));
+
 			this._getDocumentSymbols(document)
 				.then(
 					result => resolve(result),
 					reason => reject(reason))
 				.catch(err => reject(err));
 		});
-		// });
 	}
 }
 

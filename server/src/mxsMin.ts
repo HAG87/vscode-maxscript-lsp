@@ -41,7 +41,7 @@ export async function MinifyData(data: any | any[] | string)
 	if (typeof data === 'string') {
 		// try {
 		let parser = new mxsParseSource(data);
-		let results = await parser.ParseSourceAsync();
+		let results = await parser.ParseSource();
 		if (results.result !== undefined) {
 			return minCode(results.result);
 		} else {

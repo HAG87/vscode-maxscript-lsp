@@ -92,13 +92,15 @@ export function parsingErrorMessage(error: ParserFatalError): string
  */
 export function provideParserDiagnostic(document: TextDocument, error: ParserError): Diagnostic[]
 {
+	// console.log('PROVIDING DIAGNOSTICS');
+
 	if (!document) { return []; }
 	let diagnostics: Diagnostic[];
 	let tokenList = [...error.tokens];
 	diagnostics = tokenList.map(
 		t =>
 		{
-			let vsRange = getTokenRange(document, t);
+			let vsRange = getTokenRange(t);
 			let diag = Diagnostic.create(
 				vsRange,
 				`Unexpected \"${t}\".`,
@@ -126,7 +128,7 @@ export function provideTokenDiagnostic(document: TextDocument, errTokens: moo.To
 		t => ({
 			// code: 'ERR_TOKEN',
 			message: `Unexpected token: ${t.text}`,
-			range: getTokenRange(document, t),
+			range: getTokenRange(t),
 			severity: DiagnosticSeverity.Warning,
 			source: 'MaxScript'
 		}));

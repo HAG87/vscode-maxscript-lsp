@@ -110,7 +110,7 @@ function cstMatch(document: TextDocument, CST: any | any[], searchword: string)
 	let prospect = getFromCST(CST, { 'value': searchword });
 	if (prospect.length > 0) {
 		// first element in collection
-		let tokenRange = getTokenRange(document, prospect[0]);
+		let tokenRange = getTokenRange(prospect[0]);
 		let cstMatch = LocationLink.create(document.uri, tokenRange, tokenRange);
 		return cstMatch;
 	}
