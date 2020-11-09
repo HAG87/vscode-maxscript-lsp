@@ -2,6 +2,8 @@
 
 // const objectPath = require('object-path');
 import objectPath from 'object-path';
+//@ts-ignore
+import { pathUp } from 'ast-monkey-util';
 //-----------------------------------------------------------------------------------
 /**
  * Retrieve an object-path notation pruning n branches/leafs
@@ -11,19 +13,11 @@ import objectPath from 'object-path';
  */
 export function parentPath(path: string, level: number = 1)
 {
-	if (typeof path === 'string') {
-		if (!path.includes('.')) {
-			return path;
-		} else {
-			let pathTree = path.split('.');
-			// will fail if level is greater than the path depth.
-			if (level <= pathTree.length) {
-				return pathTree.slice(0, -level).join('.');
-			} else {
-				return;
-			}
-		}
+	let res = path;
+	for (let i = 1; i < level; i++) {
+		res = pathUp(res);
 	}
+	return res;
 }
 //-----------------------------------------------------------------------------------
 /**
@@ -81,12 +75,12 @@ export function visitor(node: any, callback: any)
 {
 	function _visit(node: any, parent: any, key: string, level = 0)
 	{
-		
+
 		if ('id' in node || 'type' in node) {
 			const nodeType = getNodeType(node);
 			callback[nodeType](node, parent, level);
 		}
-		
+
 		// get the node keys
 		const keys = Object.keys(node);
 		// loop through the keys
