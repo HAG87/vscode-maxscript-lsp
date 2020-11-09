@@ -69,13 +69,13 @@ export class mxsDocumentSymbolProvider
 		if (results.result !== undefined) {
 			if (results.error === undefined) {
 				// no problems so far...
-				SymbolInfCol = await this.documentSymbolsFromCST(document, this.msxParser.parsedCST);
+				SymbolInfCol = await this.documentSymbolsFromCST(document, results.result);
 				// check for trivial errors
-				diagnostics.push(...provideTokenDiagnostic(document, collectTokens(this.msxParser.parsedCST, 'type', 'error')));
+				diagnostics.push(...provideTokenDiagnostic(document, collectTokens(results.result, 'type', 'error')));
 			} else {
 				//recovered from error
-				SymbolInfCol = await this.documentSymbolsFromCST(document, this.msxParser.parsedCST, { remapLocations: true });
-				diagnostics.push(...provideTokenDiagnostic(document, collectTokens(this.msxParser.parsedCST, 'type', 'error')));
+				SymbolInfCol = await this.documentSymbolsFromCST(document, results.result, { remapLocations: true });
+				diagnostics.push(...provideTokenDiagnostic(document, collectTokens(results.result, 'type', 'error')));
 				diagnostics.push(...provideParserDiagnostic(document, results.error));
 			}
 		} else if (results.error !== undefined) {

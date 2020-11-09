@@ -18,6 +18,9 @@ import traverse from 'ast-monkey-traverse';
 //@ts-ignore
 import objectPath from 'object-path';
 
+// import cloneDeep from 'clone-deep';
+
+import * as moo from 'moo';
 // const astMonkeyTraverse = require('ast-monkey-traverse');
 // const getObj = require('ast-get-object');
 // const getAllValuesByKey = require('ast-get-values-by-key');
@@ -79,7 +82,9 @@ interface iPos {
 }
 
 interface NodeMap {
-	node: any;
+	type: string;
+	id: any;
+	loc: any | null;
 	childs: NodeMap[];
 }
 //-----------------------------------------------------------------------------------
@@ -277,15 +282,18 @@ export function collectStatementsFromCST(CST: any | any[], key: string = 'id')
 	return statements;
 }
 
-export function ReCollectStatementsFromCST(node: any | any[], key: string = 'id')
-{
-	return _visit(node, undefined);
 
-	function _visit(node: any, parent: any | undefined)
+export function ReCollectStatementsFromCST(node: any | any[], keyFilter: string = 'id')
+{
+
+	// let src = cloneDeep(node);
+
+	function _visit(node: any, parent: any | null, key: string | null, index: number | null)
 	{
 		if (!node) { return []; }
-
+		
 		let childStack: NodeMap[] = [];
+
 		// get the node keys
 		const keys = Object.keys(node);
 		// loop through the keys
@@ -297,25 +305,50 @@ export function ReCollectStatementsFromCST(node: any | any[], key: string = 'id'
 			if (Array.isArray(child)) {
 				// value is an array, visit each item
 				for (let j = 0; j < child.length; j++) {
+
 					// visit each node in the array
 					if (isNode(child[j])) {
-						let res = _visit(child[j], node);
+
+
+						let res = _visit(child[j], node, key, j);
+
 						if (res) { childStack = childStack.concat(res); }
+
+					} else {
+						// remove the node
 					}
 				}
 			} else if (isNode(child)) {
-				let res = _visit(child, node);
+
+				let res = _visit(child, node, key, null);
+
 				if (res) { childStack = childStack.concat(res); }
+
+			} else {
+				// remove the node
 			}
 		}
 		// if (isNode(node) && childStack.length > 0) {
 		// }
-		if (key in node) {
-			return <NodeMap>{ node: node, childs: childStack };
+
+		// if (key == null) { return [];}
+
+		if (keyFilter in node) {
+			return <NodeMap>{
+				type: node.type,
+				id: node[keyFilter] ,
+				loc:  node.loc || null,
+				childs: childStack
+			};
 		} else {
 			return childStack.length > 0 ? childStack : [];
 		}
+
 	}
+	
+	return _visit(node, null, null, 0);
+
+
 }
 //-----------------------------------------------------------------------------------
 /**
@@ -327,7 +360,10 @@ export function ReCollectStatementsFromCST(node: any | any[], key: string = 'id'
 export function collectSymbols(document: TextDocument, CST: any, paths: string[])
 {
 	let returnSymbol = (CST: any, path: string) => {
+		
 		let currentNode = objectPath.get(CST, path);
+
+
 		let theSymbol: SymbolInformation = {
 			name: currentNode.id.value.text || currentNode.id.text || '[unnamed]',
 			kind: SymbolKindMatch[currentNode.type] || SymbolKind.Method,
@@ -347,19 +383,21 @@ export function collectSymbols(document: TextDocument, CST: any, paths: string[]
 
 export async function ReCollectSymbols(document: TextDocument, nodes: NodeMap[] | NodeMap):Promise<DocumentSymbol[]>
 {
+
 	let _transformStatements = (_nodes: NodeMap[]):Promise<DocumentSymbol[]> => {
 		return new Promise((resolve, reject) =>
 		{
 			let SymbolCollection: DocumentSymbol[] = [];
 			for (let node of _nodes) {
 				try {
-					let symbolLoc = getDocumentPositions(document, node.node);
-					let symbolName = node.node.id.value.toString();
-					let symbolKind = SymbolKindMatch[node.node.type] || SymbolKind.Method;
+					let symbolLoc = getDocumentPositions(document, node);
+					// let symbolName = node.id.value.toString();
+					// let symbolKind = SymbolKindMatch[node.type] || SymbolKind.Method;
+
 					let theSymbol = DocumentSymbol.create(
-						symbolName,
-						node.node.type,
-						symbolKind,
+						node.id.value.toString(),
+						node.type,
+						SymbolKindMatch[node.type] || SymbolKind.Method,
 						symbolLoc.range,
 						symbolLoc.range
 					);
@@ -377,6 +415,7 @@ export async function ReCollectSymbols(document: TextDocument, nodes: NodeMap[] 
 			resolve(SymbolCollection);
 		});
 	};
+
 	return new Promise((resolve, reject) => {
 		_transformStatements(Array.isArray(nodes) ? nodes : [nodes])
 			.then(

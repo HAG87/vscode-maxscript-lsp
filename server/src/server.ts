@@ -345,7 +345,7 @@ connection.onDefinition(
 					params.position,
 					cancellation,
 					currentDocumentSymbols,
-					mxsDocumentSymbols.msxParser.parsedCST
+					// mxsDocumentSymbols.msxParser.parsedCST
 				);
 			return definitions;
 		} catch (err) {
@@ -391,72 +391,6 @@ connection.onRequest(MinifyDocRequest.type,
 		}
 		return null;
 	});
-
-/*
-	connection.onExecuteCommand(
-		async params =>
-		{
-			// let document = documents.get();
-			let settings = await getDocumentSettings(currentTextDocument.uri);
-
-			switch (params.command) {
-				case Commands.MXS_MINDOC.command:
-					try {
-						let path = utils.uriToPath(currentTextDocument.uri)!;
-						let newPath = utils.prefixFile(path, settings.MinifyFilePrefix);
-						// connection.console.log(utils.uriToPath(currentTextDocument.uri)!);
-						//TODO: CHANGE THIS
-						await mxsMinifier.MinifyDoc(mxsDocumentSymbols.msxParser.parsedCST || currentTextDocument.getText(), newPath);
-						connection.window.showInformationMessage(`MaxScript minify: Document saved as ${Path.basename(newPath)}`);
-					} catch (err) {
-						connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: ${err.message}`);
-					}
-					break;
-				case Commands.MXS_MINFILE.command:
-
-					if (params.arguments === undefined) { return; }
-
-					if (!Array.isArray(params.arguments) || Array.isArray(params.arguments) && params.arguments[0] === undefined) {
-						connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: invalid command arguments`);
-						return;
-					}
-
-					try {
-					// arguments can be an array of paths or an URI
-						let filenames: { src: string, dest: string }[];
-
-						if ('path' in params.arguments[0]) {
-							let path = utils.uriToPath(params.arguments[0].path)!;
-							let newPath = utils.prefixFile(path, settings.MinifyFilePrefix);
-							filenames = [
-								{ src: path, dest: newPath }
-							];
-						} else {
-							filenames = params.arguments[0].map((path: string) =>
-							{
-								return {
-									src: path,
-									dest: utils.prefixFile(path, settings.MinifyFilePrefix)
-								};
-							});
-						}
-						// connection.console.log(JSON.stringify(filenames, null, 2));
-						for (let paths of filenames) {
-						// do it for each file...
-							try {
-								await mxsMinifier.MinifyFile(paths.src, paths.dest);
-								connection.window.showInformationMessage(`MaxScript minify: Document saved as ${Path.basename(paths.dest)}`);
-							} catch (err) {
-								connection.window.showErrorMessage(`MaxScript minify: Failed at ${Path.basename(paths.dest)}. Reason: ${err.message}`);
-							}
-						}
-					} catch (err) {
-						connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: ${err.message}`);
-					}
-					break;
-			}
-		});
-		*/
 //------------------------------------------------------------------------------------------
 // Make the text document manager listen on the connection
 // for open, change and close text document events

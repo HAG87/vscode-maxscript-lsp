@@ -301,7 +301,7 @@ export class mxsParseSource
 	parserInstance!: nearley.Parser;
 	private __source: string;
 	// private __parserState: any;
-	private __parsedCST: any;
+	// private __parsedCST: any;
 	// constructor
 	constructor(source: string | undefined)
 	{
@@ -331,7 +331,7 @@ export class mxsParseSource
 		this.ParseSourceAsync();
 	}
 	/** Get the parsed CST, if any */
-	get parsedCST() { return this.__parsedCST; }
+	// get parsedCST() { return this.__parsedCST; }
 
 	/**
 	 * Tokenize mxs string
@@ -343,7 +343,7 @@ export class mxsParseSource
 	/**
 	 * Parser 
 	 */
-	ParseSourceAsync(source = this.__source): Promise<parserResult>
+	ParseSourceAsync(source = this.__source, recovery = true): Promise<parserResult>
 	{
 		return new Promise((resolve, reject) =>
 		{
@@ -352,24 +352,28 @@ export class mxsParseSource
 				.then(
 					result =>
 					{
-						this.__parsedCST = result.result;
+						// this.__parsedCST = result.result;
 						resolve(result);
 					},
-					() =>
+					reason =>
 					{
 						// console.log('PARSER HAS FAILED! ATTEMP TO RECOVER');
 						this.reset();
-						parseWithErrorsAsync(source, this.parserInstance)
-							.then(result =>
-							{
-								// console.log('PARSER HAS RECOVERED FROM ERROR');
-								this.__parsedCST = result.result;
-								resolve(result);
-							})
-							.catch(error => reject(error));
+						if (recovery) {
+							parseWithErrorsAsync(source, this.parserInstance)
+								.then(result =>
+								{
+									// console.log('PARSER HAS RECOVERED FROM ERROR');
+									// this.__parsedCST = result.result;
+									resolve(result);
+								})
+								.catch(error => reject(error));
+						} else {
+							reject(reason);
+						}
 					}
 				)
-				.catch( err => reject(err));
+				.catch(err => reject(err));
 		});
 	}
 }

@@ -110,6 +110,11 @@ var mxLexer = moo.compile({
 	ws: { match: /(?:[ \t]+|(?:[\\][ \t\r\n]+))/, lineBreaks: true },
 	// newline: { match: /(?:[\r\n]|[\\]\s*[\r\n])+/, lineBreaks: true },
 	newline: { match: /(?:[\r\n]+)/, lineBreaks: true },
+	// path_name $mounstrosity*/_?
+	path: [
+		/[$](?:[A-Za-z0-9_*?/\\]|\.\.\.)+/,
+		'$'
+	],
 	// strings ~RESOURCE~
 	locale: /~[A-Za-z0-9_]+~/,
 	// parameter <param_name>:
@@ -128,14 +133,10 @@ var mxLexer = moo.compile({
 			type: caseInsensitiveKeywords(keywordsDB)
 		}
 	],
-	param: ':',
 	// a mounstrosity
 	typed_iden: /'(?:\\['\\rn]|[^'\\\n])*?'/,
-	// path_name $mounstrosity*/_?
-	path: [
-		/[$](?:[A-Za-z0-9_*?/\\]|\.\.\.)+/,
-		'$'
-	],
+
+	param: ':',
 	// array marker #(...) | #{...}
 	arraydef: /#[ \t]*\(/,
 	bitarraydef: /#[ \t]*{/,

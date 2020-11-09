@@ -12,9 +12,9 @@
 
     const tokenType = (t, newytpe) => {t.type = newytpe; return t;}
 
-    const merge = (a, ...b) => {
-        if (a == null) {return null;}
-        return b != null ? [].concat(a, ...b).filter(e => e != null) : [].concat(a).filter(e => e != null);
+    const merge = (...args) => {
+        let res = [].concat(...args).filter(e => e != null);
+        return res.length === 0 ? null : res;
     }
 
     const convertToken = (token, newtype) => {
@@ -204,7 +204,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             })%}
 
     plugin_clauses
-        -> plugin_clause (EOL plugin_clause):* {% d => merge(d[0], d[1]) %}
+        -> plugin_clause (EOL plugin_clause):* {% d => merge(...d) %}
 
     # plugin_clauses
         # -> plugin_clauses EOL plugin_clause {% d => [].concat(d[0], d[2]) %}
@@ -340,7 +340,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             })%}
     
     group_clauses
-        -> group_clauses EOL rollout_item {% d => [].concat(d[0], d[2]) %}
+        -> group_clauses EOL rollout_item {% d => merge(d[0], d[2]) %}
         | rollout_item
         # | null
     #---------------------------------------------------------------
@@ -426,9 +426,11 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         -> (%kw_on __) event_args __ event_action _ expr
             {% d => ({
                 type:     'Event',
+                id:       d[1].event,
                 args:     d[1],
                 modifier: d[3],
-                body:     d[5]
+                body:     d[5],
+                loc:      getLoc(d[0][0])
             }) %}
 
     event_action -> %kw_do {% id %} | %kw_return {% id %}

@@ -131,7 +131,7 @@ export function getDocumentDefinitions(
 	position: Position,
 	cancellation: CancellationToken,
 	DocumentSymbols?: DocumentSymbol[] | SymbolInformation[],
-	parseCST?: any[],
+	// parseCST?: any[],
 ): Promise<Definition | DefinitionLink[] | undefined>
 {
 	return new Promise((resolve, reject) =>
