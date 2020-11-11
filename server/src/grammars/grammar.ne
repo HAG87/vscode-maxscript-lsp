@@ -22,29 +22,29 @@
             node.type = newtype;
         return node;
     }
-    // Offset is not reilable, changed to line - col
+    // Offset is not reilable, changed to line - character
     const getLoc = (start, end) => {
         if (!start) {return null;}
 
-        let startOffset = start.loc ? start.loc.start : {line: start.line, col: start.col};
+        let startOffset = start.range ? start.range.start : {line: start.line, character: start.col};
         let endOffset;
 
         if (!end) {
-            if (start.loc) {
-                endOffset = start.loc.end;
+            if (start.range) {
+                endOffset = start.range.end;
             } else {
                 endOffset = {
                     line: start.line,
-                    col: (start.text != null ? start.col + (start.text.length - 1): start.col)
+                    character: (start.text != null ? start.col + (start.text.length - 1): start.col)
                 };                
             }
         } else {
-            if (end.loc) {
-                endOffset = end.loc.end;
+            if (end.range) {
+                endOffset = end.range.end;
             } else {
                 endOffset = {
                     line: end.line,
-                    col: (end.text != null ? end.col + (end.text.length - 1) : end.col)                
+                    character: (end.text != null ? end.col + (end.text.length - 1) : end.col)                
                 };
             }
         }
@@ -106,13 +106,13 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             {% d => ({
                 type: 'BlockStatement',
                 body: d[1],
-                //loc: getLoc(d[0], d[2])
+                range: getLoc(d[0], d[2])
             })%}
         | "(" _ ")"
             {% d => ({
                 type: 'BlockStatement',
                 body: [],
-                //loc: getLoc(d[0], d[2])
+                range: getLoc(d[0], d[2])
             })%}
    
     # _expr_seq -> expr  (EOL expr):*
@@ -137,7 +137,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             type: 'EntityRcmenu',
             id:   d[1],
             body: d[4],
-            loc: getLoc(d[0][0], d[5])
+            range: getLoc(d[0][0], d[5])
         })%}
     
     rcmenu_clauses
@@ -163,7 +163,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         label:  d[1],
         params: flatten(d[2]),
         body:   d[5],
-        loc: getLoc(d[0][0], d[6])
+        range: getLoc(d[0][0], d[6])
     })%}
     
     rcmenu_sep -> (%kw_separator __) var_name (_ rcmenu_param):?
@@ -200,7 +200,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 class:      d[3],
                 params:     flatten(d[4]),
                 body:       d[7],
-                loc:    getLoc(d[0][0], d[8])
+                range:    getLoc(d[0][0], d[8])
             })%}
 
     plugin_clauses
@@ -230,7 +230,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 id:     d[1],
                 params: flatten(d[2]),
                 body:   d[5] || [],
-                loc: getLoc(d[0][0], d[6])
+                range: getLoc(d[0][0], d[6])
             })%}
 
     param_clauses
@@ -260,7 +260,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 id:     d[1],
                 params: flatten(d[2]),
                 body:   d[5],
-                loc:    getLoc(d[0][0], d[6])
+                range:    getLoc(d[0][0], d[6])
             })%}
     
     tool_clauses -> tool_clause (EOL tool_clause):* {% d => merge(...d) %}
@@ -283,7 +283,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 title:  d[3],
                 params: flatten(d[4]),
                 body:   d[7],
-                loc:    getLoc(d[0][0], d[8])
+                range:    getLoc(d[0][0], d[8])
             })%}
    
     utility_clauses -> utility_clause (EOL utility_clause):* {% d => merge(...d) %}
@@ -304,7 +304,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 title:  d[3],
                 params: flatten(d[4]),
                 body:   d[7],
-                loc:    getLoc(d[0][0], d[8])
+                range:    getLoc(d[0][0], d[8])
             })%}
     #---------------------------------------------------------------
     # rollout_clauses
@@ -336,7 +336,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 type: 'EntityRolloutGroup',
                 id:   d[1],
                 body: d[4],
-                loc:getLoc(d[0][0], d[5])
+                range:getLoc(d[0][0], d[5])
             })%}
     
     group_clauses
@@ -352,7 +352,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 id:     d[2],
                 text:   (d[3] != null ? d[3][1] : null),
                 params: flatten(d[4]),
-                loc: getLoc(d[0])
+                range: getLoc(d[0], d[2])
             })%}
 #---------------------------------------------------------------
 # MACROSCRIPT --- SHOULD AVOID LEFT RECURSION ?
@@ -366,7 +366,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 id:     d[1],
                 params: flatten(d[2]),
                 body:   d[5] || [],
-                loc:    getLoc(d[0][0], d[6])
+                range:    getLoc(d[0][0], d[6])
             })%}
 
     macro_script_param
@@ -399,7 +399,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 type: 'Struct',
                 id:   d[1],
                 body: d[4],
-                loc:  getLoc(d[0][0], d[5])
+                range:  getLoc(d[0][0], d[5])
             })%}
     struct_members
         -> struct_members (_ "," _) _struct_member {% d => [].concat(d[0], d[2])%}
@@ -431,7 +431,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 args:     d[1],
                 modifier: d[3],
                 body:     d[5],
-                loc:      getLoc(d[0][0])
+                range:      getLoc(d[0][0])
             }) %}
 
     event_action -> %kw_do {% id %} | %kw_return {% id %}
@@ -457,7 +457,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             type:'WhenStatement',
             args: filterNull( [].concat(d[2],d[4],d[6],d[8],d[9]) ),
             body:d[12],
-            loc:getLoc(d[0])
+            range:getLoc(d[0], d[10])
         })%}
         | %kw_when __ operand __ var_name __
           (when_param _ | when_param _ when_param _):? (var_name _):?
@@ -466,7 +466,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             type:'WhenStatement',
             args:filterNull( [].concat(d[2],d[4],d[6],d[7]) ),
             body:d[10],
-            loc:getLoc(d[0])
+            range:getLoc(d[0], d[8])
         })%}
 
     when_param -> param_name _ name_value
@@ -485,7 +485,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 args:   (d[3].map(x => x[1])),
                 params: (d[4].map(x => x[1])),
                 body:   d[6],
-
+                range: getLoc(d[2])
             })%}
          | function_decl __ var_name (_ var_name):+ (_ "=" _) expr
             {% d => ({
@@ -494,6 +494,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 args:   (d[3].map(x => x[1])),
                 params: [],
                 body:   d[5],
+                range: getLoc(d[2])
             })%}
          | function_decl __ var_name (_ fn_params):+ (_ "=" _) expr
             {% d => ({
@@ -510,24 +511,26 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 args:   [],
                 params: [],
                 body:   d[4],
+                range: getLoc(d[2])
             })%}
 
-    function_decl -> (%kw_mapped __):?  %kw_function
-        {% d => ({
-            type:   'Function',
-            mapped: (d[0] != null),
-            keyword: d[1],
-            loc: (getLoc(d[0] != null ? d[0][0] : d[1]))
-        })%}
+    function_decl
+        -> (%kw_mapped __):?  %kw_function
+            {% d => ({
+                type:   'Function',
+                mapped: (d[0] != null),
+                keyword: d[1],
+                //range: (getLoc(d[0] != null ? d[0][0] : d[1]))
+            })%}
 
     fn_params
         -> parameter  {% id %}
         | param_name
-                {% d => ({
-            type: 'ParameterAssignment',
-            param: d[0],
-            value: null,
-        })%}
+            {% d => ({
+                type: 'ParameterAssignment',
+                param: d[0],
+                value: null,
+            })%}
 #---------------------------------------------------------------
 # FUNCTION RETURN
     fn_return -> %kw_return _ expr:?
@@ -611,7 +614,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 type:  'CaseStatement',
                 test:  d[1],
                 cases: merge(d[5], flatten(d[6])),
-                loc:   getLoc(d[0][0], d[8])
+                range:   getLoc(d[0][0], d[8])
             })%}
 
     case_src -> expr _  {% d => d[0] %} | __ {% id %}
@@ -631,7 +634,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 sequence: filterNull(d[6]),
                 action:    d[8],
                 body:      d[10],
-                loc: getLoc(d[0][0])
+                //range: getLoc(d[0][0])
             })%}
 
     for_sequence
@@ -668,7 +671,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             {% d => ({
                 type : 'LoopExit',
                 body:  d[2],
-                loc: getLoc(d[0])
+                //range: getLoc(d[0])
             })%}
 #---------------------------------------------------------------
 # DO LOOP --- OK
@@ -678,7 +681,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             type: 'DoWhileStatement',
             body: d[1],
             test: d[3],
-            loc: getLoc(d[0][0])
+            //range: getLoc(d[0][0])
         })%}
 #---------------------------------------------------------------
 # WHILE LOOP --- OK
@@ -688,7 +691,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             type: 'WhileStatement',
             test: d[1],
             body: d[3],
-            loc: getLoc(d[0][0])
+            //range: getLoc(d[0][0])
         })%}
 #---------------------------------------------------------------
 # IF EXPRESSION --- OK
@@ -699,7 +702,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 test:       d[1],
                 operator:   d[3],
                 consequent: d[5],
-                loc: getLoc(d[0][0])
+                //range: getLoc(d[0][0])
             })%}
         | (%kw_if _) expr (_ %kw_then _) expr (_ %kw_else _) expr
             {% d => ({
@@ -707,7 +710,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 test:       d[1],
                 consequent: d[3],
                 alternate:  d[5],
-                loc: getLoc(d[0][0])
+                //range: getLoc(d[0][0])
             })%}
     if_action
         -> %kw_do  {% id %}
@@ -719,7 +722,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         type:      'TryStatement',
         block:     d[1],
         finalizer: d[3],
-        loc: getLoc(d[0][0])
+        //range: getLoc(d[0][0])
     })%}
     kw_try -> %kw_try _ {% d => d[0] %}
 #---------------------------------------------------------------
@@ -730,18 +733,18 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 type: 'VariableDeclaration',
                 ...d[0],
                 decls: d[2],
-                loc: getLoc(d[0])
+                //range: getLoc(d[0])
             })%}
 
     kw_decl
-        -> %kw_local {% d => ({modifier:null, scope: d[0], loc:getLoc(d[0])}) %}
-        | %kw_global {% d => ({modifier:null, scope: d[0], loc:getLoc(d[0])}) %}
-        | %kw_persistent __ %kw_global {% d => ({modifier: d[0], scope: d[2], loc:getLoc(d[0], d[2])})%}
+        -> %kw_local {% d => ({modifier:null, scope: d[0], range:getLoc(d[0])}) %}
+        | %kw_global {% d => ({modifier:null, scope: d[0], range:getLoc(d[0])}) %}
+        | %kw_persistent __ %kw_global {% d => ({modifier: d[0], scope: d[2], range:getLoc(d[0], d[2])}) %}
     # Direct assignment on declaration
     # TODO: LOCATION
     decl_args
         -> decl
-        | decl ( (_S "," _) decl ):+ {% d =>{ return merge(d[0], collectSub(d[1], 1)); }%}
+        | decl ( (_S "," _) decl ):+ {% d => merge(d[0], collectSub(d[1], 1)) %}
     decl
         -> var_name                {% d => ({type:'Declaration', id:d[0]}) %}
         | var_name (_S "=" _) expr {% d => ({type:'Declaration', id:d[0], value: d[2]}) %}
@@ -905,7 +908,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             type: 'ParameterAssignment',
             param: d[0],
             value: d[2][0],
-            //loc: d[0].loc
+            //range: d[0].range
         })%}
     param_name -> param_kw _S ":" {% d => ({type:'Identifier', value:d[0]}) %}
     param_kw
@@ -923,7 +926,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             type:     'AccessorProperty',
             operand:  d[0],
             property: d[2],
-            //loc:      getLoc(d[0], d[1])
+            range:      getLoc(d[0], d[2])
         })%}
 #---------------------------------------------------------------
 # ACCESSOR - INDEX --- #TODO: Avoid capturing operand?
@@ -932,7 +935,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             type:    'AccessorIndex',
             operand: d[0],
             index:   d[3],
-            //loc:     getLoc(d[0], d[4])
+            range:     getLoc(d[0], d[4])
         })%}
 #---------------------------------------------------------------
 # OPERANDS --- OK
@@ -977,21 +980,21 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         {% d => ({
             type: 'ObjectPoint4',
             elements: [].concat(d[1], d[3], d[5], d[7]),
-            loc: getLoc(d[0], d[8])
+            range: getLoc(d[0], d[8])
         }) %}
     point3
         -> p_start expr (_S "," _) expr (_S "," _) expr p_end
         {% d => ({
             type: 'ObjectPoint3',
             elements: [].concat(d[1], d[3], d[5]),
-            loc: getLoc(d[0], d[6])
+            range: getLoc(d[0], d[6])
         }) %}
     point2
         -> p_start expr (_S "," _) expr p_end
         {% d => ({
             type: 'ObjectPoint2',
             elements: [].concat(d[1], d[3]),
-            loc: getLoc(d[0], d[4])
+            range: getLoc(d[0], d[4])
         }) %}
 
     p_start -> "[" _  {% d => d[0]%}
@@ -1003,13 +1006,13 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             {% d => ({
                 type:      'ObjectArray',
                 elements:  [],
-                loc:       getLoc(d[0], d[2])
+                range:       getLoc(d[0], d[2])
             }) %}
         | (%arraydef _) array_expr (_ %rparen)
             {% d => ({
                 type:     'ObjectArray',
                 elements: d[1],
-                loc:      getLoc(d[0][0], d[2][1])
+                range:      getLoc(d[0][0], d[2][1])
             }) %}
 
         array_expr
@@ -1022,13 +1025,13 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         {% d => ({
             type:     'ObjectBitArray',
             elements: [],
-            loc:      getLoc(d[0], d[2])
+            range:      getLoc(d[0], d[2])
         }) %}
     | ( %bitarraydef _) bitarray_expr (_ %rbrace)
         {% d => ({
             type:     'ObjectBitArray',
             elements: d[1],
-            loc:      getLoc(d[0][0], d[2][1])
+            range:      getLoc(d[0][0], d[2][1])
         }) %}
 
     bitarray_expr
@@ -1043,7 +1046,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
 # VARNAME --- IDENTIFIERS --- OK
     # some keywords can be var_name too...
     var_name -> var_type
-        {% d => ({ type: 'Identifier', value: d[0] }) %}
+        {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
     var_type
         -> %identity      {% id %}
          | %global_typed  {% id %}

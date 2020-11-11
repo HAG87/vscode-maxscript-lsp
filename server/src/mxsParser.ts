@@ -348,6 +348,7 @@ export class mxsParseSource
 	{
 		return new Promise((resolve, reject) =>
 		{
+			// console.log('parsing document...');
 			this.reset();
 
 			ParseSourceAsync(source, this.parserInstance)

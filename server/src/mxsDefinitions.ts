@@ -13,7 +13,7 @@ import
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 //------------------------------------------------------------------------------------------
-import { getFromCST, getTokenRange } from './mxsProvideSymbols';
+import { getFromCST, rangeUtil } from './lib/astUtils';
 import { getlineNumberofChar, getWordAtPosition } from './lib/utils';
 //------------------------------------------------------------------------------------------
 /**
@@ -110,7 +110,7 @@ function cstMatch(document: TextDocument, CST: any | any[], searchword: string)
 	let prospect = getFromCST(CST, { 'value': searchword });
 	if (prospect.length > 0) {
 		// first element in collection
-		let tokenRange = getTokenRange(prospect[0]);
+		let tokenRange = rangeUtil.getTokenRange(prospect[0]);
 		let cstMatch = LocationLink.create(document.uri, tokenRange, tokenRange);
 		return cstMatch;
 	}
@@ -155,26 +155,38 @@ export function getDocumentDefinitions(
 			let _symbolMatch = symbolMatch(document, DocumentSymbols as DocumentSymbol[], word);
 			if (_symbolMatch !== undefined) {
 				resolve([_symbolMatch]);
-				return;
-			}
-		}
+				// return;
+			} else {
+				// reject('No match');
+				
+				// reject([]);
+				// reject;
 
+				// resolve([]);
+				resolve;
+			}
+		} else {
+			// fallback to regex match
+			// console.log('DEFINITIONS: symbols un-available, using regex');
+			let _wordMatch = wordMatch(document, word);
+			_wordMatch !== undefined ? resolve(_wordMatch) : reject('No matches.');
+		}
 		// use the parse tree -- DISABLED
 		/*
-		console.log('DEFINITIONS: symbols un-available, using CST');
-		if (parseCST !== undefined) {
-			let _cstMatch = cstMatch(document, parseCST, word);
-			if (_cstMatch !== undefined) {
-				resolve([_cstMatch]);
-				return;
+			console.log('DEFINITIONS: symbols un-available, using CST');
+			else if (parseCST !== undefined) {
+				let _cstMatch = cstMatch(document, parseCST, word);
+				if (_cstMatch !== undefined) {
+					resolve([_cstMatch]);
+					// return;
+				} else {
+					reject('No match');
+				}
+			} else {
+				// fallback to regex match
+				let _wordMatch = wordMatch(document, word);
+				_wordMatch !== undefined ? resolve(_wordMatch) : reject('No matches.');
 			}
-		}
 		*/
-		
-		// fallback to regex match
-		// console.log('DEFINITIONS: symbols un-available, using regex');
-
-		let _wordMatch = wordMatch(document, word);
-		_wordMatch !== undefined ? resolve(_wordMatch) : reject('No matches.');
 	});
 }

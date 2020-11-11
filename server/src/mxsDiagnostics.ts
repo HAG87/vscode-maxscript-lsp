@@ -9,7 +9,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 //--------------------------------------------------------------------------------
 import moo from 'moo';
 import { tokenDefinitions } from './schema/mxsTokenDefs';
-import { getTokenRange } from './mxsProvideSymbols';
+import { rangeUtil } from './lib/astUtils';
 //--------------------------------------------------------------------------------
 const tokenListToValues = (tokenList: Dictionary<string>[]): string[] =>
 {
@@ -100,7 +100,7 @@ export function provideParserDiagnostic(document: TextDocument, error: ParserErr
 	diagnostics = tokenList.map(
 		t =>
 		{
-			let vsRange = getTokenRange(t);
+			let vsRange = rangeUtil.getTokenRange(t);
 			let diag = Diagnostic.create(
 				vsRange,
 				`Unexpected \"${t}\".`,
@@ -128,7 +128,7 @@ export function provideTokenDiagnostic(document: TextDocument, errTokens: moo.To
 		t => ({
 			// code: 'ERR_TOKEN',
 			message: `Unexpected token: ${t.text}`,
-			range: getTokenRange(t),
+			range: rangeUtil.getTokenRange(t),
 			severity: DiagnosticSeverity.Warning,
 			source: 'MaxScript'
 		}));

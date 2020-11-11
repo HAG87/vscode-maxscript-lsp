@@ -16,7 +16,6 @@ import
 import
 {
 	deriveSymbolsTree,
-	transformSymbolsTree,
 	collectTokens
 } from './mxsProvideSymbols';
 import { mxsParseSource } from './mxsParser';
@@ -39,50 +38,16 @@ export class mxsDocumentSymbolProvider
 {
 	/** Start a parser instance */
 	msxParser = new mxsParseSource('');
-	/** Current active document */
-	// activeDocument!: TextDocument | undefined;
-	/** Current document symbols */
-	// activeDocumentSymbols: SymbolInformation[] = [];
-	/** Current document diagnostics */
-	// documentDiagnostics!: Diagnostic[];
 
 	private async documentSymbolsFromCST(
 		CST: any,
-		document?: TextDocument
+		document: TextDocument
 		// options = { remapLocations: false },
 		// token?: CancellationToken
 	): Promise<SymbolInformation[] | DocumentSymbol[]>
 	{
-		let deriv = await deriveSymbolsTree(CST);
-
-		// let tr = await transformSymbolsTree(deriv.children);
-		// console.log('Document deriveTree request - sucess');
-		// console.log(tr);
-
-		return await transformSymbolsTree(deriv.children, 'id', document);
-
-		// let Symbols: DocumentSymbol[] = [];
-		// return [];
-
-		/*
-		return new Promise((resolve, reject) =>
-		{
-			token!.onCancellationRequested(async () =>
-			{
-				console.log('cancelation requested');
-				reject('Cancellation requested');
-			});
-
-			deriveSymbolsTree(CST)
-				.then(result => {
-					console.log(result);
-					
-					return transformSymbolsTree(result.children);})
-				.then(result => resolve(result))
-				.catch(err => reject(err));
-		});
-		// */
-
+		let deriv = await deriveSymbolsTree(CST, document);
+		return <DocumentSymbol[]>deriv;
 	}
 
 	private async _getDocumentSymbols(document: TextDocument): Promise<ParserResult>
@@ -91,7 +56,6 @@ export class mxsDocumentSymbolProvider
 		let diagnostics: Diagnostic[] = [];
 
 		// let token: CancellationTokenSource = new CancellationTokenSource();
-		
 		
 		//TODO: Implement cancellation token, in the parser?
 		/*
@@ -120,7 +84,7 @@ export class mxsDocumentSymbolProvider
 				diagnostics.push(...provideTokenDiagnostic(document, collectTokens(results.result, 'type', 'error')));
 			} else {
 				//recovered from error
-				SymbolInfCol = await this.documentSymbolsFromCST(results.result);
+				SymbolInfCol = await this.documentSymbolsFromCST(results.result, document);
 				diagnostics.push(...provideTokenDiagnostic(document, collectTokens(results.result, 'type', 'error')));
 				diagnostics.push(...provideParserDiagnostic(document, results.error));
 			}
