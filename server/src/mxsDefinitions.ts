@@ -39,6 +39,27 @@ function findDocumenSymbols(id: string, array: any[]): DocumentSymbol[] | undefi
 	_visit(id, array);
 	return results.length ? results : undefined;
 }
+/*
+function findNodePos(loc: Position, array: DocumentSymbol[]): DocumentSymbol | undefined
+{
+	let isNear = (a:number, b:number, delta: number = 5) => {
+		return Math.abs(a - b) < delta;
+	};
+
+	let _visit = (nodes: DocumentSymbol[], parent: DocumentSymbol | null): DocumentSymbol | undefined =>
+	{
+		for (const node of nodes) {
+			let nodePos = node.range.start;
+			if (nodePos.line === loc.line && isNear(nodePos.character, loc.character)) { return node; }
+			if (node.children) {
+				const child = _visit(node.children, node);
+				if (child) { return child; }
+			}
+		}
+	};
+	return _visit(array, null);
+}
+*/
 
 /**
  * Regex Match
