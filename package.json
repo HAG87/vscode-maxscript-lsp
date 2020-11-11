@@ -227,14 +227,14 @@
 		"webpack": "npm run clean && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js"
 	},
 	"devDependencies": {
-		"@typescript-eslint/parser": "^4.5.0",
-		"eslint": "^7.11.0",
+		"@typescript-eslint/parser": "^4.7.0",
+		"eslint": "^7.13.0",
 		"merge-options": "^3.0.3",
-		"ts-loader": "^8.0.6",
+		"ts-loader": "^8.0.11",
 		"tsconfig-paths-webpack-plugin": "^3.3.0",
-		"typescript": "^4.0.3",
-		"webpack": "^5.2.0",
-		"webpack-cli": "^3.3.12",
+		"typescript": "^4.0.5",
+		"webpack": "^5.4.0",
+		"webpack-cli": "^4.2.0",
 		"webpack-node-externals": "^2.5.2"
 	},
 	"dependencies": {}
