@@ -48,6 +48,7 @@ const SymbolKindMatch: Dictionary<SymbolKind> = {
 	'AccessorIndex': SymbolKind.Property,
 	'Literal': SymbolKind.Constant,
 	'Identifier': SymbolKind.Property,
+	'Parameter': SymbolKind.TypeParameter,
 	'VariableDeclaration': SymbolKind.Variable,
 	'Declaration': SymbolKind.Variable,
 	'Include': SymbolKind.Module,
@@ -76,6 +77,19 @@ export async function deriveSymbolsTree(nodes: any | any[], document: TextDocume
 		},
 		end: document.positionAt(document.getText().length - 1)
 	};
+	/**
+	 * Ranges produced by moo needs to be adjusted, since it starts at 1:1, and for vscode is 0:0
+	 * line: the line number of the beginning of the match, starting from 1.
+	 * col: the column where the match begins, starting from 1.
+	 * @param r Range
+	 */
+	let rangeRemap = (r: Range) =>
+	{
+		r.start.line -= 1;
+		r.start.character -= 1;
+		r.end.line -= 1;
+		// r.end.character -= 1;
+	};
 	// start with a root dummy...
 	let stack = <DocumentSymbol>{
 		id: '',
@@ -101,6 +115,8 @@ export async function deriveSymbolsTree(nodes: any | any[], document: TextDocume
 
 		if (isNode(node) && keyFilter in node) {
 
+			// value is the same as the text, unless you provide a value transform.
+
 			let id: moo.Token = node[keyFilter].value;
 
 			let loc: Range;
@@ -115,10 +131,16 @@ export async function deriveSymbolsTree(nodes: any | any[], document: TextDocume
 					},
 					end: {
 						line: id.line,
-						character: id.col + (id.toString()).length - 1
+						character: id.col + id.text.length - 1
 					}
 				};
 			}
+			// adjust line and char difference !
+			// console.log(loc);
+			rangeRemap(loc);
+
+			// console.log(loc);
+			// console.log('------');
 
 			// TODO: deal with siblings...
 			_node = {

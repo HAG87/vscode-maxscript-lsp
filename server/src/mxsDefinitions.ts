@@ -157,13 +157,13 @@ export function getDocumentDefinitions(
 				resolve([_symbolMatch]);
 				// return;
 			} else {
-				// reject('No match');
+				reject('No matches');
 				
 				// reject([]);
 				// reject;
 
 				// resolve([]);
-				resolve;
+				// resolve;
 			}
 		} else {
 			// fallback to regex match

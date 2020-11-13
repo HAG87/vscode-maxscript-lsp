@@ -374,7 +374,7 @@ namespace MinifyDocRequest
 connection.onRequest(MinifyDocRequest.type,
 	async (params) =>
 	{
-		connection.console.log(JSON.stringify(params, null, 2));
+		// connection.console.log(JSON.stringify(params, null, 2));
 
 		// let settings = await getDocumentSettings(currentTextDocument.uri);
 		let settings = await getDocumentSettings(params.uri[0]);
