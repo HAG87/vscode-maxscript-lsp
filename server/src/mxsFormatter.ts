@@ -21,15 +21,10 @@ import { TokenizeStream as mxsTokenizer } from './mxsParser';
 import mooTokenizer from './lib/mooTokenize-formatter';
 
 // note: keywords could be used to indent, at start or end of line. this will require a per-line aproach... split the documents in lines, and feed the tokenizer one line at the time.
-const keywords = ['kw_about', 'kw_case', 'kw_catch', 'kw_collect', 'kw_compare', 'kw_context', 'kw_coordsys',
-	'kw_defaultAction', 'kw_do', 'kw_else', 'kw_exit', 'kw_for', 'kw_from', 'kw_function', 'kw_group', 'kw_if',
-	'kw_level', 'kw_local', 'kw_macroscript', 'kw_mapped', 'kw_menuitem', 'kw_not', 'kw_null', 'kw_objectset', 'kw_of', 'kw_on',
-	'kw_parameters', 'kw_persistent', 'kw_plugin', 'kw_rcmenu', 'kw_return', 'kw_rollout', 'kw_scope', 'kw_separator', 'kw_set',
-	'kw_struct', 'kw_submenu', 'kw_then', 'kw_tool', 'kw_try', 'kw_undo', 'kw_utility',
-	'kw_when', 'kw_where', 'kw_while', 'kw_with'];
+
 
 const filterCurrent = ['newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange'];
-const filterAhead   = ['newline', 'delimiter', 'sep', 'param', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange'];
+const filterAhead   = ['newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange'];
 
 const IndentTokens   = ['lparen', 'arraydef', 'lbracket', 'lbrace', 'bitarraydef'];
 const UnIndentTokens = ['rparen', 'rbracket', 'rbrace'];

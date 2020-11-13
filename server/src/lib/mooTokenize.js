@@ -118,28 +118,33 @@ var mxLexer = moo.compile({
 	// strings ~RESOURCE~
 	locale: /~[A-Za-z0-9_]+~/,
 	// parameter <param_name>:
-	global_typed: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
+	global_typed: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+/,
 	// params: { match: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[ \t]*[:][^:])/ },
 	// property <object>.<property>
 	// property: { match: /\.[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/, value: x => x.slice(1) },
 	// ::global variable
 	// IDENTIFIERS
 	identity: [
-		/[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[ \t]*[:][^:])/,
-		/[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=\.)/,
-		/(?<=\.)[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
+		// /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+(?=[ \t]*[:][^:])/,
+		// /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+(?=\.)/,
+		// /(?<=\.)[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+/,
+		// /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+(?![:])/,
 		{
-			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
+			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+(?![:])/,
 			type: caseInsensitiveKeywords(keywordsDB)
 		}
 	],
 	// a mounstrosity
 	typed_iden: /'(?:\\['\\rn]|[^'\\\n])*?'/,
 
-	param: ':',
+	param: {
+		match:/[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+:/,
+		value: x => x.slice(0, -1)
+	},
+	// param: ':',
 	// array marker #(...) | #{...}
 	arraydef: /#[ \t]*\(/,
-	bitarraydef: /#[ \t]*{/,
+	bitarraydef: /#[ \t]*\{/,
 	// PARENS
 	lparen: '(',
 	rparen: ')',
