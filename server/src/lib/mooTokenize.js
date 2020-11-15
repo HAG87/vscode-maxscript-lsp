@@ -130,18 +130,23 @@ var mxLexer = moo.compile({
 	typed_iden: /'(?:\\['\\rn]|[^'\\\n])*?'/,
 	
 	// parameter <param_name>:
+	/*
 	param_name: {
 		match:/[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[:])/,
 		// value: x => x.slice(0, -1)
 	},
-	// params: { match: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[ \t]*[:][^:])/ },
-	param: ':',
-
-	identity: 
+	*/
+	identity: [
+		// properties
+		/(?<=\.)[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
+		/[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[.])/,
+		// param names
+		/[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[:])/,
 		{
-			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
+			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?![:.])/,
 			type: caseInsensitiveKeywords(keywordsDB)
 		},
+	],
 	// array marker #(...) | #{...}
 	arraydef: /#[ \t]*\(/,
 	bitarraydef: /#[ \t]*\{/,
@@ -188,6 +193,7 @@ var mxLexer = moo.compile({
 	delimiter: '.',
 	sep: ',',
 	statement: ';',
+	param: ':',
 
 	// [\$?`] COMPLETE WITH UNWANTED CHARS HERE THAT CAN BREAK THE TOKENIZER
 	error: [
