@@ -2,7 +2,7 @@
 @{%
 	const mxLexer = require('./mooTokenize.js');
     // Utilities
-    const $empty = '';
+    // const $empty = '';
 
     const flatten = arr => arr != null ? arr.flat().filter(e => e != null) : [];
 
@@ -134,7 +134,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
 #===============================================================
 # DEFINITIONS
 #===============================================================
-# RC MENU DEFINITION - OK
+# RC MENU DEFINITION -- OK
     rcmenu_def
         -> (%kw_rcmenu __) var_name _
             LPAREN
@@ -250,7 +250,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             params: flatten(d[1])
     })%}
 #---------------------------------------------------------------
-# TOOL - MOUSE TOOL DEFINITION - OK
+# TOOL - MOUSE TOOL DEFINITION --- OK
     tool_def
         -> (%kw_tool __) var_name (_ parameter):* _
             LPAREN
@@ -272,7 +272,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         | struct_def     {% id %}
         | event_handler  {% id %}
 #---------------------------------------------------------------
-# UTILITY DEFINITION -- OK
+# UTILITY DEFINITION --- OK
     utility_def
         -> (%kw_utility __) var_name _ operand (_ parameter):* _
             LPAREN
@@ -404,7 +404,6 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 type: 'Struct',
                 id:   d[1],
                 body: d[4],
-                //range:  getLoc(d[0][0], d[1])
                 range: getLoc(d[0][0], d[5])
             })%}
     
@@ -456,7 +455,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 args: flatten(d[3])}
             )%}
 #---------------------------------------------------------------
-# CHANGE HANDLER -- WHEN CONSTRUCTOR
+# CHANGE HANDLER -- WHEN CONSTRUCTOR -- OK
     change_handler
         -> %kw_when __ var_name __ operand __ var_name __
           (when_param _ | when_param _ when_param _):? (var_name __):?
@@ -549,15 +548,15 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         -> parameter  {% id %}
         | param_name  {% id %}
 #---------------------------------------------------------------
-# FUNCTION RETURN
+# FUNCTION RETURN --- OK
     fn_return -> %kw_return _ expr
         {% d => ({
             type: 'FunctionReturn',
-            body: d[2]
+            body: d[2],
             range: getLoc(d[0], d[2])
         })%}
 #===============================================================
-# CONTEXT EXPRESSION -- TODO: FINISH LOCATION
+# CONTEXT EXPRESSION --- OK
     # set_context -> %kw_set _ context
     #---------------------------------------------------------------
     context_expr -> context ( (_S "," _) context ):* _ expr
@@ -614,7 +613,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 prefix : d[0],
                 context: d[2],
                 args: d[4],
-                range: getLoc(d[0]d, d[4][0])
+                range: getLoc(d[0], d[4][0])
             })%}
         | (%kw_with __):? %kw_undo _ ( undo_label _ ):? (logical_expr | bool)
             {% d => ({
@@ -974,71 +973,19 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             }%}
 
     param_name
-        -> %param ":"
+        -> %param_name ":"
             {% d => ({
-                type:'Parameter',
+                type:'Identifier',
                 value: d[0],
-                range: getLoc(d[0], d[2])
+                range: getLoc(d[0], d[1])
             }) %}
-    
-    # needs keyword override
-    # param_kw
-        # -> var_name   {% id %}
-        # | %kw_about         {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_as            {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_at            {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_bool          {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_by            {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_case          {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_catch         {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_collect       {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_compare       {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_context       {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_coordsys      {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_defaultAction {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_do            {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_else          {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_exit          {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_for           {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_from          {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_function      {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_global        {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_group         {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_if            {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_in            {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_level         {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_local         {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_macroscript   {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_mapped        {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_menuitem      {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_not           {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_null          {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_objectset     {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_of            {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_on            {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_parameters    {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_persistent    {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_plugin        {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_rcmenu        {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_return        {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_rollout       {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_scope         {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_separator     {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_set           {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_struct        {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_submenu       {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_then          {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_time          {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_to            {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_tool          {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_try           {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_uicontrols    {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_undo          {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_utility       {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_when          {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_where         {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_while         {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
-        # | %kw_with          {% d => ({ type: 'Identifier', value: d[0], range: getLoc(d[0]) }) %}
+
+    # param_id -> %param_name
+    # {% d => ({
+    #     type: 'Identifier',
+    #     value: d[0],
+    #     range: getLoc(d[0])
+    # })%}
 #---------------------------------------------------------------
 # ACCESSOR - PROPERTY --- OK
     property
@@ -1088,7 +1035,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         | point4     {% id %} # RANGE OK
         | point3     {% id %} # RANGE OK
         | point2     {% id %} # RANGE OK
-        | "?" {% d => ({type: 'Keyword', value: d[0]}, range: getLoc(d[0])) %} # RANGE OK
+        | "?" {% d => ({type: 'Keyword', value: d[0], range: getLoc(d[0]) })%} # RANGE OK
         | %error     {% id %}
         # HERE IS WHERE THE ITERATION HAPPENS
         | expr_seq   {% id %} # RANGE OK
