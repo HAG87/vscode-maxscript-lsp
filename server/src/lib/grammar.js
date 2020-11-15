@@ -699,7 +699,7 @@ var grammar = {
                 ...d[0],
                 decls: d[2],
             };
-            addLoc(res, ...decl_list);
+            addLoc(res, ...d[2]);
             return res;
         }},
     {"name": "kw_decl", "symbols": [(mxLexer.has("kw_local") ? {type: "kw_local"} : kw_local)], "postprocess": d => ({modifier:null, scope: d[0], range:getLoc(d[0])})},
@@ -848,8 +848,8 @@ var grammar = {
             };            
             return res;
         }},
-    {"name": "param_name", "symbols": [(mxLexer.has("param_name") ? {type: "param_name"} : param_name), {"literal":":"}], "postprocess":  d => ({
-            type:'Identifier',
+    {"name": "param_name", "symbols": ["var_name", {"literal":":"}], "postprocess":  d => ({
+            type:'Parameter',
             value: d[0],
             range: getLoc(d[0], d[1])
         }) },

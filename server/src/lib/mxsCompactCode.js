@@ -75,7 +75,6 @@ let tokensValue = {
 	hex          (node) { return node.text; },
 	identity     (node) { return node.text; },
 	
-	param_name   (node) { return node.text; },
 	locale       (node) { return node.text; },
 	math         (node) { return node.value; },
 	name         (node) { return node.text; },
@@ -151,7 +150,6 @@ const visitorPatterns = {
 	// LITERALS
 	Literal    (node, stack) { return stack.value;},
 	Identifier (node, stack) { return stack.value;},
-	
 	Parameter (node, stack) { return stack.value;},
 
 	BitRange   (node, stack) { return `${stack.start}..${stack.end}`;},

@@ -766,7 +766,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                     ...d[0],
                     decls: d[2],
                 };
-                addLoc(res, ...decl_list);
+                addLoc(res, ...d[2]);
                 return res;
             }%}
 
@@ -973,19 +973,12 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             }%}
 
     param_name
-        -> %param_name ":"
+        -> var_name ":"
             {% d => ({
-                type:'Identifier',
+                type:'Parameter',
                 value: d[0],
                 range: getLoc(d[0], d[1])
             }) %}
-
-    # param_id -> %param_name
-    # {% d => ({
-    #     type: 'Identifier',
-    #     value: d[0],
-    #     range: getLoc(d[0])
-    # })%}
 #---------------------------------------------------------------
 # ACCESSOR - PROPERTY --- OK
     property
