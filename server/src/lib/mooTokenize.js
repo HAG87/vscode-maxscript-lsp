@@ -131,16 +131,28 @@ var mxLexer = moo.compile({
 	
 	// parameter <param_name>:
 	param_name: {
+<<<<<<< HEAD
 		match:/[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+(?=[:])/,
+=======
+		match:/[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[:])/,
+>>>>>>> dd03d951bd0c3e76f1b6e4ef4532c4ac77fc6105
 		// value: x => x.slice(0, -1)
 	},
 	// params: { match: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[ \t]*[:][^:])/ },
 	param: ':',
 
+<<<<<<< HEAD
 	identity: {
 		match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+/,
 		type: caseInsensitiveKeywords(keywordsDB)
 	},
+=======
+	identity: 
+		{
+			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
+			type: caseInsensitiveKeywords(keywordsDB)
+		},
+>>>>>>> dd03d951bd0c3e76f1b6e4ef4532c4ac77fc6105
 	// array marker #(...) | #{...}
 	arraydef: /#[ \t]*\(/,
 	bitarraydef: /#[ \t]*\{/,
