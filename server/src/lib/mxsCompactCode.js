@@ -337,7 +337,7 @@ const visitorPatterns = {
 		return joinStatements(['exit with', body]);
 	},
 	TryStatement(node, stack) {
-		return joinStatements(['try', stack.block, 'catch', stack.finalizer]);
+		return joinStatements(['try', stack.body, 'catch', stack.finalizer]);
 	},
 	DoWhileStatement(node, stack) {
 		let body = exprTerm(stack.body);
