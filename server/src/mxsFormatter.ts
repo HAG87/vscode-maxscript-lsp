@@ -20,6 +20,24 @@ import { Token } from 'moo';
 import { TokenizeStream as mxsTokenizer } from './mxsParser';
 import mooTokenizer from './lib/mooTokenize-formatter';
 
+//@ts-ignore
+import IndentationLexer from 'moo-indentation-lexer';
+//-----------------------------------------------------------------------------------
+/*
+	// Create an indentation-aware lexer using the lexer
+	const lexer = new IndentationLexer({
+		lexer: mooLexer,
+		indentationType: 'WS',
+		newlineType: 'NL',
+		commentType: 'comment',
+		indentName: 'indent',
+		dedentName: 'dedent',
+		enclosingPunctuations: { '[': ']', '<': '>' },   // defaults {}, () and []
+		separators: [',']
+	})
+*/
+//-----------------------------------------------------------------------------------
+
 // note: keywords could be used to indent, at start or end of line. this will require a per-line aproach... split the documents in lines, and feed the tokenizer one line at the time.
 
 
@@ -32,7 +50,7 @@ const UnIndentTokens = ['rparen', 'rbracket', 'rbrace'];
 // Helpers
 const getRange = (line: number, col: number, length: number) => Range.create(Position.create(line, col), Position.create(line, col + length));
 const getPos = (line: number, col: number) => Position.create(line, col);
-
+//-----------------------------------------------------------------------------------
 
 interface SimpleFormatterActions
 {

@@ -6,6 +6,7 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
+    "noImplicitAny": false,
     "allowJs": true,
     "baseUrl": ".",
     "paths": {
