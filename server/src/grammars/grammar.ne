@@ -1054,6 +1054,12 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 value: d[0],
                 range: getLoc(d[0], d[1])
             }) %}
+        | kw_override ":"
+            {% d => ({
+                type:'Parameter',
+                value: d[0],
+                range: getLoc(d[0], d[1])
+            }) %}
 #---------------------------------------------------------------
 # ACCESSOR - PROPERTY --- OK
     property
@@ -1207,17 +1213,29 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         | %kw_submenu      {% id %}
         | %kw_time         {% id %}
         | %kw_set          {% id %}
-        # | %kw_parameters   {% id %}
-        # | %kw_dontcollect  {% id %}
-        # | %kw_continue     {% id %}
-        # | %kw_rollout
-        # | %kw_plugin
-        # | %kw_rcmenu
-        # | %kw_tool
-        # | %kw_to
-        # | %kw_collect
-        # | %kw_return
-        # | %kw_throw
+
+# USED TO BYPASS PARAMETER NAME ERRORS IN BACKTRACK PARSER -- DISABLE WHEN A BETTER SOLUTION IS FOUND
+kw_override
+        -> %kw_uicontrols  {% id %}
+        | %kw_group        {% id %}
+        | %kw_level        {% id %}
+        | %kw_menuitem     {% id %}
+        | %kw_objectset    {% id %}
+        | %kw_separator    {% id %}
+        | %kw_submenu      {% id %}
+        | %kw_time         {% id %}
+        | %kw_set          {% id %}
+        | %kw_parameters   {% id %}
+        | %kw_dontcollect  {% id %}
+        | %kw_continue     {% id %}
+        | %kw_rollout      {% id %}
+        | %kw_plugin       {% id %}
+        | %kw_rcmenu       {% id %}
+        | %kw_tool         {% id %}
+        | %kw_to           {% id %}
+        | %kw_collect      {% id %}
+        | %kw_return       {% id %}
+        | %kw_throw        {% id %}
 #===============================================================
 # TOKENS
     # time

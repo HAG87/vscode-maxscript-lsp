@@ -211,7 +211,6 @@ function parseWithErrorsAsync(source: string, parserInstance: nearley.Parser): P
 
 	let reportSuccess = () =>
 	{
-		// console.log('parser report! - OK');
 		let newErr = new ParserError('Parser failed. Partial parsings has been recovered.');
 		newErr.name = 'ERR_RECOVER';
 		newErr.recoverable = true;
@@ -221,7 +220,6 @@ function parseWithErrorsAsync(source: string, parserInstance: nearley.Parser): P
 	};
 	let reportFailure = () =>
 	{
-		// console.log('parser report! - BAD ');
 		let newErr = new ParserError('Parser failed. Unrecoverable errors.');
 		newErr.name = 'ERR_FATAL';
 		newErr.recoverable = false;
@@ -234,7 +232,8 @@ function parseWithErrorsAsync(source: string, parserInstance: nearley.Parser): P
 	{
 		let parsings = (
 			src: import('moo').Token[],
-			next: number, total: number
+			next: number,
+			total: number
 		): any | undefined =>
 		{
 			try {
@@ -242,31 +241,40 @@ function parseWithErrorsAsync(source: string, parserInstance: nearley.Parser): P
 			} catch (err) {
 				// catch non parsing related errors.
 				if (!err.token) { throw (err); }
+				// collect bad tokens
 				badTokens.push(src[next]);
+				// create a report of possible fixes *DISBLED*
 				// errorReport.push({token:src[next], alternatives: this.PossibleTokens(mxsParser) });
+				
+				// replace the faulty token with a filler value
 				let filler = replaceWithWS(err.token.text);
 				err.token.text = filler;
 				err.token.value = filler;
 				err.token.type = 'ws';
 				// src.splice(next, 1, err.token);
 				src[next] = err.token;
+
+				// backtrack
 				next -= 1;
 				parserInstance.restore(state);
 			}
 			state = parserInstance.save();
 
-			if (next === total) {
+			if (next >= total) {
+
 				if (parserInstance.results) {
-					return callback(parserInstance.results[0]);
+					callback(parserInstance.results[0]);
 				} else {
-					return callback();
+					callback();
 				}
 			} else {
-				return setImmediate(() => parsings(src, next + 1, total));
+				setImmediate(() => parsings(src, next + 1, total));
+				// parsings(src, next + 1, total);
 			}
 		};
 		parsings(src, 0, total);
 	};
+
 	let parseResults = () =>
 	{
 		return new Promise((resolve, reject) =>
@@ -282,6 +290,14 @@ function parseWithErrorsAsync(source: string, parserInstance: nearley.Parser): P
 
 	return new Promise((resolve, reject) =>
 	{
+		errParser((result: any | undefined) => {
+			if (result) {
+				resolve({ result: <any>result, error: reportSuccess() });
+			} else {
+				resolve({ result: undefined, error: reportFailure() });
+			}
+		});
+		/*
 		parseResults()
 			.then((result) =>
 			{
@@ -292,6 +308,7 @@ function parseWithErrorsAsync(source: string, parserInstance: nearley.Parser): P
 				//}
 			})
 			.catch(err => reject(err));
+		*/
 	});
 }
 //-----------------------------------------------------------------------------------
@@ -353,15 +370,13 @@ export class mxsParseSource
 
 			ParseSourceAsync(source, this.parserInstance)
 				.then(
-					result =>
-					{
-						resolve(result);
-					},
+					result => resolve(result),
 					reason =>
-					{
-						// console.log('PARSER HAS FAILED! ATTEMP TO RECOVER');
-						this.reset();
+					{		
+						// reset the parser
+						this.reset();						
 						if (recovery) {
+							// console.log('PARSER HAS FAILED! ATTEMP TO RECOVER');
 							return parseWithErrorsAsync(source, this.parserInstance);
 						} else {
 							reject(reason);

@@ -140,6 +140,8 @@ var mxLexer = moo.compile({
 		// properties
 		/(?<=\.)[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
 		/[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[.])/,
+		// listener eval
+		'?',
 		// param names
 		/[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[:])/,
 		{
