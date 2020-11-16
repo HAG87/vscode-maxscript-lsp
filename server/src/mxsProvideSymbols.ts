@@ -88,7 +88,7 @@ export async function deriveSymbolsTree(nodes: any | any[], document: TextDocume
 		r.start.line -= 1;
 		r.start.character -= 1;
 		r.end.line -= 1;
-		// r.end.character -= 1;
+		r.end.character -= 1;
 	};
 	// start with a root dummy...
 	let stack = <DocumentSymbol>{
@@ -116,12 +116,12 @@ export async function deriveSymbolsTree(nodes: any | any[], document: TextDocume
 		if (isNode(node) && keyFilter in node) {
 
 			// value is the same as the text, unless you provide a value transform.
-
 			let id: moo.Token = node[keyFilter].value;
 
 			let loc: Range;
 			if (node.range) {
 				loc = <Range>node.range;
+				
 			} else {
 				// if node doesnt has a location, infer it from the id...
 				loc = {
@@ -131,16 +131,16 @@ export async function deriveSymbolsTree(nodes: any | any[], document: TextDocume
 					},
 					end: {
 						line: id.line,
-						character: id.col + id.text.length - 1
+						character: id.col + id.text.length
 					}
 				};
 			}
 			// adjust line and char difference !
-			// console.log(loc);
 			rangeRemap(loc);
 
-			// console.log(loc);
-			// console.log('------');
+			// if (node.type === 'Declaration') {
+			// 	console.log(document.getText(node.range));
+			// }
 
 			// TODO: deal with siblings...
 			_node = {
