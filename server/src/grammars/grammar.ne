@@ -54,8 +54,8 @@
             }
         } else {
             // end could be an array...
-            let last = Array.isArray(end) ? end[end.length] : end;
-
+            let last = Array.isArray(end) ? end[end.length-1] : end;
+           // console.log(last);
             if (last) {
                 if (last.range) {
                     endOffset = last.range.end;
@@ -66,12 +66,10 @@
                     };
                 }
             }
-            /*
-            else {
+            /*else {
                 // undefined nodes????
-                console.log(start);
-            }
-            */
+                console.log(end);
+            }//*/
         }
         
         let range = {
@@ -997,19 +995,25 @@ Main -> _ _expr_seq _ {% d => d[1] %}
 # FUNCTION CALL --- OK
     fn_call
         -> call_caller _S call_args (_S call_params):?
-        {% d => ({
-            type:  'CallExpression',
-            calle: d[0],
-            args:  merge(d[2], d[3]),
-            range: getLoc(d[0], d[3] != null ? d[3][1] : d[2])
-        })%}
-        | call_caller _S call_params
-            {% d => ({
+        {% d => {
+            let res = {
                 type:  'CallExpression',
                 calle: d[0],
-                args:  d[2],
-                range: getLoc(d[0], d[2])
-            })%}
+                args:  merge(d[2], d[3]),
+                range: getLoc(d[0], d[3] != null ? d[3][1] : d[2])
+            };
+            return res;
+        }%}
+        | call_caller _S call_params
+            {% d => {
+                let res = {
+                    type:  'CallExpression',
+                    calle: d[0],
+                    args:  d[2],
+                    range: getLoc(d[0], d[2])
+                    };
+                return res;
+            }%}
 
     call_params
         -> call_params _S parameter {% d => [].concat(d[0], d[2]) %}

@@ -138,7 +138,7 @@ export async function deriveSymbolsTree(nodes: any | any[], document: TextDocume
 			// adjust line and char difference !
 			rangeRemap(loc);
 
-			// if (node.type === 'Declaration') {
+			// if (node.type === 'Event') {
 			// 	console.log(document.getText(node.range));
 			// }
 

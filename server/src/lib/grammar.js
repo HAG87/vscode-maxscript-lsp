@@ -57,8 +57,8 @@ function id(x) { return x[0]; }
             }
         } else {
             // end could be an array...
-            let last = Array.isArray(end) ? end[end.length] : end;
-
+            let last = Array.isArray(end) ? end[end.length-1] : end;
+           // console.log(last);
             if (last) {
                 if (last.range) {
                     endOffset = last.range.end;
@@ -69,12 +69,10 @@ function id(x) { return x[0]; }
                     };
                 }
             }
-            /*
-            else {
+            /*else {
                 // undefined nodes????
-                console.log(start);
-            }
-            */
+                console.log(end);
+            }//*/
         }
         
         let range = {
@@ -872,18 +870,24 @@ var grammar = {
     {"name": "fn_call$ebnf$1$subexpression$1", "symbols": ["_S", "call_params"]},
     {"name": "fn_call$ebnf$1", "symbols": ["fn_call$ebnf$1$subexpression$1"], "postprocess": id},
     {"name": "fn_call$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "fn_call", "symbols": ["call_caller", "_S", "call_args", "fn_call$ebnf$1"], "postprocess":  d => ({
-            type:  'CallExpression',
-            calle: d[0],
-            args:  merge(d[2], d[3]),
-            range: getLoc(d[0], d[3] != null ? d[3][1] : d[2])
-        })},
-    {"name": "fn_call", "symbols": ["call_caller", "_S", "call_params"], "postprocess":  d => ({
-            type:  'CallExpression',
-            calle: d[0],
-            args:  d[2],
-            range: getLoc(d[0], d[2])
-        })},
+    {"name": "fn_call", "symbols": ["call_caller", "_S", "call_args", "fn_call$ebnf$1"], "postprocess":  d => {
+            let res = {
+                type:  'CallExpression',
+                calle: d[0],
+                args:  merge(d[2], d[3]),
+                range: getLoc(d[0], d[3] != null ? d[3][1] : d[2])
+            };
+            return res;
+        }},
+    {"name": "fn_call", "symbols": ["call_caller", "_S", "call_params"], "postprocess":  d => {
+            let res = {
+                type:  'CallExpression',
+                calle: d[0],
+                args:  d[2],
+                range: getLoc(d[0], d[2])
+                };
+            return res;
+        }},
     {"name": "call_params", "symbols": ["call_params", "_S", "parameter"], "postprocess": d => [].concat(d[0], d[2])},
     {"name": "call_params", "symbols": ["parameter"]},
     {"name": "call_args", "symbols": ["call_args", "_S", "call_arg"], "postprocess": d => [].concat(d[0], d[2])},
