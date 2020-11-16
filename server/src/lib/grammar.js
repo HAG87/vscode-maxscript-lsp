@@ -828,9 +828,14 @@ var grammar = {
             right:    d[4],
             range: getLoc(d[0], d[4])
         })},
-    {"name": "as", "symbols": ["math_operand"], "postprocess": id},
+    {"name": "as", "symbols": ["uny"], "postprocess": id},
+    {"name": "uny", "symbols": [{"literal":"-"}, "_", "math_operand"], "postprocess":  d => ({
+            type: 'UnaryExpression',
+            operator: d[0],
+            right:    d[2]
+        }) },
+    {"name": "uny", "symbols": ["math_operand"], "postprocess": id},
     {"name": "math_operand", "symbols": ["operand"], "postprocess": id},
-    {"name": "math_operand", "symbols": ["u_operand"], "postprocess": id},
     {"name": "math_operand", "symbols": ["fn_call"], "postprocess": id},
     {"name": "logical_expr$subexpression$1", "symbols": ["logical_operand"]},
     {"name": "logical_expr$subexpression$1", "symbols": ["not_operand"]},
@@ -925,7 +930,7 @@ var grammar = {
             index:   d[3],
             range:   getLoc(d[2], d[4])
         })},
-    {"name": "u_operand", "symbols": [{"literal":"-"}, "_", "operand"], "postprocess":  d => ({
+    {"name": "u_operand", "symbols": [{"literal":"-"}, "operand"], "postprocess":  d => ({
             type: 'UnaryExpression',
             operator: d[0],
             right:    d[1],

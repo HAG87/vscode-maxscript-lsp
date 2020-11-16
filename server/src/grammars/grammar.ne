@@ -929,21 +929,21 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                     right:    d[4],
                     range: getLoc(d[0], d[4])
                 })%}
-            | math_operand {% id %}
+            | uny {% id %}
 
-        #   | uny {% id %}
-        # uny -> "-" _  math_operand
-        #         {% d => ({
-        #             type: 'UnaryExpression',
-        #             operator: d[0],
-        #             right:    d[2]
-        #         }) %}
+        uny -> "-" _  math_operand
+                {% d => ({
+                    type: 'UnaryExpression',
+                    operator: d[0],
+                    right:    d[2]
+                }) %}
+            | math_operand {% id %}
 
     # fn_call | operand | u_operand | passthrough math expression
     # FIXME: fn_call should be passed to operand? I've done it this way to avoid operator ambiguity...
     math_operand
         -> operand   {% id %}
-        | u_operand  {% id %}
+        # | u_operand  {% id %}
         | fn_call    {% id %}
 #---------------------------------------------------------------
 # LOGIC EXPRESSION --- OK
@@ -1075,8 +1075,9 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         })%}
 #---------------------------------------------------------------
 # OPERANDS --- OK
+    # unary operator, intended to adress unaryminus in function calls
     u_operand
-        -> "-" _ operand
+        -> "-" operand
             {% d => ({
                 type: 'UnaryExpression',
                 operator: d[0],
