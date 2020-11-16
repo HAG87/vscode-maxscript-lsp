@@ -24,7 +24,10 @@ var mxLexer = compile({
 	// whitespace -  also matches line continuations
 	ws: { match: /(?:[ \t]+|(?:[\\][ \t\r\n]+))/, lineBreaks: true },
 	newline: { match: /(?:[\r\n]+)/, lineBreaks: true },
+	
 	// Identities
+	param: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*:/,
+
 	identity: [
 		/[$](?:[A-Za-z0-9_*?/\\]|\.\.\.)+/,
 		'$',
@@ -32,30 +35,31 @@ var mxLexer = compile({
 		/#[A-Za-z0-9_]+\b/,
 		/#'[A-Za-z0-9_]+'/,
 		/~[A-Za-z0-9_]+~/,
-		/::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+/,
+		/::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
 		{
-			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+(?![:])/,
+			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?![:])/,
 			type: caseInsensitiveKeywords(keywordsDB)
 		}
 	],
-	param: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+:/,
-	// Parens
-	arraydef: /#[ \t]*\(/,
-	bitarraydef: /#[ \t]*\{/,
-	emptyparens: /\([\s\t]*\)/,
-	lparen: '(',
-	rparen: ')',
-	emptybracket: /\[[\s\t]*\]/,
-	lbracket: '[',
-	rbracket: ']',
-	lbrace: '{',
-	rbrace: '}',
-	// Values
+	
 	time: [
 		/(?:[-]?(?:[0-9]+\.)?[0-9]+[msft])+/,
 		/(?:[-]?(?:[0-9]+\.)[0-9]*[msft])+/,
 		/[0-9]+[:][0-9]+\.[0-9]*/
 	],
+	// Parens
+	arraydef: /#[ \t]*\(/,
+	bitarraydef: /#[ \t]*\{/,
+	emptyparens: {match: /\(\)/, lineBreaks: false},
+	lparen: '(',
+	rparen: ')',
+	emptybracket: {match: /\[\]/, lineBreaks: false},
+	lbracket: '[',
+	rbracket: ']',
+	lbrace: '{',
+	rbrace: '}',
+	// Values
+
 	bitrange: '..',
 	number: [
 		/0[xX][0-9a-fA-F]+/,
@@ -64,10 +68,16 @@ var mxLexer = compile({
 		/[-]?[0-9]+(?:[LP]|[eEdD][+-]?[0-9]+)?/,
 		/(?:(?<!\.)[-]?\.[0-9]+(?:[eEdD][+-]?[0-9]+)?)/
 	],
-	// unary: {match: /(?<=[^\w)-])-(?![-\s])/},
+	// unaryminus: {match: /(?<=[^\w)-])-(?![-])/},
 	// Operators
-	unaryminus: /-(?![-\s\t\r\n])/,
+	unaryminus: [
+		// preceded by WS and suceeded by non WS
+		/(?<=[\s\t\n\r])[-](?![\s\t])/,
+		// preceded by an operator and WS
+		/(?<=['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='][\s\t]*)[-]/
+	],
 	operator: ['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='],
+
 	// Delimiters
 	delimiter: '.',
 	sep: ',',
