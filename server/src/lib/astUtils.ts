@@ -250,15 +250,16 @@ export abstract class rangeUtil
 	 */
 	static getTokenRange(token: moo.Token, document?: TextDocument)
 	{
-		let startPosition = Position.create(token.line - 1, token.col - 1);
-		let endOffset = token.col + (token.text.length || token.value.length) - 1;
-		let endPosition = Position.create(token.line - 1, endOffset);
-	
-		let tokenRange = Range.create(startPosition, endPosition);
-	
+		let tokenRange =
+			Range.create(
+				Position.create(token.line - 1, token.col - 1),
+				Position.create(
+					token.line + token.lineBreaks - 1,
+					token.col + (token.text.length || token.value.length) - 1
+				)
+			);
 		if (document) {
-			// let sel = document.getText(tokenRange);
-			// console.log({ text: sel, range: tokenRange });
+			// let sel = document.getText(tokenRange); console.log({ text: sel, range: tokenRange });
 		}
 		return tokenRange;
 	}

@@ -51,7 +51,7 @@ function id(x) { return x[0]; }
                 endOffset = first.range.end;
             } else {
                 endOffset = {
-                    line: first.line,
+                    line: first.line + first.lineBreaks,
                     character: (first.text != null ? first.col + first.text.length : first.col)
                 };                
             }
@@ -64,7 +64,7 @@ function id(x) { return x[0]; }
                     endOffset = last.range.end;
                 } else {
                     endOffset = {
-                        line: last.line,
+                        line: last.line + last.lineBreaks,
                         character: (last.text != null ? last.col + last.text.length : last.col)                
                     };
                 }

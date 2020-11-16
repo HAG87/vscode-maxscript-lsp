@@ -121,7 +121,7 @@ var mxLexer = moo.compile({
 	],
 
 	// ::global variable
-	global_typed: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+/,
+	global_typed: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
 	// property <object>.<property>
 	// property: { match: /\.[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/, value: x => x.slice(1) },
 	
@@ -160,7 +160,15 @@ var mxLexer = moo.compile({
 	lbrace: '{',
 	rbrace: '}',
 
-	// Operators.
+	// Operators
+	/*
+		unaryminus: [
+		// preceded by WS and suceeded by non WS
+		/(?<=[\s\t\n\r])[-](?![\s\t])/,
+		// preceded by an operator and WS
+		/(?<=['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='][\s\t]*)[-]/
+	],
+	*/
 	comparison: ['==', '!=', '>', '<', '>=', '<='],
 	assign: ['=', '+=', '-=', '*=', '/='],
 	// unary: {match: /(?<=[^\w)-])-(?![-\s])/},
