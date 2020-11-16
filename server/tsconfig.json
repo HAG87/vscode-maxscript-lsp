@@ -3,8 +3,10 @@
   "compilerOptions": {
     "outDir": "./out",
     "rootDir": "./src",
-    "target": "ES2019",
-		"lib"   : ["ES6", "ES2019"],
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "noImplicitAny": false,
     "allowJs": true,
     "baseUrl": ".",
     "paths": {

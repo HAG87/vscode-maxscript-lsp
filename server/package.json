@@ -21,6 +21,7 @@
 		"clone-deep": "^4.0.1",
 		"moo": "^0.5.1",
 		"nearley": "^2.19.8",
+		"moo-indentation-lexer": "^6.0.0",
 		"object-path": "^0.11.5",
 		"vscode-languageserver": "^6.1.1",
 		"vscode-languageserver-textdocument": "^1.0.1",
