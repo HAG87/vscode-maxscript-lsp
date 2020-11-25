@@ -20,8 +20,19 @@
     const tokenType = (t, newytpe) => {t.type = newytpe; return t;};
 
     const merge = (...args) => {
-        let res = [].concat(...args).filter(e => e != null);
-        return res.length === 0 ? null : res;
+        let res = [];
+        args.forEach( elem => {
+            if (Array.isArray(elem)) {
+                // console.log(elem);
+                // res.push(...elem);
+                res = res.concat.apply(res, elem);
+            } else {
+                res.push(elem);
+            }
+        });
+        //let res = [].concat(...args).filter(e => e != null);
+
+        return res.length ? res.filter(e => e != null) : null;
     };
 
     const convertToken = (token, newtype) => {
@@ -48,7 +59,7 @@
                 endOffset = first.range.end;
             } else {
                 endOffset = {
-                    line: first.line + first.lineBreaks,
+                    line: first.line,
                     character: (first.text != null ? first.col + first.text.length : first.col)
                 };                
             }
@@ -61,7 +72,7 @@
                     endOffset = last.range.end;
                 } else {
                     endOffset = {
-                        line: last.line + last.lineBreaks,
+                        line: last.line,
                         character: (last.text != null ? last.col + last.text.length : last.col)                
                     };
                 }
@@ -99,6 +110,11 @@
     // parser configuration
     //let capture_ws = false;
     //let capture_comments = false;
+    //----------------------------------------------------------
+    // RULES
+    //----------------------------------------------------------
+    const Literal = d => ({ type: 'Literal', value: d[0], range:getLoc(d[0]) });
+    const Identifier = d => ({ type: 'Identifier', value: d[0], range:getLoc(d[0]) });
 %}
 # USING MOO LEXER
 @lexer mxLexer
@@ -129,7 +145,6 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         | function_def    {% id %} # RANGE OK
         | fn_return       {% id %} # RANGE OK
         | context_expr    {% id %} # RANGE OK
-        | utility_def     {% id %} # RANGE OK
         | rollout_def     {% id %} # RANGE OK
         | tool_def        {% id %} # RANGE OK
         | rcmenu_def      {% id %} # RANGE OK
@@ -161,8 +176,9 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             })%}
    
     _expr_seq
-        -> _expr_seq EOL expr {% d => [].concat(d[0], d[2]) %}
-        | expr #{% id %}
+        -> expr (EOL expr):* {% d => merge(...d) %}
+        # -> _expr_seq EOL expr {% d => [].concat(d[0], d[2]) %}
+        # | expr #{% id %}
 #===============================================================
 # DEFINITIONS
 #===============================================================
@@ -322,39 +338,14 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         | struct_def     {% id %}
         | event_handler  {% id %}
 #---------------------------------------------------------------
-# UTILITY DEFINITION --- OK
-    utility_def
-        -> (%kw_utility __) var_name _ operand (_ parameter_seq):? _
-            LPAREN
-                utility_clauses
-            RPAREN
-            {% d => ({
-                type:   'EntityUtility',
-                id:     d[1],
-                title:  d[3],
-                params: d[4] != null ? d[4][1] : null,
-                body:   d[7],
-                range:  getLoc(d[0][0], d[8])
-            })%}
-   
-    utility_clauses -> utility_clause (EOL utility_clause):* {% d => merge(...d) %}
-
-    # utility_clauses
-    #     -> utility_clauses EOL utility_clause  {% d => [].concat(d[0], d[2]) %}
-    #     | utility_clause
-
-    utility_clause
-        -> rollout_clause  {% id %}
-        | rollout_def      {% id %}
-#---------------------------------------------------------------
-# ROLLOUT DEFINITION --- OK
+# ROLLOUT / UTILITY DEFINITION --- OK
     rollout_def
-        -> (%kw_rollout  __) var_name _ operand (_ parameter_seq):? _
+        -> (uistatement_def  __) var_name _ operand (_ parameter_seq):? _
             LPAREN
                 rollout_clauses
             RPAREN
             {% d => ({
-                type:   'EntityRollout',
+                type:   d[0][0].type === 'kw_rollout' ? 'EntityRollout' : 'EntityUtility',
                 id:     d[1],
                 title:  d[3],
                 params: d[4] != null ? d[4][1] : null,
@@ -362,6 +353,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 range:  getLoc(d[0][0], d[8])
             })%}
     #---------------------------------------------------------------
+    uistatement_def -> %kw_rollout {% id %} | %kw_utility {% id %}
     # rollout_clauses
     #    -> LPAREN _rollout_clause RPAREN {% d => d[1] %}
     #     | "(" _ ")" {% d => null %}
@@ -466,7 +458,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         | _struct_member
 
     _struct_member
-        -> str_scope _EOL_ struct_member {% d => [].concat(d[0], d[2]) %}
+        -> str_scope EOL struct_member {% d => [].concat(d[0], d[2]) %}
         | struct_member {% id %}
         | str_scope     {% id %}
 
@@ -730,21 +722,29 @@ Main -> _ _expr_seq _ {% d => d[1] %}
 
     for_sequence
         -> for_to (_ for_by):? (_ for_while):? (_ for_where):?
-        {% d => ({
-            type: 'ForLoopSequence',
-            to: d[0],
-            by: filterNull(d[1]),
-            while: filterNull(d[2]),
-            where: filterNull(d[3])
-        })%}
+            {% d => ({
+                type: 'ForLoopSequence',
+                to: d[0],
+                by: filterNull(d[1]),
+                while: filterNull(d[2]),
+                where: filterNull(d[3])
+            })%}
         | (for_while _):? for_where
-        {% d => ({
-           type: 'ForLoopSequence',
-           to: [],
-           by: [],
-           while: filterNull(d[0]),
-           where: d[1]
-       })%}
+            {% d => ({
+            type: 'ForLoopSequence',
+            to: null,
+            by: null,
+            while: filterNull(d[0]),
+            where: d[1]
+            })%}
+        | for_while
+            {% d => ({
+                type: 'ForLoopSequence',
+                to: null,
+                by: null,
+                while: d[0],
+                where: null
+            })%}
 
     for_iterator -> "=" {% id %} | %kw_in {% id %}
 
@@ -848,16 +848,18 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             {% d => ({
                 type:   'Declaration',
                 id:     d[0],
-                value:  d[0],
+                value:  null,
                 range:  getLoc(d[0])
             }) %}
         | assignment
-            {% d => ({
-                type:   'Declaration',
-                id:     d[0].operand,
-                value:  d[0],
-                range:  getLoc(d[0].operand)
-            }) %}
+            {% d => {
+                let res = {...d[0]};
+                res.type = 'Declaration';
+                res.id = res.operand;
+                delete res.operand;
+                // console.log(res);
+                return res
+            } %}
 #---------------------------------------------------------------
 #ASSIGNEMENT --- OK
     assignment
@@ -930,13 +932,15 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                     range: getLoc(d[0], d[4])
                 })%}
             | uny {% id %}
+            # | math_operand {% id %}
 
-        uny -> "-" _  math_operand
-                {% d => ({
-                    type: 'UnaryExpression',
-                    operator: d[0],
-                    right:    d[2]
-                }) %}
+         uny -> "-" _  math_operand
+                 {% d => ({
+                     type: 'UnaryExpression',
+                     operator: d[0],
+                     right:    d[2],
+                     range: getLoc(d[0], d[2])
+                 }) %}
             | math_operand {% id %}
 
     # fn_call | operand | u_operand | passthrough math expression
@@ -1063,11 +1067,11 @@ Main -> _ _expr_seq _ {% d => d[1] %}
 #---------------------------------------------------------------
 # ACCESSOR - PROPERTY --- OK
     property
-        -> operand %delimiter var_name
+        -> operand %delimiter (var_name | void | kw_override)
             {% d => ({
                 type:     'AccessorProperty',
                 operand:  d[0],
-                property: d[2],
+                property: d[2][0],
                 range:    getLoc(d[0], d[2])
             })%}
 #---------------------------------------------------------------
@@ -1081,7 +1085,6 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         })%}
 #---------------------------------------------------------------
 # OPERANDS --- OK
-    # unary operator, intended to adress unaryminus in function calls
     u_operand
         -> "-" operand
             {% d => ({
@@ -1161,8 +1164,8 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             }) %}
 
         array_expr
-         -> array_expr (_ "," _) expr {% d => [].concat(d[0], d[2]) %}
-         | expr
+            -> expr (_ "," _) array_expr {% d => [].concat(d[0], d[2]) %}
+            | expr
 #---------------------------------------------------------------
 # BITARRAY --- OK
     bitarray
@@ -1170,18 +1173,18 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         {% d => ({
             type:     'ObjectBitArray',
             elements: [],
-            range:      getLoc(d[0], d[2])
+            range:    getLoc(d[0], d[2])
         }) %}
     | ( %bitarraydef _) bitarray_expr (_ %rbrace)
         {% d => ({
             type:     'ObjectBitArray',
             elements: d[1],
-            range:      getLoc(d[0][0], d[2][1])
+            range:    getLoc(d[0][0], d[2][1])
         }) %}
 
     bitarray_expr
-    -> bitarray_expr (_ "," _) bitarray_item {% d => [].concat(d[0], d[2]) %}
-    | bitarray_item
+        -> bitarray_expr (_ "," _) bitarray_item {% d => [].concat(d[0], d[2]) %}
+        | bitarray_item
 
     # TODO: Fix groups
     bitarray_item
@@ -1190,19 +1193,14 @@ Main -> _ _expr_seq _ {% d => d[1] %}
 #===============================================================
 # VARNAME --- IDENTIFIERS --- OK
     # some keywords can be var_name too...
-    var_name -> var_type
-        {% d => ({
-            type: 'Identifier',
-            value: d[0],
-            range: getLoc(d[0])
-        }) %}
+    var_name -> var_type {% Identifier %}
     var_type
         -> %identity      {% id %}
          | %global_typed  {% id %}
          | %typed_iden    {% id %}
          | kw_reserved    {% id %}
-
-# CONTEXTUAL KEYWORDS...
+        #  | void           {% id %}
+# CONTEXTUAL KEYWORDS...can be used as identifiers outside the context...
     kw_reserved
         -> %kw_uicontrols  {% id %}
         | %kw_group        {% id %}
@@ -1214,7 +1212,6 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         | %kw_time         {% id %}
         | %kw_set          {% id %}
 
-# USED TO BYPASS PARAMETER NAME ERRORS IN BACKTRACK PARSER -- DISABLE WHEN A BETTER SOLUTION IS FOUND
 kw_override
         -> %kw_uicontrols  {% id %}
         | %kw_group        {% id %}
@@ -1237,80 +1234,70 @@ kw_override
         | %kw_return       {% id %}
         | %kw_throw        {% id %}
 #===============================================================
+# PATH NAME
+    # THIS JUST CAPTURES ALL THE LEVEL PATH IN ONE TOKEN....
+    path_name -> %path {% Identifier %}
+    #---------------------------------------------------------------
 # TOKENS
     # time
-    time -> %time
-        {% d => ({ type: 'Literal', value: d[0], range:getLoc(d[0]) }) %}
+    time -> %time          {% Literal %}
     # Bool
     bool
-        -> %kw_bool
-        {% d => ({ type: 'Literal', value: d[0], range:getLoc(d[0]) }) %}
-        | %kw_on
-        {% d => ({ type: 'Literal', value: d[0], range:getLoc(d[0]) }) %}
+        -> %kw_bool        {% Literal %}
+        | %kw_on           {% Literal %}
     # Void values
-    void -> %kw_null
-        {% d => ({ type: 'Literal', value: d[0], range:getLoc(d[0]) }) %}
+    void -> %kw_null       {% Literal %}
     #---------------------------------------------------------------
     # Numbers
-    number -> number_types
-        {% d => ({ type: 'Literal', value: d[0], range:getLoc(d[0]) }) %}
+    number -> number_types {% Literal %}
     number_types
         -> %number  {% id %}
          | %hex     {% id %}
     # string
-    string -> %string
-        {% d => ({ type: 'Literal', value: d[0], range:getLoc(d[0]) }) %}
+    string -> %string      {% Literal %}
     # names
-    name_value -> %name
-        {% d => ({ type: 'Literal', value: d[0], range:getLoc(d[0]) }) %}
+    name_value -> %name    {% Literal %}
     #Resources
-    resource -> %locale
-        {% d => ({ type: 'Literal', value: d[0], range:getLoc(d[0]) }) %}
-    #---------------------------------------------------------------
-    # PATH NAME
-    # THIS JUST CAPTURES ALL THE LEVEL PATH IN ONE TOKEN....
-    path_name -> %path
-        {% d => ({ type: 'Identifier', value: d[0], range:getLoc(d[0]) }) %}
+    resource -> %locale    {% Literal %}
 #===============================================================
 #PARENS
     LPAREN ->  %lparen _    {% d => d[0] %}
-    RPAREN ->  ___ %rparen  {% d => d[1] %}
+    RPAREN ->  _ %rparen  {% d => d[1] %}
 #===============================================================
 # WHITESPACE AND NEW LINES
     # comments are skipped in the parse tree!   
-    _EOL_
-        -> _EOL_ (junk | %statement) {% d => null %}
-        | wsl {% d => null %}
-        | %statement {% d => null %}
 
-    EOL -> _eol:* ( %newline | %statement ) _S {% d => null %}
+    # MANDATORY EOL
+    EOL -> junk:* ( %newline | %statement ) _S {% d => null %}
+    
+    # MANDATORY WHITESPACE | one or more whitespace
+    _S_ -> ws:+ {% d => null %}
+    # OPTIONAL WHITESPACE | zero or any whitespace
+    _S -> ws:* {% d => null %}
+    # MANDATORY WHITESPACE NL | one or more whitespace with NL
+    __ -> wsl junk:* {% d => null %}
+    # OPTIONAL WHITESPACE NL | zero or any whitespace with NL
+    _ -> junk:*  {% d => null %}
 
-    _eol
-    -> %ws
-    | %statement
-    | %newline
-    | %comment_BLK
-    | %comment_SL
 
-    _SL_ -> wsl {% d => null %} | _SL_ junk {% d => null %}
+    #_SL_ -> wsl {% d => null %} | _SL_ junk {% d => null %}
     # one or more whitespace
-    _S_ -> ws {% d => null %} | _S_ ws  {% d => null %}
+    #_S_ -> ws {% d => null %} | _S_ ws  {% d => null %}
     # zero or any whitespace
-    _S -> null | _S ws  {% d => null %}
+    #_S -> null | _S ws  {% d => null %}
     # one or more whitespace with NL
-    __ -> ws {% d => null %} | __ junk {% d => null %}
+    #__ -> ws {% d => null %} | __ junk {% d => null %}
     # zero or any withespace with NL
-    _ -> null | _ junk  {% d => null %}
-    # this is for optional EOL
-    ___ -> null | ___ (junk | %statement)  {% d => null %}
+    #_ -> null | _ junk  {% d => null %}
+
 
     ws -> %ws | %comment_BLK
-
-    wsl ->  %ws | %newline | %comment_BLK
+    wsl ->  %ws | %newline | %comment_BLK | %statement
 
     junk
         -> %ws
         | %newline
+        | %statement
         | %comment_BLK
         | %comment_SL
 #---------------------------------------------------------------

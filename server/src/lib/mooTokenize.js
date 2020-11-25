@@ -107,7 +107,11 @@ var mxLexer = moo.compile({
 		// { match: /"""[^]*?"""/, lineBreaks: true, value: x => x.slice(3, -3)},
 	],
 	// whitespace -  also matches line continuations
-	ws: { match: /(?:[ \t]+|(?:[\\][ \t\r\n]+))/, lineBreaks: true },
+	// ws: { match: /(?:[ \t]+|(?:[\\][ \t\r\n]+))/, lineBreaks: true },
+	ws: [
+		{ match: /\\(?:[ \t]*[\r\n]+)/, lineBreaks: true },
+		/[ \t]+/
+	],
 	// newline: { match: /(?:[\r\n]|[\\]\s*[\r\n])+/, lineBreaks: true },
 	newline: { match: /(?:[\r\n]+)/, lineBreaks: true },
 	
@@ -121,7 +125,7 @@ var mxLexer = moo.compile({
 	],
 
 	// ::global variable
-	global_typed: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
+	global_typed: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+/,
 	// property <object>.<property>
 	// property: { match: /\.[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/, value: x => x.slice(1) },
 	
@@ -136,11 +140,11 @@ var mxLexer = moo.compile({
 		// value: x => x.slice(0, -1)
 	},
 	*/
+
 	identity: [
 		// properties
 		/(?<=\.)[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
 		/[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[.])/,
-		// listener eval
 		'?',
 		// param names
 		/[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[:])/,
@@ -162,15 +166,7 @@ var mxLexer = moo.compile({
 	lbrace: '{',
 	rbrace: '}',
 
-	// Operators
-	/*
-		unaryminus: [
-		// preceded by WS and suceeded by non WS
-		/(?<=[\s\t\n\r])[-](?![\s\t])/,
-		// preceded by an operator and WS
-		/(?<=['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='][\s\t]*)[-]/
-	],
-	*/
+	// Operators.
 	comparison: ['==', '!=', '>', '<', '>=', '<='],
 	assign: ['=', '+=', '-=', '*=', '/='],
 	// unary: {match: /(?<=[^\w)-])-(?![-\s])/},
