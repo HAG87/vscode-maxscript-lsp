@@ -277,17 +277,21 @@ connection.onDocumentSymbol(
 		*/
 		return new Promise<SymbolInformation[] | DocumentSymbol[]>((resolve, reject) =>
 		{
-
-			if (!Capabilities.hasDocumentSymbolCapability) { resolve(); }
+			if (!Capabilities.hasDocumentSymbolCapability) { resolve([]); }
+			
+			let options = { recovery: true, attemps: 10, memoryLimit: 0.9};
 			getDocumentSettings(params.textDocument.uri)
 				.then(
-					result => { if (!result.GoToSymbol) { resolve(); } }
+					result => { 
+						options.recovery = result.parser.errorCheck;
+						if (!result.GoToSymbol) { resolve([]); }
+					}
 				);
 
 			let document = documents.get(params.textDocument.uri)!;
 			// console.log('Current symbols: ' + params.textDocument.uri);
 
-			mxsDocumentSymbols.parseDocument(document, cancelation)
+			mxsDocumentSymbols.parseDocument(document, cancelation, connection, options)
 				.then(
 					result =>
 					{
@@ -298,21 +302,14 @@ connection.onDocumentSymbol(
 						//-----------------------------------
 						diagnoseDocument(document, result.diagnostics);
 						resolve(result.symbols);
-					},
-					// reason =>
-					() =>
-					{
-						// connection.console.log('SOME REJECTION HAPPENED ON DOCSYMBOLS: ' + reason);
-						diagnoseDocument(document, []);
-						resolve();
 					}
 				)
 				.catch(
 					error =>
 					{
-						// connection.console.log('SOME ERROR HAPPENED ON DOCSYMBOLS: ' + error);
+						connection.window.showInformationMessage('MaxScript symbols provider fail:' + error.message);
 						diagnoseDocument(document, []);
-						resolve();
+						resolve([]);
 					}
 				);
 		});

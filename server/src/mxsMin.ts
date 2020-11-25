@@ -1,9 +1,10 @@
 'use strict';
 import * as fs from 'fs';
+// import { spawn, Thread, Worker } from 'threads';
 //--------------------------------------------------------------------------------
 //@ts-ignore
 import { mxsMinify } from './lib/mxsCompactCode';
-import { mxsParseSource } from './mxsParser';
+import { parseSource } from './mxsParser';
 //--------------------------------------------------------------------------------
 // make this async...
 function minCode(parserTree: any[])
@@ -19,13 +20,13 @@ function minifyWrite(path: string, data: string)
 		fs.writeFile(path, Buffer.from(data, 'utf8'),
 			(err) =>
 			{
-				err ? reject(err) : resolve();
+				err ? reject(err) : resolve;
 			}
 		);
 	});
 }
 
-function minifyRead(path: string)
+function minifyRead(path: string):Promise<string>
 {
 	return new Promise((resolve, reject) =>
 	{
@@ -39,9 +40,7 @@ function minifyRead(path: string)
 export async function MinifyData(data: any | any[] | string)
 {
 	if (typeof data === 'string') {
-		// try {
-		let parser = new mxsParseSource(data);
-		let results = await parser.ParseSource();
+		let results = await parseSource(data);
 		if (results.result !== undefined) {
 			return minCode(results.result);
 		} else {
