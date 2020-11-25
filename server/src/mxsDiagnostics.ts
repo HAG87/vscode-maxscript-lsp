@@ -5,32 +5,19 @@ import
 	// DiagnosticRelatedInformation,
 	DiagnosticSeverity,
 } from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
 //--------------------------------------------------------------------------------
 import moo from 'moo';
 import { tokenDefinitions } from './schema/mxsTokenDefs';
 import { rangeUtil } from './lib/astUtils';
 //--------------------------------------------------------------------------------
-const tokenListToValues = (tokenList: Dictionary<string>[]): string[] =>
-{
-	return [...new Set((tokenList).map(item => item.type))];
-};
-//--------------------------------------------------------------------------------
-interface Dictionary<T>
-{
-	[key: string]: T;
-}
+interface Dictionary<T> { [key: string]: T }
+
 type ErrorDetail = {
 	token?: moo.Token;
 	expected: Dictionary<string>[];
 
 };
-export interface ParserFatalError extends Error
-{
-	token: moo.Token;
-	offset: number;
-	details: Dictionary<string>[];
-}
+
 /**
  * ParserError extends js Error
  */
@@ -49,21 +36,18 @@ export class ParserError extends Error
 	tokens: moo.Token[] = [];
 	details: ErrorDetail[] = [];
 }
-
 //--------------------------------------------------------------------------------
 /**
  * Diagnostics collection.
  */
 export const mxsDiagnosticCollection: Diagnostic[] = [];
 //--------------------------------------------------------------------------------
-/**
- * Provide basic error message
- * @param {token} token Offending token, from error
- */
-const basicDiagnostics = (token: moo.Token): string =>
+const tokenListToValues = (tokenList: Dictionary<string>[]): string[] =>
 {
-	return `Unexpected \"${token.value}\" at position: ${token.offset}`;
+	return [...new Set((tokenList).map(item => item.type))];
 };
+
+
 /**
  * Provide a message that list possible solutions
  * @param {token[]} tokenList List of possible tokens
@@ -77,24 +61,14 @@ const correctionList = (tokenList: Dictionary<string>[]): string =>
 	let str = 'It was expected one of the followings:\n - ' + tokenDesc.join('\n - ');
 	return str;
 };
-/**
- * Diagnostics generic message
- * @param error Error throw from parser
- */
-export function parsingErrorMessage(error: ParserFatalError): string
-{
-	return ([basicDiagnostics(error.token)].concat(correctionList(error.details)).join('\n'));
-}
+
 /**
  * Provides a basic syntax error diagnostic.
  * @param document Document that emiited the parsing error
  * @param error parser error type
  */
-export function provideParserDiagnostic(document: TextDocument, error: ParserError): Diagnostic[]
+export function provideParserDiagnostic(error: ParserError): Diagnostic[]
 {
-	// console.log('PROVIDING DIAGNOSTICS');
-
-	if (!document) { return []; }
 	let diagnostics: Diagnostic[];
 	let tokenList = [...error.tokens];
 	diagnostics = tokenList.map(
@@ -116,12 +90,13 @@ export function provideParserDiagnostic(document: TextDocument, error: ParserErr
 		});
 	return diagnostics;
 }
+
 /**
  * Provides bad token diagnosys based on lexer error token
  * @param document current document
  * @param CST parsed CST
  */
-export function provideTokenDiagnostic(document: TextDocument, errTokens: moo.Token[] | undefined): Diagnostic[]
+export function provideTokenDiagnostic(errTokens: moo.Token[]): Diagnostic[]
 {
 	if (!errTokens) { return []; }
 	let diagnostics: Diagnostic[] = errTokens.map(
@@ -133,26 +108,4 @@ export function provideTokenDiagnostic(document: TextDocument, errTokens: moo.To
 			source: 'MaxScript'
 		}));
 	return diagnostics;
-}
-
-/**
- * Set or Remove Current Diagnostics for document
- * @param document Current active editor document
- * @param diagnostic collection of vscodeDiagnostic
- * @param collection Curent registered DiagnosticCollection
- */
-export function setDiagnostics(
-	diagnostic?: Diagnostic[],
-	collection: Diagnostic[] = mxsDiagnosticCollection): void
-{
-
-	if (diagnostic) {
-		collection.concat(diagnostic);
-	} else {
-		collection = [];
-	}
-	// collection.forEach(document => {
-	// 	workspace.fs.stat(document).then(stat => {
-	// 	}, err => collection.delete(document));
-	// });
 }

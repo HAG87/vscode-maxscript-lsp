@@ -2,14 +2,10 @@
 
 import
 {
-	// Location,
-	// Position,
 	Range,
 	SymbolKind,
 	DocumentSymbol
 } from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
-
 //@ts-ignore
 import traverse from 'ast-monkey-traverse';
 import * as moo from 'moo';
@@ -68,15 +64,8 @@ function isNode(node: any | undefined)
  * @param document source document
  * @param keyFilter? Object with keys:[] to be collected.
  */
-export async function deriveSymbolsTree(nodes: any | any[], document: TextDocument, keyFilter = 'id'): Promise<DocumentSymbol | DocumentSymbol[]>
+export async function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyFilter = 'id'): Promise<DocumentSymbol | DocumentSymbol[]>
 {
-	let loc = {
-		start: {
-			line: 0,
-			character: 0
-		},
-		end: document.positionAt(document.getText().length - 1)
-	};
 	/**
 	 * Ranges produced by moo needs to be adjusted, since it starts at 1:1, and for vscode is 0:0
 	 * line: the line number of the beginning of the match, starting from 1.
@@ -95,26 +84,17 @@ export async function deriveSymbolsTree(nodes: any | any[], document: TextDocume
 		id: '',
 		name: '',
 		kind: 1,
-		range: loc,
-		selectionRange: loc,
+		range: documentRange,
+		selectionRange: documentRange,
 		children: []
 	};
 
 	async function _visit(node: any, parent: any | null, key: string | null, index: number | null)
 	{
-		/*
-		let loc = getDocumentPositions(<DocumentSymbol>node, 'range');
-		let safeRange = equalizeRange(
-			loc,
-			rangeUtil.getTokenRange(node.id, document)
-		);
-		*/
-
 		// if (!node) { return []; }
 		let _node: DocumentSymbol;
 
 		if (isNode(node) && keyFilter in node) {
-
 			// value is the same as the text, unless you provide a value transform.
 			let id: moo.Token = node[keyFilter].value;
 
@@ -137,11 +117,9 @@ export async function deriveSymbolsTree(nodes: any | any[], document: TextDocume
 			}
 			// adjust line and char difference !
 			rangeRemap(loc);
-
 			// if (node.type === 'Event') {
 			// 	console.log(document.getText(node.range));
 			// }
-
 			// TODO: deal with siblings...
 			_node = {
 				name: id.text,	//.toString(),
@@ -155,7 +133,6 @@ export async function deriveSymbolsTree(nodes: any | any[], document: TextDocume
 		} else {
 			_node = parent;
 		}
-
 		//--------------------------------------------------------
 		// get the node keys
 		const keys = Object.keys(node);
@@ -168,7 +145,6 @@ export async function deriveSymbolsTree(nodes: any | any[], document: TextDocume
 			if (Array.isArray(child)) {
 				// value is an array, visit each item
 				for (let j = 0; j < child.length; j++) {
-
 					// visit each node in the array
 					if (isNode(child[j])) {
 						await _visit(child[j], _node, key, j);
