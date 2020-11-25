@@ -167,6 +167,12 @@
 					"default": true,
 					"description": "Enable Document Symbols and Diagnostics."
 				},
+				"MaxScript.parser.errorCheck": {
+					"scope": "resource",
+					"type": "boolean",
+					"default": true,
+					"description": "Enable grammar checking (beta feature, currently slow and prone to fail). Disable if you're having issues with the extension"
+				},
 				"MaxScript.GoToDefinition": {
 					"scope": "resource",
 					"type": "boolean",
