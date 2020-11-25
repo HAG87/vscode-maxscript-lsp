@@ -155,7 +155,11 @@ const visitorPatterns = {
 	BitRange(node, stack) { return `${stack.start}..${stack.end}`; },
 	// Declaration
 	Declaration(node, stack) {
-		return stack.value ? stack.value : stack.id;
+		if (stack.value) {
+			return `${stack.id}${stack.operator}$stack.value`;
+		} else {
+			return stack.id;
+		}
 	},
 	// Types
 	ObjectArray(node, stack) {
