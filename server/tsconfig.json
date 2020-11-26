@@ -3,14 +3,12 @@
   "compilerOptions": {
     "outDir": "./out",
     "rootDir": "./src",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
+    "target": "ES2019",
+		"lib"   : ["ES6", "ES2019"],
     "allowJs": true,
     "baseUrl": ".",
     "paths": {
-      "~lib/*": ["./src/lib/*"],
-      "*": ["./src/types"],
+      "*": ["./src/typings"],
       "ast-compare": ["node_modules/ast-compare/dist/ast-compare.esm.js"],
       "ast-contains-only-empty-space": [
         "node_modules/ast-contains-only-empty-space/dist/ast-contains-only-empty-space.esm.js"
@@ -27,5 +25,5 @@
     }
   },
   "include": ["src"],
-  "exclude": ["node_modules", ".vscode-test", "out"]
+  "exclude": ["node_modules", "out"]
 }
