@@ -151,7 +151,7 @@ const visitorPatterns = {
 	Literal(node, stack) { return stack.value; },
 	Identifier(node, stack) { return stack.value; },
 	Parameter(node, stack) { return stack.value; },
-
+	EmptyParens(node) { return '()'; },
 	BitRange(node, stack) { return `${stack.start}..${stack.end}`; },
 	// Declaration
 	Declaration(node, stack) {

@@ -170,7 +170,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             })%}
         | "(" _ ")"
             {% d => ({
-                type: 'BlockStatement',
+                type: 'EmptyParens',
                 body: [],
                 range: getLoc(d[0], d[2])
             })%}
@@ -725,9 +725,9 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             {% d => ({
                 type: 'ForLoopSequence',
                 to: d[0],
-                by: filterNull(d[1]),
-                while: filterNull(d[2]),
-                where: filterNull(d[3])
+                by: d[1],
+                while: d[2],
+                where: d[3]
             })%}
         | (for_while _):? for_where
             {% d => ({
@@ -802,6 +802,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             {% d => ({
                 type:       'IfStatement',
                 test:       d[1],
+                operator:   d[2][1],
                 consequent: d[3],
                 alternate:  d[5],
                 range: getLoc(d[0][0], d[5])

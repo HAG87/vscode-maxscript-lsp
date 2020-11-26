@@ -1,4 +1,4 @@
-// Generated automatically by nearley, version 2.19.7
+// Generated automatically by nearley, version 2.19.8
 // http://github.com/Hardmath123/nearley
 (function () {
 function id(x) { return x[0]; }
@@ -151,7 +151,7 @@ var grammar = {
             range: getLoc(d[0], d[2])
         })},
     {"name": "expr_seq", "symbols": [{"literal":"("}, "_", {"literal":")"}], "postprocess":  d => ({
-            type: 'BlockStatement',
+            type: 'EmptyParens',
             body: [],
             range: getLoc(d[0], d[2])
         })},
@@ -668,9 +668,9 @@ var grammar = {
     {"name": "for_sequence", "symbols": ["for_to", "for_sequence$ebnf$1", "for_sequence$ebnf$2", "for_sequence$ebnf$3"], "postprocess":  d => ({
             type: 'ForLoopSequence',
             to: d[0],
-            by: filterNull(d[1]),
-            while: filterNull(d[2]),
-            where: filterNull(d[3])
+            by: d[1],
+            while: d[2],
+            where: d[3]
         })},
     {"name": "for_sequence$ebnf$4$subexpression$1", "symbols": ["for_while", "_"]},
     {"name": "for_sequence$ebnf$4", "symbols": ["for_sequence$ebnf$4$subexpression$1"], "postprocess": id},
@@ -738,6 +738,7 @@ var grammar = {
     {"name": "if_expr", "symbols": ["if_expr$subexpression$2", "expr", "if_expr$subexpression$3", "expr", "if_expr$subexpression$4", "expr"], "postprocess":  d => ({
             type:       'IfStatement',
             test:       d[1],
+            operator:   d[2][1],
             consequent: d[3],
             alternate:  d[5],
             range: getLoc(d[0][0], d[5])
