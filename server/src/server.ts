@@ -24,6 +24,7 @@ import
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as Path from 'path';
+// import * as assert from 'assert';
 //------------------------------------------------------------------------------------------
 import { MaxScriptSettings, defaultSettings } from './settings';
 import { mxsCapabilities } from './capabilities';
@@ -45,9 +46,9 @@ let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 export let Capabilities = new mxsCapabilities();
 //------------------------------------------------------------------------------------------
 // Current document
-// let currentTextDocument: TextDocument;
 /* Store the current document Symbols for later use*/
 let currentDocumentSymbols: DocumentSymbol[] | SymbolInformation[] = [];
+let currentTextDocument: TextDocument;
 //------------------------------------------------------------------------------------------
 connection.onInitialize(
 	(params: InitializeParams) =>
@@ -276,38 +277,39 @@ connection.onDocumentSymbol(
 		*/
 		return new Promise<SymbolInformation[] | DocumentSymbol[]>((resolve, reject) =>
 		{
-
-			if (!Capabilities.hasDocumentSymbolCapability) { resolve(); }
+			if (!Capabilities.hasDocumentSymbolCapability) { resolve([]); }
+			
+			let options = { recovery: true, attemps: 10, memoryLimit: 0.9};
 			getDocumentSettings(params.textDocument.uri)
 				.then(
-					result => { if (!result.GoToSymbol) { resolve(); } }
+					result => { 
+						options.recovery = result.parser.errorCheck;
+						if (!result.GoToSymbol) { resolve([]); }
+					}
 				);
 
 			let document = documents.get(params.textDocument.uri)!;
 			// console.log('Current symbols: ' + params.textDocument.uri);
 
-			mxsDocumentSymbols.parseDocument(document, cancelation)
+			mxsDocumentSymbols.parseDocument(document, cancelation, connection, options)
 				.then(
 					result =>
 					{
 						// connection.console.log('--> symbols sucess ');
+						//-----------------------------------
+						currentDocumentSymbols = result.symbols;
+						currentTextDocument = document;
+						//-----------------------------------
 						diagnoseDocument(document, result.diagnostics);
 						resolve(result.symbols);
-					},
-					// reason =>
-					() =>
-					{
-						// connection.console.log('SOME REJECTION HAPPENED ON DOCSYMBOLS: ' + reason);
-						diagnoseDocument(document, []);
-						resolve();
 					}
 				)
 				.catch(
 					error =>
 					{
-						// connection.console.log('SOME ERROR HAPPENED ON DOCSYMBOLS: ' + error);
+						connection.window.showInformationMessage('MaxScript symbols provider fail:' + error.message);
 						diagnoseDocument(document, []);
-						resolve();
+						resolve([]);
 					}
 				);
 		});
@@ -344,8 +346,8 @@ connection.onDefinition(
 					documents.get(params.textDocument.uri)!,
 					params.position,
 					cancellation,
-					currentDocumentSymbols,
-					mxsDocumentSymbols.msxParser.parsedCST
+					params.textDocument.uri === currentTextDocument.uri ? currentDocumentSymbols : undefined,
+					// mxsDocumentSymbols.msxParser.parsedCST
 				);
 			return definitions;
 		} catch (err) {
@@ -369,7 +371,7 @@ namespace MinifyDocRequest
 connection.onRequest(MinifyDocRequest.type,
 	async (params) =>
 	{
-		connection.console.log(JSON.stringify(params, null, 2));
+		// connection.console.log(JSON.stringify(params, null, 2));
 
 		// let settings = await getDocumentSettings(currentTextDocument.uri);
 		let settings = await getDocumentSettings(params.uri[0]);
@@ -391,72 +393,6 @@ connection.onRequest(MinifyDocRequest.type,
 		}
 		return null;
 	});
-
-/*
-	connection.onExecuteCommand(
-		async params =>
-		{
-			// let document = documents.get();
-			let settings = await getDocumentSettings(currentTextDocument.uri);
-
-			switch (params.command) {
-				case Commands.MXS_MINDOC.command:
-					try {
-						let path = utils.uriToPath(currentTextDocument.uri)!;
-						let newPath = utils.prefixFile(path, settings.MinifyFilePrefix);
-						// connection.console.log(utils.uriToPath(currentTextDocument.uri)!);
-						//TODO: CHANGE THIS
-						await mxsMinifier.MinifyDoc(mxsDocumentSymbols.msxParser.parsedCST || currentTextDocument.getText(), newPath);
-						connection.window.showInformationMessage(`MaxScript minify: Document saved as ${Path.basename(newPath)}`);
-					} catch (err) {
-						connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: ${err.message}`);
-					}
-					break;
-				case Commands.MXS_MINFILE.command:
-
-					if (params.arguments === undefined) { return; }
-
-					if (!Array.isArray(params.arguments) || Array.isArray(params.arguments) && params.arguments[0] === undefined) {
-						connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: invalid command arguments`);
-						return;
-					}
-
-					try {
-					// arguments can be an array of paths or an URI
-						let filenames: { src: string, dest: string }[];
-
-						if ('path' in params.arguments[0]) {
-							let path = utils.uriToPath(params.arguments[0].path)!;
-							let newPath = utils.prefixFile(path, settings.MinifyFilePrefix);
-							filenames = [
-								{ src: path, dest: newPath }
-							];
-						} else {
-							filenames = params.arguments[0].map((path: string) =>
-							{
-								return {
-									src: path,
-									dest: utils.prefixFile(path, settings.MinifyFilePrefix)
-								};
-							});
-						}
-						// connection.console.log(JSON.stringify(filenames, null, 2));
-						for (let paths of filenames) {
-						// do it for each file...
-							try {
-								await mxsMinifier.MinifyFile(paths.src, paths.dest);
-								connection.window.showInformationMessage(`MaxScript minify: Document saved as ${Path.basename(paths.dest)}`);
-							} catch (err) {
-								connection.window.showErrorMessage(`MaxScript minify: Failed at ${Path.basename(paths.dest)}. Reason: ${err.message}`);
-							}
-						}
-					} catch (err) {
-						connection.window.showErrorMessage(`MaxScript minify: Failed. Reason: ${err.message}`);
-					}
-					break;
-			}
-		});
-		*/
 //------------------------------------------------------------------------------------------
 // Make the text document manager listen on the connection
 // for open, change and close text document events

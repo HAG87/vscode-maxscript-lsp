@@ -1,10 +1,11 @@
 {
 	"compilerOptions": {
 		"module"                          : "commonJS",
-		"target"                          : "ES2019",
-		"lib"                             : ["ES6", "ES2019"],
+		"moduleResolution"                : "node",
+		"esModuleInterop"                 : true,
 		"sourceMap"                       : true,
 		"noImplicitAny"                   : true,
+		// "allowSyntheticDefaultImports"    : true,
 		// "noImplicitReturns"               : true,
 		// "noUnusedLocals"                  : true,
 		// "noUnusedParameters"              : true,
@@ -13,6 +14,5 @@
 		"strict"                          : true,
 		"forceConsistentCasingInFileNames": true,
 		"composite"                       : true,
-		"baseUrl"                         : ".",
 	}
 }

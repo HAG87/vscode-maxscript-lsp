@@ -1,7 +1,4 @@
-interface ItokenDefinitions {
-	[key: string] : string;
-}
-export const tokenDefinitions: ItokenDefinitions = {
+export const tokenDefinitions: { [key: string] : string } = {
 	'arraydef':       'Array definition',
 	'bitarraydef':    'BitArray definition',
 	'comment_BLK':    'Block comment',

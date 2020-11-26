@@ -100,6 +100,15 @@ export function getlineNumberofChar(data: string, index: number)
 {
 	return data.substring(0, index).split('\n').length;
 }
+/**
+ * Get the Range of a word, providing a start position
+ * @param word 
+ * @param position 
+ */
+export function getWordRange(word: string, position: Position)
+{
+	return Range.create(position, Position.create(position.line, position.character + word.length - 1));
+}
 
 /*
  * Copyright (C) 2017, 2018 TypeFox and others.

@@ -13,104 +13,129 @@ import
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 //------------------------------------------------------------------------------------------
-import { getFromCST, getTokenRange } from './mxsProvideSymbols';
-import { getlineNumberofChar, getWordAtPosition } from './lib/utils';
+import { getFromCST, rangeUtil } from './lib/astUtils';
+import { keywordsDB } from './lib/keywordsDB';
+import { getWordAtPosition } from './lib/utils';
 //------------------------------------------------------------------------------------------
-/**
- * Regex method to find first occurence of word in document
- * @param {TextDocument} document 
- * @param {string} word 
- * @returns {Location | undefined} Word location or undefined
- */
-function getDocumentDefinitionMatch(document: TextDocument, word: string): Location | undefined
-{
-	let lastLineMatch = /[^\n]*$/i;
-
-	let data = document.getText();
-	let pos = data.indexOf(word);
-
-	if (pos < -1) { return undefined; }
-
-	let prevData = data.slice(0, pos);
-	let lastLine = lastLineMatch.exec(prevData);
-
-	if (lastLine?.[0]) {
-		let line = getlineNumberofChar(prevData, pos);
-		if (line > -1) {
-			line = line > 0 ? line - 1 : line;
-			let start = Position.create(line, lastLine[0].length);
-			let end = Position.create(line, lastLine[0].length + word.length);
-			return (Location.create(document.uri, Range.create(start, end)));
-		} else {
-			return undefined;
-		}
-	}
-	return undefined;
-}
-
 /**
  * DocumentSymbols[] query
  * @param {string} id
  * @param {any[]} array
  * @returns { DocumentSymbol | undefined} Found node or undefined
  */
-function findNode(id: string, array: any[]): DocumentSymbol | undefined
+function findDocumenSymbols(id: string, array: any[]): DocumentSymbol[] | undefined
 {
-	let _visit = (id: string, array: any[]): DocumentSymbol | undefined =>
+	let results: DocumentSymbol[] = [];
+
+	let _visit = (id: string, array: any[]) =>
 	{
 		for (const node of array) {
-			if (node.name === id) { return node; }
+			if (node.name === id) { results.push(node); }
 			if (node.children) {
-				const child = _visit(id, node.children);
-				if (child) { return child; }
+				_visit(id, node.children);
 			}
 		}
 	};
-	return _visit(id, array);
+	_visit(id, array);
+	return results.length ? results : undefined;
 }
 
 /**
  * Regex Match
  * @param {TextDocument} document
- * @param {string} searchword
+ * @param {string} searchWord
  * @returns {Location | undefined} Word location
  */
-function wordMatch(document: TextDocument, searchword: string)
+function wordMatch(document: TextDocument, searchWord: string, position: Position)
 {
-	return getDocumentDefinitionMatch(document, searchword);
+	let data = document.getText();
+	// skip invalid words....
+
+	// if searchword is a keyword...
+	if (keywordsDB.keyword.includes(searchWord.toLowerCase())) { return; }
+	// skip data values like numbers
+	if (/^[\d.]+$/m.test(searchWord)) { return; }
+	// skip one line comments
+	let offsetPos = document.offsetAt(position);
+	let matchLine = data.slice(0, offsetPos).split('\n');
+	if (/--/.test(matchLine[matchLine.length - 1])) { return; }
+	// skip copmments, strings, or drop it from the results. too complex!
+	//-------------------------------------------------------------------------
+	let exp = new RegExp(`\\b(${searchWord})\\b`, 'igu');
+
+	let match, results = [];
+
+	while (match = exp.exec(data)) {
+
+		let matchLine = data.slice(0, match.index).split('\n');
+
+		// skip single line comments from results...
+		if (/--/.test(matchLine[matchLine.length - 1])) { continue; }
+
+		/*
+			// text until here...
+			let dataPrev = data.slice(0, match.index);
+			// split in lines
+			let lines = dataPrev.split('\n');
+			// get the character pos in the last line...
+			let lastLine = lines[lines.length - 1];
+			if (/--/.test(lastLine)) {continue;}
+			let pos = lastLine.length;
+			let start = Position.create(lines.length - 1, pos);
+			let end = Position.create(lines.length - 1, pos + searchWord.length);
+			results.push(Range.create(start, end));
+		*/
+		let range = Range.create(document.positionAt(match.index), document.positionAt(match.index + searchWord.length));
+		// console.log(document.getText(range));
+		// results.push(range);
+		results.push(Location.create(document.uri, range));
+	}
+
+	return results.length ? results : undefined;
 }
 
 /**
  * DocumentSymbol Match
- * @param {TextDocument} document 
- * @param {DocumentSymbol[]} DocumentSymbols 
- * @param {string} searchword 
- * @returns {LocationLink | undefined} DocumentSymbol location
+ * @param document 
+ * @param documentSymbols
+ * @param searchWord
+ * @param wordRange
+ * @returns DocumentSymbol location
  */
-function symbolMatch(document: TextDocument, DocumentSymbols: DocumentSymbol[], searchword: string)
+function symbolMatch(document: TextDocument, documentSymbols: DocumentSymbol[], searchWord: string)
 {
-	let findSymbol = findNode(searchword, DocumentSymbols);
-	if (findSymbol !== undefined) {
-		let symbolMatch = LocationLink.create(document.uri, findSymbol.range, findSymbol.selectionRange);
-		return symbolMatch;
+	let findSymbol = findDocumenSymbols(searchWord, documentSymbols);
+
+	if (findSymbol === undefined) { return; }
+
+	let results: LocationLink[] = [];
+
+	for (const sym of findSymbol) {
+		results.push(
+			LocationLink.create(
+				document.uri,
+				sym.range,
+				sym.selectionRange
+			)
+		);
 	}
-	return undefined;
+	return results.length ? results : undefined;
 }
 
 /**
- * CAST query Match
+ * CST query Match -- DEPRECATED -- TODO: USE THE NEW IMPLEMENTED PARSER RANGES -- SEARCH IN NODES IDS FOR CONSISTENCY, OR AR LEAST FILTER OUT KEYWORDS... NOW IT MATCHES ANY TOKEN
  * @param {TextDocument} document 
  * @param {any | any[]} CST 
- * @param {string} searchword 
+ * @param {string} searchWord 
  * @returns {LocationLink | undefined}
  */
-function cstMatch(document: TextDocument, CST: any | any[], searchword: string)
+function cstMatch(document: TextDocument, CST: any | any[], searchWord: string)
 {
 	//TODO: use only valid statements, declarations, etc.
-	let prospect = getFromCST(CST, { 'value': searchword });
+	let prospect = getFromCST(CST, { 'value': searchWord });
 	if (prospect.length > 0) {
 		// first element in collection
-		let tokenRange = getTokenRange(document, prospect[0]);
+		let tokenRange = rangeUtil.getTokenRange(prospect[0]);
 		let cstMatch = LocationLink.create(document.uri, tokenRange, tokenRange);
 		return cstMatch;
 	}
@@ -123,15 +148,15 @@ function cstMatch(document: TextDocument, CST: any | any[], searchword: string)
  * @param {TextDocument} document 
  * @param {Position} position 
  * @param {any[]} parseCST 
- * @param {DocumentSymbol[] | SymbolInformation[]} DocumentSymbols
+ * @param {DocumentSymbol[] | SymbolInformation[]} documentSymbols
  * @returns {Promise<Definition | DefinitionLink[]>}
  */
 export function getDocumentDefinitions(
 	document: TextDocument,
 	position: Position,
 	cancellation: CancellationToken,
-	DocumentSymbols?: DocumentSymbol[] | SymbolInformation[],
-	parseCST?: any[],
+	documentSymbols?: DocumentSymbol[] | SymbolInformation[],
+	// parseCST?: any[],
 ): Promise<Definition | DefinitionLink[] | undefined>
 {
 	return new Promise((resolve, reject) =>
@@ -148,33 +173,37 @@ export function getDocumentDefinitions(
 		}
 
 		// use documentSymbols
-		//FIXME: PROBLEM WITH CHARACTER OFFSET! - MAYBE LINE NUMBER - MAYBE HAS TO DO WITH WHITESPACE
 		// console.log('DEFINITIONS: symbols available');
-
-		if (DocumentSymbols !== undefined) {
-			let _symbolMatch = symbolMatch(document, DocumentSymbols as DocumentSymbol[], word);
-			if (_symbolMatch !== undefined) {
-				resolve([_symbolMatch]);
-				return;
+		if (documentSymbols) {
+			let _symbolMatch = symbolMatch(document, documentSymbols as DocumentSymbol[], word);
+			if (_symbolMatch) {
+				resolve(_symbolMatch);
+				// return;
+			} else {
+				reject('No matches');
 			}
+		} else {
+			// fallback to regex match
+			// console.log('DEFINITIONS: symbols un-available, using regex');
+			let _wordMatch = wordMatch(document, word, position);
+			_wordMatch ? resolve(_wordMatch) : reject('No matches.');
 		}
-
 		// use the parse tree -- DISABLED
 		/*
-		console.log('DEFINITIONS: symbols un-available, using CST');
-		if (parseCST !== undefined) {
-			let _cstMatch = cstMatch(document, parseCST, word);
-			if (_cstMatch !== undefined) {
-				resolve([_cstMatch]);
-				return;
+			console.log('DEFINITIONS: symbols un-available, using CST');
+			else if (parseCST) {
+				let _cstMatch = cstMatch(document, parseCST, word);
+				if (_cstMatch) {
+					resolve([_cstMatch]);
+					// return;
+				} else {
+					reject('No match');
+				}
+			} else {
+				// fallback to regex match
+				let _wordMatch = wordMatch(document, word);
+				_wordMatch ? resolve(_wordMatch) : reject('No matches.');
 			}
-		}
 		*/
-		
-		// fallback to regex match
-		// console.log('DEFINITIONS: symbols un-available, using regex');
-
-		let _wordMatch = wordMatch(document, word);
-		_wordMatch !== undefined ? resolve(_wordMatch) : reject('No matches.');
 	});
 }

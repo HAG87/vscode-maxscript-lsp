@@ -7,7 +7,8 @@ export interface MaxScriptSettings
 	Diagnostics: boolean;
 	Completions: boolean;
 	MinifyFilePrefix: string;
-	formatter: { indentOnly: boolean }
+	formatter: { indentOnly: boolean },
+	parser: { errorCheck: boolean }
 	// language?: { semantics: boolean };
 	// ...
 }
@@ -23,6 +24,7 @@ export const defaultSettings: MaxScriptSettings = {
 	Diagnostics: true,
 	Completions: true,
 	MinifyFilePrefix: 'min_',
-	formatter: { indentOnly: true }
+	formatter: { indentOnly: true },
+	parser: { errorCheck: true }
 	//language?: { semantics: true },
 };
