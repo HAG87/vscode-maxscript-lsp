@@ -633,12 +633,10 @@ var grammar = {
         })},
     {"name": "case_src", "symbols": ["expr", "_"], "postprocess": d => d[0]},
     {"name": "case_src", "symbols": ["__"], "postprocess": id},
-    {"name": "case_item$subexpression$1", "symbols": ["factor"]},
-    {"name": "case_item$subexpression$1", "symbols": [(mxLexer.has("params") ? {type: "params"} : params)]},
-    {"name": "case_item$subexpression$2", "symbols": [{"literal":":"}, "_"]},
-    {"name": "case_item", "symbols": ["case_item$subexpression$1", "case_item$subexpression$2", "expr"], "postprocess":  d => ({
+    {"name": "case_item$subexpression$1", "symbols": ["_", {"literal":":"}, "_"]},
+    {"name": "case_item", "symbols": ["factor", "case_item$subexpression$1", "expr"], "postprocess":  d => ({
             type:'CaseClause',
-            case: d[0][0],
+            case: d[0],
             body: d[2],
             range: getLoc(d[0][0], d[2])
         })},

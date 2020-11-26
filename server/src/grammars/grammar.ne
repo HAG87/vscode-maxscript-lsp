@@ -698,10 +698,10 @@ Main -> _ _expr_seq _ {% d => d[1] %}
     case_src -> expr _  {% d => d[0] %} | __ {% id %}
 
     case_item
-        -> (factor | %params) (":" _) expr
+        -> factor (_ ":" _) expr
             {% d => ({
                 type:'CaseClause',
-                case: d[0][0],
+                case: d[0],
                 body: d[2],
                 range: getLoc(d[0][0], d[2])
             })%}
