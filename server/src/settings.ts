@@ -9,6 +9,20 @@ export interface MaxScriptSettings
 	MinifyFilePrefix: string;
 	formatter: { indentOnly: boolean },
 	parser: { errorCheck: boolean }
+	prettifier: {
+		filePrefix: string,
+		codeblock?: {
+			newlineAtParens: boolean,
+			newlineAllways: boolean,
+			spaced: boolean,
+		},
+		statements?: {
+			optionalWhitespace: boolean
+		},
+		list?: {
+			useLineBreaks: boolean
+		}
+	}
 	// language?: { semantics: boolean };
 	// ...
 }
@@ -25,6 +39,20 @@ export const defaultSettings: MaxScriptSettings = {
 	Completions: true,
 	MinifyFilePrefix: 'min_',
 	formatter: { indentOnly: true },
-	parser: { errorCheck: true }
+	parser: { errorCheck: true },
+	prettifier: {
+		filePrefix: 'pretty_',
+		codeblock: {
+			newlineAtParens: true,
+			newlineAllways: true,
+			spaced: true,
+		},
+		statements: {
+			optionalWhitespace: false
+		},
+		list: {
+			useLineBreaks: true
+		}
+	}
 	//language?: { semantics: true },
 };
