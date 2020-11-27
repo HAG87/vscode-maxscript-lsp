@@ -17,6 +17,23 @@ class reflowOptions {
 			spaced: true
 		};
 	}
+	reset() {
+		this.indent = '\t';
+		this.spacer = ' ';
+		this.linebreak = '\n';
+		this.wrapIdentities = false,
+		this.elements = {
+			useLineBreaks: true
+		};
+		this.statements = {
+			optionalWhitespace: false
+		};
+		this.codeblock = {
+			newlineAtParens: true,
+			newlineAllways: true,
+			spaced: true
+		};
+	}
 	/*
 	get indent() {return this.indent}
 	get spacer() {return this.spacer}
