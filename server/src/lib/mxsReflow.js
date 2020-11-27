@@ -262,7 +262,7 @@ class codeblock {
 				return [].concat('(', this.value, ')').join(options.linebreak);
 			} else {
 				return options.codeblock.spaced
-					? `(${'options.spacer'}${this.value.join(options.linebreak)}${options.spacer})`
+					? `(${options.spacer}${this.value.join(options.linebreak)}${options.spacer})`
 					: `(${this.value.join(options.linebreak)})`;
 			}
 		} else if (options.codeblock.newlineAllways/* pass */) {
