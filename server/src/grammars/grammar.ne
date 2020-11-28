@@ -574,6 +574,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                     body:   d[5],
                 };
                 addLoc(res, d[5])
+                return res;
             }%}
          | function_decl __ var_name (_ "=" _) expr
             {% d => {

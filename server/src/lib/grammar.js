@@ -506,6 +506,7 @@ var grammar = {
                 body:   d[5],
             };
             addLoc(res, d[5])
+            return res;
         }},
     {"name": "function_def$subexpression$4", "symbols": ["_", {"literal":"="}, "_"]},
     {"name": "function_def", "symbols": ["function_decl", "__", "var_name", "function_def$subexpression$4", "expr"], "postprocess":  d => {
