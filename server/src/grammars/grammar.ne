@@ -591,7 +591,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         -> (%kw_mapped __):?  %kw_function
             {% d => ({
                 type:   'Function',
-                mapped: (d[0] != null),
+                modifier: d[0] != null ? d[0][0] : null,
                 keyword: d[1],
                 range: getLoc(d[0] != null ? d[0][0] : d[1])
             })%}
@@ -847,10 +847,11 @@ Main -> _ _expr_seq _ {% d => d[1] %}
     decl
         -> var_name
             {% d => ({
-                type:   'Declaration',
-                id:     d[0],
-                value:  null,
-                range:  getLoc(d[0])
+                type:     'Declaration',
+                id:       d[0],
+                operator: null,
+                value:    null,
+                range:    getLoc(d[0])
             }) %}
         | assignment
             {% d => {

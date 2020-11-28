@@ -524,7 +524,7 @@ var grammar = {
     {"name": "function_decl$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
     {"name": "function_decl", "symbols": ["function_decl$ebnf$1", (mxLexer.has("kw_function") ? {type: "kw_function"} : kw_function)], "postprocess":  d => ({
             type:   'Function',
-            mapped: (d[0] != null),
+            modifier: d[0] != null ? d[0][0] : null,
             keyword: d[1],
             range: getLoc(d[0] != null ? d[0][0] : d[1])
         })},
@@ -767,10 +767,11 @@ var grammar = {
     {"name": "decl_list", "symbols": ["decl_list", "decl_list$subexpression$1", "decl"], "postprocess": d => [].concat(d[0], d[2])},
     {"name": "decl_list", "symbols": ["decl"]},
     {"name": "decl", "symbols": ["var_name"], "postprocess":  d => ({
-            type:   'Declaration',
-            id:     d[0],
-            value:  null,
-            range:  getLoc(d[0])
+            type:     'Declaration',
+            id:       d[0],
+            operator: null,
+            value:    null,
+            range:    getLoc(d[0])
         }) },
     {"name": "decl", "symbols": ["assignment"], "postprocess":  d => {
             let res = {...d[0]};

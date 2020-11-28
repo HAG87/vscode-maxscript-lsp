@@ -141,10 +141,11 @@ function reduce(tree) {
 		if (getNodeType(node) && parent) {
 			let res;
 			// TODO: options.indent...
-			if (node.type === 'codeblock') {
+			if ('indent' in node) {
 				node.indent = level;
 			}
 			res = node.toString;
+			// console.log(level,'|',res);
 			index != null ? parent[key][index] = res : parent[key] = res;
 		} else {
 			// res = node;
@@ -154,7 +155,8 @@ function reduce(tree) {
 }
 //-----------------------------------------------------------------------------------
 // utility functions
-const isArrayUsed = val => Array.isArray(val) && val.length;
+const isArrayUsed = val => val && Array.isArray(val) && val.length > 0 ? true : false;
+const isNotEmpty = val => val && !Array.isArray(val) || Array.isArray(val) && val.length > 0 ? true : false;
 const toArray = val => Array.isArray(val) ? val : [val];
 /*
 var wrap = function (func) {
@@ -177,7 +179,7 @@ function wrapInParens(node, key) {
 	];
 }
 */
-function optionalWS(values, ws = '') {
+function optionalWS(values, empty = '', ws = ' ') {
 	// at the end
 	let w_ = /\w$/im;
 	let s_ = /\W$/im;
@@ -191,7 +193,6 @@ function optionalWS(values, ws = '') {
 	let _d = /^\d/im;
 	let _c = /^\:/im;
 
-	let sep = ' ';
 	let res = values.reduce((acc, curr) => {
 		if (
 			// alpha - alpha
@@ -207,11 +208,11 @@ function optionalWS(values, ws = '') {
 			// colon - number
 			// || c_.test(acc) && _d.test(curr)
 		) {
-			return (acc + sep + curr);
-		} else {
 			return (acc + ws + curr);
+		} else {
+			return (acc + empty + curr);
 		}
-	}, '');
+	});
 	return res;
 }
 //-----------------------------------------------------------------------------------
@@ -223,12 +224,24 @@ class statement {
 		this.value = [];
 		this.add(...args);
 		this.optionalWhitespace = false;
+		this.indent = 0;
 	}
 
 	get toString() {
 
 		if (!options.statements.optionalWhitespace && !this.optionalWhitespace) {
-			return this.value.join(options.spacer);
+			// /*
+			let res = this.value.reduce((acc, curr) => {
+				if (curr.includes(options.linebreak)) {
+					// console.log(curr);
+					return acc + options.linebreak + options.indent.repeat(this.indent) + curr;
+				} else {
+					return acc + options.spacer +  curr;
+				}
+			});
+			// */
+			return res;
+			// return this.value.join(options.spacer);
 		} else {
 			return optionalWS(this.value);
 		}
@@ -250,34 +263,44 @@ class codeblock {
 	}
 
 	get toString() {
-		// if (this.value.length > 3 || this.value.length > 1 && (this.value[0].includes(options.linebreak) || this.value[1].includes(options.linebreak))) {
 		// test for linebreaks...
 		// pass
 		let pass = true;
 		if (Array.isArray(this.value)) {
-			pass = this.value.length > 1 || this.value[0].includes(options.linebreak);
+			if(!this.value[0]) {
+				console.log(this);
+			}
+			pass = this.value.length > 1 || this.value[0]?.includes(options.linebreak);
 		}
+		if (this.indent > 1) {this.indent--;}
 		if (this.wrapped) {
 			if (options.codeblock.newlineAtParens && pass) {
-				return [].concat('(', this.value, ')').join(options.linebreak);
+				let res = [].concat('(', this.value).join(options.linebreak + options.indent.repeat(this.indent));
+				// res = res.padStart( res.length + this.indent, options.indent);
+				res = res.concat(options.linebreak , options.indent.repeat(this.indent > 0 ? this.indent - 1 : this.indent) , ')');
+				return res;
+				// return [].concat('(', this.value, ')').join(options.linebreak + options.indent.repeat(this.indent));
 			} else {
 				return options.codeblock.spaced
 					? `(${options.spacer}${this.value.join(options.linebreak)}${options.spacer})`
 					: `(${this.value.join(options.linebreak)})`;
 			}
-		} else if (options.codeblock.newlineAllways/* pass */) {
-			return this.value.join(options.linebreak);
-		} else {
+		} else  if ( options.codeblock.newlineAllways/* pass */) {
+			/*
+			let res = this.value.reduce((acc, curr, index) => {
+				if (/^[ \t-]*\(/m.test(curr)) {
+					return acc + options.linebreak + curr;
+				} else {
+					return acc + options.linebreak + options.indent.repeat(this.indent) + curr;
+				}
+			});
+			*/
+			return this.value.join(options.linebreak + options.indent.repeat(this.indent));
+		} else {			
 			return options.codeblock.spaced
 				? this.value.join(options.spacer)
 				: optionalWS(this.value);
 		}
-		// return this.value.join(options.linebreak);
-		// return this.value.join('');
-		// return this.wrapped
-		// ? `(${optionalWS(this.value)})`
-		// : optionalWS(this.value, options.spacer);
-		// : this.value.join(' ');
 	}
 
 	add(...value) {
@@ -294,11 +317,12 @@ class elements {
 		this.type = 'elements';
 		this.value = [];
 		this.add(...args);
+		this.indent = 0;
 	}
 
 	get toString() {
 		return this.listed && options.elements.useLineBreaks
-			? this.value.join(',' + options.linebreak)
+			? this.value.join(',' + options.linebreak + options.indent.repeat(this.indent))
 			: this.value.join(',' + options.spacer);
 	}
 
@@ -425,11 +449,11 @@ let conversionRules = {
 	//-------------------------------------------------------------------------------------------
 	// DECLARATION
 	Declaration(node) {
-		return new statement(node.id);
+		return new statement(node.id, node.operator, node.value);
 	},
 	// Types
 	ObjectArray(node) {
-		let res = new statement('#(');
+		let res = new expr('#(');
 
 		if (isArrayUsed(node.elements)) {
 			// console.log('elems');
@@ -447,7 +471,7 @@ let conversionRules = {
 					}
 				});
 			res.add(elems);
-		} else {
+		} else if (isNotEmpty(node.elements)) {
 			res.add(node.elements);
 		}
 		res.add(')');
@@ -455,7 +479,7 @@ let conversionRules = {
 		return res;
 	},
 	ObjectBitArray(node) {
-		let res = new statement('#{');
+		let res = new expr('#{');
 
 		if (isArrayUsed(node.elements)) {
 			let elems = new elements();
@@ -466,12 +490,12 @@ let conversionRules = {
 						elems.add(
 							new codeblock(...e)
 						);
-					} else {
+					} else if (isNotEmpty(e)) {
 						elems.add(e);
 					}
 				});
 			res.add(elems);
-		} else {
+		} else if (isNotEmpty(node.elements)) {
 			res.add(node.elements);
 		}
 		res.add('}');
@@ -550,7 +574,7 @@ let conversionRules = {
 	// Functions
 	Function(node) {
 		let stat = new statement(
-			node.mapped || null,
+			node.modifier,
 			node.keyword,
 			node.id,
 			...toArray(node.args),
@@ -579,7 +603,7 @@ let conversionRules = {
 			} else {
 				decls = node.decls;
 			}
-		} else {
+		} else if (isNotEmpty(node.dacls)) {
 			decls = [node.decls];
 		}
 
@@ -725,14 +749,13 @@ let conversionRules = {
 		}
 		return res;
 	},
-	ForLoopSequence(node) {
-		let _to = node.to || isArrayUsed(node.to) ? ['to', ...toArray(node.to)] : null;
-		let _by = node.by || isArrayUsed(node.by) ? ['by', ...toArray(node.by)] : null;
-		let _while = node.while || isArrayUsed(node.while) ? ['while', ...toArray(node.while)] : null;
-		let _where = node.where || isArrayUsed(node.where) ? ['where', ...toArray(node.where)] : null;
+	ForLoopSequence(node) {		
+		let _to =    isNotEmpty(node.to) ? ['to', ...toArray(node.to)] :          null;
+		let _by =    isNotEmpty(node.by) ? ['by', ...toArray(node.by)] :          null;
+		let _while = isNotEmpty(node.while) ? ['while', ...toArray(node.while)] : null;
+		let _where = isNotEmpty(node.where) ? ['where', ...toArray(node.where)] : null;
 
 		let stats = [].concat(_to, _by, _while, _where).filter(e => e != null);
-
 		return new statement(...stats);
 	},
 	LoopExit(node) {
@@ -803,20 +826,25 @@ let conversionRules = {
 					body.add(e);
 					if (stack) {
 						body.add(stack);
-						stack = undefined;
+						stack = null;
 					}
 				} else {
 					if (!stack) {
 						stack = new elements(e);
-						stack.list = true;
+						stack.listed = true;
 					} else {
 						stack.add(e);
 					}
 				}
 			});
-		} else {
+			body.add(stack);
+			console.log(stack);
+			console.log('----');
+
+		} else if (isNotEmpty(node.body)) {
 			body.add(node.body);
 		}
+
 		return new codeblock(stat, body);
 	},
 	StructScope(node) { return node.value; },
