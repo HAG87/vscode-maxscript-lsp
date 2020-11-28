@@ -449,13 +449,18 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             {% d => ({
                 type: 'Struct',
                 id:   d[1],
-                body: d[4],
+                body: flatten(d[4]),
                 range: getLoc(d[0][0], d[5])
             })%}
+    # this ensures that no scope modifier is followed by a comma!
+
+    struct_members -> _struct_member (_ sep _ _struct_member):* {% d => merge(...d) %}
     
-    struct_members
-        -> struct_members (_ "," _) _struct_member {% d => [].concat(d[0], d[2])%}
-        | _struct_member
+    sep -> %sep {% d => null %}
+
+    # struct_members
+    #     -> struct_members (_ "," _) _struct_member {% d => [].concat(d[0], d[2])%}
+    #     | _struct_member
 
     _struct_member
         -> str_scope EOL struct_member {% d => [].concat(d[0], d[2]) %}
@@ -1267,6 +1272,7 @@ kw_override
     LPAREN ->  %lparen _    {% d => d[0] %}
     RPAREN ->  _ %rparen  {% d => d[1] %}
 #===============================================================
+
 # WHITESPACE AND NEW LINES
     # comments are skipped in the parse tree!   
 

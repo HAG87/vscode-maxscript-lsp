@@ -377,12 +377,14 @@ var grammar = {
     {"name": "struct_def", "symbols": ["struct_def$subexpression$1", "var_name", "_", "LPAREN", "struct_members", "RPAREN"], "postprocess":  d => ({
             type: 'Struct',
             id:   d[1],
-            body: d[4],
+            body: flatten(d[4]),
             range: getLoc(d[0][0], d[5])
         })},
-    {"name": "struct_members$subexpression$1", "symbols": ["_", {"literal":","}, "_"]},
-    {"name": "struct_members", "symbols": ["struct_members", "struct_members$subexpression$1", "_struct_member"], "postprocess": d => [].concat(d[0], d[2])},
-    {"name": "struct_members", "symbols": ["_struct_member"]},
+    {"name": "struct_members$ebnf$1", "symbols": []},
+    {"name": "struct_members$ebnf$1$subexpression$1", "symbols": ["_", "sep", "_", "_struct_member"]},
+    {"name": "struct_members$ebnf$1", "symbols": ["struct_members$ebnf$1", "struct_members$ebnf$1$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
+    {"name": "struct_members", "symbols": ["_struct_member", "struct_members$ebnf$1"], "postprocess": d => merge(...d)},
+    {"name": "sep", "symbols": [(mxLexer.has("sep") ? {type: "sep"} : sep)], "postprocess": d => null},
     {"name": "_struct_member", "symbols": ["str_scope", "EOL", "struct_member"], "postprocess": d => [].concat(d[0], d[2])},
     {"name": "_struct_member", "symbols": ["struct_member"], "postprocess": id},
     {"name": "_struct_member", "symbols": ["str_scope"], "postprocess": id},
