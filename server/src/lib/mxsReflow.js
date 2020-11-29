@@ -267,9 +267,6 @@ class codeblock {
 		// pass
 		let pass = true;
 		if (Array.isArray(this.value)) {
-			if(!this.value[0]) {
-				console.log(this);
-			}
 			pass = this.value.length > 1 || this.value[0]?.includes(options.linebreak);
 		}
 		if (this.indent > 1) {this.indent--;}
@@ -408,7 +405,7 @@ let tokensValue = {
 	kw_rcmenu(node) { return node.text; },
 	kw_return(node) { return node.text; },
 	kw_rollout(node) { return node.text; },
-	kw_scope(node) { return node.text; },
+	kw_scope(node) { return node.value; },
 	kw_separator(node) { return node.text; },
 	kw_set(node) { return node.text; },
 	kw_struct(node) { return node.text; },
@@ -552,9 +549,6 @@ let conversionRules = {
 			// console.log(node.args);
 			res.optionalWhitespace = true;
 		}
-
-		// console.log(node.callee);
-		// console.log('-------');
 		return res;
 	},
 	// Assign
@@ -715,7 +709,7 @@ let conversionRules = {
 			'while',
 			node.test
 		);
-		let res = new codebloc(
+		let res = new codeblock(
 			stat,
 			test,
 		);
@@ -809,25 +803,31 @@ let conversionRules = {
 		);
 	},
 	// Struct >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-	Struct(node) {
+	Struct(node, parent) {
 		let stat = new statement(
 			'struct',
 			node.id
 		);
 		let body = new codeblock();
 		body.wrapped = true;
+		// console.log(node.body);
+		// console.log(node);
+		// console.log('-----------------------------');
+
+		// /*
 		if (isArrayUsed(node.body)) {
 			// handle struct members...
 			let stack;
-			//let temp;
 			node.body.forEach(e => {
 				// test for structScope
 				if (typeof e === 'string' && /(?:private|public)$/mi.test(e)) {
-					body.add(e);
 					if (stack) {
+						//hack to overcome las missing comma
+						stack.add('');
 						body.add(stack);
 						stack = null;
 					}
+					body.add(e);
 				} else {
 					if (!stack) {
 						stack = new elements(e);
@@ -837,14 +837,11 @@ let conversionRules = {
 					}
 				}
 			});
+			// add last stack
 			body.add(stack);
-			console.log(stack);
-			console.log('----');
-
 		} else if (isNotEmpty(node.body)) {
 			body.add(node.body);
 		}
-
 		return new codeblock(stat, body);
 	},
 	StructScope(node) { return node.value; },
