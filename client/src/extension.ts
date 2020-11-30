@@ -37,10 +37,19 @@ interface MinifyDocParams
 	command: string
 	uri: string[];
 }
-
 namespace MinifyDocRequest
 {
 	export const type = new RequestType<MinifyDocParams, string[] | null, void>('MaxScript/minify');
+}
+
+interface PrettifyDocParams
+{
+	command: string
+	uri: string[]
+}
+namespace PrettifyDocRequest
+{
+	export const type = new RequestType<PrettifyDocParams, string[] | null, void>('MaxScript/prettify');
 }
 
 export function activate(context: ExtensionContext)
@@ -132,6 +141,23 @@ export function activate(context: ExtensionContext)
 					uri: [client.code2ProtocolConverter.asUri(args)]
 				};
 				await client.sendRequest(MinifyDocRequest.type, params);
+			}),
+		commands.registerCommand('mxs.prettify',
+			async () =>
+			{
+				let activeEditorUri = window.activeTextEditor?.document.uri;
+
+				if (activeEditorUri === undefined
+					|| activeEditorUri.scheme !== 'file'
+					|| window.activeTextEditor?.document.isDirty) {
+					await window.showInformationMessage('MaxScript prettifier: Save your file first.');
+					return;
+				}
+				let params: PrettifyDocParams = {
+					command: 'mxs.prettify',
+					uri: [client.code2ProtocolConverter.asUri(activeEditorUri)]
+				};
+				await client.sendRequest(PrettifyDocRequest.type, params);
 			})
 	);
 	//------------------------------------------------------------------------------------------

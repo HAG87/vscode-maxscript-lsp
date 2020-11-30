@@ -377,12 +377,14 @@ var grammar = {
     {"name": "struct_def", "symbols": ["struct_def$subexpression$1", "var_name", "_", "LPAREN", "struct_members", "RPAREN"], "postprocess":  d => ({
             type: 'Struct',
             id:   d[1],
-            body: d[4],
+            body: flatten(d[4]),
             range: getLoc(d[0][0], d[5])
         })},
-    {"name": "struct_members$subexpression$1", "symbols": ["_", {"literal":","}, "_"]},
-    {"name": "struct_members", "symbols": ["struct_members", "struct_members$subexpression$1", "_struct_member"], "postprocess": d => [].concat(d[0], d[2])},
-    {"name": "struct_members", "symbols": ["_struct_member"]},
+    {"name": "struct_members$ebnf$1", "symbols": []},
+    {"name": "struct_members$ebnf$1$subexpression$1", "symbols": ["_", "sep", "_", "_struct_member"]},
+    {"name": "struct_members$ebnf$1", "symbols": ["struct_members$ebnf$1", "struct_members$ebnf$1$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
+    {"name": "struct_members", "symbols": ["_struct_member", "struct_members$ebnf$1"], "postprocess": d => merge(...d)},
+    {"name": "sep", "symbols": [(mxLexer.has("sep") ? {type: "sep"} : sep)], "postprocess": d => null},
     {"name": "_struct_member", "symbols": ["str_scope", "EOL", "struct_member"], "postprocess": d => [].concat(d[0], d[2])},
     {"name": "_struct_member", "symbols": ["struct_member"], "postprocess": id},
     {"name": "_struct_member", "symbols": ["str_scope"], "postprocess": id},
@@ -506,6 +508,7 @@ var grammar = {
                 body:   d[5],
             };
             addLoc(res, d[5])
+            return res;
         }},
     {"name": "function_def$subexpression$4", "symbols": ["_", {"literal":"="}, "_"]},
     {"name": "function_def", "symbols": ["function_decl", "__", "var_name", "function_def$subexpression$4", "expr"], "postprocess":  d => {
@@ -524,7 +527,7 @@ var grammar = {
     {"name": "function_decl$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
     {"name": "function_decl", "symbols": ["function_decl$ebnf$1", (mxLexer.has("kw_function") ? {type: "kw_function"} : kw_function)], "postprocess":  d => ({
             type:   'Function',
-            mapped: (d[0] != null),
+            modifier: d[0] != null ? d[0][0] : null,
             keyword: d[1],
             range: getLoc(d[0] != null ? d[0][0] : d[1])
         })},
@@ -767,10 +770,11 @@ var grammar = {
     {"name": "decl_list", "symbols": ["decl_list", "decl_list$subexpression$1", "decl"], "postprocess": d => [].concat(d[0], d[2])},
     {"name": "decl_list", "symbols": ["decl"]},
     {"name": "decl", "symbols": ["var_name"], "postprocess":  d => ({
-            type:   'Declaration',
-            id:     d[0],
-            value:  null,
-            range:  getLoc(d[0])
+            type:     'Declaration',
+            id:       d[0],
+            operator: null,
+            value:    null,
+            range:    getLoc(d[0])
         }) },
     {"name": "decl", "symbols": ["assignment"], "postprocess":  d => {
             let res = {...d[0]};

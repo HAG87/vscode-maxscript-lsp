@@ -12,8 +12,6 @@ import { mxClassMembers } from './schema/mxsSchema-clases';
 import { mxInterfaceMembers } from './schema/mxsSchema-interfaces';
 import { mxStructsMembers } from './schema/mxsSchema-structs';
 //------------------------------------------------------------------------------------------
-
-
 /** A static collection of completion items*/
 const mxCompletions = new Array<CompletionItem>(...maxCompletions);
 const dotPattern = /([A-Za-z_][A-Za-z0-9_]+)[.]$/mi;

@@ -10,14 +10,15 @@ import getAllValuesByKey from 'ast-get-values-by-key';
 //@ts-ignore
 import traverse from 'ast-monkey-traverse';
 
-import { Range, Position} from 'vscode-languageserver';
-import { TextDocument} from 'vscode-languageserver-textdocument';
+import { Range, Position } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 //-----------------------------------------------------------------------------------
 export interface Dictionary<T>
 {
 	[key: string]: T;
 }
 //-----------------------------------------------------------------------------------
+
 export function getFromCST(CST: any | any[], keyValPair: object)
 {
 	return getObj(CST, keyValPair);
@@ -33,7 +34,7 @@ export const objFromKeys = (arr: any[], def: any) => arr.reduce((ac: any, a: any
 
 /**
  * Check if value is node
- * @param {any} node CST node
+ * @param node CST node
  */
 export const isNode = (node: any) => typeof node === 'object' && node != null;
 
@@ -103,6 +104,10 @@ export interface charRange
 	start: number,
 	end: number
 }
+/*
+type traverseCallback = (key: string, val: any, innerObj?: any, stop?: any) => string;
+type traverse = (n:any, fn: traverseCallback) => void;
+*/
 /**
  * Functions for getting the range of a statement. Grouped in a static class for coherency
  */
@@ -125,6 +130,7 @@ export abstract class rangeUtil
 			end: offset + node.text.length
 		};
 	}
+	
 	/**
 	 * Get the range of the statement from the offset of the first and last child of the node
 	 * @param node CST node
@@ -133,12 +139,16 @@ export abstract class rangeUtil
 	{
 		let childs: moo.Token[] = [];
 		// traverse the node to collect first and last child offset
-		traverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
+		traverse(node, (key: string, val: any, innerObj: any) =>
 		{
-			const current = val1 ?? key1;
-			if (key1 === 'offset') {
-				childs.push(innerObj.parent);
-			}
+			const current = val ?? key;
+			if (key === 'offset') { childs.push(innerObj.parent); }
+			// if you are traversing and "stumbled" upon an object, it will have both "key" and "val"
+			// if you are traversing and "stumbled" upon an array, it will have only "key"
+			// you can detect either using the principle above.
+			// you can also now change "current" - what you return will be overwritten.
+			// return `NaN` to give instruction to delete currently traversed piece of AST.
+			// stop - set stop.now = true; to stop the traversal
 			return current;
 		});
 		// Childs
@@ -159,19 +169,25 @@ export abstract class rangeUtil
 	{
 		let childs: any[] = [];
 		// traverse the node to collect first and last child offset
-		traverse(node, (key1: string, val1: null, innerObj: any, stop: any) =>
+		traverse(node, (key: string, val: any, innerObj: any) =>
 		{
-			const current = val1 ?? key1;
-			if (key1 === 'line') {
-				childs.push(innerObj.parent);
-			}
+			const current = val ?? key;
+			if (key === 'line') { childs.push(innerObj.parent); }
 			return current;
 		});
+
 		let last = childs[childs.length - 1];
 
-		let start = { line: childs[0].line, character: childs[0].col };
-		let end = { line: last.line, character: last.col };
-		return { start: start, end: end };
+		return {
+			start: {
+				line: childs[0].line,
+				character: childs[0].col
+			},
+			end: {
+				line: last.line,
+				character: last.col
+			}
+		};
 	}
 	/**
 	 * Get the position of the last child
@@ -202,19 +218,16 @@ export abstract class rangeUtil
 		let compare = (a: Position, b: Position) =>
 		{
 			let res = Position.create(0, 0);
-
 			// line position of B can be less or eq
 			if (a.line > b.line) {
 				res.line = b.line;
 				// char of B can be more if line is less
 				res.character = b.character;
-
 			} else {
 				// line of B is more than line of A
 				res.line = a.line;
 				// also, character must not be more than A
 				res.character = b.character > a.character ? a.character : b.character;
-
 				/*
 				let ext = document.getText(
 					{
@@ -264,52 +277,15 @@ export abstract class rangeUtil
 		return tokenRange;
 	}
 
-	static rangeFromWord(word: string, pos:Position) {
-		let res:Range = {
+	static rangeFromWord(word: string, pos: Position)
+	{
+		return <Range>{
 			start: pos,
 			end: {
 				line: pos.line,
 				character: pos.character + word.length - 1
 			}
 		};
-		return res;
 	}
 }
 //-----------------------------------------------------------------------------------
-/**
- * Generic vistor with callback for the CST
- * @param node 
- * @param callback 
- */
-export function CSTvisitor(node: any, callback: any)
-{
-	function _visit(node: any, parent: any, key: string, level = 0)
-	{
-		if ('id' in node || 'type' in node) {
-			const nodeType = getNodeType(node);
-			callback[nodeType](node, parent, level);
-		}
-		// get the node keys
-		const keys = Object.keys(node);
-		// loop through the keys
-		for (let i = 0; i < keys.length; i++) {
-			// child is the value of each key
-			let key = keys[i];
-			const child = node[key];
-			// could be an array of nodes or just an object
-			if (Array.isArray(child)) {
-				// value is an array, visit each item
-				for (let j = 0; j < child.length; j++) {
-					// visit each node in the array
-					if (isNode(child[j])) {
-						// _visit(child[j], node, key, j);
-						_visit(child[j], node, key, level + 1);
-					}
-				}
-			} else if (isNode(child)) {
-				_visit(child, node, key, level + 1);
-			}
-		}
-	}
-	_visit(node, null, '', 0);
-}

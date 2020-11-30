@@ -108,6 +108,11 @@
 				"command": "mxs.minify.files",
 				"title": "Minify files...",
 				"category": "MaxScript"
+			},
+			{
+				"command": "mxs.prettify",
+				"title": "Prettify document",
+				"category": "MaxScript"
 			}
 		],
 		"menus": {
@@ -202,6 +207,42 @@
 					"type": "string",
 					"default": "min_",
 					"description": "Prefix for code minify output"
+				},
+				"MaxSript.prettifier.codeblock.newlineAtParens" : {
+					"scope": "resource",
+					"type": "boolean",
+					"default": true,
+					"description": "Insert a line break after an opening paren and before a closing paren."
+				},
+				"MaxSript.prettifier.codeblock.newlineAllways" : {
+					"scope": "resource",
+					"type": "boolean",
+					"default": true,
+					"description": "Insert line breaks between a statement members"
+				},
+				"MaxSript.prettifier.codeblock.spaced" : {
+					"scope": "resource",
+					"type": "boolean",
+					"default": true,
+					"description": "Insert whitespace between expressions"
+				},
+				"MaxSript.prettifier.list.useLineBreaks" : {
+					"scope": "resource",
+					"type": "boolean",
+					"default": true,
+					"description": "Insert line breaks in array-like objects"
+				},
+				"MaxSript.prettifier.statements.optionalWhitespace" : {
+					"scope": "resource",
+					"type": "boolean",
+					"default": false,
+					"description": "Ommit whitespace when is unnecessary"
+				},
+				"MaxScript.prettifier.filePrefix":{
+					"scope": "resource",
+					"type": "string",
+					"default": "pretty_",
+					"description": "Prefix for code prettifier output"
 				},
 				"MaxScript.language.semantics": {
 					"scope": "resource",
