@@ -1,6 +1,11 @@
 # Change Log
 
 All notable changes to the "language-maxscript" extension will be documented in this file.
+## [1.23.0]
+
+- Added: New code minifier algorithm, code beautifier.
+- Several crashes fixed.
+- Optimizations
 
 ## [1.21.0]
 
