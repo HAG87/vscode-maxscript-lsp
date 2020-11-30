@@ -4,14 +4,16 @@ Autodesk 3ds Max Scripting language (MaxScript) support.
 
 ## Features
 
-- MaxScript Parser (Experimental).
 - Syntax highlight.
 - Grammar Error checking
 - Semantic syntax highlight
 - Code autocompletion for keywords, primitives, generic functions, structs, interfaces and classes.
+- Snippets for most used code blocks.
 - Go to Symbol in document (Basic support, somewhat buggy).
 - Go to Definition and peek definition in document.
-- Snippets for most used code blocks.
+- Code formatter
+- Code minify
+- Code prettifier
 - Help command (*MaxScript help. Accessible from the right-click menu.*): Select a keyword and open related online documentation.
 
 ![feature X](./images/feature-1.png)
