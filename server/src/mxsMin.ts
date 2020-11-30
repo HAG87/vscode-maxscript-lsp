@@ -1,40 +1,31 @@
 'use strict';
-import * as fs from 'fs';
 // import { spawn, Thread, Worker } from 'threads';
 //--------------------------------------------------------------------------------
 //@ts-ignore
-import { mxsMinify } from './lib/mxsCompactCode';
+// import { mxsMinify } from './lib/mxsCompactCode';
 import { parseSource } from './mxsParser';
+import { mxsReflow, options } from './lib/mxsReflow';
+import { fileRead, fileWrite } from './lib/utils';
 //--------------------------------------------------------------------------------
+function setOptions() {
+	options.indent = '';
+	options.linebreak = ';';
+	options.spacer = '';
+	options.codeblock.newlineAtParens = false;
+	options.codeblock.spaced = false;
+	options.codeblock.newlineAllways = false;
+	options.elements.useLineBreaks = false;
+	options.statements.optionalWhitespace = true;
+}
+//--------------------------------------------------------------------------------
+//TODO: REPLACE FILE OPERATIOSN WITH WORKSPACE MANAGER...
 // make this async...
 function minCode(parserTree: any[])
 {
-	return mxsMinify(parserTree);
-}
-
-function minifyWrite(path: string, data: string)
-{
-
-	return new Promise((resolve, reject) =>
-	{
-		fs.writeFile(path, Buffer.from(data, 'utf8'),
-			(err) =>
-			{
-				err ? reject(err) : resolve;
-			}
-		);
-	});
-}
-
-function minifyRead(path: string):Promise<string>
-{
-	return new Promise((resolve, reject) =>
-	{
-		fs.readFile(path, 'utf8', (err, data) =>
-		{
-			err ? reject(err) : resolve(data);
-		});
-	});
+	setOptions();
+	// options.wrapIdentities = true;
+	return mxsReflow(parserTree);	
+	// return mxsMinify(parserTree);
 }
 
 export async function MinifyData(data: any | any[] | string)
@@ -54,12 +45,12 @@ export async function MinifyData(data: any | any[] | string)
 export async function MinifyDoc(data: any | any[] | string, savePath: string)
 {
 	let minify = await MinifyData(data);
-	await minifyWrite(savePath, minify);
+	await fileWrite(savePath, minify);
 }
 
 export async function MinifyFile(src: string, dest: string)
 {
-	let data = await minifyRead(src);
+	let data = await fileRead(src);
 	let minify = await MinifyData(data);
-	await minifyWrite(dest, minify);
+	await fileWrite(dest, minify);
 }
