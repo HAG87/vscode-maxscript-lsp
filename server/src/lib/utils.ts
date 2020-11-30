@@ -1,4 +1,4 @@
-// import {window, Uri} from 'vscode';
+'use strict';
 import
 {
 	Position,
@@ -11,14 +11,57 @@ import * as Path from 'path';
 import { LspDocuments } from './document';
 import { URI } from 'vscode-uri';
 //--------------------------------------------------------------------------------
-var isOdd = function (x: number) { return x & 1; };
-var isEven = function (x: number) { return !(x & 1); };
+/**
+ * Test if number is Odd
+ * @param x number to test
+ */
+export const isOdd = function (x: number) { return x & 1; };
+/**
+ * Test if number is Even
+ * @param x number to test
+ */
+export const isEven = function (x: number) { return !(x & 1); };
 //--------------------------------------------------------------------------------
 /**
- * Check if a file exists on source.
+ * Write a string to file
+ * @param path fs path for the file
+ * @param data data to be written
+ */
+export async function fileWrite(path: string, data: string)
+{
+	await fs.promises.writeFile(path, data, 'utf8');
+	/*
+	return new Promise<boolean>((resolve, reject) =>
+	{
+		fs.writeFile(path, Buffer.from(data, 'utf8'),
+			err => err ? reject(err) : resolve(true)
+		);
+	});
+	*/
+}
+/**
+ * Read the contents of a file
+ * @param path fs path for the file to be read
+ */
+export async function fileRead(path: string)
+{
+	return await fs.promises.readFile(path, { encoding: 'utf8' });
+	/*
+	return new Promise((resolve, reject) =>
+	{
+		fs.readFile(path, 'utf8', (err, data) =>
+		{
+			err ? reject(err) : resolve(data);
+		});
+	});
+	*/
+}
+/**
+ * Check if a file exists in source.
  * @param filePath File path
  */
 export const fileExists = (filePath: string): boolean => fs.statSync(filePath).isFile();
+// return (await fs.promises.stat(path)).isFile();
 /**
  * Prefix a filename providing the full file path
  * @param path Original path
@@ -28,6 +71,7 @@ export function prefixFile(path: string, prefix: string)
 {
 	return Path.join(path, '..', prefix + Path.basename(path));
 }
+//--------------------------------------------------------------------------------
 /**
  * Check for balanced pairs of char in string
  * @param src
@@ -96,20 +140,17 @@ export function getWordAtPosition(document: TextDocument, position: Position, sk
  * @param data 
  * @param index 
  */
-export function getlineNumberofChar(data: string, index: number)
-{
-	return data.substring(0, index).split('\n').length;
-}
+export const getlineNumberofChar =
+	(data: string, index: number) =>
+		data.substring(0, index).split('\n').length;
 /**
  * Get the Range of a word, providing a start position
  * @param word 
  * @param position 
  */
-export function getWordRange(word: string, position: Position)
-{
-	return Range.create(position, Position.create(position.line, position.character + word.length - 1));
-}
-
+export const getWordRange =
+	(word: string, position: Position) =>
+		Range.create(position, Position.create(position.line, position.character + word.length - 1));
 /*
  * Copyright (C) 2017, 2018 TypeFox and others.
  *
@@ -140,7 +181,6 @@ export function pathToUri(filepath: string, documents: LspDocuments | undefined)
 	const document = documents && documents.get(fileUri.fsPath);
 	return document ? document.uri : fileUri.toString();
 }
-
 /**
  * Generic wait function
  * @param delay 
