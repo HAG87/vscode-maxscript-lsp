@@ -213,12 +213,13 @@ class statement {
 		this.value = [];
 		this.add(...args);
 		this.optionalWhitespace = false;
+		this.addLinebreaks = true;
 	}
 
 	get toString() {
 		if (!options.statements.optionalWhitespace && !this.optionalWhitespace) {
 			let res = this.value.reduce((acc, curr) => {
-				if (curr.includes(options.linebreak)) {
+				if (curr.includes(options.linebreak) && this.addLinebreaks) {
 					return acc + options.linebreak + curr;
 				} else {
 					return acc + options.spacer + curr;
@@ -267,7 +268,7 @@ class codeblock {
 					: `(${this.value.join(options.linebreak)})`;
 			}
 		} else if (options.codeblock.newlineAllways/* pass */) {
-			let res = this.value.join(options.linebreak);
+			let res =  this.value.join(options.linebreak);
 			if (this.indent) {
 				res = res.replace(options.indentAt, `${options.linebreak}${options.indent}`);
 			}
@@ -436,7 +437,7 @@ let conversionRules = {
 				e => {
 					// just to be safe, it should be reduced by now...
 					if (isArrayUsed(e)) {
-						let body = new codeblock(...e);
+						let body =	new codeblock(...e);
 						body.indent = true;
 						elems.add(body);
 					} else {
@@ -462,7 +463,7 @@ let conversionRules = {
 					if (isArrayUsed(e)) {
 						let body = new codeblock(...e);
 						body.indent = true;
-						elems.add(body);
+						elems.add( body);
 					} else if (isNotEmpty(e)) {
 						elems.add(e);
 					}
@@ -518,6 +519,8 @@ let conversionRules = {
 			node.calle,
 			...toArray(node.args)
 		);
+		res.addLinebreaks = false;
+
 		if (node.args.includes('()')) {
 			res.optionalWhitespace = true;
 		}
@@ -525,10 +528,12 @@ let conversionRules = {
 	},
 	// Assign
 	ParameterAssignment(node) {
-		return new statement(
+		let res = new statement(
 			node.param,
 			node.value,
 		);
+		res.addLinebreaks = false;
+		return res;
 	},
 	AssignmentExpression(node) {
 		return new statement(
@@ -809,7 +814,7 @@ let conversionRules = {
 		} else if (isNotEmpty(node.body)) {
 			body.add(node.body);
 		}
-		let res = new codeblock(stat, body);
+		let res = new codeblock(stat, body); 
 		return res;
 	},
 	StructScope(node) { return node.value; },
@@ -1005,9 +1010,12 @@ let conversionRules = {
 	},
 };
 //-----------------------------------------------------------------------------------
+const { JsonFileWrite } = require('./utils.js');
+
 function mxsReflow(cst) {
 	// derive code tree
 	derive(cst, conversionRules);
+	JsonFileWrite('./test/deriv.json', cst);
 	// reduce the tree. use options
 	reduce(cst);
 	return cst.join(options.linebreak);
