@@ -1010,15 +1010,11 @@ let conversionRules = {
 	},
 };
 //-----------------------------------------------------------------------------------
-const { JsonFileWrite } = require('./utils.js');
-
 function mxsReflow(cst) {
 	// derive code tree
 	derive(cst, conversionRules);
-	JsonFileWrite('./test/deriv.json', cst);
 	// reduce the tree. use options
 	reduce(cst);
 	return cst.join(options.linebreak);
-	// return cst[0];
 }
 module.exports = { mxsReflow, options };
