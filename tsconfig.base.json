@@ -14,5 +14,6 @@
 		"strict"                          : true,
 		"forceConsistentCasingInFileNames": true,
 		"composite"                       : true,
+		"baseUrl": ".",
 	}
 }

@@ -21,7 +21,6 @@ import { TokenizeStream as mxsTokenizer } from './mxsParser';
 import mooTokenizer from './lib/mooTokenize-formatter';
 import { rangeUtil } from './lib/astUtils';
 // note: keywords could be used to indent, at start or end of line. this will require a per-line aproach... split the documents in lines, and feed the tokenizer one line at the time.
-
 //-----------------------------------------------------------------------------------
 const filterCurrent = ['newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange'];
 const filterAhead = ['newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange'];
@@ -29,11 +28,19 @@ const filterAhead = ['newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket'
 const IndentTokens = ['lparen', 'arraydef', 'lbracket', 'lbrace', 'bitarraydef'];
 const UnIndentTokens = ['rparen', 'rbracket', 'rbrace'];
 //-----------------------------------------------------------------------------------
-const INDENT_PATTERN = '\t';
-//-----------------------------------------------------------------------------------
 // Helpers
 const getPos = (line: number, col: number) => Position.create(line, col);
-
+//-----------------------------------------------------------------------------------
+// interfaces
+/**
+ * Code formatter options
+ */
+interface SimpleFormatterSettings
+{
+	indentOnly: boolean,
+	indentChar: string
+	whitespaceChar: string
+}
 interface SimpleFormatterActions
 {
 	wsReIndent: (t: Token, i: number) => TextEdit | undefined
@@ -110,12 +117,11 @@ function mxsSimpleTextEditFormatter(document: TextDocument | string, action: Sim
 		resolve(edits);
 	});
 }
-
-
-interface SimpleFormatterSettings
-{
-	IndentOnly: boolean
+/*
+export async function mxsStringFormatter(source: string, settings: SimpleFormatterSettings) {
+	//...
 }
+*/
 /**
  * Simple code formater: context unaware, just reflow whitespace and indentation of balanced pairs 
  * @param document vscode document to format
@@ -124,18 +130,17 @@ export async function mxsSimpleDocumentFormatter(document: TextDocument, setting
 {
 	let TextEditActions: SimpleFormatterActions =
 	{
-		wsReIndent: (t, i) => TextEdit.replace(rangeUtil.getTokenRange(t), INDENT_PATTERN.repeat(i)),
-		wsIndent: (t, i) => TextEdit.insert(getPos(t.line - 1, t.col - 1), INDENT_PATTERN.repeat(i)),
+		wsReIndent: (t, i) => TextEdit.replace(rangeUtil.getTokenRange(t), settings.indentChar.repeat(i)),
+		wsIndent: (t, i) => TextEdit.insert(getPos(t.line - 1, t.col - 1), settings.indentChar.repeat(i)),
 
-		wsClean: t => !settings.IndentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' ') : undefined,
-		wsAdd: t => !settings.IndentOnly ? TextEdit.insert(getPos(t.line - 1, t.col + t.text.length - 1), ' ') : undefined,
+		wsClean: t => !settings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' ') : undefined,
+		wsAdd: t => !settings.indentOnly ? TextEdit.insert(getPos(t.line - 1, t.col + t.text.length - 1), ' ') : undefined,
 	};
-
 	return await mxsSimpleTextEditFormatter(document.getText(), TextEditActions);
 }
 
 /**
- * Simple code formater: context unaware. Range formatting -- UNFINISHED
+ * TODO: Simple code formater: context unaware. Range formatting -- UNFINISHED
  * @param document
  * @param range
  */
@@ -155,11 +160,10 @@ export async function mxsSimpleRangeFormatter(document: TextDocument, range: Ran
 	*/
 	let TextEditActions: SimpleFormatterActions =
 	{
-		wsReIndent: (t, i) => TextEdit.replace(rangeUtil.getTokenRange(t), '\t'.repeat(i)),
-		wsIndent  : (t, i) => TextEdit.insert(getPos(t.line + offLine - 1, t.col - 1), '\t'.repeat(i)),
-		wsClean   : t => !settings.IndentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' '): undefined,
-		wsAdd     : t => !settings.IndentOnly ? TextEdit.insert(getPos(t.line + offLine - 1, t.col + t.value.length - 1), ' ') : undefined,
+		wsReIndent: (t, i) => TextEdit.replace(rangeUtil.getTokenRange(t), settings.indentChar.repeat(i)),
+		wsIndent  : (t, i) => TextEdit.insert(getPos(t.line + offLine - 1, t.col - 1), settings.indentChar.repeat(i)),
+		wsClean   : t => !settings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' '): undefined,
+		wsAdd     : t => !settings.indentOnly ? TextEdit.insert(getPos(t.line + offLine - 1, t.col + t.value.length - 1), ' ') : undefined,
 	};
-
 	return await mxsSimpleTextEditFormatter(document.getText(range), TextEditActions);
 }

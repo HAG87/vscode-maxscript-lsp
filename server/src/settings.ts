@@ -9,14 +9,28 @@ export interface MaxScriptSettings
 	MinifyFilePrefix: string;
 	formatter: { indentOnly: boolean },
 	parser: { errorCheck: boolean }
+	prettifier: {
+		filePrefix: string,
+		codeblock?: {
+			newlineAtParens: boolean,
+			newlineAllways: boolean,
+			spaced: boolean,
+		},
+		statements?: {
+			optionalWhitespace: boolean
+		},
+		list?: {
+			useLineBreaks: boolean
+		}
+	}
 	// language?: { semantics: boolean };
 	// ...
 }
-
+//------------------------------------------------------------------------------------------
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 // Please note that this is not the case when using this server with the client provided in this example
 // but could happen with other clients.
-
+//------------------------------------------------------------------------------------------
 // put default settings here
 export const defaultSettings: MaxScriptSettings = {
 	GoToSymbol: true,
@@ -25,6 +39,20 @@ export const defaultSettings: MaxScriptSettings = {
 	Completions: true,
 	MinifyFilePrefix: 'min_',
 	formatter: { indentOnly: true },
-	parser: { errorCheck: true }
+	parser: { errorCheck: true },
+	prettifier: {
+		filePrefix: 'pretty_',
+		codeblock: {
+			newlineAtParens: true,
+			newlineAllways: true,
+			spaced: true,
+		},
+		statements: {
+			optionalWhitespace: false
+		},
+		list: {
+			useLineBreaks: true
+		}
+	}
 	//language?: { semantics: true },
 };

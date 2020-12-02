@@ -19,27 +19,35 @@ import
 	TextDocuments,
 	TextDocumentSyncKind,
 	// DocumentFormattingParams,
-	RequestType
+	RequestType,
+	// WorkspaceChange,
+	// WorkspaceEdit
+	// WorkspaceSymbolParams
+	// CreateFile
+	// CreateFileOptions
+	// Position,
+	// Range,
 	// DocumentRangeFormattingParams
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as Path from 'path';
-// import * as assert from 'assert';
 //------------------------------------------------------------------------------------------
 import { MaxScriptSettings, defaultSettings } from './settings';
 import { mxsCapabilities } from './capabilities';
 
 import * as utils from './lib/utils';
+import { replaceText } from './lib/workspaceEdits';
 import * as mxsCompletion from './mxsCompletions';
 import { mxsDocumentSymbols } from './mxsOutline';
 import * as mxsMinifier from './mxsMin';
+import * as mxsPretty from './mxsRebuild';
 import * as mxsDefinitions from './mxsDefinitions';
 import { mxsSimpleDocumentFormatter } from './mxsFormatter';
 //------------------------------------------------------------------------------------------
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 export let connection = createConnection(ProposedFeatures.all);
-// Create a simple text document manager. The text document manager. Supports full document sync only
+// Create a simple text document manager. Supports full document sync only
 let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 /* Client Capabilities */
@@ -75,8 +83,6 @@ connection.onInitialize(
 				// ...
 			}
 		};
-		// listen to the connection
-		documents.listen(connection);
 
 		//TODO: Implement workspace capabilities
 		/*
@@ -109,7 +115,6 @@ connection.onInitialized(
 //------------------------------------------------------------------------------------------
 // Settings
 let globalSettings: MaxScriptSettings = defaultSettings;
-
 // Cache the settings of all open documents
 let documentSettings: Map<string, Thenable<MaxScriptSettings>> = new Map();
 
@@ -129,37 +134,6 @@ function getDocumentSettings(resource: string): Thenable<MaxScriptSettings>
 	return result;
 }
 //------------------------------------------------------------------------------------------
-/* Document parsing logic wrapper */
-/*
-function parseDocument(document: TextDocument, cancelation: CancellationToken): Thenable<DocumentSymbol[] | SymbolInformation[]>
-{
-	return new Promise<SymbolInformation[] | DocumentSymbol[]>((resolve) =>
-	{
-		mxsDocumentSymbols.parseDocument(document, cancelation)
-			.then(
-				result =>
-				{
-					diagnoseDocument(document, result.diagnostics);
-					resolve(result.symbols);
-				},
-				() =>
-				{
-					diagnoseDocument(document, []);
-					resolve([]);
-				}
-			)
-			.catch(
-				error =>
-				{
-					diagnoseDocument(document, []);
-					resolve([]);
-				}
-			);
-	});
-	// return await mxsDocumentSymbols.parseDocument(document, cancelation);
-}
-*/
-
 // TODO: Remove diagnoses for closed files
 function diagnoseDocument(document: TextDocument, diagnose: Diagnostic[])
 {
@@ -245,8 +219,13 @@ connection.onDocumentFormatting(
 		// let settings = await getDocumentSettings(_DocumentFormattingParams.textDocument.uri);
 
 		let document = documents.get(params.textDocument.uri)!;
+		let formatterSettings = {
+			indentOnly: globalSettings.formatter.indentOnly,
+			indentChar: '\t',
+			whitespaceChar: ' '
+		};
 		try {
-			return await mxsSimpleDocumentFormatter(document, { IndentOnly: globalSettings.formatter.indentOnly });
+			return await mxsSimpleDocumentFormatter(document, formatterSettings);
 		} catch (err) {
 			// in case of error, swallow it and return undefined (no result)
 			return;
@@ -278,11 +257,12 @@ connection.onDocumentSymbol(
 		return new Promise<SymbolInformation[] | DocumentSymbol[]>((resolve, reject) =>
 		{
 			if (!Capabilities.hasDocumentSymbolCapability) { resolve([]); }
-			
-			let options = { recovery: true, attemps: 10, memoryLimit: 0.9};
+
+			let options = { recovery: true, attemps: 10, memoryLimit: 0.9 };
 			getDocumentSettings(params.textDocument.uri)
 				.then(
-					result => { 
+					result =>
+					{
 						options.recovery = result.parser.errorCheck;
 						if (!result.GoToSymbol) { resolve([]); }
 					}
@@ -290,7 +270,6 @@ connection.onDocumentSymbol(
 
 			let document = documents.get(params.textDocument.uri)!;
 			// console.log('Current symbols: ' + params.textDocument.uri);
-
 			mxsDocumentSymbols.parseDocument(document, cancelation, connection, options)
 				.then(
 					result =>
@@ -317,7 +296,7 @@ connection.onDocumentSymbol(
 	});
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
-	async (params, cancellation) =>
+	async params =>
 	{
 
 		let settings = await getDocumentSettings(params.textDocument.uri);
@@ -341,15 +320,13 @@ connection.onDefinition(
 		// method 2.1: implement Workspace capabilities
 
 		try {
-			let definitions =
-				await mxsDefinitions.getDocumentDefinitions(
-					documents.get(params.textDocument.uri)!,
-					params.position,
-					cancellation,
-					params.textDocument.uri === currentTextDocument.uri ? currentDocumentSymbols : undefined,
-					// mxsDocumentSymbols.msxParser.parsedCST
-				);
-			return definitions;
+			return await mxsDefinitions.getDocumentDefinitions(
+				documents.get(params.textDocument.uri)!,
+				params.position,
+				cancellation,
+				params.textDocument.uri === currentTextDocument.uri ? currentDocumentSymbols : undefined,
+				// mxsDocumentSymbols.msxParser.parsedCST
+			);
 		} catch (err) {
 			// connection.console.log('MaxScript Definitions unhandled error: ' + err.message);
 			return [];
@@ -362,33 +339,105 @@ interface MinifyDocParams
 	command: string
 	uri: string[];
 }
-
 namespace MinifyDocRequest
 {
 	export const type = new RequestType<MinifyDocParams, string[] | null, void>('MaxScript/minify');
 }
-
+interface PrettifyDocParams
+{
+	command: string
+	uri: string[]
+}
+namespace PrettifyDocRequest
+{
+	export const type = new RequestType<PrettifyDocParams, string[] | null, void>('MaxScript/prettify');
+}
 connection.onRequest(MinifyDocRequest.type,
-	async (params) =>
+	async params =>
 	{
-		// connection.console.log(JSON.stringify(params, null, 2));
-
-		// let settings = await getDocumentSettings(currentTextDocument.uri);
 		let settings = await getDocumentSettings(params.uri[0]);
 
-		// connection.console.log('SERVER RECIEVED A REQUEST!');
+		if (params.command === 'mxs.minify' || params.command === 'mxs.minify.file') {
+			for (let i = 0; i < params.uri.length; i++) {
+				let uri = params.uri[i];
+				let path = utils.uriToPath(uri)!;
+				let newPath = utils.prefixFile(path, settings.MinifyFilePrefix);
+				let doc = documents.get(uri);
+				if (!doc) {
+					connection.window.showInformationMessage(
+						`MaxScript minify: Failed at ${Path.basename(path)}. Reason: Can't read the file`
+					);
+					continue;
+				}
+				try {
+					await mxsMinifier.MinifyDoc(doc.getText(), newPath);
+					connection.window.showInformationMessage(
+						`MaxScript minify: Document saved as ${Path.basename(newPath)}`
+					);
+				} catch (err) {
+					connection.window.showErrorMessage(
+						`MaxScript minify: Failed at ${Path.basename(newPath)}. Reason: ${err.message}`
+					);
+				}
+			}
+		} else {
+			for (let i = 0; i < params.uri.length; i++) {
+				let uri = params.uri[i];
+				let path = utils.uriToPath(uri)!;
+				let newPath = utils.prefixFile(path, settings.MinifyFilePrefix);
+				try {
+					await mxsMinifier.MinifyFile(path, newPath);
+					connection.window.showInformationMessage(
+						`MaxScript minify: Document saved as ${Path.basename(newPath)}`);
+				} catch (err) {
+					connection.window.showErrorMessage(
+						`MaxScript minify: Failed at ${Path.basename(newPath)}. Reason: ${err.message}`
+					);
+				}
+			}
+		}
+		return null;
+	});
+connection.onRequest(PrettifyDocRequest.type,
+	async params =>
+	{
+		let settings = await getDocumentSettings(params.uri[0]);
+		let opts = {
+			elements: {
+				useLineBreaks: settings.prettifier.list?.useLineBreaks || true
+			},
+			statements: {
+				optionalWhitespace: settings.prettifier.statements?.optionalWhitespace || false
+			},
+			codeblock: {
+				newlineAtParens: settings.prettifier.codeblock?.newlineAtParens || true,
+				newlineAllways: settings.prettifier.codeblock?.newlineAllways || true,
+				spaced: settings.prettifier.codeblock?.spaced || true
+			}
+		};
+		if (params.command === 'mxs.prettify') {
+			for (let i = 0; i < params.uri.length; i++) {
+				let uri = params.uri[i];
+				let doc = documents.get(uri);
+				if (!doc) {
+					connection.window.showInformationMessage(
+						`MaxScript prettifier: Failed at ${Path.basename(utils.uriToPath(uri)!)}. Reason: Can't read the file`
+					);
+					continue;
+				}
 
-		for (let i= 0; i < params.uri.length; i++)
-		{
-			let uri = params.uri[i];
-			let path = utils.uriToPath(uri)!;
-			let newPath = utils.prefixFile(path, settings.MinifyFilePrefix);
+				let res = await mxsPretty.prettyData(doc.getText(), opts);
+				let reply = await replaceText.call(connection, doc, res);
 
-			try {
-				await mxsMinifier.MinifyFile(path, newPath);
-				connection.window.showInformationMessage(`MaxScript minify: Document saved as ${Path.basename(newPath)}`);
-			} catch (err) {
-				connection.window.showErrorMessage(`MaxScript minify: Failed at ${Path.basename(newPath)}. Reason: ${err.message}`);
+				if (reply.applied) {
+					connection.window.showInformationMessage(
+						`MaxScript prettifier sucess: ${Path.basename(utils.uriToPath(uri)!)}`
+					);
+				} else {
+					connection.window.showInformationMessage(
+						`MaxScript prettifier: Failed at ${Path.basename(utils.uriToPath(uri)!)}. Reason: ${reply.failureReason}`
+					);
+				}
 			}
 		}
 		return null;
