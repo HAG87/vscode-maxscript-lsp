@@ -5,7 +5,7 @@
 	"icon": "mxs.png",
 	"author": "Atelier Bump",
 	"license": "MIT",
-	"version": "1.22.2",
+	"version": "1.23.0",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/HAG87/vscode-maxscript-lsp"
@@ -208,37 +208,37 @@
 					"default": "min_",
 					"description": "Prefix for code minify output"
 				},
-				"MaxSript.prettifier.codeblock.newlineAtParens" : {
+				"MaxSript.prettifier.codeblock.newlineAtParens": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Insert a line break after an opening paren and before a closing paren."
 				},
-				"MaxSript.prettifier.codeblock.newlineAllways" : {
+				"MaxSript.prettifier.codeblock.newlineAllways": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Insert line breaks between a statement members"
 				},
-				"MaxSript.prettifier.codeblock.spaced" : {
+				"MaxSript.prettifier.codeblock.spaced": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Insert whitespace between expressions"
 				},
-				"MaxSript.prettifier.list.useLineBreaks" : {
+				"MaxSript.prettifier.list.useLineBreaks": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Insert line breaks in array-like objects"
 				},
-				"MaxSript.prettifier.statements.optionalWhitespace" : {
+				"MaxSript.prettifier.statements.optionalWhitespace": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": false,
 					"description": "Ommit whitespace when is unnecessary"
 				},
-				"MaxScript.prettifier.filePrefix":{
+				"MaxScript.prettifier.filePrefix": {
 					"scope": "resource",
 					"type": "string",
 					"default": "pretty_",
