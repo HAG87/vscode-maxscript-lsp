@@ -5,6 +5,7 @@
 import { parseSource } from './mxsParser';
 import { mxsReflow, options } from './lib/mxsReflow';
 import { fileRead, fileWrite } from './lib/utils';
+import * as path from 'path';
 //--------------------------------------------------------------------------------
 interface prettyOptions
 {
@@ -40,8 +41,8 @@ function prettyCode(parserTree: any[], settings?: prettyOptions)
 
 export async function prettyData(data: any | any[] | string, settings?: prettyOptions)
 {
-	if (typeof data === 'string') {
-		
+	// console.log(path.resolve(__dirname));
+	if (typeof data === 'string') {		
 		//---------------------------------------------------------------
 		let results = await parseSource(data);
 		if (results.result !== undefined) {
