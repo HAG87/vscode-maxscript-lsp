@@ -10,7 +10,6 @@
 const path = require('path');
 const mergeOptions = require('merge-options');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
-// import { TsconfigPathsPlugin } from 'tsconfig-paths-webpack-plugin';
 
 module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 	/** @type WebpackConfig */
@@ -42,16 +41,25 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 						options: {
 							// configure TypeScript loader:
 							// * enable sources maps for end-to-end source maps
-							// compilerOptions: {
+							compilerOptions: {
+								module: 'esnext'
 							// 'sourceMap': true,
 							// 'allowJs': false,
-							// },
+							},
 							projectReferences: true,
 							// transpileOnly: false,
 							// onlyCompileBundledFiles: true,
 						}
 					}]
 				},
+				{
+					test: /worker\.[tj]s$/,
+					loader: 'threads-webpack-plugin',
+					options: {
+						target: 'node'
+					  //Webpack child bundler options
+					}
+				  }
 			]
 		},
 		externals:

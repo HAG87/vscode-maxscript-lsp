@@ -64,7 +64,7 @@ function isNode(node: any | undefined)
  * @param document source document
  * @param keyFilter? Object with keys:[] to be collected.
  */
-export async function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyFilter = 'id'): Promise<DocumentSymbol | DocumentSymbol[]>
+export async function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyFilter = 'id'): Promise<DocumentSymbol[]>
 {
 	/**
 	 * Ranges produced by moo needs to be adjusted, since it starts at 1:1, and for vscode is 0:0

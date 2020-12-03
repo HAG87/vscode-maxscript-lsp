@@ -1,4 +1,7 @@
 'use strict';
+// import * as path from 'path';
+// import { Worker } from 'worker_threads';
+import { spawn, Thread, Worker } from 'threads';
 import
 {
 	CancellationToken,
@@ -38,7 +41,6 @@ export interface ParserResult
  */
 export class mxsDocumentSymbolProvider
 {
-	/** Start a parser instance */
 	private async documentSymbolsFromCST(
 		CST: any,
 		document: TextDocument
@@ -47,10 +49,7 @@ export class mxsDocumentSymbolProvider
 	{
 		// token.onCancellationRequested(async () => reject('Cancellation requested'));
 		let loc = {
-			start: {
-				line: 0,
-				character: 0
-			},
+			start: { line: 0, character: 0 },
 			end: document.positionAt(document.getText().length - 1)
 		};
 		let deriv = await deriveSymbolsTree(CST, loc);
@@ -60,7 +59,6 @@ export class mxsDocumentSymbolProvider
 	private async _getDocumentSymbols(document: TextDocument/*,  token: CancellationToken */): Promise<ParserResult>
 	{
 		// token.onCancellationRequested( async () => { throw new Error('File too large to be parsed').name = 'SIZE_LIMIT'; });
-
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
 		let diagnostics: Diagnostic[] = [];
 		// **FAILSAFE**
@@ -72,7 +70,6 @@ export class mxsDocumentSymbolProvider
 			SymbolInfCol = await this.documentSymbolsFromCST(results.result, document);
 			if (results.error === undefined) {
 				// no problems so far...
-				//TODO: { remapLocations: true } was intended to fix locations in recovered results, deprecated now with current parser code.
 				// check for trivial errors
 				diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
 			} else {
@@ -89,22 +86,94 @@ export class mxsDocumentSymbolProvider
 			diagnostics: diagnostics
 		};
 	}
+	/*
+	private _getDocumentSymbolsThreaded(
+		document: TextDocument,
+		options = { recovery: true, attemps: 10, memoryLimit: 0.9 }
+	): Promise<ParserResult>
+	{
+		return new Promise((resolve, reject) =>
+		{
+			let source = document.getText();
+			let loc = {
+				start: {
+					line: 0,
+					character: 0
+				},
+				end: document.positionAt(source.length - 1)
+			};
 
-	parseDocument(document: TextDocument, token: CancellationToken, connection: Connection, options = { recovery: true, attemps: 10, memoryLimit: 0.9}): Promise<ParserResult>
+			let worker = new Worker(path.resolve(__dirname, './workers/symbols.js'), {
+				workerData: {
+					source: source,
+					range: loc,
+					options: options
+				}
+			});
+
+			worker.on('message', data =>
+			{
+				resolve(data);
+			});
+
+			worker.on('error', err =>
+			{
+				console.log(err);
+				reject(err);
+			});
+
+			worker.on('exit', code =>
+			{
+				if (code != 0) { console.error(`Worker stopped with exit code ${code}`); }
+				reject(`Worker stopped with exit code ${code}`);
+			});
+		});
+	}
+	*/
+	private async _getDocumentSymbolsThreaded(
+		document: TextDocument,
+		options = { recovery: true, attemps: 10, memoryLimit: 0.9 }
+	): Promise<ParserResult>
+	{
+		console.log(new URL('./workers/symbols.worker.js', __dirname).toString());
+		// const syms = await spawn(new Worker(path.resolve(__dirname, './workers/symbols.js')));
+		// const documentSymbols = await spawn(new Worker(new URL('./workers/symbols.worker', import.meta.url).toString()));
+		// const documentSymbols = await spawn(new Worker(new URL('./workers/symbols.worker', __dirname).toString()));
+		const documentSymbols = await spawn(new Worker('./workers/symbols.worker'));
+		try {
+			let source = document.getText();
+			let loc = {
+				start: {
+					line: 0,
+					character: 0
+				},
+				end: document.positionAt(source.length - 1)
+			};
+			return await documentSymbols(source, loc, options);
+			// console.log('Hashed password:', hashed);
+		} catch (err) {
+			throw err;
+		} finally {
+			await Thread.terminate(documentSymbols);
+		}
+	}
+	parseDocument(
+		document: TextDocument,
+		token: CancellationToken,
+		connection: Connection,
+		options = { recovery: true, attemps: 10, memoryLimit: 0.9 }): Promise<ParserResult>
 	{
 		//TODO: Implement cancellation token, in the parser?
 		// let source: CancellationTokenSource = new CancellationTokenSource();
 		// let timer = new Promise((resolve, reject) => setTimeout(reject, 500, 'Request timeout'));
 
-		return new Promise(async (resolve, reject) =>
+		return new Promise(/* async */(resolve, reject) =>
 		{
-			token.onCancellationRequested(async () => reject('Cancellation requested'));
-
-			// await this._getDocumentSymbolsThreaded(document, options);
-			// this._getDocumentSymbolsThreaded(document, options)
-			this._getDocumentSymbols(document)
-				.then( result => resolve(result))
-				.catch( (error) =>
+			token.onCancellationRequested(/* async */() => reject('Cancellation requested'));
+			// this._getDocumentSymbols(document)
+			this._getDocumentSymbolsThreaded(document, options)
+				.then(result => resolve(result))
+				.catch((error) =>
 				{
 					// show alert
 					console.log('NOTWORKING!', error.message);

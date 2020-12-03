@@ -1,11 +1,14 @@
 'use strict';
 // import { spawn, Thread, Worker } from 'threads';
+import { spawn, Thread, Worker } from 'threads';
+// import * as path from 'path';
+// import { Worker } from 'worker_threads';
+import { fileRead, fileWrite } from './lib/utils';
 //--------------------------------------------------------------------------------
+/*
 //@ts-ignore
-// import { mxsMinify } from './lib/mxsCompactCode';
 import { parseSource } from './mxsParser';
 import { mxsReflow, options } from './lib/mxsReflow';
-import { fileRead, fileWrite } from './lib/utils';
 //--------------------------------------------------------------------------------
 function setOptions() {
 	options.indent = '';
@@ -18,8 +21,6 @@ function setOptions() {
 	options.statements.optionalWhitespace = true;
 }
 //--------------------------------------------------------------------------------
-//TODO: REPLACE FILE OPERATIOSN WITH WORKSPACE MANAGER...
-// make this async...
 function minCode(parserTree: any[])
 {
 	setOptions();
@@ -41,11 +42,10 @@ export async function MinifyData(data: any | any[] | string)
 		return minCode(data);
 	}
 }
-
-export async function MinifyDoc(data: any | any[] | string, savePath: string)
+export async function MinifyDoc(data: any | any[] | string, dest: string)
 {
 	let minify = await MinifyData(data);
-	await fileWrite(savePath, minify);
+	await fileWrite(dest, minify);
 }
 
 export async function MinifyFile(src: string, dest: string)
@@ -53,4 +53,104 @@ export async function MinifyFile(src: string, dest: string)
 	let data = await fileRead(src);
 	let minify = await MinifyData(data);
 	await fileWrite(dest, minify);
+}
+*/
+/*
+export function MinifyDoc(data: string, dest: string)
+{
+	return new Promise<void>((resolve, reject) =>
+	{
+		let worker = new Worker(path.resolve(__dirname, './workers/minify.js'), {
+			workerData: {
+				source: data,
+			}
+		});
+
+		worker.on('message', (data) =>
+		{
+			// resolve(data);
+			fileWrite(dest, data).then(result =>
+			{
+				resolve(result);
+			});
+		});
+
+		worker.on('error', (err) =>
+		{
+			console.log(err);
+			reject(err);
+		});
+
+		worker.on('exit', (code) =>
+		{
+			if (code != 0) { console.error(`Worker stopped with exit code ${code}`); }
+			reject(`Worker stopped with exit code ${code}`);
+		});
+	});
+}
+
+export function MinifyFile(src: string, dest: string)
+{
+	return new Promise<void>((resolve, reject) =>
+	{
+		fileRead(src)
+			.then(result =>
+			{
+				let worker = new Worker(path.resolve(__dirname, './workers/reflow.js'), {
+					workerData: {
+						source: result,
+					}
+				});
+
+				worker.on('message', (data: string) =>
+				{
+					// resolve(data);
+					return fileWrite(dest, data);
+				});
+
+				worker.on('error', err =>
+				{
+					console.log(err);
+					reject(err);
+				});
+
+				worker.on('exit', code =>
+				{
+					if (code != 0) { console.error(`Worker stopped with exit code ${code}`); }
+					reject(`Worker stopped with exit code ${code}`);
+				});
+			})
+			.then(result =>
+			{
+				resolve(result);
+			});
+	});
+}
+*/
+export async function MinifyFile(src: string, dest: string)
+{
+	let minifyData = await spawn(new Worker('./workers/minify.worker'));
+	try {
+		let data = await fileRead(src);
+		let minify = await minifyData(data);
+		await fileWrite(dest, minify);
+	} catch (err) {
+		throw err;
+	} finally {
+		await Thread.terminate(minifyData);
+	}
+}
+
+export async function MinifyDoc(src: string, dest: string)
+{
+	let minifyData = await spawn(new Worker('./workers/minify.worker'));
+	try {
+		let minify = await minifyData(src);
+		await fileWrite(dest, minify);
+	} catch (err) {
+		console.log(err);
+		throw err;
+	} finally {
+		await Thread.terminate(minifyData);
+	}
 }
