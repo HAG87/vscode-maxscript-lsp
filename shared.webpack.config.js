@@ -10,6 +10,7 @@
 const path = require('path');
 const mergeOptions = require('merge-options');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
+// const WorkerPlugin = require('worker-plugin');
 
 module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 	/** @type WebpackConfig */
@@ -29,7 +30,9 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 				new TsconfigPathsPlugin({
 					extensions: ['.ts', '.tsx', '.js', '.jsx'],
 					mainFields: ['module', 'main'],
-				})]
+				}),
+				// new WorkerPlugin()
+			]
 		},
 		module: {
 			rules: [
