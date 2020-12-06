@@ -1,7 +1,6 @@
 'use strict';
-// import * as path from 'path';
-// import { Worker } from 'worker_threads';
-import { spawn, Thread, Worker } from 'threads';
+import * as path from 'path';
+import { Worker } from 'worker_threads';
 import
 {
 	CancellationToken,
@@ -86,7 +85,6 @@ export class mxsDocumentSymbolProvider
 			diagnostics: diagnostics
 		};
 	}
-	/*
 	private _getDocumentSymbolsThreaded(
 		document: TextDocument,
 		options = { recovery: true, attemps: 10, memoryLimit: 0.9 }
@@ -103,7 +101,7 @@ export class mxsDocumentSymbolProvider
 				end: document.positionAt(source.length - 1)
 			};
 
-			let worker = new Worker(path.resolve(__dirname, './workers/symbols.js'), {
+			let worker = new Worker(path.resolve(__dirname, './workers/symbols.worker.js'), {
 				workerData: {
 					source: source,
 					range: loc,
@@ -128,34 +126,6 @@ export class mxsDocumentSymbolProvider
 				reject(`Worker stopped with exit code ${code}`);
 			});
 		});
-	}
-	*/
-	private async _getDocumentSymbolsThreaded(
-		document: TextDocument,
-		options = { recovery: true, attemps: 10, memoryLimit: 0.9 }
-	): Promise<ParserResult>
-	{
-		console.log(new URL('./workers/symbols.worker.js', __dirname).toString());
-		// const syms = await spawn(new Worker(path.resolve(__dirname, './workers/symbols.js')));
-		// const documentSymbols = await spawn(new Worker(new URL('./workers/symbols.worker', import.meta.url).toString()));
-		// const documentSymbols = await spawn(new Worker(new URL('./workers/symbols.worker', __dirname).toString()));
-		const documentSymbols = await spawn(new Worker('./workers/symbols.worker'));
-		try {
-			let source = document.getText();
-			let loc = {
-				start: {
-					line: 0,
-					character: 0
-				},
-				end: document.positionAt(source.length - 1)
-			};
-			return await documentSymbols(source, loc, options);
-			// console.log('Hashed password:', hashed);
-		} catch (err) {
-			throw err;
-		} finally {
-			await Thread.terminate(documentSymbols);
-		}
 	}
 	parseDocument(
 		document: TextDocument,

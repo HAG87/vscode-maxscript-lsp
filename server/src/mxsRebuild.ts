@@ -1,8 +1,6 @@
 'use strict';
-// import { spawn, Thread, Worker } from 'threads';
-// import * as path from 'path';
-// import { Worker } from 'worker_threads';
-import { spawn, Thread, Worker } from 'threads';
+import * as path from 'path';
+import { Worker } from 'worker_threads';
 //--------------------------------------------------------------------------------
 /*
 //@ts-ignore
@@ -69,11 +67,10 @@ export async function prettyFile(src: string, dest: string, settings?: prettyOpt
 	await fileWrite(dest, pretty);
 }
 */
-/*
 export async function prettyData(data: any | any[] | string, settings?: prettyOptions)
 {
 	return new Promise<string>((resolve, reject) => {
-		let worker = new Worker(path.resolve(__dirname, './workers/reflow.js'), {
+		let worker = new Worker(path.resolve(__dirname, './workers/reflow.worker.js'), {
 			workerData: {
 				source: data,
 				options: settings
@@ -97,16 +94,4 @@ export async function prettyData(data: any | any[] | string, settings?: prettyOp
 			reject(`Worker stopped with exit code ${code}`);
 		});
 	});
-}
-*/
-export async function prettyData(data: any | any[] | string, settings?: prettyOptions)
-{
-	let prettyData = await spawn(new Worker('./workers/reflow.worker'));
-	try {
-		return await prettyData(data, settings);
-	} catch (err) {
-		throw err;
-	} finally {
-		await Thread.terminate(prettyData);
-	}
 }

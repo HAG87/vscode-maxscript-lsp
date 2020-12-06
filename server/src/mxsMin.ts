@@ -1,8 +1,6 @@
 'use strict';
-// import { spawn, Thread, Worker } from 'threads';
-import { spawn, Thread, Worker } from 'threads';
-// import * as path from 'path';
-// import { Worker } from 'worker_threads';
+import * as path from 'path';
+import { Worker } from 'worker_threads';
 import { fileRead, fileWrite } from './lib/utils';
 //--------------------------------------------------------------------------------
 /*
@@ -55,12 +53,11 @@ export async function MinifyFile(src: string, dest: string)
 	await fileWrite(dest, minify);
 }
 */
-/*
 export function MinifyDoc(data: string, dest: string)
 {
 	return new Promise<void>((resolve, reject) =>
 	{
-		let worker = new Worker(path.resolve(__dirname, './workers/minify.js'), {
+		let worker = new Worker(path.resolve(__dirname, './workers/minify.worker.js'), {
 			workerData: {
 				source: data,
 			}
@@ -125,32 +122,4 @@ export function MinifyFile(src: string, dest: string)
 				resolve(result);
 			});
 	});
-}
-*/
-export async function MinifyFile(src: string, dest: string)
-{
-	let minifyData = await spawn(new Worker('./workers/minify.worker'));
-	try {
-		let data = await fileRead(src);
-		let minify = await minifyData(data);
-		await fileWrite(dest, minify);
-	} catch (err) {
-		throw err;
-	} finally {
-		await Thread.terminate(minifyData);
-	}
-}
-
-export async function MinifyDoc(src: string, dest: string)
-{
-	let minifyData = await spawn(new Worker('./workers/minify.worker'));
-	try {
-		let minify = await minifyData(src);
-		await fileWrite(dest, minify);
-	} catch (err) {
-		console.log(err);
-		throw err;
-	} finally {
-		await Thread.terminate(minifyData);
-	}
 }

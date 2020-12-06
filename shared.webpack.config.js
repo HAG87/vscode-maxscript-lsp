@@ -51,15 +51,7 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 							// onlyCompileBundledFiles: true,
 						}
 					}]
-				},
-				{
-					test: /worker\.[tj]s$/,
-					loader: 'threads-webpack-plugin',
-					options: {
-						target: 'node'
-					  //Webpack child bundler options
-					}
-				  }
+				}
 			]
 		},
 		externals:
