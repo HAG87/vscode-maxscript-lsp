@@ -252,7 +252,7 @@ class codeblock {
 		// pass
 		let pass = true;
 		if (Array.isArray(this.value)) {
-			pass = this.value.length > 1 || this.value[0]?.includes(options.linebreak);
+			pass = this.value.length > 1 || (this.value[0] && this.value[0].includes(options.linebreak));
 		}
 		if (this.wrapped) {
 			if (options.codeblock.newlineAtParens && pass) {

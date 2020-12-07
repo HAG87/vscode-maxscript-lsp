@@ -135,7 +135,6 @@ export class mxsDocumentSymbolProvider
 		options = { recovery: true, attemps: 10, memoryLimit: 0.9 }
 	): Promise<ParserResult>
 	{
-		console.log(new URL('./workers/symbols.worker.js', __dirname).toString());
 		// const syms = await spawn(new Worker(path.resolve(__dirname, './workers/symbols.js')));
 		// const documentSymbols = await spawn(new Worker(new URL('./workers/symbols.worker', import.meta.url).toString()));
 		// const documentSymbols = await spawn(new Worker(new URL('./workers/symbols.worker', __dirname).toString()));

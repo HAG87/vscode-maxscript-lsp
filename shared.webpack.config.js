@@ -10,7 +10,7 @@
 const path = require('path');
 const mergeOptions = require('merge-options');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
-
+const ThreadsPlugin = require('threads-plugin');
 module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 	/** @type WebpackConfig */
 	let defaultConfig = {
@@ -29,7 +29,8 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 				new TsconfigPathsPlugin({
 					extensions: ['.ts', '.tsx', '.js', '.jsx'],
 					mainFields: ['module', 'main'],
-				})]
+				})
+			]
 		},
 		module: {
 			rules: [
@@ -52,14 +53,14 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 						}
 					}]
 				},
-				{
+				/* {
 					test: /worker\.[tj]s$/,
 					loader: 'threads-webpack-plugin',
 					options: {
+						//Webpack child bundler options
 						target: 'node'
-					  //Webpack child bundler options
 					}
-				  }
+				}*/
 			]
 		},
 		externals:
