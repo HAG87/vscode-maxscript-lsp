@@ -120,8 +120,8 @@ var mxLexer = moo.compile({
 	
 	// path_name $mounstrosity*/_?
 	path: [
-		/[$](?:[A-Za-z0-9_*?/\\]|\.\.\.)+/,
-		'$'
+		/\$'(?:[^'\n\r])*'/,
+		/\$(?:[A-Za-z0-9_*?\/]|\.{3}|\\\\)*/,
 	],
 
 	// ::global variable
