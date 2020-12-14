@@ -7,6 +7,7 @@
 
 const withDefaults = require('../shared.webpack.config');
 const path = require('path');
+const ThreadsPlugin = require('threads-plugin');
 
 module.exports = withDefaults({
 	context: path.join(__dirname),
@@ -17,4 +18,7 @@ module.exports = withDefaults({
 		filename: '[name].js',
 		path: path.join(__dirname, 'out')
 	},
+	plugins: [
+		new ThreadsPlugin()
+	]
 });

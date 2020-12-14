@@ -425,17 +425,22 @@ connection.onRequest(PrettifyDocRequest.type,
 					);
 					continue;
 				}
+				try {
+					let res = await mxsPretty.prettyData(doc.getText(), opts);
+					let reply = await replaceText.call(connection, doc, res);
 
-				let res = await mxsPretty.prettyData(doc.getText(), opts);
-				let reply = await replaceText.call(connection, doc, res);
-
-				if (reply.applied) {
+					if (reply.applied) {
+						connection.window.showInformationMessage(
+							`MaxScript prettifier sucess: ${Path.basename(utils.uriToPath(uri)!)}`
+						);
+					} else {
+						connection.window.showInformationMessage(
+							`MaxScript prettifier: Failed at ${Path.basename(utils.uriToPath(uri)!)}. Reason: ${reply.failureReason}`
+						);
+					}
+				} catch (err) {
 					connection.window.showInformationMessage(
-						`MaxScript prettifier sucess: ${Path.basename(utils.uriToPath(uri)!)}`
-					);
-				} else {
-					connection.window.showInformationMessage(
-						`MaxScript prettifier: Failed at ${Path.basename(utils.uriToPath(uri)!)}. Reason: ${reply.failureReason}`
+						`MaxScript prettifier: Failed at ${Path.basename(utils.uriToPath(uri)!)}. Reason: ${err.message}`
 					);
 				}
 			}
