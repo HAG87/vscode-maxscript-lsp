@@ -270,25 +270,26 @@
 		"vscode:prepublish": "npm run webpack",
 		"watch": "tsc -b -w",
 		"webpack:dev": "npm run clean && webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
-		"webpack:dev-server": " rimraf server/out && webpack --mode none --config ./server/webpack.config.js",
+		"webpack-client": "rimraf client/out && webpack --mode production --config ./client/webpack.config.js",
+		"webpack-server": "rimraf server/out && webpack --mode production --config ./server/webpack.config.js",
 		"webpack": "npm run clean && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js"
 	},
 	"devDependencies": {
-		"@babel/types": "^7.12.7",
+		"@babel/types": "^7.12.10",
 		"@typescript-eslint/parser": "^4.9.1",
 		"eslint": "^7.15.0",
 		"merge-options": "^3.0.4",
 		"threads-plugin": "^1.3.3",
-		"ts-loader": "^8.0.11",
+		"threads-webpack-plugin": "^1.0.7",
+		"ts-loader": "^8.0.12",
 		"ts-node": "^9.1.1",
 		"tsconfig-paths-webpack-plugin": "^3.3.0",
-		"typescript": "^4.1.2",
+		"typescript": "^4.1.3",
 		"webpack": "^4.44.2",
 		"webpack-cli": "^4.2.0",
 		"webpack-node-externals": "^2.5.2"
 	},
 	"dependencies": {
-		"threads": "^1.6.3",
-		"threads-webpack-plugin": "^1.0.7"
+		"threads": "^1.6.3"
 	}
 }

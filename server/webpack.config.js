@@ -20,5 +20,5 @@ module.exports = withDefaults({
 	},
 	plugins: [
 		new ThreadsPlugin()
-	],
+	]
 });
