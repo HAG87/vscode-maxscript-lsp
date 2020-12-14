@@ -1,11 +1,9 @@
 'use strict';
-// import * as path from 'path';
-// import { Worker } from 'worker_threads';
 import { spawn, Thread, Worker } from 'threads';
 import
 {
 	CancellationToken,
-	CancellationTokenSource,
+	// CancellationTokenSource,
 	Diagnostic,
 	SymbolInformation,
 	DocumentSymbol,
@@ -80,64 +78,20 @@ export class mxsDocumentSymbolProvider
 		} else if (results.error !== undefined) {
 			// fatal parser error
 			diagnostics.push(...provideParserDiagnostic(results.error));
+		} else {
+			throw new Error('Parser failed to provide results');
 		}
 		return {
 			symbols: SymbolInfCol,
 			diagnostics: diagnostics
 		};
 	}
-	/*
-	private _getDocumentSymbolsThreaded(
-		document: TextDocument,
-		options = { recovery: true, attemps: 10, memoryLimit: 0.9 }
-	): Promise<ParserResult>
-	{
-		return new Promise((resolve, reject) =>
-		{
-			let source = document.getText();
-			let loc = {
-				start: {
-					line: 0,
-					character: 0
-				},
-				end: document.positionAt(source.length - 1)
-			};
 
-			let worker = new Worker(path.resolve(__dirname, './workers/symbols.js'), {
-				workerData: {
-					source: source,
-					range: loc,
-					options: options
-				}
-			});
-
-			worker.on('message', data =>
-			{
-				resolve(data);
-			});
-
-			worker.on('error', err =>
-			{
-				console.log(err);
-				reject(err);
-			});
-
-			worker.on('exit', code =>
-			{
-				if (code != 0) { console.error(`Worker stopped with exit code ${code}`); }
-				reject(`Worker stopped with exit code ${code}`);
-			});
-		});
-	}
-	*/
 	private async _getDocumentSymbolsThreaded(
 		document: TextDocument,
 		options = { recovery: true, attemps: 10, memoryLimit: 0.9 }
 	): Promise<ParserResult>
 	{
-		// const syms = await spawn(new Worker(path.resolve(__dirname, './workers/symbols.js')));
-		// const documentSymbols = await spawn(new Worker(new URL('./workers/symbols.worker', import.meta.url).toString()));
-		// const documentSymbols = await spawn(new Worker(new URL('./workers/symbols.worker', __dirname).toString()));
 		const documentSymbols = await spawn(new Worker('./workers/symbols.worker'));
 		try {
 			let source = document.getText();
@@ -160,7 +114,7 @@ export class mxsDocumentSymbolProvider
 		document: TextDocument,
 		token: CancellationToken,
 		connection: Connection,
-		options = { recovery: true, attemps: 10, memoryLimit: 0.9 }): Promise<ParserResult>
+		options = { recovery: true, attemps: 15, memoryLimit: 0.9 }): Promise<ParserResult>
 	{
 		//TODO: Implement cancellation token, in the parser?
 		// let source: CancellationTokenSource = new CancellationTokenSource();
@@ -169,13 +123,14 @@ export class mxsDocumentSymbolProvider
 		return new Promise(/* async */(resolve, reject) =>
 		{
 			token.onCancellationRequested(/* async */() => reject('Cancellation requested'));
+
 			// this._getDocumentSymbols(document)
 			this._getDocumentSymbolsThreaded(document, options)
 				.then(result => resolve(result))
 				.catch((error) =>
 				{
 					// show alert
-					console.log('NOTWORKING!', error.message);
+					// console.log('NOTWORKING!', error.message);
 					connection.window.showInformationMessage(`MaxScript: can't parse the code.\nCode minifier, beautifier, diagnostics and hierarchical symbols will be unavailable.`);
 					return getDocumentSymbolsLegacy(document);
 				})
