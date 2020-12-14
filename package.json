@@ -24,7 +24,6 @@
 	},
 	"activationEvents": [
 		"onLanguage:maxscript",
-		"onCommand:mxs.minify.file",
 		"onCommand:mxs.minify.files"
 	],
 	"main": "./client/out/extension.js",
@@ -118,25 +117,37 @@
 		"menus": {
 			"explorer/context": [
 				{
-					"when": "resourceExtname == .ms || resourceExtname == .mcr",
 					"command": "mxs.minify.file",
+					"when": "resourceExtname == .ms || resourceExtname == .mcr",
 					"group": "1_modification@1"
 				}
 			],
 			"editor/context": [
 				{
-					"when": "editorHasSelection && editorTextFocus && resourceLangId == maxscript",
 					"command": "mxs.help",
+					"when": "editorHasSelection && editorTextFocus && resourceLangId == maxscript",
 					"group": "navigation@1"
 				}
 			],
 			"commandPalette": [
 				{
-					"when": "editorLangId  == maxscript",
-					"command": "mxs.minify"
+					"command": "mxs.minify",
+					"when": "editorLangId  == maxscript"
 				},
 				{
 					"command": "mxs.minify.files"
+				},
+				{
+					"command": "mxs.minify.file",
+					"when": "false"
+				},
+				{
+					"command": "mxs.help",
+					"when": "false"
+				},
+				{
+					"command": "mxs.prettify",
+					"when": "editorLangId  == maxscript"
 				}
 			]
 		},
@@ -270,13 +281,14 @@
 		"vscode:prepublish": "npm run webpack",
 		"watch": "tsc -b -w",
 		"webpack:dev": "npm run clean && webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
-		"webpack:dev-server": " rimraf server/out && webpack --mode none --config ./server/webpack.config.js",
+		"webpack-client": "rimraf client/out && webpack --mode production --config ./client/webpack.config.js",
+		"webpack-server": "rimraf server/out && webpack --mode production --config ./server/webpack.config.js",
 		"webpack": "npm run clean && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js"
 	},
 	"devDependencies": {
-		"@typescript-eslint/parser": "^4.7.0",
-		"eslint": "^7.13.0",
-		"merge-options": "^3.0.3",
+		"@typescript-eslint/parser": "^4.9.1",
+		"eslint": "^7.15.0",
+		"merge-options": "^3.0.4",
 		"ts-loader": "^8.0.11",
 		"tsconfig-paths-webpack-plugin": "^3.3.0",
 		"typescript": "^4.0.5",
