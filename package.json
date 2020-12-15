@@ -84,6 +84,12 @@
 					],
 					"variable.other.readwrite": [
 						"support.variable.system.mxs"
+					],
+					"enum": [
+						"support.variable.objectset.mxs"
+					],
+					"enumMember": [
+						"support.constant.mxs"
 					]
 				}
 			}

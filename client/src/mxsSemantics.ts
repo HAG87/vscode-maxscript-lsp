@@ -32,10 +32,7 @@ let lexer = moo.compile({
 	// WHITESPACE --  also matches line continuations
 	WS: { match: /(?:[ \t]+|(?:[ \t]*?[\\]+[ \t\r\n]*)+?)/, lineBreaks: true },
 	// path_name $mounstrosity*/_?
-	path: [
-		{ match: /[$](?:(?:[A-Za-z0-9_*?/\\]|[.]{3})*)/ },
-		{ match: /[$]/ }
-	],
+	path: /\$(?:(?:[A-Za-z0-9_*?\/]|\.{3}|\\\\)+|'(?:[^'\n\r])+')?/,
 	// parameter <param_name>:
 	parameter: { match: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[ \t]*[:])/ },
 	param: { match: /:{1}/ },
@@ -100,7 +97,7 @@ const tokenTypesSet = new Set<string>();
 export const legend = (function ()
 {
 	const tokenTypesLegend = [
-		'comment', 'keyword', 'regexp', 'operator', 'namespace',
+		'comment', 'keyword', 'operator', 'namespace',
 		'type', 'struct', 'class', 'interface', 'enum', 'typeParameter', 'function',
 		'member', 'macro', 'variable', 'parameter',
 		// 'property', 'label',
@@ -111,8 +108,7 @@ export const legend = (function ()
 	tokenTypesLegend.forEach(item => tokenTypesSet.add(item));
 
 	const tokenModifiersLegend = [
-		'declaration', 'documentation', 'readonly', 'static', 'abstract', 'deprecated',
-		'modification', 'async'
+		'declaration', 'documentation', 'readonly', 'static', 'abstract', 'deprecated'		
 	];
 	tokenModifiersLegend.forEach((tokenModifier, index) => tokenModifiers.set(tokenModifier, index));
 
@@ -134,10 +130,15 @@ export class mxsDocumentSemanticTokensProvider implements DocumentSemanticTokens
 	{
 		const allTokens = this._parseText(document.getText());
 
-		const builder = new SemanticTokensBuilder();
+		const builder = new SemanticTokensBuilder(legend);
 		allTokens.forEach((token) =>
 		{
-			builder.push(token.line, token.startCharacter, token.length, this._encodeTokenType(token.tokenType), this._encodeTokenModifiers(token.tokenModifiers));
+			builder.push(
+				token.line,
+				token.startCharacter,
+				token.length,
+				this._encodeTokenType(token.tokenType),
+				this._encodeTokenModifiers(token.tokenModifiers));
 		});
 		return builder.build();
 	}

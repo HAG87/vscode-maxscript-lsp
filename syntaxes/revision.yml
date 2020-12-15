@@ -1,0 +1,1120 @@
+patterns:
+  - include: "#statements"
+repository:
+  statements:
+    patterns:
+      - include: "#string"
+      - include: "#comment"
+      - include: "#literal"
+      - include: "#declaration"
+      - include: "#switch-statement"
+      - include: "#for-loop"
+      - include: "#decl-block"
+      - include: "#control-statement"
+      - include: "#expression"
+      - include: "#punctuation-semicolon"
+  var-expr:
+    name: meta.var.expr.mxs
+    begin: (?i)(?<!\.)(?:(\persistent)\s+)?\b(local|global)\b
+    beginCaptures:
+      "1":
+        name: keyword.control.persistent.mxs
+      "2":
+        name: storage.type.mxs
+    end: (?=$|;|(\s+(of|in)\s+))
+    patterns:
+      - include: "#destructuring-variable"
+      - include: "#var-single-variable"
+      - include: "#variable-initializer"
+      - include: "#comment"
+      - include: "#punctuation-comma"
+  var-single-variable:
+    patterns:
+      - name: meta.var-single-variable.expr.mxs
+        begin: (?x)([_$[:alpha:]][_$[:alnum:]]*)(?=\s* (=\s*( (async\s+) |
+          (function\s*[(<]) | (function\s+) | ([_$[:alpha:]][_$[:alnum:]]*\s*=>)
+          |
+          ((<([^<>]|\<[^<>]+\>)+>\s*)?\(([^()]|\([^()]*\))*\)(\s*:\s*(.)*)?\s*=>))
+          ) | (:\s*( (<) | ([(]\s*( ([)]) | (\.\.\.) | ([_$[:alnum:]]+\s*(
+          ([:,?=])| ([)]\s*=>) )) ))) ))
+        beginCaptures:
+          "1":
+            name: entity.name.function.mxs
+        end: (?=$|[;,=}]|(\s+(of|in)\s+))
+        patterns:
+          - include: "#type-annotation"
+          - include: "#string"
+          - include: "#comment"
+      - name: meta.var-single-variable.expr.mxs
+        begin: ([_$[:alpha:]][_$[:alnum:]]*)
+        beginCaptures:
+          "1":
+            name: variable.other.readwrite.mxs
+        end: (?=$|[;,=}]|(\s+(of|in)\s+))
+        patterns:
+          - include: "#type-annotation"
+          - include: "#string"
+          - include: "#comment"
+  destructuring-variable:
+    patterns:
+      - name: meta.object-binding-pattern-variable.mxs
+        begin: (?<!=|:|of|in)\s*(?=\{)
+        end: (?=$|[;,=}]|(\s+(of|in)\s+))
+        patterns:
+          - include: "#type-annotation"
+          - include: "#comment"
+  object-binding-element-propertyName:
+    begin: (?=(([_$[:alpha:]][_$[:alnum:]]*)|(\'[^']*\')|(\"[^"]*\")|(\[([^\[\]]|\[[^\[\]]+\])+\]))\s*(:))
+    end: (:)
+    endCaptures:
+      "0":
+        name: punctuation.destructuring.mxs
+    patterns:
+      - include: "#string"
+      - include: "#array-literal"
+      - name: variable.object.property.mxs
+        match: ([_$[:alpha:]][_$[:alnum:]]*)
+  binding-element:
+    patterns:
+      - include: "#comment"
+      - include: "#variable-initializer"
+  ternary-expression:
+    begin: (?=\?)
+    end: (?=$|[;,})\]])
+    patterns:
+      - include: "#ternary-operator"
+      - include: "#expression"
+  ternary-operator:
+    begin: (\?)
+    beginCaptures:
+      "0":
+        name: keyword.operator.ternary.mxs
+    end: (:)
+    endCaptures:
+      "0":
+        name: keyword.operator.ternary.mxs
+    patterns:
+      - include: "#expression"
+  expression:
+    name: meta.expression.mxs
+    patterns:
+      - include: "#string"
+      - include: "#comment"
+      - include: "#literal"
+      - include: "#function-declaration"
+      - include: "#class-or-interface-declaration"
+      - include: "#arrow-function"
+      - include: "#cast"
+      - include: "#ternary-expression"
+      - include: "#new-expr"
+      - include: "#object-literal"
+      - include: "#expression-operators"
+      - include: "#function-call"
+      - include: "#support-objects"
+      - include: "#identifiers"
+      - include: "#paren-expression"
+      - include: "#punctuation-comma"
+      - include: "#punctuation-accessor"
+  control-statement:
+    patterns:
+      - name: keyword.control.trycatch.mxs
+        match: (?<!\.)\b(catch|finally|throw|try)\b
+      - name: keyword.control.loop.mxs
+        match: (?<!\.)\b(break|continue|do|goto|while)\b
+      - name: keyword.control.flow.mxs
+        match: (?<!\.)\b(return)\b
+      - match: (?<!\.)\b(yield)\b(?:\s*(\*))?
+        captures:
+          "1":
+            name: keyword.control.flow.mxs
+          "2":
+            name: keyword.generator.asterisk.mxs
+      - name: keyword.control.switch.mxs
+        match: (?<!\.)\b(case|default|switch)\b
+      - name: keyword.control.conditional.mxs
+        match: (?<!\.)\b(else|if)\b
+      - name: keyword.control.with.mxs
+        match: (?<!\.)\b(with)\b
+      - name: keyword.other.debugger.mxs
+        match: (?<!\.)\b(debugger)\b
+      - name: storage.modifier.mxs
+        match: (?<!\.)\b(declare)\b
+  declaration:
+    name: meta.declaration.mxs
+    patterns:
+      - include: "#decorator"
+      - include: "#var-expr"
+      - include: "#function-declaration"
+      - include: "#class-or-interface-declaration"
+      - include: "#type-declaration"
+      - include: "#enum-declaration"
+      - include: "#namespace-declaration"
+      - include: "#import-equals-declaration"
+      - include: "#import-declaration"
+      - include: "#export-declaration"
+  decorator:
+    name: meta.decorator.mxs
+    begin: (?<!\.)\@
+    beginCaptures:
+      "0":
+        name: punctuation.decorator.mxs
+    end: (?=\s)
+    patterns:
+      - include: "#expression"
+  type-declaration:
+    name: meta.type.declaration.mxs
+    begin: (?<!\.)(?:(\bexport)\s+)?\b(type)\b\s+([_$[:alpha:]][_$[:alnum:]]*)\s*
+    beginCaptures:
+      "1":
+        name: keyword.control.export.mxs
+      "2":
+        name: storage.type.type.mxs
+      "3":
+        name: entity.name.type.mxs
+    end: (?=[};]|\bvar\b|\blet\b|\bconst\b|\btype\b|\bfunction\b|\bclass\b|\binterface\b|\bnamespace\b|\bmodule\b|\bimport\b|\benum\b|\bdeclare\b|\bexport\b|\babstract\b|\basync\b)
+    patterns:
+      - include: "#comment"
+      - include: "#type-parameters"
+      - include: "#type"
+      - match: (=)\s*
+        captures:
+          "1":
+            name: keyword.operator.assignment.mxs
+  enum-declaration:
+    name: meta.enum.declaration.mxs
+    begin: (?<!\.)(?:(\bexport)\s+)?(?:\b(const)\s+)?\b(enum)\s+([_$[:alpha:]][_$[:alnum:]]*)
+    beginCaptures:
+      "1":
+        name: keyword.control.export.mxs
+      "2":
+        name: storage.modifier.mxs
+      "3":
+        name: storage.type.enum.mxs
+      "4":
+        name: entity.name.type.enum.mxs
+    end: (?<=\})
+    patterns:
+      - include: "#comment"
+      - begin: \{
+        beginCaptures:
+          "0":
+            name: punctuation.definition.block.mxs
+        end: \}
+        endCaptures:
+          "0":
+            name: punctuation.definition.block.mxs
+        patterns:
+          - include: "#comment"
+          - begin: ([_$[:alpha:]][_$[:alnum:]]*)
+            beginCaptures:
+              "0":
+                name: variable.other.enummember.mxs
+            end: (?=,|\}|$)
+            patterns:
+              - include: "#comment"
+              - include: "#variable-initializer"
+          - begin: (?=((\'[^']*\')|(\"[^"]*\")|(\[([^\[\]]|\[[^\[\]]+\])+\])))
+            end: (?=,|\}|$)
+            patterns:
+              - include: "#string"
+              - include: "#array-literal"
+              - include: "#comment"
+              - include: "#variable-initializer"
+          - include: "#punctuation-comma"
+  namespace-declaration:
+    name: meta.namespace.declaration.mxs
+    begin: (?<!\.)(?:(\bexport)\s+)?\b(namespace|module)\s+
+    beginCaptures:
+      "1":
+        name: keyword.control.export.mxs
+      "2":
+        name: storage.type.namespace.mxs
+    end: (?=$|\{)
+    patterns:
+      - include: "#comment"
+      - include: "#string"
+      - name: entity.name.type.module.mxs
+        match: ([_$[:alpha:]][_$[:alnum:]]*)
+      - name: punctuation.accessor.mxs
+        match: \.
+  class-or-interface-declaration:
+    name: meta.class.mxs
+    begin: (?<!\.)\b(?:(export)\s+)?\b(?:(abstract)\s+)?\b(?:(class)|(interface))\b
+    beginCaptures:
+      "1":
+        name: keyword.control.export.mxs
+      "2":
+        name: storage.modifier.mxs
+      "3":
+        name: storage.type.class.mxs
+      "4":
+        name: storage.type.interface.mxs
+    end: (?<=\})
+    endCaptures:
+      "1":
+        name: punctuation.definition.block.mxs
+    patterns:
+      - include: "#comment"
+      - include: "#class-or-interface-heritage"
+      - match: "[_$[:alpha:]][_$[:alnum:]]*"
+        captures:
+          "0":
+            name: entity.name.type.class.mxs
+      - include: "#type-parameters"
+      - include: "#class-or-interface-body"
+  class-or-interface-heritage:
+    begin: (?<!\.)(?:\b(extends|implements)\b)
+    beginCaptures:
+      "1":
+        name: storage.modifier.mxs
+    end: (?=\{)
+    endCaptures:
+      "1":
+        name: punctuation.definition.block.mxs
+    patterns:
+      - include: "#comment"
+      - include: "#class-or-interface-heritage"
+      - include: "#type-parameters"
+      - match: ([_$[:alpha:]][_$[:alnum:]]*)\s*(\.)(?=\s*[_$[:alpha:]][_$[:alnum:]]*(\s*\.\s*[_$[:alpha:]][_$[:alnum:]]*)*\s*([,<{]|extends|implements|//|/\*))
+        captures:
+          "1":
+            name: entity.name.type.module.mxs
+          "2":
+            name: punctuation.accessor.mxs
+      - match: ([_$[:alpha:]][_$[:alnum:]]*)(?=\s*([,<{]|extends|implements|//|/\*))
+        captures:
+          "1":
+            name: entity.other.inherited-class.mxs
+      - include: "#expression"
+  class-or-interface-body:
+    begin: \{
+    beginCaptures:
+      "0":
+        name: punctuation.definition.block.mxs
+    end: \}
+    endCaptures:
+      "0":
+        name: punctuation.definition.block.mxs
+    patterns:
+      - include: "#string"
+      - include: "#comment"
+      - include: "#decorator"
+      - include: "#method-declaration"
+      - include: "#indexer-declaration"
+      - include: "#field-declaration"
+      - include: "#type-annotation"
+      - include: "#variable-initializer"
+      - include: "#access-modifier"
+      - include: "#property-accessor"
+      - include: "#expression"
+      - include: "#punctuation-comma"
+      - include: "#punctuation-semicolon"
+  type-object-members:
+    patterns:
+      - include: "#comment"
+      - include: "#method-declaration"
+      - include: "#indexer-declaration"
+      - include: "#field-declaration"
+      - include: "#type-annotation"
+      - begin: \.\.\.
+        beginCaptures:
+          "0":
+            name: keyword.operator.spread.mxs
+        end: (?=\}|;|,|$)|(?<=\})
+        patterns:
+          - include: "#type"
+      - include: "#punctuation-comma"
+      - include: "#punctuation-semicolon"
+  field-declaration:
+    name: meta.field.declaration.mxs
+    begin: (?<!\()(?:(?<!\.)\b(readonly)\s+)?(?=(([_$[:alpha:]][_$[:alnum:]]*)|(\'[^']*\')|(\"[^"]*\")|(\[([^\[\]]|\[[^\[\]]+\])+\]))\s*(\?\s*)?(=|:))
+    beginCaptures:
+      "1":
+        name: storage.modifier.mxs
+    end: (?=\}|;|,|$)|(?<=\})
+    patterns:
+      - include: "#variable-initializer"
+      - begin: (?=((?:[_$[:alpha:]][_$[:alnum:]]*)|(?:\'[^']*\')|(?:\"[^"]*\")|(\[([^\[\]]|\[[^\[\]]+\])+\]))\s*(\?\s*)?(=|:))
+        end: (?=[};,=]|$)|(?<=\})
+        patterns:
+          - include: "#type-annotation"
+          - include: "#string"
+          - include: "#array-literal"
+          - include: "#comment"
+          - name: entity.name.function.mxs
+            match: (?x)([_$[:alpha:]][_$[:alnum:]]*)(?=(\?\s*)?\s* (=\s*( (async\s+) |
+              (function\s*[(<]) | (function\s+) |
+              ([_$[:alpha:]][_$[:alnum:]]*\s*=>) |
+              ((<([^<>]|\<[^<>]+\>)+>\s*)?\(([^()]|\([^()]*\))*\)(\s*:\s*(.)*)?\s*=>))
+              ) | (:\s*( (<) | ([(]\s*( ([)]) | (\.\.\.) | ([_$[:alnum:]]+\s*(
+              ([:,?=])| ([)]\s*=>) )) ))) ))
+          - name: variable.object.property.mxs
+            match: "[_$[:alpha:]][_$[:alnum:]]*"
+          - name: keyword.operator.optional.mxs
+            match: \?
+  method-declaration:
+    name: meta.method.declaration.mxs
+    begin: (?<!\.)(?:\b(public|private|protected)\s+)?(?:\b(abstract)\s+)?(?:\b(async)\s+)?(?:\b(get|set)\s+)?(?:(?:\b(?:(new)|(constructor))\b(?!\$|:))|(?:(\*)\s*)?(?=((([_$[:alpha:]][_$[:alnum:]]*)|(\'[^']*\')|(\"[^"]*\")|(\[([^\[\]]|\[[^\[\]]+\])+\]))\s*(\??))?\s*[\(\<]))
+    beginCaptures:
+      "1":
+        name: storage.modifier.mxs
+      "2":
+        name: storage.modifier.mxs
+      "3":
+        name: storage.modifier.async.mxs
+      "4":
+        name: storage.type.property.mxs
+      "5":
+        name: keyword.operator.new.mxs
+      "6":
+        name: storage.type.mxs
+      "7":
+        name: keyword.generator.asterisk.mxs
+    end: (?=\}|;|,)|(?<=\})
+    patterns:
+      - include: "#method-declaration-name"
+      - include: "#comment"
+      - include: "#type-parameters"
+      - include: "#function-parameters"
+      - include: "#return-type"
+      - include: "#method-overload-declaration"
+      - include: "#decl-block"
+  method-overload-declaration:
+    begin: (?<!\.)(?:\b(public|private|protected)\s+)?(?:\b(abstract)\s+)?(?:\b(async)\s+)?(?:\b(get|set)\s+)?(?:(?:\b(?:(new)|(constructor))\b(?!\$|:))|(?:(\*)\s*)?(?=((([_$[:alpha:]][_$[:alnum:]]*)|(\'[^']*\')|(\"[^"]*\")|(\[([^\[\]]|\[[^\[\]]+\])+\]))\s*(\??))?\s*[\(\<]))
+    beginCaptures:
+      "1":
+        name: storage.modifier.mxs
+      "2":
+        name: storage.modifier.mxs
+      "3":
+        name: storage.modifier.async.mxs
+      "4":
+        name: storage.type.property.mxs
+      "5":
+        name: keyword.operator.new.mxs
+      "6":
+        name: storage.type.mxs
+      "7":
+        name: keyword.generator.asterisk.mxs
+    end: (?=\(|\<)
+    patterns:
+      - include: "#method-declaration-name"
+  method-declaration-name:
+    begin: (?=(([_$[:alpha:]][_$[:alnum:]]*)|(\'[^']*\')|(\"[^"]*\")|(\[([^\[\]]|\[[^\[\]]+\])+\]))\s*(\??)\s*[\(\<])
+    end: (?=\(|\<)
+    patterns:
+      - include: "#string"
+      - include: "#array-literal"
+      - name: entity.name.function.mxs
+        match: "[_$[:alpha:]][_$[:alnum:]]*"
+      - name: keyword.operator.optional.mxs
+        match: \?
+  indexer-declaration:
+    name: meta.indexer.declaration.mxs
+    begin: (?:(?<!\.)\b(readonly)\s*)?(\[)\s*([_$[:alpha:]][_$[:alnum:]]*)\s*(?=:)
+    beginCaptures:
+      "1":
+        name: storage.modifier.mxs
+      "2":
+        name: meta.brace.square.mxs
+      "3":
+        name: variable.parameter.mxs
+    end: (\])\s*(\?\s*)?|$
+    endCaptures:
+      "1":
+        name: meta.brace.square.mxs
+      "2":
+        name: keyword.operator.optional.mxs
+    patterns:
+      - include: "#type-annotation"
+  function-declaration:
+    name: meta.function.mxs
+    begin: (?<!\.)\b(?:(export)\s+)?(?:(async)\s+)?(function\b)(?:\s*(\*))?(?:(?:\s+|(?<=\*))([_$[:alpha:]][_$[:alnum:]]*))?\s*
+    beginCaptures:
+      "1":
+        name: keyword.control.export.mxs
+      "2":
+        name: storage.modifier.async.mxs
+      "3":
+        name: storage.type.function.mxs
+      "4":
+        name: keyword.generator.asterisk.mxs
+      "5":
+        name: entity.name.function.mxs
+    end: (?=;|\})|(?<=\})
+    patterns:
+      - include: "#comment"
+      - include: "#type-parameters"
+      - include: "#function-parameters"
+      - include: "#return-type"
+      - include: "#function-overload-declaration"
+      - include: "#decl-block"
+  function-overload-declaration:
+    name: meta.function.overload.mxs
+    match: (?<!\.)\b(?:(export)\s+)?(?:(async)\s+)?(function\b)(?:\s*(\*))?(?:(?:\s+|(?<=\*))([_$[:alpha:]][_$[:alnum:]]*))?\s*
+    captures:
+      "1":
+        name: keyword.control.export.mxs
+      "2":
+        name: storage.modifier.async.mxs
+      "3":
+        name: storage.type.function.mxs
+      "4":
+        name: keyword.generator.asterisk.mxs
+      "5":
+        name: entity.name.function.mxs
+  object-literal:
+    name: meta.objectliteral.mxs
+    begin: \{
+    beginCaptures:
+      "0":
+        name: punctuation.definition.block.mxs
+    end: \}
+    endCaptures:
+      "0":
+        name: punctuation.definition.block.mxs
+    patterns:
+      - include: "#object-member"
+  decl-block:
+    name: meta.block.mxs
+    begin: \{
+    beginCaptures:
+      "0":
+        name: punctuation.definition.block.mxs
+    end: \}
+    endCaptures:
+      "0":
+        name: punctuation.definition.block.mxs
+    patterns:
+      - include: "#statements"
+  parameter-name:
+    patterns:
+      - match: (?x)(?:\s*\b(readonly)\s+)?(?:\s*\b(public|private|protected)\s+)?(\.\.\.)?\s*(?<!=|:)([_$[:alpha:]][_$[:alnum:]]*)\s*(\??)(?=\s*
+          (=\s*( (async\s+) | (function\s*[(<]) | (function\s+) |
+          ([_$[:alpha:]][_$[:alnum:]]*\s*=>) |
+          ((<([^<>]|\<[^<>]+\>)+>\s*)?\(([^()]|\([^()]*\))*\)(\s*:\s*(.)*)?\s*=>))
+          ) | (:\s*( (<) | ([(]\s*( ([)]) | (\.\.\.) | ([_$[:alnum:]]+\s*(
+          ([:,?=])| ([)]\s*=>) )) ))) ))
+        captures:
+          "1":
+            name: storage.modifier.mxs
+          "2":
+            name: storage.modifier.mxs
+          "3":
+            name: keyword.operator.rest.mxs
+          "4":
+            name: entity.name.function.mxs
+          "5":
+            name: keyword.operator.optional.mxs
+      - match: (?:\s*\b(readonly)\s+)?(?:\s*\b(public|private|protected)\s+)?(\.\.\.)?\s*(?<!=|:)([_$[:alpha:]][_$[:alnum:]]*)\s*(\??)
+        captures:
+          "1":
+            name: storage.modifier.mxs
+          "2":
+            name: storage.modifier.mxs
+          "3":
+            name: keyword.operator.rest.mxs
+          "4":
+            name: variable.parameter.mxs
+          "5":
+            name: keyword.operator.optional.mxs
+  parameter-object-binding-element:
+    patterns:
+      - include: "#comment"
+      - begin: (?=(([_$[:alpha:]][_$[:alnum:]]*)|(\'[^']*\')|(\"[^"]*\")|(\[([^\[\]]|\[[^\[\]]+\])+\]))\s*(:))
+        end: (?=,|\})
+        patterns:
+          - include: "#object-binding-element-propertyName"
+          - include: "#parameter-binding-element"
+      - include: "#parameter-object-binding-pattern"
+      - include: "#destructuring-parameter-rest"
+      - include: "#variable-initializer"
+      - include: "#punctuation-comma"
+  parameter-binding-element:
+    patterns:
+      - include: "#comment"
+      - include: "#parameter-object-binding-pattern"
+      - include: "#destructuring-parameter-rest"
+      - include: "#variable-initializer"
+  parameter-object-binding-pattern:
+    begin: (?:(\.\.\.)\s*)?(\{)
+    beginCaptures:
+      "1":
+        name: keyword.operator.rest.mxs
+      "2":
+        name: punctuation.definition.binding-pattern.object.mxs
+    end: \}
+    endCaptures:
+      "0":
+        name: punctuation.definition.binding-pattern.object.mxs
+    patterns:
+      - include: "#parameter-object-binding-element"
+  return-type:
+    name: meta.return.type.mxs
+    begin: (?<=\))\s*(:)
+    beginCaptures:
+      "1":
+        name: keyword.operator.type.annotation.mxs
+    end: (?<!:)((?=$)|(?=\{|;|//|\}))
+    patterns:
+      - include: "#comment"
+      - name: meta.object.type.mxs
+        begin: (?<=:)\s*(\{)
+        beginCaptures:
+          "1":
+            name: punctuation.definition.block.mxs
+        end: \}
+        endCaptures:
+          "0":
+            name: punctuation.definition.block.mxs
+        patterns:
+          - include: "#type-object-members"
+      - include: "#type-predicate-operator"
+      - include: "#type"
+  function-parameters:
+    name: meta.parameters.mxs
+    begin: \(
+    beginCaptures:
+      "0":
+        name: punctuation.definition.parameters.begin.mxs
+    end: \)
+    endCaptures:
+      "0":
+        name: punctuation.definition.parameters.end.mxs
+    patterns:
+      - include: "#comment"
+      - include: "#decorator"
+      - include: "#destructuring-parameter"
+      - include: "#parameter-name"
+      - include: "#type-annotation"
+      - include: "#variable-initializer"
+      - name: punctuation.separator.parameter.mxs
+        match: ","
+  type-primitive:
+    name: support.type.primitive.mxs
+    match: (?<!\.)\b(string|number|boolean|symbol|any|void|never)\b
+  type-builtin-literals:
+    name: support.type.builtin.mxs
+    match: (?<!\.)\b(this|true|false|undefined|null)\b
+  type-paren-or-function-parameters:
+    name: meta.type.paren.cover.mxs
+    begin: \(
+    beginCaptures:
+      "0":
+        name: meta.brace.round.mxs
+    end: \)
+    endCaptures:
+      "0":
+        name: meta.brace.round.mxs
+    patterns:
+      - include: "#type"
+      - include: "#function-parameters"
+  type-fn-type-parameters:
+    patterns:
+      - name: meta.type.constructor.mxs
+        match: (?<!\.)\b(new)\b(?=\s*\<)
+        captures:
+          "1":
+            name: keyword.control.new.mxs
+      - name: meta.type.constructor.mxs
+        begin: (?<!\.)\b(new)\b\s*(?=\()
+        beginCaptures:
+          "1":
+            name: keyword.control.new.mxs
+        end: (?<=\))
+        patterns:
+          - include: "#function-parameters"
+      - name: meta.type.function.mxs
+        begin: (?<=\>)\s*(?=\()
+        end: (?<=\))
+        patterns:
+          - include: "#function-parameters"
+      - name: meta.type.function.mxs
+        begin: (?x)( (?= [(]\s*( ([)]) |  (\.\.\.) | ([_$[:alnum:]]+\s*( ([:,?=])|
+          ([)]\s*=>) )) ) ) )
+        end: (?<=\))
+        patterns:
+          - include: "#function-parameters"
+  type-operators:
+    patterns:
+      - name: keyword.operator.type.mxs
+        match: "[&|]"
+      - name: keyword.operator.expression.keyof.mxs
+        match: (?<!\.)\bkeyof\b
+  type-function-return-type:
+    name: meta.type.function.return.mxs
+    begin: =>
+    beginCaptures:
+      "0":
+        name: storage.type.function.arrow.mxs
+    end: (?<!=>)(?=[,\]\)\{\}=;>]|//|$)
+    patterns:
+      - include: "#comment"
+      - name: meta.object.type.mxs
+        begin: (?<==>)\s*(\{)
+        beginCaptures:
+          "1":
+            name: punctuation.definition.block.mxs
+        end: \}
+        endCaptures:
+          "0":
+            name: punctuation.definition.block.mxs
+        patterns:
+          - include: "#type-object-members"
+      - include: "#type-predicate-operator"
+      - include: "#type"
+  type-tuple:
+    name: meta.type.tuple.mxs
+    begin: \[
+    beginCaptures:
+      "0":
+        name: meta.brace.square.mxs
+    end: \]
+    endCaptures:
+      "0":
+        name: meta.brace.square.mxs
+    patterns:
+      - include: "#type"
+      - include: "#punctuation-comma"
+  type-name:
+    patterns:
+      - match: ([_$[:alpha:]][_$[:alnum:]]*)\s*(\.)
+        captures:
+          "1":
+            name: entity.name.type.module.mxs
+          "2":
+            name: punctuation.accessor.mxs
+      - name: entity.name.type.mxs
+        match: "[_$[:alpha:]][_$[:alnum:]]*"
+  type-parameters:
+    name: meta.type.parameters.mxs
+    begin: (<)
+    beginCaptures:
+      "1":
+        name: punctuation.definition.typeparameters.begin.mxs
+    end: (?=$)|(>)
+    endCaptures:
+      "1":
+        name: punctuation.definition.typeparameters.end.mxs
+    patterns:
+      - include: "#comment"
+      - name: storage.modifier.mxs
+        match: (?<!\.)\b(extends)\b
+      - include: "#type"
+      - include: "#punctuation-comma"
+  variable-initializer:
+    begin: (?<!=|!)(=)(?!=)
+    beginCaptures:
+      "1":
+        name: keyword.operator.assignment.mxs
+    end: (?=$|[,);}\]])
+    patterns:
+      - include: "#expression"
+  for-loop:
+    begin: (?<!\.)\b(for)\s*(\()
+    beginCaptures:
+      "1":
+        name: keyword.control.loop.mxs
+      "2":
+        name: meta.brace.round.mxs
+    end: \)
+    endCaptures:
+      "0":
+        name: meta.brace.round.mxs
+    patterns:
+      - include: "#var-expr"
+      - include: "#expression"
+      - include: "#punctuation-semicolon"
+  switch-expression:
+    name: switch-expression.expr.mxs
+    begin: (?<!\.)\b(switch)\s*(\()
+    beginCaptures:
+      "1":
+        name: keyword.control.switch.mxs
+      "2":
+        name: meta.brace.round.mxs
+    end: \)
+    endCaptures:
+      "0":
+        name: meta.brace.round.mxs
+    patterns:
+      - include: "#expression"
+  switch-block:
+    name: switch-block.expr.mxs
+    begin: "{"
+    beginCaptures:
+      "0":
+        name: punctuation.definition.block.mxs
+    end: (?=\})
+    patterns:
+      - include: "#case-clause"
+      - include: "#statements"
+  case-clause:
+    name: case-clause.expr.mxs
+    begin: (?<!\.)\b(case|default(?=:))\b
+    beginCaptures:
+      "1":
+        name: keyword.control.switch.mxs
+    end: ":"
+    endCaptures:
+      "0":
+        name: punctuation.definition.section.case-statement.mxs
+    patterns:
+      - include: "#expression"
+  switch-statement:
+    name: switch-statement.expr.mxs
+    begin: (?<!\.)(?=\bswitch\s*\()
+    end: "}"
+    endCaptures:
+      "0":
+        name: punctuation.definition.block.mxs
+    patterns:
+      - include: "#switch-expression"
+      - include: "#switch-block"
+  support-objects:
+    patterns:
+      - name: support.type.primitive.mxs
+        match: (?xi)(?<!\.)\b(AngleAxis|Array|BigMatrix|BigMatrixRowArray|BinStream|
+          BitArray|Bitmap|Box2|Box3|color|DataPair|Dictionary|Double|EulerAngles|
+          FileStream|Float|HKey|Integer|Integer64|IntegerPtr|Matrix3|MAXKey|mesh|
+          Name|PathName|Point2|Point3|Point4|Quat|Ray|String|StringStream|Time|Timer|TriMesh)\b
+      - name: support.variable.objectset.mxs
+        match: (?i)(?<![.$])\b(cameras|geometry|helpers|lights|object|objects|objectSet|primitive|selection|shapes|spacewarps|systems)\b
+      - name: support.constant.mxs
+        match: (?xi)(?<![.$])\b(\\?|assetUser|Constant|emptyVal|HKEY_CLASSES_ROOT|HKEY_CURRENT_CONFIG|
+          HKEY_CURRENT_USER|HKEY_LOCAL_MACHINE|HKEY_PERFORMANCE_DATA|HKEY_USERS|
+          meditMaterials|selectionSets)\b
+      - match: >-
+          (?xi)(?<!\.)\b(Math)(?:\s*(\.)\s*(?:
+            (abs|acos|acosh|asin|asinh|atan|atan2|atanh|cbrt|ceil|clz32|cos|cosh|exp|
+            expm1|floor|fround|hypot|imul|log|log10|log1p|log2|max|min|pow|random|
+            round|sign|sin|sinh|sqrt|tan|tanh|trunc)
+            |
+            (E|LN10|LN2|LOG10E|LOG2E|PI|SQRT1_2|SQRT2)))?\b
+        captures:
+          "1":
+            name: support.constant.math.mxs
+          "2":
+            name: punctuation.accessor.mxs
+          "3":
+            name: support.function.math.mxs
+          "4":
+            name: support.constant.property.math.mxs
+      - name: support.type.rolloutcontrol.mxs
+        match: (?xi)(?<![.$])\b(gangle|button|checkbox|checkbutton|colorpicker|comboBox|
+          curveControl|dotNetControl|dropdownList|editText|group|groupBox|hyperLink|
+          imgTag|label|listBox|mapbutton|materialbutton|
+          menuitem|subMenu|separator|multilistBox|pickbutton|popUpMenu|progressbar|
+          radiobuttons|SchematicControl|slider|spinner|SubRollout|timer)\b
+  function-call:
+    begin: (?=(\.\s*)?([_$[:alpha:]][_$[:alnum:]]*)\s*(<([^<>]|\<[^<>]+\>)+>\s*)?\()
+    end: (?<=\))(?!(\.\s*)?([_$[:alpha:]][_$[:alnum:]]*)\s*(<([^<>]|\<[^<>]+\>)+>\s*)?\()
+    patterns:
+      - include: "#support-objects"
+      - name: punctuation.accessor.mxs
+        match: \.
+      - name: entity.name.function.mxs
+        match: ([_$[:alpha:]][_$[:alnum:]]*)
+      - include: "#comment"
+      - include: "#paren-expression"
+  identifiers:
+    patterns:
+      - name: support.class.mxs
+        match: ([_$[:alpha:]][_$[:alnum:]]*)(?=\s*\.\s*prototype\b)
+      - match: |-
+          (?x)(\.)\s*(?:
+            ([[:upper:]][_$[:digit:][:upper:]]*) |
+            ([_$[:alpha:]][_$[:alnum:]]*)
+          )(?=\s*\.\s*[_$[:alpha:]][_$[:alnum:]]*)
+        captures:
+          "1":
+            name: punctuation.accessor.mxs
+          "2":
+            name: constant.other.object.property.mxs
+          "3":
+            name: variable.other.object.property.mxs
+      - match: (?x)(?:(\.)\s*)?([_$[:alpha:]][_$[:alnum:]]*)(?=\s*=\s*(
+          (async\s+)|(function\s*[(<])|(function\s+)|
+          ([_$[:alpha:]][_$[:alnum:]]*\s*=>)|
+          ((<([^<>]|\<[^<>]+\>)+>\s*)?\(([^()]|\([^()]*\))*\)(\s*:\s*(.)*)?\s*=>)))
+        captures:
+          "1":
+            name: punctuation.accessor.mxs
+          "2":
+            name: entity.name.function.mxs
+      - match: (\.)\s*([[:upper:]][_$[:digit:][:upper:]]*)(?![_$[:alnum:]])
+        captures:
+          "1":
+            name: punctuation.accessor.mxs
+          "2":
+            name: constant.other.property.mxs
+      - match: (\.)\s*([_$[:alpha:]][_$[:alnum:]]*)
+        captures:
+          "1":
+            name: punctuation.accessor.mxs
+          "2":
+            name: variable.other.property.mxs
+      - match: |-
+          (?x)(?:
+            ([[:upper:]][_$[:digit:][:upper:]]*) |
+            ([_$[:alpha:]][_$[:alnum:]]*)
+          )(?=\s*\.\s*[_$[:alpha:]][_$[:alnum:]]*)
+        captures:
+          "1":
+            name: constant.other.object.mxs
+          "2":
+            name: variable.other.object.mxs
+      - name: constant.other.mxs
+        match: ([[:upper:]][_$[:digit:][:upper:]]*)(?![_$[:alnum:]])
+      - name: variable.other.readwrite.mxs
+        match: "[_$[:alpha:]][_$[:alnum:]]*"
+  cast:
+    name: cast.expr.mxs
+    begin: (?:(?<=return|throw|yield|await|default|[=(,:>*]))\s*(<)(?!<?\=)
+    beginCaptures:
+      "1":
+        name: meta.brace.angle.mxs
+    end: ">"
+    endCaptures:
+      "0":
+        name: meta.brace.angle.mxs
+    patterns:
+      - include: "#type"
+  expression-operators:
+    patterns:
+      - name: keyword.control.flow.mxs
+        match: (?<!\.)\b(await)\b
+      - name: keyword.control.as.mxs
+        match: (?i)(?<!\.)\bas\b
+      - name: keyword.operator.assignment.compound.mxs
+        match: \*=|(?<!\()/=|%=|\+=|\-=
+      - name: keyword.operator.comparison.mxs
+        match: ==|!=
+      - name: keyword.operator.relational.mxs
+        match: <=|>=|<|>
+      - name: keyword.operator.logical.mxs
+        match: (?i)(?<!.)\b(and|or|not)\b
+      - name: keyword.operator.assignment.mxs
+        match: \=
+      - name: keyword.operator.arithmetic.mxs
+        match: "%|\\*|-|\\^|\\+"
+      - match: (?<=[_$[:alnum:]])\s*(/)(?![/*])
+        captures:
+          "1":
+            name: keyword.operator.arithmetic.mxs
+      - name: keyword.operator.byref.mxs
+        match: (&)(?=\w)
+      - name: keyword.control.assign.mxs
+        match: (?<!:):(?=[^:]|:{2}[^:])
+  punctuation-linebreak:
+    name: keyword.operator.linebreak.mxs
+    match: \\
+  punctuation-comma:
+    name: punctuation.separator.comma.mxs
+    match: ","
+  punctuation-semicolon:
+    name: punctuation.terminator.statement.mxs
+    match: ;
+  punctuation-accessor:
+    name: punctuation.accessor.mxs
+    match: \.
+  paren-expression:
+    begin: \(
+    beginCaptures:
+      "0":
+        name: meta.brace.round.mxs
+    end: \)
+    endCaptures:
+      "0":
+        name: meta.brace.round.mxs
+    patterns:
+      - include: "#expression"
+      - include: "#punctuation-comma"
+  qstring-double:
+    name: string.quoted.double.mxs
+    begin: '"'
+    beginCaptures:
+      "0":
+        name: punctuation.definition.string.begin.mxs
+    end: '"'
+    endCaptures:
+      "0":
+        name: punctuation.definition.string.end.mxs
+    patterns:
+      - include: "#string-character-escape"
+  qstring-verbatim:
+    name: string.quoted.double.mxs
+    begin: '@"'
+    beginCaptures:
+      "0":
+        name: punctuation.definition.string.begin.mxs
+    end: '"'
+    endCaptures:
+      "0":
+        name: punctuation.definition.string.end.mxs
+  qstring-localization:
+    name: string.quoted.localization.mxs
+    begin: "~"
+    beginCaptures:
+      "0":
+        name: punctuation.definition.localized.begin.mxs
+    end: (~)|((?:[^\\\n])$)
+    endCaptures:
+      "1":
+        name: punctuation.definition.localized.end.mxs
+      "2":
+        name: invalid.illegal.newline.mxs
+  string-character-escape:
+    name: constant.character.escape.mxs
+    match: \\(x\h{2}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.|$)
+  string:
+    patterns:
+      - include: "#qstring-verbatim"
+      - include: "#qstring-double"
+      - include: "#qstring-localized"
+  literal:
+    name: literal.mxs
+    patterns:
+      - include: "#numeric-literal"
+      - include: "#boolean-literal"
+      - include: "#undefined-literal"
+      - include: "#numericConstant-literal"
+      - include: "#array-literal"
+      - include: "#bitarray-literal"
+      - include: "#this-literal"
+  array-literal:
+    name: meta.array.literal.mxs
+    begin: (#)(\()
+    beginCaptures:
+      "0":
+        name: meta.sharp.mxs
+      "1":
+        name: meta.brace.round.mxs
+    end: \)
+    endCaptures:
+      "0":
+        name: meta.brace.round.mxs
+    patterns:
+      - include: "#expression"
+      - include: "#punctuation-comma"
+  bitarray-literal:
+    name: meta.array.bitarray.literal.mxs
+    begin: (#)(\{
+    beginCaptures:
+      "0":
+        name: meta.sharp.mxs
+      "1":
+        name: meta.brace.curly.mxs
+    end: \}
+    endCaptures:
+      "0":
+        name: meta.brace.curly.mxs
+    patterns:
+      - include: "#expression"
+      - include: "#punctuation-comma"
+  numeric-literal:
+    patterns:
+      - name: constant.numeric.hex.mxs
+        match: \b(?<!\$)0(x|X)[0-9a-fA-F]+\b
+      - match: |-
+          (?x)
+          (?<!$)
+          (?:
+            (?:\b[0-9]+(\.)[0-9]+[eEdD][+-]?[0-9]+\b)| # 1.1E+3
+            (?:\b[0-9]+(\.)[eEdD][+-]?[0-9]+\b)|       # 1.E+3
+            (?:\B(\.)[0-9]+[eEdD][+-]?[0-9]+\b)|       # .1E+3
+            (?:\b[0-9]+[eEdD][+-]?[0-9]+\b)|           # 1E+3
+            (?:\b[0-9]+(\.)[0-9]+\b)|                  # 1.1
+            (?:\b[0-9]+(\.)\B)|                        # 1.
+            (?:\B(\.)[0-9]+\b)|                        # .1
+            (?:\b[0-9]+[LP]\b(?!\.))                   # 1[LP]
+          )
+        captures:
+          "0":
+            name: constant.numeric.decimal.mxs
+          "1":
+            name: meta.delimiter.decimal.period.mxs
+          "2":
+            name: meta.delimiter.decimal.period.mxs
+          "3":
+            name: meta.delimiter.decimal.period.mxs
+          "4":
+            name: meta.delimiter.decimal.period.mxs
+          "5":
+            name: meta.delimiter.decimal.period.mxs
+          "6":
+            name: meta.delimiter.decimal.period.mxs
+      - match: |-
+          (?x)
+          (?<!$)
+          (?:
+            (?:\b[0-9]+(\.)[0-9]+[msft]\b)|  # 1.1[msft]
+            (?:\b[0-9]+(\.)[msft]\b)|        # 1.[msft]
+            (?:\B(\.)[0-9]+[msft]\b)|        # .1[msft]
+            (?:\b[0-9]+[msft]\b(?!\.))       # 1[msft]
+          )+
+        captures:
+          "0":
+            name: constant.numeric.time.mxs
+          "1":
+            name: meta.delimiter.decimal.period.mxs
+          "2":
+            name: meta.delimiter.decimal.period.mxs
+          "3":
+            name: meta.delimiter.decimal.period.mxs
+      - match: (?:[0-9]+(\:)[0-9]*(\.)[0-9]*)
+        captures:
+          "0":
+            name: constant.numeric.time.mxs
+          "1":
+            name: meta.delimiter.time.colon.mxs
+          "2":
+            name: meta.delimiter.decimal.period.mxs
+      - name: constant.numeric.bitrange.mxs
+        match: (?<!\\$)\b[0-9]+(\.\.)[0-9]+\b
+  boolean-literal:
+    patterns:
+      - name: constant.language.boolean.true.mxs
+        match: (?i)(?<!\.)\b(true|on)\b
+      - name: constant.language.boolean.false.mxs
+        match: (?i)(?<!\.)\b(false|off)\b
+  this-literal:
+    name: variable.language.this.mxs
+    match: (?i)(?<!\.)\bthis\b
+  undefined-literal:
+    name: constant.language.undefined.mxs
+    match: (?i)(?<!\.)\b(undefined|unsupplied|silentvalue|ok)\b
+  access-modifier:
+    name: storage.modifier.mxs
+    match: (?i)(?<!\.)\b(public|private)\b
+  property-accessor:
+    name: storage.type.property.mxs
+    match: (?i)(?<!\.)\b(get|set)\b
+  comment:
+    patterns:
+      - name: comment.block.documentation.mxs
+        begin: /\*\*(?!/)
+        beginCaptures:
+          "0":
+            name: punctuation.definition.comment.mxs
+        end: \*/
+        endCaptures:
+          "0":
+            name: punctuation.definition.comment.mxs
+        patterns:
+          - include: "#docblock"
+      - name: comment.block.mxs
+        begin: /\*
+        beginCaptures:
+          "0":
+            name: punctuation.definition.comment.mxs
+        end: \*/
+        endCaptures:
+          "0":
+            name: punctuation.definition.comment.mxs
+      - name: comment.line.mxs
+        begin: --
+        beginCaptures:
+          "0":
+            name: punctuation.definition.comment.mxs
+        end: (?=$)
