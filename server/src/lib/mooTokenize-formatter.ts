@@ -4,9 +4,9 @@
 import { keywords, compile } from 'moo';
 //-----------------------------------------------------------------------------------
 // CASE INSENSITIVE FOR KEYWORKDS
-const caseInsensitiveKeywords = map => {
+const caseInsensitiveKeywords = (map: { [k: string]: string | string[] }) => {
 	const transform = keywords(map);
-	return text => transform(text.toLowerCase());
+	return (text: string) => transform(text.toLowerCase());
 };
 //-----------------------------------------------------------------------------------
 // KEYWORDS
@@ -29,13 +29,12 @@ var mxLexer = compile({
 	param: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*:/,
 
 	identity: [
-		/\$'(?:[^'\n\r])*'/,
-		/\$(?:[A-Za-z0-9_*?\/]|\.{3}|\\\\)*/,
-		/'(?:\\['\\rn]|[^'\\\n])*?'/,
-		/#[A-Za-z0-9_]+\b/,
-		/#'[A-Za-z0-9_]+'/,
-		/~[A-Za-z0-9_]+~/,
-		/::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
+		{ match: /\$(?:(?:[A-Za-z0-9_*?\/]|\.{3}|\\\\)+|'(?:[^'\n\r])+')?/},
+		{ match: /'(?:\\['\\rn]|[^'\\\n])*?'/},
+		{ match: /#[A-Za-z0-9_]+\b/},
+		{ match: /#'[A-Za-z0-9_]+'/},
+		{ match: /~[A-Za-z0-9_]+~/},
+		{ match: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/},
 		{
 			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?![:])/,
 			type: caseInsensitiveKeywords(keywordsDB)
@@ -43,10 +42,11 @@ var mxLexer = compile({
 	],
 	
 	time: [
-		/(?:[-]?(?:[0-9]+\.)?[0-9]+[msft])+/,
-		/(?:[-]?(?:[0-9]+\.)[0-9]*[msft])+/,
-		/[0-9]+[:][0-9]+\.[0-9]*/
+		{ match: /(?:[-]?(?:[0-9]+\.)?[0-9]+[msft])+/},
+		{ match: /(?:[-]?(?:[0-9]+\.)[0-9]*[msft])+/},
+		{ match: /[0-9]+[:][0-9]+\.[0-9]*/}
 	],
+
 	// Parens
 	arraydef: /#[ \t]*\(/,
 	bitarraydef: /#[ \t]*\{/,
@@ -58,23 +58,23 @@ var mxLexer = compile({
 	rbracket: ']',
 	lbrace: '{',
 	rbrace: '}',
+	
 	// Values
-
 	bitrange: '..',
 	number: [
-		/0[xX][0-9a-fA-F]+/,
-		/(?:[-]?[0-9]*)[.](?:[0-9]+(?:[eEdD][+-]?[0-9]+)?)/,
-		/(?:[-]?[0-9]+\.(?!\.))/,
-		/[-]?[0-9]+(?:[LP]|[eEdD][+-]?[0-9]+)?/,
-		/(?:(?<!\.)[-]?\.[0-9]+(?:[eEdD][+-]?[0-9]+)?)/
+		{ match: /0[xX][0-9a-fA-F]+/},
+		{ match: /(?:[-]?[0-9]*)[.](?:[0-9]+(?:[eEdD][+-]?[0-9]+)?)/},
+		{ match: /(?:[-]?[0-9]+\.(?!\.))/},
+		{ match: /[-]?[0-9]+(?:[LP]|[eEdD][+-]?[0-9]+)?/},
+		{ match: /(?:(?<!\.)[-]?\.[0-9]+(?:[eEdD][+-]?[0-9]+)?)/}
 	],
 	// unaryminus: {match: /(?<=[^\w)-])-(?![-])/},
 	// Operators
 	unaryminus: [
 		// preceded by WS and suceeded by non WS
-		/(?<=[\s\t\n\r])[-](?![\s\t])/,
+		{ match: /(?<=[\s\t\n\r])[-](?![\s\t])/},
 		// preceded by an operator and WS
-		/(?<=['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='][\s\t]*)[-]/
+		{ match: /(?<=['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='][\s\t]*)[-]/}
 	],
 	operator: ['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='],
 
@@ -85,7 +85,7 @@ var mxLexer = compile({
 	// This contains the rest of the stack in case of error.
 	error: [
 		{ match: /[¿¡!`´]/, error: true },
-		/[/?\\]{2,}/
+		{ match: /[/?\\]{2,}/}
 	],
 	// fatalError: moo.error
 });
