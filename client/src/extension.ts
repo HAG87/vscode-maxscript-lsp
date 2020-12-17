@@ -21,7 +21,7 @@ import
 	RequestType
 } from 'vscode-languageclient';
 //------------------------------------------------------------------------------------------
-import { mxsDocumentSemanticTokensProvider, legend } from './mxsSemantics';
+import * as mxsSemantics from './mxsSemantics';
 import mxsHelp from './mxsHelp';
 //------------------------------------------------------------------------------------------
 let client: LanguageClient;
@@ -169,8 +169,8 @@ export function activate(context: ExtensionContext)
 		context.subscriptions.push(
 			languages.registerDocumentSemanticTokensProvider(
 				MXS_DOC.language!,
-				new mxsDocumentSemanticTokensProvider(),
-				legend
+				new mxsSemantics.mxsDocumentSemanticTokensProvider(),
+				mxsSemantics.legend
 			));
 	}
 	//------------------------------------------------------------------------------------------
@@ -180,8 +180,6 @@ export function activate(context: ExtensionContext)
 
 export function deactivate(): Thenable<void> | undefined
 {
-	if (!client) {
-		return undefined;
-	}
+	if (!client) { return undefined; }
 	return client.stop();
 }

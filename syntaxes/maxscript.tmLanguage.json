@@ -435,7 +435,7 @@
 					"match": "\\$(?:(?:[A-Za-z0-9_*?\\/\\\\]|[.]{3})+|'((?:[^'\\n\\r])+)')?"
 				},
 				{
-					"name": "variable.other.quoted.mxs",
+					"name": "variable.identifier.quoted.mxs",
 					"begin": "'",
 					"end": "'",
 					"patterns": [
@@ -530,13 +530,13 @@
 					},
 					"patterns": [
 						{
+							"include": "#punctuation-bitrange"
+						},
+						{
 							"include": "#statements"
 						},
 						{
 							"include": "#punctuation-comma"
-						},
-						{
-							"include": "#punctuation-bitrange"
 						}
 					]
 				},
@@ -595,7 +595,7 @@
 				},
 				{
 					"name": "support.function.generic.mxs",
-					"match": "(?xi)(?<![.$])(?:copy|free|execute|delete|select|deselect|isDeleted)\\b"
+					"match": "(?xi)(?<![.$])(?:copy|free|execute|delete|select|deselect|isDeleted|print|format)\\b"
 				}
 			]
 		}
