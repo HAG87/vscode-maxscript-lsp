@@ -30,13 +30,13 @@ var mxLexer = compile({
 
 	identity: [
 		{ match: /\$(?:(?:[A-Za-z0-9_*?\/]|\.{3}|\\\\)+|'(?:[^'\n\r])+')?/},
-		{ match: /'(?:\\['\\rn]|[^'\\\n])*?'/},
+		{ match: /'(?:\\['\\rn]|[^'\\\n])*'/},
 		{ match: /#[A-Za-z0-9_]+\b/},
 		{ match: /#'[A-Za-z0-9_]+'/},
 		{ match: /~[A-Za-z0-9_]+~/},
 		{ match: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/},
 		{
-			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?![:])/,
+			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
 			type: caseInsensitiveKeywords(keywordsDB)
 		}
 	],

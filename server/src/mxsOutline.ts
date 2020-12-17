@@ -131,7 +131,7 @@ export class mxsDocumentSymbolProvider
 				{
 					// show alert
 					// console.log('NOTWORKING!', error.message);
-					connection.window.showInformationMessage(`MaxScript: can't parse the code.\nCode minifier, beautifier, diagnostics and hierarchical symbols will be unavailable.`);
+					connection.window.showInformationMessage(`MaxScript: can't parse the code.\nCode minifier, beautifier, diagnostics and hierarchical symbols will be unavailable.\nReason: ${error.message}`);
 					return getDocumentSymbolsLegacy(document);
 				})
 				.then(
