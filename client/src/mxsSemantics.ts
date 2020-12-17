@@ -43,33 +43,32 @@ let lexer = moo.compile({
 	typedIden: { match: /'(?:\\['\\rn]|[^'\\\n])*?'/ },
 	// strings ~RESOURCE~
 	locale: { match: /~[A-Za-z0-9_]+~/ },
-	arraydef: { match: /\#[ \t]*\(/ },
-	bitarraydef: { match: /\#[ \t]*\{/ },
+	// arraydef: { match: /\#[ \t]*\(/ },
+	// bitarraydef: { match: /\#[ \t]*\{/ },
 	// PARENS
-	lparen: '(',
-	rparen: ')',
+	lparen: /(?:\#[ \t]*)?\(/,
+	rparen: /\)/,
 	lbracket: '[',
 	rbracket: ']',
-	lbrace: '{',
-	rbrace: '}',
+	lbrace: /(?:\#[ \t]*)?\{/,
+	rbrace: /\}/,
 	time: [
 		{ match: /(?:(?:[-]?[0-9]+[.])*[0-9]+[mMsSfFtT])+/ },
 		{ match: /(?:(?:[-]?[0-9]+[.])[0-9]*[mMsSfFtT])+/ },
 		{ match: /[0-9]+[:][0-9]+[.][0-9]*/ }
 	],
 	bitrange: { match: /[.]{2}/ },
-	hex: { match: /0[xX][0-9a-fA-F]+/ },
 	number: [
+		{ match: /0[xX][0-9a-fA-F]+/ },
 		{ match: /(?:[-]?[0-9]*)[.](?:[0-9]+(?:[eEdD][+-]?[0-9]+)?)/ },
 		{ match: /(?:[-]?[0-9]+\.(?!\.))/ },
 		{ match: /[-]?[0-9]+(?:[LP]|[eEdD][+-]?[0-9]+)?/ },
 		{ match: /(?:(?<!\.)[-]?\.[0-9]+(?:[eEdD][+-]?[0-9]+)?)/ },
 	],
-	name:
-		[
-			{ match: /#[A-Za-z0-9_]+\b/ },
-			{ match: /#'[A-Za-z0-9_]+'/ },
-		],
+	name: [
+		{ match: /#[A-Za-z0-9_]+\b/ },
+		{ match: /#'[A-Za-z0-9_]+'/ },
+	],
 	comparison: ['==', '!=', '>', '<', '>=', '<='],
 	assign: ['=', '+=', '-=', '*=', '/='],
 	math: ['+', '-', '*', '/', '^'],
@@ -84,31 +83,89 @@ let lexer = moo.compile({
 	error: [
 		{ match: /[¿¡!`´]/, /* error: true  */ },
 		{ match: /[?\\]{2,}/ },
-		// { match: /[?]{2,}/},
 	],
 	// This contains the rest of the stack in case of error.
 	fatalError: moo.error
 });
+// This is a simplified ruleset of the parser tokenizer
+const simpleLexer = moo.compile({
+	commentSL: { match: /--.*$/, lineBreaks: false, },
+	commentBLK: { match: /\/\*(?:.|[\n\r])*?\*\//, lineBreaks: true },
+	string: [
+		{ match: /@"(?:\\"|[^"])*?(?:"|\\")/, lineBreaks: true },
+		{ match: /"(?:\\["\\rntsx]|[^"])*?"/, lineBreaks: true },
+	],
+	// path: /\$(?:(?:[A-Za-z0-9_*?\/]|\.{3}|\\\\)+|'(?:[^'\n\r])+')?/,
+	// parameter: { match: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[ \t]*[:])/ },
+	// parameter: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+:/,
+	// property: { match: /\.[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/ },
+	// locale: { match: /~[A-Za-z0-9_]+~/ },
+	name: [
+		{ match: /#[A-Za-z0-9_]+\b/ },
+		{ match: /#'[A-Za-z0-9_]+'/ }
+	],
+	identity: [
+		{ match: /\$'(?:[^'\n\r])*'/ },
+		{ match: /\$(?:[A-Za-z0-9_*?\/]|\.{3}|\\\\)*/ },
+		{ match: /'(?:\\['\\rn]|[^'\\\n])*'/ },
+		{ match: /~[A-Za-z0-9_]+~/ },
+		{ match: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/ },
+		{
+			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
+			type: caseInsensitiveKeywords(maxAPI)
+		}
+	],
+	unindexed: [
+		{
+			match: /(?:[^\"A-Za-z_\u00C0-\u00FF\s\t\r\n])+/,
+			lineBreaks: true
+		}
+	],
+	ws: {
+		match: /[\s\t\r\n]+/,
+		lineBreaks: true
+	},
+	fatalError: moo.error
+
+});
 //-------------------------------------------------------------------------------------------------------------
 const tokenTypes = new Map<string, number>();
 const tokenModifiers = new Map<string, number>();
-const tokenTypesSet = new Set<string>();
 
 export const legend = (function ()
 {
 	const tokenTypesLegend = [
-		'comment', 'keyword', 'operator', 'namespace',
-		'type', 'struct', 'class', 'interface', 'enum', 'typeParameter', 'function',
-		'member', 'macro', 'variable', 'parameter',
-		// 'property', 'label',
-		//'string', 'number',
+		'comment',
+		'keyword',
+		'operator',
+		'namespace',
+		'type',
+		'struct',
+		'class',
+		'interface',
+		'enum',
+		'typeParameter',
+		'function',
+		'member',
+		'macro',
+		'variable',
+		'parameter',
+		// 'property',
+		// 'label',
+		// 'string',
+		// 'number',
 	];
 
 	tokenTypesLegend.forEach((tokenType, index) => tokenTypes.set(tokenType, index));
-	tokenTypesLegend.forEach(item => tokenTypesSet.add(item));
 
+	// tokenTypesLegend.includes
 	const tokenModifiersLegend = [
-		'declaration', 'documentation', 'readonly', 'static', 'abstract', 'deprecated'		
+		'declaration',
+		'documentation',
+		'readonly',
+		'static',
+		'abstract',
+		'deprecated'
 	];
 	tokenModifiersLegend.forEach((tokenModifier, index) => tokenModifiers.set(tokenModifier, index));
 
@@ -193,10 +250,9 @@ export class mxsDocumentSemanticTokensProvider implements DocumentSemanticTokens
 		// feed the tokenizer
 		lexer.reset(text);
 		let _token: moo.Token | undefined;
-
 		while (_token = lexer.next()) {
 			// filter tokens here
-			if (tokenTypesSet.has(_token.type?.split('_')[0]!)) {
+			if (tokenTypes.has(_token.type!)) {
 				toks.push(_token);
 			}
 		}
