@@ -415,11 +415,11 @@
 			"patterns": [
 				{
 					"name": "variable.property.mxs",
-					"match": "(?<=\\.)([0-9]*[A-Za-z_]+\\w*)\\b"
+					"match": "(?<=\\.)([A-Za-z_][A-Za-z_0-9]*)\\b"
 				},
 				{
 					"name": "variable.parameter.mxs",
-					"match": "\\b([0-9]*[A-Za-z_]+\\w*)(?=\\s*:[^:])",
+					"match": "\\b([A-Za-z_][A-Za-z_0-9]*)(?=\\s*:[^:])",
 					"comment": "Matches keyword assignment in function calls and definitions (e.g., fn add flag:#optional)"
 				},
 				{
@@ -557,6 +557,10 @@
 		},
 		"support": {
 			"patterns": [
+				{
+					"name": "entity.name.type.mxs",
+					"match":"(?<!\\.)(?:[A-Za-z_][A-Za-z_0-9]*)+(?=\\.)"
+				},
 				{
 					"name": "support.variable.objectset.mxs",
 					"match": "(?i)(?<![.$])\\b(?:cameras|geometry|helpers|lights|object[s]?|objectSet|primitive|selection|shapes|spacewarps|systems)\\b"
