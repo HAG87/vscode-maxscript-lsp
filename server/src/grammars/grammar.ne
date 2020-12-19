@@ -545,12 +545,11 @@ Main -> _ _expr_seq _ {% d => d[1] %}
     function_def
         -> function_decl __ var_name (_ var_name):+ (_ fn_params):+ (_ "=" _) expr
             {% d => {
-                let params = d[4].map(x => x[1]);
                 let res = {
                     ...d[0],
                     id:     d[2],
                     args:   d[3].map(x => x[1]),
-                    params: params,
+                    params: d[4].map(x => x[1]),
                     body:   d[6],
                 };
                 addLoc(res, d[6]);
@@ -558,11 +557,10 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             }%}
          | function_decl __ var_name (_ var_name):+ (_ "=" _) expr
             {% d => {
-                let args = d[3].map(x => x[1]);
                 let res = {
                     ...d[0],
                     id:     d[2],
-                    args:   args,
+                    args:   d[3].map(x => x[1]),
                     params: [],
                     body:   d[5],
                 };
