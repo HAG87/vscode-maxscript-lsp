@@ -1,19 +1,11 @@
 /**	
  * Simplified tokenizer for code formatting
  */
-import { keywords, compile } from 'moo';
-//-----------------------------------------------------------------------------------
-// CASE INSENSITIVE FOR KEYWORKDS
-const caseInsensitiveKeywords = (map: { [k: string]: string | string[] }) => {
-	const transform = keywords(map);
-	return (text: string) => transform(text.toLowerCase());
-};
-//-----------------------------------------------------------------------------------
-// KEYWORDS
+import moo from 'moo';
+import { caseInsensitiveKeywords } from './mooUtils';
 import { keywordsDB } from './keywordsDB';
 //-----------------------------------------------------------------------------------
-// Moo Lexer
-var mxLexer = compile({
+export const mxsFormatterLexer = moo.compile({
 	// Comments
 	comment_SL: /--.*$/,
 	comment_BLK: { match: /\/\*(?:.|[\n\r])*?\*\//, lineBreaks: true, },
@@ -89,5 +81,3 @@ var mxLexer = compile({
 	],
 	// fatalError: moo.error
 });
-//-----------------------------------------------------------------------------------
-export default mxLexer;
