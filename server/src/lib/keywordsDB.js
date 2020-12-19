@@ -227,4 +227,4 @@ const keywordsTypeDB = {
 	// 'kw_throw':       'throw',
 };
 
-export { keywordsDB, keywordsTypeDB };
+module.exports = { keywordsDB, keywordsTypeDB };
