@@ -87,8 +87,8 @@ function parseWithErrorsSync(source: string, parserInstance: nearley.Parser): pa
 	let src = TokenizeStream(source);
 	let state = parserInstance.save();
 
-	let badTokens: any[] = [];
-	let errorReport: any[] = [];
+	let badTokens: moo.Token[] = [];
+	// let errorReport: any[] = [];
 
 	// let next = 0;
 	let total = src.length - 1;
@@ -100,7 +100,7 @@ function parseWithErrorsSync(source: string, parserInstance: nearley.Parser): pa
 			// this.parserInstance.feed(src[next].text);
 		} catch (err) {
 			// catch non parsing related errors.
-			console.log(err);
+			// console.log(err);
 			if (!err.token) { throw err; }
 
 			badTokens.push(err.token);
@@ -126,7 +126,7 @@ function parseWithErrorsSync(source: string, parserInstance: nearley.Parser): pa
 		newErr.name = 'ERR_RECOVER';
 		newErr.recoverable = true;
 		newErr.tokens = badTokens;
-		newErr.details = errorReport;
+		// newErr.details = errorReport;
 		return newErr;
 	};
 	let reportFailure = () =>
@@ -135,7 +135,7 @@ function parseWithErrorsSync(source: string, parserInstance: nearley.Parser): pa
 		newErr.name = 'ERR_FATAL';
 		newErr.recoverable = false;
 		newErr.tokens = badTokens;
-		newErr.details = errorReport;
+		// newErr.details = errorReport;
 		return newErr;
 	};
 	return {
@@ -211,8 +211,8 @@ function parseWithErrorsAsync(
 	let src = TokenizeStream(source);
 	let state = parserInstance.save();
 
-	let badTokens: any[] = [];
-	let errorReport: any[] = [];
+	let badTokens: moo.Token[] = [];
+	// let errorReport: any[] = [];
 
 	let reportSuccess = () =>
 	{
@@ -220,7 +220,7 @@ function parseWithErrorsAsync(
 		newErr.name = 'ERR_RECOVER';
 		newErr.recoverable = true;
 		newErr.tokens = badTokens;
-		newErr.details = errorReport;
+		// newErr.details = errorReport;
 		return newErr;
 	};
 	let reportFailure = () =>
@@ -229,7 +229,7 @@ function parseWithErrorsAsync(
 		newErr.name = 'ERR_FATAL';
 		newErr.recoverable = false;
 		newErr.tokens = badTokens;
-		newErr.details = errorReport;
+		// newErr.details = errorReport;
 		return newErr;
 	};
 

@@ -19,15 +19,15 @@ import { getWordAtPosition } from './lib/utils';
 //------------------------------------------------------------------------------------------
 /**
  * DocumentSymbols[] query
- * @param {string} id
- * @param {any[]} array
- * @returns { DocumentSymbol | undefined} Found node or undefined
+ * @param  id name to search for
+ * @param array DocumentSymbols
+ * @returns  Found node or undefined
  */
-function findDocumenSymbols(id: string, array: any[]): DocumentSymbol[] | undefined
+function findDocumenSymbols(id: string, array: DocumentSymbol[]): DocumentSymbol[] | undefined
 {
 	let results: DocumentSymbol[] = [];
 
-	let _visit = (id: string, array: any[]) =>
+	let _visit = (id: string, array: DocumentSymbol[]) =>
 	{
 		for (const node of array) {
 			if (node.name === id) { results.push(node); }
@@ -42,9 +42,9 @@ function findDocumenSymbols(id: string, array: any[]): DocumentSymbol[] | undefi
 
 /**
  * Regex Match
- * @param {TextDocument} document
- * @param {string} searchWord
- * @returns {Location | undefined} Word location
+ * @param document
+ * @param searchWord
+ * @returns Word location
  */
 function wordMatch(document: TextDocument, searchWord: string, position: Position)
 {
@@ -124,10 +124,9 @@ function symbolMatch(document: TextDocument, documentSymbols: DocumentSymbol[], 
 
 /**
  * CST query Match -- DEPRECATED -- TODO: USE THE NEW IMPLEMENTED PARSER RANGES -- SEARCH IN NODES IDS FOR CONSISTENCY, OR AR LEAST FILTER OUT KEYWORDS... NOW IT MATCHES ANY TOKEN
- * @param {TextDocument} document 
- * @param {any | any[]} CST 
- * @param {string} searchWord 
- * @returns {LocationLink | undefined}
+ * @param  document 
+ * @param  CST 
+ * @param  searchWord 
  */
 function cstMatch(document: TextDocument, CST: any | any[], searchWord: string)
 {
@@ -145,11 +144,10 @@ function cstMatch(document: TextDocument, CST: any | any[], searchWord: string)
 /**
  * Get Document definitions
  * @async
- * @param {TextDocument} document 
- * @param {Position} position 
- * @param {any[]} parseCST 
- * @param {DocumentSymbol[] | SymbolInformation[]} documentSymbols
- * @returns {Promise<Definition | DefinitionLink[]>}
+ * @param document 
+ * @param position 
+ * @param parseCST 
+ * @param documentSymbols
  */
 export function getDocumentDefinitions(
 	document: TextDocument,

@@ -16,9 +16,9 @@ import
 	TextDocument
 } from 'vscode-languageserver-textdocument';
 
-import { Token } from 'moo';
+import moo from 'moo';
 import { TokenizeStream as mxsTokenizer } from './mxsParser';
-import mooTokenizer from './lib/mooTokenize-formatter';
+import { mxsFormatterLexer } from './lib/mooTokenize-formatter';
 import { rangeUtil } from './lib/astUtils';
 // note: keywords could be used to indent, at start or end of line. this will require a per-line aproach... split the documents in lines, and feed the tokenizer one line at the time.
 //-----------------------------------------------------------------------------------
@@ -43,10 +43,10 @@ interface SimpleFormatterSettings
 }
 interface SimpleFormatterActions
 {
-	wsReIndent: (t: Token, i: number) => TextEdit | undefined
-	wsIndent: (t: Token, i: number) => TextEdit | undefined
-	wsClean: (t: Token) => TextEdit | undefined
-	wsAdd: (t: Token) => TextEdit | undefined
+	wsReIndent: (t: moo.Token, i: number) => TextEdit | undefined
+	wsIndent: (t: moo.Token, i: number) => TextEdit | undefined
+	wsClean: (t: moo.Token) => TextEdit | undefined
+	wsAdd: (t: moo.Token) => TextEdit | undefined
 }
 //-----------------------------------------------------------------------------------
 function mxsSimpleTextEditFormatter(document: TextDocument | string, action: SimpleFormatterActions)
@@ -60,7 +60,7 @@ function mxsSimpleTextEditFormatter(document: TextDocument | string, action: Sim
 		let prevLine: number = 1;
 
 		// token stream. if this fail will throw an error
-		let tokenizedSource: Token[] = mxsTokenizer(source, undefined, mooTokenizer);
+		let tokenizedSource: moo.Token[] = mxsTokenizer(source, undefined, mxsFormatterLexer);
 		// return if no results
 		if (tokenizedSource && !tokenizedSource.length) { reject(edits); }
 		// add to results

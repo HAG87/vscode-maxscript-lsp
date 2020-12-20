@@ -21,7 +21,7 @@ function setOptions() {
 	options.statements.optionalWhitespace = true;
 }
 //--------------------------------------------------------------------------------
-function minCode(parserTree: any[])
+function minCode(parserTree: unknown[])
 {
 	setOptions();
 	// options.wrapIdentities = true;
@@ -29,7 +29,7 @@ function minCode(parserTree: any[])
 	// return mxsMinify(parserTree);
 }
 
-export async function MinifyData(data: any | any[] | string)
+export async function MinifyData(data: unknown | unknown[] | string)
 {
 	if (typeof data === 'string') {
 		let results = await parseSource(data);
@@ -42,7 +42,7 @@ export async function MinifyData(data: any | any[] | string)
 		return minCode(data);
 	}
 }
-export async function MinifyDoc(data: any | any[] | string, dest: string)
+export async function MinifyDoc(data: unknown | unknown[] | string, dest: string)
 {
 	let minify = await MinifyData(data);
 	await fileWrite(dest, minify);
@@ -148,7 +148,7 @@ export async function MinifyDoc(src: string, dest: string)
 		let minify = await minifyData(src);
 		await fileWrite(dest, minify);
 	} catch (err) {
-		console.log(err);
+		// console.log(err);
 		throw err;
 	} finally {
 		await Thread.terminate(minifyData);

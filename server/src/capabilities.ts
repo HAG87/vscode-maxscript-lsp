@@ -1,18 +1,7 @@
 import { ClientCapabilities } from 'vscode-languageserver';
 
 //------------------------------------------------------------------------------------------
-export interface mxsCapabilities
-{
-	hasConfigurationCapability: boolean;
-	hasWorkspaceFolderCapability: boolean;
-	hasCompletionCapability: boolean;
-	hasDiagnosticRelatedInformationCapability: boolean;
-	hasDiagnosticCapability: boolean;
-	hasDocumentSymbolCapability: boolean;
-	hasDefinitionCapability: boolean;
-	hasDocumentFormattingCapability: boolean;
-}
-export class mxsCapabilities implements mxsCapabilities
+export class mxsCapabilities
 {
 	hasConfigurationCapability: boolean;
 	hasWorkspaceFolderCapability: boolean;

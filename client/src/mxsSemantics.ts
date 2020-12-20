@@ -9,7 +9,7 @@ import
 	TextDocument
 } from 'vscode';
 //-------------------------------------------------------------------------------------------------------------
-import * as moo from 'moo';
+import moo from 'moo';
 import maxAPI from './schema/mxsAPI';
 //-------------------------------------------------------------------------------------------------------------
 const caseInsensitiveKeywords = (map: { [k: string]: string | string[] }) =>
@@ -223,28 +223,8 @@ export class mxsDocumentSemanticTokensProvider implements DocumentSemanticTokens
 		}
 		return result;
 	}
-	// using moo for tokenizing the source
-	private _parseText(text: string): IParsedToken[]
-	{
-		let r: IParsedToken[] = [];
-
-		let getTokens = this._tokenize(text);
-
-		getTokens.forEach(token =>
-		{
-			let typing = token.type.split('_');
-			r.push({
-				line: token.line - 1,
-				startCharacter: token.col - 1,
-				length: (token.text.length),
-				tokenType: typing[0],
-				tokenModifiers: typing.slice(1)
-			});
-		});
-		return r;
-	}
 	// this will need to catch errors. currently it tries to dump all errors to a token and skip them.
-	private _tokenize(text: string): any[]
+	private _tokenize(text: string)
 	{
 		let toks: moo.Token[] = [];
 		// feed the tokenizer
@@ -257,5 +237,25 @@ export class mxsDocumentSemanticTokensProvider implements DocumentSemanticTokens
 			}
 		}
 		return toks;
+	}
+	// using moo for tokenizing the source
+	private _parseText(text: string): IParsedToken[]
+	{
+		let r: IParsedToken[] = [];
+
+		this._tokenize(text).forEach(token =>
+		{
+			if (token.type) {
+				let typing = token.type.split('_');
+				r.push({
+					line: token.line - 1,
+					startCharacter: token.col - 1,
+					length: (token.text.length),
+					tokenType: typing[0],
+					tokenModifiers: typing.slice(1)
+				});
+			}
+		});
+		return r;
 	}
 }

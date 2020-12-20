@@ -17,7 +17,7 @@ export class ReflowOptions //implements reflowOptions
 		spaced: boolean
 	}
 	indentAt: RegExp
-	
+
 	constructor(spacer?: string, linebreak?: string, indent?: string)
 	{
 		this.indent = indent || '\t';
@@ -97,7 +97,7 @@ class Statement
 
 	add(...value: any)
 	{
-		this.value = this.value.concat(...value.filter((e:any) => e != null));
+		this.value = this.value.concat(...value.filter((e: any) => e != null));
 	}
 }
 // join elemns with NL.. block of code
@@ -153,10 +153,10 @@ class Codeblock
 		}
 	}
 
-	add(...value:any)
+	add(...value: any)
 	{
 		if (value[0] != null) {
-			this.value = this.value.concat(...value.filter((e:any) => e != null));
+			this.value = this.value.concat(...value.filter((e: any) => e != null));
 		}
 	}
 }
@@ -168,8 +168,8 @@ class Elements
 	type: string
 	indent: boolean
 	listed: boolean
-	
-	constructor(...args:any)
+
+	constructor(...args: any)
 	{
 		this.listed = false;
 		this.type = 'elements';
@@ -194,7 +194,7 @@ class Elements
 	add(...value: any)
 	{
 		if (value[0] != null) {
-			this.value = this.value.concat(...value.filter((e:any) => e != null));
+			this.value = this.value.concat(...value.filter((e: any) => e != null));
 		}
 	}
 }
@@ -217,36 +217,22 @@ class Expr
 
 	add(...value: any)
 	{
-		this.value = this.value.concat(...value.filter((e:any) => e != null));
+		this.value = this.value.concat(...value.filter((e: any) => e != null));
 	}
 }
 //-----------------------------------------------------------------------------------
 /**
  * Check if value is node
- * @param {any} node CST node
+ * @param node CST node
  */
-function isNode(node: any)
-{
-	return (typeof node === 'object' && node != undefined);
-}
+const isNode = (node: any): node is object => (node as object) != undefined;
+
 /**
  * filter nodes by type property
- * @param {any} node CST node
+ * @param node CST node
  */
-function getNodeType(node: any): string
-{
-	return ('type' in node) ? node.type : undefined;
-}
-/**
- * Apply node transform to PARENT KEY!
- */
-function editNode(callback: Function, node: any, parent: any, key: string, level: number | null, index: number | null)
-{
-	let res = callback(node, parent, key, level, index);
-	// apply indentation to hig-level rules
-	// if (isNode(res) && 'indent' in res) { res.indent = level; }
-	index != null ? parent[key][index] = res : parent[key] = res;
-}
+const getNodeType = (node: any) => ('type' in node) ? (node as nodetype.baseNode).type : undefined;
+
 /*
 function removeNode(node, parent, key, index) {
 	if (key in parent) {
@@ -257,8 +243,8 @@ function removeNode(node, parent, key, index) {
 //-----------------------------------------------------------------------------------
 /**
  * Visit and derive CST to a recoverable code map
- * @param {any} tree CST node
- * @param {any} callbackMap Patterns function
+ * @param tree CST node
+ * @param callbackMap Patterns function
  */
 function derive(this: any, tree: any, callbackMap: any)
 {
@@ -279,15 +265,16 @@ function derive(this: any, tree: any, callbackMap: any)
 						_visit(child[j], node, key, level + 1, j);
 					}
 				}
-			}
-			else if (isNode(child)) {
+			} else if (isNode(child)) {
 				_visit(child, node, key, level + 1, null);
 			}
 		}
 
-		if (nodeType in callbackMap) {
-			if (parent) {
-				editNode.call(this, callbackMap[nodeType], node, parent, key!, level, index);
+		if (nodeType && nodeType in callbackMap) {
+			if (parent && key) {
+				// editNode.call(this, callbackMap[nodeType], node, parent, key!, level, index);
+				let res = callbackMap[nodeType](node, parent, key, level, index);
+				index != null ? parent[key][index] = res : parent[key] = res;
 			} else {
 				return node;
 			}
@@ -297,7 +284,7 @@ function derive(this: any, tree: any, callbackMap: any)
 }
 /**
  * Visit and derive Code from a recoverable code map
- * @param {any} tree CodeMap node
+ * @param tree CodeMap node
  */
 function reduce(tree: any)
 {
@@ -314,78 +301,51 @@ function reduce(tree: any)
 						_visit(child[j], node, key, level + 1, j);
 					}
 				}
-			}
-			else if (isNode(child)) {
+			} else if (isNode(child)) {
 				_visit(child, node, key, level + 1, null);
 			}
 		}
-		let res;
-		if (getNodeType(node) && parent) {
-			// if ('indent' in node) { node.indent = level; }
-			res = node.toString;
-		} else {
-			res = node;
-		}
+		let res = getNodeType(node) && parent ? node.toString : node;
 		index != null ? parent[key][index] = res : parent[key] = res;
 	}
 	_visit(tree, tree, '', 0, null);
 }
 //-----------------------------------------------------------------------------------
 // utility functions
-const isArrayUsed = (val: any) => val && Array.isArray(val) && val.length > 0 ? true : false;
-const isNotEmpty = (val: any) => val && !Array.isArray(val) || Array.isArray(val) && val.length > 0 ? true : false;
-const toArray = (val: any) => Array.isArray(val) ? val : [val];
-/*
-var wrap = function (func) {
-	return function () {
-		var args = [...arguments].splice(0);
-		return func.apply(this, args);
-	};
+const isArrayUsed = (val: unknown | unknown[]) => val && Array.isArray(val) && val.length > 0 ? true : false;
+const isNotEmpty = (val: unknown | unknown[]) => val && !Array.isArray(val) || Array.isArray(val) && val.length > 0 ? true : false;
+const toArray = (val: unknown | unknown[]) => Array.isArray(val) ? val : [val];
+const testWS = {
+	// at the end
+	w_: /\w$/im,
+	s_: /\W$/im,
+	m_: /-$/im,
+	d_: /\d$/im,
+	c_: /\:$/im,
+	// at the start
+	_w: /^\w/im,
+	_s: /^\W/im,
+	_m: /^-/im,
+	_d: /^\d/im,
+	_c: /^\:/im
 };
-function nodeText(node:any) {
-	index != null ? parent[key][index] = node.text : parent[key] = node.text;
-}
-function nodeValue(node:any) {
-	index != null ? parent[key][index] = node.value : parent[key] = node.value;
-}
-function wrapInParens(node, key) {
-	return [
-		'(',
-		...toArray(node[key]),
-		')'
-	];
-}
-*/
 function optionalWS(values: string[], empty = '', ws = ' ')
 {
-	// at the end
-	let w_ = /\w$/im;
-	let s_ = /\W$/im;
-	let m_ = /-$/im;
-	let d_ = /\d$/im;
-	let c_ = /\:$/im;
-	// at the start
-	let _w = /^\w/im;
-	let _s = /^\W/im;
-	let _m = /^-/im;
-	let _d = /^\d/im;
-	let _c = /^\:/im;
-
 	let res = values.reduce((acc, curr) =>
 	{
 		if (
 			// alpha - alpha
-			w_.test(acc) && _w.test(curr)
+			testWS.w_.test(acc) && testWS._w.test(curr)
 			// minus - minus
-			|| m_.test(acc) && _m.test(curr)
+			|| testWS.m_.test(acc) && testWS._m.test(curr)
 			// alpha - minus
-			|| w_.test(acc) && _m.test(curr)
+			|| testWS.w_.test(acc) && testWS._m.test(curr)
 			// minus - alpha
-			// || m_.test(acc) && _w.test(curr)
+			// || testWS.m_.test(acc) && testWS._w.test(curr)
 			// number - colon
-			|| d_.test(acc) && _c.test(curr)
+			|| testWS.d_.test(acc) && testWS._c.test(curr)
 			// colon - number
-			// || c_.test(acc) && _d.test(curr)
+			// || testWS.c_.test(acc) && testWS._d.test(curr)
 		) {
 			return (acc + ws + curr);
 		} else {
@@ -485,7 +445,7 @@ let conversionRules = {
 	Identifier(node: moo.Token) { return options.wrapIdentities ? `'${node.value}'` : node.value; },
 	EmptyParens() { return '()'; },
 	Parameter(node: moo.Token) { return new Expr(node.value, ':'); },
-	BitRange(node: any) { return new Expr(node.start, '..', node.end); },
+	BitRange(node: nodetype.BitRange) { return new Expr(node.start, '..', node.end); },
 	//-------------------------------------------------------------------------------------------
 	// DECLARATION
 	Declaration(node: nodetype.Declaration)
@@ -499,7 +459,7 @@ let conversionRules = {
 		if (isArrayUsed(node.elements)) {
 			let elems = new Elements();
 			node.elements.forEach(
-				(e:any) =>
+				(e: any) =>
 				{
 					// just to be safe, it should be reduced by now...
 					if (isArrayUsed(e)) {
@@ -525,7 +485,7 @@ let conversionRules = {
 		if (isArrayUsed(node.elements)) {
 			let elems = new Elements();
 			node.elements.forEach(
-				(e:any) =>
+				(e: any) =>
 				{
 					// just to be safe, it should be reduced by now...
 					if (isArrayUsed(e)) {
@@ -885,7 +845,7 @@ let conversionRules = {
 		if (isArrayUsed(node.body)) {
 			// handle struct members...
 			let stack: Elements | null = null;
-			node.body.forEach((e:any) =>
+			node.body.forEach((e: any) =>
 			{
 				// test for structScope
 				if (typeof e === 'string' && /(?:private|public)$/mi.test(e)) {

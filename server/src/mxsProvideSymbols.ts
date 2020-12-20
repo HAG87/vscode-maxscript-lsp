@@ -8,7 +8,7 @@ import
 } from 'vscode-languageserver';
 //@ts-ignore
 import traverse from 'ast-monkey-traverse';
-import * as moo from 'moo';
+import moo from 'moo';
 //-----------------------------------------------------------------------------------
 /**
  * Generic dictionary Interface
@@ -50,10 +50,7 @@ const SymbolKindMatch: Dictionary<SymbolKind> = {
 	'Include': SymbolKind.Module,
 };
 //-----------------------------------------------------------------------------------
-function isNode(node: any | undefined)
-{
-	return (node != null && typeof node === 'object');
-}
+const isNode = (node: any) => typeof node === 'object' && node != null;
 //-----------------------------------------------------------------------------------
 /**
  * collect Nodes visiting the Tree
