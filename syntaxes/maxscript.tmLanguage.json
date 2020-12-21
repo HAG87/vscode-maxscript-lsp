@@ -579,27 +579,27 @@
 				},
 				{
 					"name": "support.function.math.mxs",
-					"match": "(?xi)(?<![.$])(?:abs|acos|asin|atan|atan2|ceil|close_enough|cos|cosh|degToRad|exp|floor|log|log10|logN|mod|pow|radToDeg|random|seed|sin|sinh|sqrt|tanh)\\b"
+					"match": "(?xi)(?<![.$])\\b(?:abs|acos|asin|atan|atan2|ceil|close_enough|cos|cosh|degToRad|exp|floor|log|log10|logN|mod|pow|radToDeg|random|seed|sin|sinh|sqrt|tanh)\\b"
 				},
 				{
 					"name": "support.function.vector.mxs",
-					"match": "(?xi)(?<![.$])(?:arbAxis|cross|distance|dot|length|normalize|composite|noise3|noise4|turbulence|fractalNoise)\\b"
+					"match": "(?xi)(?<![.$])\\b(?:arbAxis|cross|distance|dot|length|normalize|composite|noise3|noise4|turbulence|fractalNoise)\\b"
 				},
 				{
 					"name": "support.function.geo.mxs",
-					"match": "(?xi)(?<![.$])(?:conjugate|eulerToQuat|GetEulerMatAngleRatio|getEulerQuatAngleRatio|inverse|inverseHighPrecision|isIdentity|LnDif|matrixFromNormal|orthogonalize|preRotate|preRotateX|preRotateY|preRotateZ|preScale|preTranslate|qCompA|qorthog|quatArrayToEulerArray|quatToEuler|quatToEuler2|rotate|rotateX|rotateXMatrix|rotateY|rotateYMatrix|rotateYPRMatrix|rotateZ|rotateZMatrix|scale|scaleMatrix|slerp|squad|squadrev|transform|translate|transMatrix|xformMat|zero|Intersects|transpose|clear|setSize|contains|rectify|empty|isEmpty|move)\\b"
+					"match": "(?xi)(?<![.$])\\b(?:conjugate|eulerToQuat|GetEulerMatAngleRatio|getEulerQuatAngleRatio|inverse|inverseHighPrecision|isIdentity|LnDif|matrixFromNormal|orthogonalize|preRotate|preRotateX|preRotateY|preRotateZ|preScale|preTranslate|qCompA|qorthog|quatArrayToEulerArray|quatToEuler|quatToEuler2|rotate|rotateX|rotateXMatrix|rotateY|rotateYMatrix|rotateYPRMatrix|rotateZ|rotateZMatrix|scale|scaleMatrix|slerp|squad|squadrev|transform|translate|transMatrix|xformMat|zero|Intersects|transpose|clear|setSize|contains|rectify|empty|isEmpty|move)\\b"
 				},
 				{
 					"name": "support.function.array.mxs",
-					"match": "(?xi)(?<![.$])(?:amax|amin|append|appendIfUnique|bsearch|deepCopy|deleteItem|findItem|insertItem|join|makeUniqueArray|qsort|sort)\\b"
+					"match": "(?xi)(?<![.$])\\b(?:amax|amin|append|appendIfUnique|bsearch|deepCopy|deleteItem|findItem|insertItem|join|makeUniqueArray|qsort|sort)\\b"
 				},
 				{
 					"name": "support.function.string.mxs",
-					"match": "(?xi)(?<![.$])(?:filterString|findString|GetTextExtent|matchPattern|replace|replace_CRLF_with_LF|replace_LF_with_CRLF|stricmp|substituteString|substring|toLower|toUpper)\\b"
+					"match": "(?xi)(?<![.$])\\b(?:filterString|findString|GetTextExtent|matchPattern|replace|replace_CRLF_with_LF|replace_LF_with_CRLF|stricmp|substituteString|substring|toLower|toUpper)\\b"
 				},
 				{
 					"name": "support.function.generic.mxs",
-					"match": "(?xi)(?<![.$])(?:copy|free|execute|delete|select|deselect|isDeleted|print|format)\\b"
+					"match": "(?xi)(?<![.$])\\b(?:copy|free|execute|delete|select|deselect|isDeleted|print|format)\\b"
 				}
 			]
 		}
