@@ -60,7 +60,8 @@ function mxsSimpleTextEditFormatter(document: TextDocument | string, action: Sim
 		let prevLine: number = 1;
 
 		// token stream. if this fail will throw an error
-		let tokenizedSource: moo.Token[] = mxsTokenizer(source, undefined, mxsFormatterLexer);
+		let tokenizedSource: moo.Token[] = mxsTokenizer(source, undefined, mxsFormatterLexer());
+
 		// return if no results
 		if (tokenizedSource && !tokenizedSource.length) { reject(edits); }
 		// add to results
