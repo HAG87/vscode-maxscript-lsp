@@ -446,11 +446,11 @@
 					]
 				},
 				{
-					"name": "variable.other.name.mxs",
+					"name": "variable.identifier.name.mxs",
 					"match": "(#)(\\w+)\\b"
 				},
 				{
-					"name": "variable.other.name.quoted.mxs",
+					"name": "variable.identifier.name.quoted.mxs",
 					"match": "(#)(?:('[^']*')|(\\w+))\\b"
 				}
 			]
