@@ -7,7 +7,6 @@ import
 {
 	commands,
 	ExtensionContext,
-	languages,
 	workspace,
 	window,
 } from 'vscode';
@@ -19,9 +18,8 @@ import
 	ServerOptions,
 	TransportKind,
 	RequestType
-} from 'vscode-languageclient';
+} from 'vscode-languageclient/node';
 //------------------------------------------------------------------------------------------
-import * as mxsSemantics from './mxsSemantics';
 import mxsHelp from './mxsHelp';
 //------------------------------------------------------------------------------------------
 let client: LanguageClient;
@@ -160,19 +158,6 @@ export function activate(context: ExtensionContext)
 				await client.sendRequest(PrettifyDocRequest.type, params);
 			})
 	);
-	//------------------------------------------------------------------------------------------
-	// FEATURES IMPLEMENTED IN CLIENT...
-	let mxsConfig = (workspace.getConfiguration('MaxScript'));
-
-	// semantics
-	if (mxsConfig.get('language.semantics', true)) {
-		context.subscriptions.push(
-			languages.registerDocumentSemanticTokensProvider(
-				MXS_DOC.language!,
-				new mxsSemantics.mxsDocumentSemanticTokensProvider(),
-				mxsSemantics.legend
-			));
-	}
 	//------------------------------------------------------------------------------------------
 	// Start the client. This will also launch the server
 	client.start();
