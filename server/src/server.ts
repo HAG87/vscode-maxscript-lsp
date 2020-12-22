@@ -137,7 +137,7 @@ connection.onInitialized(() =>
 			legend: semanticTokensProvider.legend!,
 			range: false,
 			full: {
-				delta: false
+				delta: true
 			}
 		};
 		connection.client.register(SemanticTokensRegistrationType.type, registrationOptions);
@@ -360,6 +360,14 @@ connection.languages.semanticTokens.on((params) =>
 		return { data: [] };
 	}
 	return semanticTokensProvider.provideSemanticTokens(document);
+});
+
+connection.languages.semanticTokens.onDelta((params) => {
+	const document = documents.get(params.textDocument.uri);
+	if (document === undefined) {
+		return { edits: [] };
+	}
+	return semanticTokensProvider.provideDeltas(document, params.textDocument.uri);
 });
 //------------------------------------------------------------------------------------------
 /* Commands */

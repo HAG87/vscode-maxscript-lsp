@@ -209,4 +209,21 @@ export class mxsSemanticTokens
 		});
 		return builder.build();
 	}
+
+	provideDeltas(document: TextDocument, resultsId: string)
+	{
+		const builder = this.getTokenBuilder(document);
+		builder.previousResult(resultsId);
+		this.tokenizeDocument(document.getText()).forEach((token) =>
+		{
+			builder.push(
+				token.line,
+				token.startCharacter,
+				token.length,
+				token.tokenType,
+				token.tokenModifiers
+			);
+		});
+		return builder.buildEdits();
+	}
 }
