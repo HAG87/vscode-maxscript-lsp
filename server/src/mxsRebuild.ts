@@ -3,7 +3,7 @@
 // import * as path from 'path';
 // import { Worker } from 'worker_threads';
 import { spawn, Thread, Worker } from 'threads';
-import { ReflowOptions } from './lib/mxsReflow';
+import { reflowOptions } from './lib/mxsReflow';
 //--------------------------------------------------------------------------------
 /*
 //@ts-ignore
@@ -86,7 +86,7 @@ export async function prettyData(data: unknown | unknown[] | string, settings?: 
 	});
 }
 */
-export async function prettyData(data: unknown | unknown[] | string, settings?: Partial<ReflowOptions>)
+export async function prettyData(data: unknown | unknown[] | string, settings?: Partial<reflowOptions>)
 {
 	let prettyData = await spawn(new Worker('./workers/reflow.worker'));
 	try {
