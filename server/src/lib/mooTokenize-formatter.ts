@@ -18,10 +18,10 @@ export const mxsFormatterLexer = (keywords:keywordsMap = keywordsDB) => moo.comp
 	],
 	// whitespace -  also matches line continuations
 	ws: { match: /(?:[ \t]+|(?:[\\][ \t\r\n]+))/, lineBreaks: true },
-	nl: { match: /(?:[\r\n]+)/, lineBreaks: true },
+	newline: { match: /(?:[\r\n]+)/, lineBreaks: true },
 	
 	// Identities
-	param: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*:/,
+	parameter: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[ \t]*\:[^:])/,
 	name: [
 		{ match: /#[A-Za-z0-9_]+\b/ },
 		{ match: /#'[A-Za-z0-9_]+'/ },
@@ -29,9 +29,7 @@ export const mxsFormatterLexer = (keywords:keywordsMap = keywordsDB) => moo.comp
 	locale: { match: /~[A-Za-z0-9_]+~/ },
 	path: { match: /\$(?:(?:[A-Za-z0-9_*?\/]|\.{3}|\\\\)+|'(?:[^'\n\r])+')?/},
 	property: { match: /(?<=\.)[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/ },
-	parameter: { match: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[ \t]*\:[^:])/ },
 	identity: [
-		
 		{ match: /'(?:\\['\\rn]|[^'\\\n])*'/},
 		{ match: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/},
 		{
@@ -39,12 +37,27 @@ export const mxsFormatterLexer = (keywords:keywordsMap = keywordsDB) => moo.comp
 			type: caseInsensitiveKeywords(keywords)
 		}
 	],
-	// Values
+	
 	time: [
 		{ match: /(?:[-]?(?:[0-9]+\.)?[0-9]+[msft])+/},
 		{ match: /(?:[-]?(?:[0-9]+\.)[0-9]*[msft])+/},
 		{ match: /[0-9]+[:][0-9]+\.[0-9]*/}
 	],
+
+	// Parens
+	arraydef: /#[ \t]*\(/,
+	bitarraydef: /#[ \t]*\{/,
+	emptyparens: {match: /\([ \t]*\)/, lineBreaks: false},
+	lparen: '(',
+	rparen: ')',
+	emptybracket: {match: /\[[ \t]*\]/, lineBreaks: false},
+	lbracket: '[',
+	rbracket: ']',
+	lbrace: '{',
+	rbrace: '}',
+	
+	// Values
+	bitrange: '..',
 	number: [
 		{ match: /0[xX][0-9a-fA-F]+/},
 		{ match: /(?:[-]?[0-9]*)[.](?:[0-9]+(?:[eEdD][+-]?[0-9]+)?)/},
@@ -52,35 +65,24 @@ export const mxsFormatterLexer = (keywords:keywordsMap = keywordsDB) => moo.comp
 		{ match: /[-]?[0-9]+(?:[LP]|[eEdD][+-]?[0-9]+)?/},
 		{ match: /(?:(?<!\.)[-]?\.[0-9]+(?:[eEdD][+-]?[0-9]+)?)/}
 	],
+	// unaryminus: {match: /(?<=[^\w)-])-(?![-])/},
+	// Operators
 	unaryminus: [
 		// preceded by WS and suceeded by non WS
 		{ match: /(?<=[\s\t\n\r])[-](?![\s\t])/},
 		// preceded by an operator and WS
 		{ match: /(?<=['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='][\s\t]*)[-]/}
 	],
-	// Parens
-	arraydef: /#[ \t]*\(/,
-	bitarraydef: /#[ \t]*\{/,
-	emptyparens: {match: /\([\s\t]*\)/, lineBreaks: false},
-	lparen: /\(/,
-	rparen: /\)/,
-	emptybracket: {match: /\[\]/, lineBreaks: false},
-	lbracket: /\[/,
-	rbracket: /\]/,
-	lbrace: /\{/,
-	rbrace: /\}/,
-	// Operators
-	bitrange: '..',
 	operator: ['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='],
+
 	// Delimiters
-	assign: /\:/,
+	assign: /(?<!:)\:(?!:)/,
 	delimiter: '.',
 	sep: ',',
 	statement: ';',
 	// This contains the rest of the stack in case of error.
 	error: [
-		{ match: /[¿¡!`´]/},
+		{ match: /[¿¡!`´]/, error: true },
 		{ match: /[/?\\]{2,}/}
 	],
-	fatalError: moo.error
 });
