@@ -1,10 +1,13 @@
 'use strict';
 //-----------------------------------------------------------------------------------
-class reflowOptions {
-	constructor(spacer, linebreak, indent) {
-		this.indent = indent || '\t';
-		this.spacer = spacer || ' ';
-		this.linebreak = linebreak || '\n';
+// options....
+class reflowOptions
+{
+	constructor(spacer, linebreak, indent)
+	{
+		this.indent = indent ?? '\t';
+		this.spacer = spacer ?? ' ';
+		this.linebreak = linebreak ?? '\n';
 		this.wrapIdentities = false,
 		this.elements = {
 			useLineBreaks: true
@@ -19,7 +22,8 @@ class reflowOptions {
 		};
 		this.indentAt = new RegExp(`${this.linebreak}`, 'g');
 	}
-	reset() {
+	reset()
+	{
 		this.indent = '\t';
 		this.spacer = ' ';
 		this.linebreak = '\n';
@@ -38,26 +42,212 @@ class reflowOptions {
 		this.indentAt = new RegExp(`${this.linebreak}`, 'g');
 	}
 }
-let options = new reflowOptions();
+const options = new reflowOptions();
+//-----------------------------------------------------------------------------------
+function optionalWS(values, empty = '', ws = ' ')
+{
+	// at the end
+	let w_ = /\w$/im;
+	let s_ = /\W$/im;
+	let m_ = /-$/im;
+	let d_ = /\d$/im;
+	let c_ = /\:$/im;
+	// at the start
+	let _w = /^\w/im;
+	let _s = /^\W/im;
+	let _m = /^-/im;
+	let _d = /^\d/im;
+	let _c = /^\:/im;
+
+	let res = values.reduce((acc, curr) =>
+	{
+		if (
+			// alpha - alpha
+			w_.test(acc) && _w.test(curr)
+			// minus - minus
+			|| m_.test(acc) && _m.test(curr)
+			// alpha - minus
+			|| w_.test(acc) && _m.test(curr)
+			// minus - alpha
+			// || m_.test(acc) && _w.test(curr)
+			// number - colon
+			|| d_.test(acc) && _c.test(curr)
+			// colon - number
+			// || c_.test(acc) && _d.test(curr)
+		) {
+			return (acc + ws + curr);
+		} else {
+			return (acc + empty + curr);
+		}
+	});
+	return res;
+}
+// Objects to construct the codeMap...EXPTESSION | STATEMENT | ELEMENTS | CODEBLOCK
+// join elems with WS, one line:
+// statement
+class Statement
+{
+	constructor(...args)
+	{
+		this.type = 'statement';
+		this.value = [];
+		this.optionalWhitespace = false;
+		this.addLinebreaks = true;
+		this.add(...args);
+	}
+
+	get toString()
+	{
+		if (!options.statements.optionalWhitespace && !this.optionalWhitespace) {
+			let res = this.value.reduce((acc, curr) =>
+			{
+				if (curr.includes(options.linebreak) && this.addLinebreaks) {
+					return acc + options.linebreak + curr;
+				} else {
+					return acc + options.spacer + curr;
+				}
+			});
+			return res;
+		} else {
+			return optionalWS(this.value);
+		}
+	}
+
+	add(...value)
+	{
+		this.value = this.value.concat(...value.filter(e => e != null));
+	}
+}
+// join elemns with NL.. block of code
+//block
+class Codeblock
+{
+	constructor(...args)
+	{
+		this.type = 'codeblock';
+		this.value = [];
+		this.indent = false;
+		this.wrapped = false;
+		this.add(...args);
+		// this.indentPattern
+	}
+
+	get toString()
+	{
+		// test for linebreaks...
+		// pass
+		let pass = true;
+		if (Array.isArray(this.value)) {
+			pass = this.value.length > 1 || (this.value[0] && this.value[0].includes(options.linebreak));
+		}
+		if (this.wrapped) {
+			if (options.codeblock.newlineAtParens && pass) {
+				let res = [].concat('(', this.value).join(options.linebreak);
+				if (this.indent) {
+					res = res.replace(options.indentAt, `${options.linebreak}${options.indent}`);
+				}
+				res = res.concat(options.linebreak, ')');
+				return res;
+			} else {
+				return options.codeblock.spaced
+					? `(${options.spacer}${this.value.join(options.linebreak)}${options.spacer})`
+					: `(${this.value.join(options.linebreak)})`;
+			}
+		} else if (options.codeblock.newlineAllways/* pass */) {
+			let res = this.value.join(options.linebreak);
+			if (this.indent) {
+				res = res.replace(options.indentAt, `${options.linebreak}${options.indent}`);
+			}
+			return res;
+		} else {
+			return options.codeblock.spaced
+				? this.value.join(options.spacer)
+				: optionalWS(this.value);
+		}
+	}
+
+	add(...value)
+	{
+		if (value[0] != null) {
+			this.value = this.value.concat(...value.filter(e => e != null));
+		}
+	}
+}
+//list
+// join elems with ',' list of items
+class Elements
+{
+	constructor(...args)
+	{
+		this.listed = false;
+		this.type = 'elements';
+		this.value = [];
+		this.indent = false;
+		this.add(...args);
+	}
+
+	get toString()
+	{
+		if (this.listed && options.elements.useLineBreaks) {
+			let res = this.value.join(',' + options.linebreak);
+			if (this.indent) {
+				res = res.replace(options.indentAt, `${options.linebreak}${options.indent}`);
+			}
+			return res;
+		} else {
+			return this.value.join(',' + options.spacer);
+		}
+	}
+
+	add(...value)
+	{
+		if (value[0] != null) {
+			this.value = this.value.concat(...value.filter(e => e != null));
+		}
+	}
+}
+// expressions
+class Expr
+{
+	constructor(...args)
+	{
+		this.type = 'expr';
+		this.value = [];
+		this.add(...args);
+	}
+
+	get toString()
+	{
+		return this.value.join('');
+	}
+
+	add(...value)
+	{
+		this.value = this.value.concat(...value.filter(e => e != null));
+	}
+}
 //-----------------------------------------------------------------------------------
 /**
  * Check if value is node
  * @param {any} node CST node
  */
-function isNode(node) {
+function isNode(node)
+{
 	return (typeof node === 'object' && node != undefined);
 }
 /**
  * filter nodes by type property
  * @param {any} node CST node
  */
-function getNodeType(node) {
+function getNodeType(node)
+{
 	return ('type' in node) ? node.type : undefined;
 }
 /**
  * Apply node transform to PARENT KEY!
  */
-function editNode(callback, node, parent, key, level, index) {
+function editNode(callback, node, parent, key, level, index)
+{
 	let res = callback(node, parent, key, level, index);
 	// apply indentation to hig-level rules
 	// if (isNode(res) && 'indent' in res) { res.indent = level; }
@@ -76,8 +266,10 @@ function removeNode(node, parent, key, index) {
  * @param {any} tree CST node
  * @param {any} callbackMap Patterns function
  */
-function derive(tree, callbackMap) {
-	function _visit(node, parent, key, level, index) {
+function derive(tree, callbackMap)
+{
+	function _visit(node, parent, key, level, index)
+	{
 		const nodeType = getNodeType(node);
 		// get the node keys
 		const keys = Object.keys(node);
@@ -113,8 +305,10 @@ function derive(tree, callbackMap) {
  * Visit and derive Code from a recoverable code map
  * @param {any} tree CodeMap node
  */
-function reduce(tree) {
-	function _visit(node, parent, key, level, index) {
+function reduce(tree)
+{
+	function _visit(node, parent, key, level, index)
+	{
 		const keys = Object.keys(node);
 		for (let i = 0; i < keys.length; i++) {
 			let key = keys[i];
@@ -138,7 +332,9 @@ function reduce(tree) {
 		} else {
 			res = node;
 		}
-		index != null ? parent[key][index] = res : parent[key] = res;
+		if (key) {
+			index != null ? parent[key][index] = res : parent[key] = res;
+		}
 	}
 	_visit(tree, tree, null, 0, null);
 }
@@ -168,169 +364,7 @@ function wrapInParens(node, key) {
 	];
 }
 */
-function optionalWS(values, empty = '', ws = ' ') {
-	// at the end
-	let w_ = /\w$/im;
-	let s_ = /\W$/im;
-	let m_ = /-$/im;
-	let d_ = /\d$/im;
-	let c_ = /\:$/im;
-	// at the start
-	let _w = /^\w/im;
-	let _s = /^\W/im;
-	let _m = /^-/im;
-	let _d = /^\d/im;
-	let _c = /^\:/im;
 
-	let res = values.reduce((acc, curr) => {
-		if (
-			// alpha - alpha
-			w_.test(acc) && _w.test(curr)
-			// minus - minus
-			|| m_.test(acc) && _m.test(curr)
-			// alpha - minus
-			|| w_.test(acc) && _m.test(curr)
-			// minus - alpha
-			// || m_.test(acc) && _w.test(curr)
-			// number - colon
-			|| d_.test(acc) && _c.test(curr)
-			// colon - number
-			// || c_.test(acc) && _d.test(curr)
-		) {
-			return (acc + ws + curr);
-		} else {
-			return (acc + empty + curr);
-		}
-	});
-	return res;
-}
-//-----------------------------------------------------------------------------------
-// Objects to construct the codeMap...EXPTESSION | STATEMENT | ELEMENTS | CODEBLOCK
-// join elems with WS, one line:
-class statement {
-	constructor(...args) {
-		this.type = 'statement';
-		this.value = [];
-		this.add(...args);
-		this.optionalWhitespace = false;
-		this.addLinebreaks = true;
-	}
-
-	get toString() {
-		if (!options.statements.optionalWhitespace && !this.optionalWhitespace) {
-			let res = this.value.reduce((acc, curr) => {
-				if (curr.includes(options.linebreak) && this.addLinebreaks) {
-					return acc + options.linebreak + curr;
-				} else {
-					return acc + options.spacer + curr;
-				}
-			});
-			return res;
-		} else {
-			return optionalWS(this.value);
-		}
-	}
-
-	add(...value) {
-		this.value = this.value.concat(...value.filter(e => e != null));
-	}
-}
-// join elemns with NL.. block of code
-//block
-class codeblock {
-	constructor(...args) {
-		this.type = 'codeblock';
-		this.value = [];
-		this.add(...args);
-		this.indent = false;
-		this.wrapped = false;
-		// this.indentPattern
-	}
-
-	get toString() {
-		// test for linebreaks...
-		// pass
-		let pass = true;
-		if (Array.isArray(this.value)) {
-			pass = this.value.length > 1 || (this.value[0] && this.value[0].includes(options.linebreak));
-		}
-		if (this.wrapped) {
-			if (options.codeblock.newlineAtParens && pass) {
-				let res = [].concat('(', this.value).join(options.linebreak);
-				if (this.indent) {
-					res = res.replace(options.indentAt, `${options.linebreak}${options.indent}`);
-				}
-				res = res.concat(options.linebreak, ')');
-				return res;
-			} else {
-				return options.codeblock.spaced
-					? `(${options.spacer}${this.value.join(options.linebreak)}${options.spacer})`
-					: `(${this.value.join(options.linebreak)})`;
-			}
-		} else if (options.codeblock.newlineAllways/* pass */) {
-			let res =  this.value.join(options.linebreak);
-			if (this.indent) {
-				res = res.replace(options.indentAt, `${options.linebreak}${options.indent}`);
-			}
-			return res;
-		} else {
-			return options.codeblock.spaced
-				? this.value.join(options.spacer)
-				: optionalWS(this.value);
-		}
-	}
-
-	add(...value) {
-		if (value[0] != null) {
-			this.value = this.value.concat(...value.filter(e => e != null));
-		}
-	}
-}
-//list
-// join elems with ',' list of items
-class elements {
-	constructor(...args) {
-		this.listed = false;
-		this.type = 'elements';
-		this.value = [];
-		this.add(...args);
-		this.indent = false;
-	}
-
-	get toString() {
-		if (this.listed && options.elements.useLineBreaks) {
-			let res = this.value.join(',' + options.linebreak);
-			if (this.indent) {
-				res = res.replace(options.indentAt, `${options.linebreak}${options.indent}`);
-			}
-			return res;
-		} else {
-			return this.value.join(',' + options.spacer);
-		}
-	}
-
-	add(...value) {
-		if (value[0] != null) {
-			this.value = this.value.concat(...value.filter(e => e != null));
-		}
-	}
-}
-// expressions
-class expr {
-	constructor(...args) {
-		this.type = 'expr';
-		this.value = [];
-		this.add(...args);
-	}
-
-	get toString() {
-		return this.value.join('');
-	}
-
-	add(...value) {
-		this.value = this.value.concat(...value.filter(e => e != null));
-	}
-}
 //-----------------------------------------------------------------------------------
 /**
  * Token transformations
@@ -421,23 +455,26 @@ let conversionRules = {
 	Literal(node) { return node.value; },
 	Identifier(node) { return options.wrapIdentities ? `'${node.value}'` : node.value; },
 	EmptyParens() { return '()'; },
-	Parameter(node) { return new expr(node.value, ':'); },
-	BitRange(node) { return new expr(node.start, '..', node.end); },
+	Parameter(node) { return new Expr(node.value, ':'); },
+	BitRange(node) { return new Expr(node.start, '..', node.end); },
 	//-------------------------------------------------------------------------------------------
 	// DECLARATION
-	Declaration(node) {
-		return new statement(node.id, node.operator, node.value);
+	Declaration(node)
+	{
+		return new Statement(node.id, node.operator, node.value);
 	},
 	// Types
-	ObjectArray(node) {
-		let res = new expr('#(');
+	ObjectArray(node)
+	{
+		let res = new Expr('#(');
 		if (isArrayUsed(node.elements)) {
-			let elems = new elements();
+			let elems = new Elements();
 			node.elements.forEach(
-				e => {
+				e =>
+				{
 					// just to be safe, it should be reduced by now...
 					if (isArrayUsed(e)) {
-						let body =	new codeblock(...e);
+						let body = new Codeblock(...e);
 						body.indent = true;
 						elems.add(body);
 					} else {
@@ -452,18 +489,20 @@ let conversionRules = {
 
 		return res;
 	},
-	ObjectBitArray(node) {
-		let res = new expr('#{');
+	ObjectBitArray(node)
+	{
+		let res = new Expr('#{');
 
 		if (isArrayUsed(node.elements)) {
-			let elems = new elements();
+			let elems = new Elements();
 			node.elements.forEach(
-				e => {
+				e =>
+				{
 					// just to be safe, it should be reduced by now...
 					if (isArrayUsed(e)) {
-						let body = new codeblock(...e);
+						let body = new Codeblock(...e);
 						body.indent = true;
-						elems.add( body);
+						elems.add(body);
 					} else if (isNotEmpty(e)) {
 						elems.add(e);
 					}
@@ -476,46 +515,52 @@ let conversionRules = {
 
 		return res;
 	},
-	ObjectPoint4(node) {
-		return new expr(
+	ObjectPoint4(node)
+	{
+		return new Expr(
 			'[',
-			new elements(...node.elements),
+			new Elements(...node.elements),
 			']'
 		);
 	},
-	ObjectPoint3(node) {
-		return new expr(
+	ObjectPoint3(node)
+	{
+		return new Expr(
 			'[',
-			new elements(...node.elements),
+			new Elements(...node.elements),
 			']'
 		);
 	},
-	ObjectPoint2(node) {
-		return new expr(
+	ObjectPoint2(node)
+	{
+		return new Expr(
 			'[',
-			new elements(...node.elements),
+			new Elements(...node.elements),
 			']'
 		);
 	},
 	// Accesors
-	AccessorIndex(node) {
-		return new expr(
+	AccessorIndex(node)
+	{
+		return new Expr(
 			node.operand,
 			'[',
 			node.index,
 			']'
 		);
 	},
-	AccessorProperty(node) {
-		return new expr(
+	AccessorProperty(node)
+	{
+		return new Expr(
 			node.operand,
 			'.',
 			node.property
 		);
 	},
 	// Call
-	CallExpression(node) {
-		let res = new statement(
+	CallExpression(node)
+	{
+		let res = new Statement(
 			node.calle,
 			...toArray(node.args)
 		);
@@ -527,24 +572,27 @@ let conversionRules = {
 		return res;
 	},
 	// Assign
-	ParameterAssignment(node) {
-		let res = new statement(
+	ParameterAssignment(node)
+	{
+		let res = new Statement(
 			node.param,
 			node.value,
 		);
 		res.addLinebreaks = false;
 		return res;
 	},
-	AssignmentExpression(node) {
-		return new statement(
+	AssignmentExpression(node)
+	{
+		return new Statement(
 			node.operand,
 			node.operator,
 			node.value
 		);
 	},
 	// Functions
-	Function(node) {
-		let stat = new statement(
+	Function(node)
+	{
+		let stat = new Statement(
 			node.modifier,
 			node.keyword,
 			node.id,
@@ -552,25 +600,27 @@ let conversionRules = {
 			...toArray(node.params),
 			'='
 		);
-		let res = new codeblock(
+		let res = new Codeblock(
 			stat,
 			...toArray(node.body)
 		);
 		res.indent = false;
 		return res;
 	},
-	FunctionReturn(node) {
-		return new statement(
+	FunctionReturn(node)
+	{
+		return new Statement(
 			'return',
 			node.body || ';'
 		);
 	},
 	// Declarations
-	VariableDeclaration(node) {
+	VariableDeclaration(node)
+	{
 		let decls;
 		if (isArrayUsed(node.decls)) {
 			if (node.decls.length > 1) {
-				decls = new elements(...node.decls);
+				decls = new Elements(...node.decls);
 				decls.listed = true;
 			} else {
 				decls = node.decls;
@@ -579,7 +629,7 @@ let conversionRules = {
 			decls = [node.decls];
 		}
 
-		let res = new statement(
+		let res = new Statement(
 			node.modifier,
 			node.scope,
 			...toArray(decls)
@@ -588,31 +638,35 @@ let conversionRules = {
 	},
 	// SIMPLE EXPRESSIONS - OK
 	// TODO: This will need and exeption for --
-	MathExpression(node) {
-		return new statement(
+	MathExpression(node)
+	{
+		return new Statement(
 			node.left,
 			node.operator,
 			node.right
 		);
 	},
-	LogicalExpression(node) {
-		return new statement(
+	LogicalExpression(node)
+	{
+		return new Statement(
 			node.left,
 			node.operator,
 			node.right
 		);
 	},
 	// TODO: This will need and exeption for --
-	UnaryExpression(node) {
-		return new expr(
+	UnaryExpression(node)
+	{
+		return new Expr(
 			node.operator,
 			node.right
 		);
 	},
 	// STATEMENTS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-	BlockStatement(node) {
+	BlockStatement(node)
+	{
 		// /*
-		let res = new codeblock(...toArray(node.body));
+		let res = new Codeblock(...toArray(node.body));
 		res.wrapped = true;
 		res.indent = true;
 		return res;
@@ -626,9 +680,10 @@ let conversionRules = {
 		return res;
 		*/
 	},
-	IfStatement(node) {
+	IfStatement(node)
+	{
 		let res;
-		let stat = new statement(
+		let stat = new Statement(
 			'if',
 			node.test,
 			node.operator,
@@ -636,7 +691,7 @@ let conversionRules = {
 		);
 
 		if (node.consequent.type === 'codeblock') {
-			res = new codeblock(
+			res = new Codeblock(
 				stat,
 				node.consequent
 			);
@@ -651,7 +706,7 @@ let conversionRules = {
 			if (node.alternate) {
 				if (node.alternate.type === 'codeblock') {
 					stat.add('else');
-					res = new codeblock(stat, node.alternate);
+					res = new Codeblock(stat, node.alternate);
 				} else {
 					stat.add('else', node.alternate);
 					res = stat;
@@ -662,38 +717,41 @@ let conversionRules = {
 		}
 		return res;
 	},
-	TryStatement(node) {
-		let test = new statement(
+	TryStatement(node)
+	{
+		let test = new Statement(
 			'try',
 			...toArray(node.body)
 		);
-		let catcher = new statement(
+		let catcher = new Statement(
 			'catch',
 			node.finalizer
 		);
-		let res = new codeblock(
+		let res = new Codeblock(
 			test,
 			catcher
 		);
 		return res;
 	},
-	DoWhileStatement(node) {
-		let stat = new statement(
+	DoWhileStatement(node)
+	{
+		let stat = new Statement(
 			'do',
 			...toArray(node.body),
 		);
-		let test = new statement(
+		let test = new Statement(
 			'while',
 			node.test
 		);
-		let res = new codeblock(
+		let res = new Codeblock(
 			stat,
 			test,
 		);
 		return res;
 	},
-	WhileStatement(node) {
-		let res = new statement(
+	WhileStatement(node)
+	{
+		let res = new Statement(
 			'while',
 			node.test,
 			'do',
@@ -701,9 +759,10 @@ let conversionRules = {
 		);
 		return res;
 	},
-	ForStatement(node) {
+	ForStatement(node)
+	{
 		let res;
-		let stat = new statement(
+		let stat = new Statement(
 			'for',
 			node.variable,
 			node.iteration,
@@ -713,24 +772,26 @@ let conversionRules = {
 			// ...toArray(node.body)
 		);
 		if (node.body.type === 'codeblock') {
-			res = new codeblock(stat, ...toArray(node.body));
+			res = new Codeblock(stat, ...toArray(node.body));
 		} else {
 			stat.add(...toArray(node.body));
 			res = stat;
 		}
 		return res;
 	},
-	ForLoopSequence(node) {
+	ForLoopSequence(node)
+	{
 		let _to = isNotEmpty(node.to) ? ['to', ...toArray(node.to)] : null;
 		let _by = isNotEmpty(node.by) ? ['by', ...toArray(node.by)] : null;
 		let _while = isNotEmpty(node.while) ? ['while', ...toArray(node.while)] : null;
 		let _where = isNotEmpty(node.where) ? ['where', ...toArray(node.where)] : null;
 
 		let stats = [].concat(_to, _by, _while, _where).filter(e => e != null);
-		return new statement(...stats);
+		return new Statement(...stats);
 	},
-	LoopExit(node) {
-		let res = new statement('exit');
+	LoopExit(node)
+	{
+		let res = new Statement('exit');
 		if (node.body) {
 			res.add(
 				'with',
@@ -741,22 +802,24 @@ let conversionRules = {
 		}
 		return res;
 	},
-	CaseStatement(node) {
-		let stat = new statement(
+	CaseStatement(node)
+	{
+		let stat = new Statement(
 			'case',
 			node.test,
 			'of'
 		);
-		let body = new codeblock(...toArray(node.cases));
+		let body = new Codeblock(...toArray(node.cases));
 		body.wrapped = true;
 		body.indent = true;
-		return new codeblock(
+		return new Codeblock(
 			stat,
 			body
 		);
 	},
-	CaseClause(node) {
-		let res = new statement(
+	CaseClause(node)
+	{
+		let res = new Statement(
 			node.case,
 			':',
 			...toArray(node.body)
@@ -765,32 +828,36 @@ let conversionRules = {
 		return res;
 	},
 	// context expressions
-	ContextStatement(node) {
-		return new statement(
+	ContextStatement(node)
+	{
+		return new Statement(
 			node.context,
 			node.body
 		);
 	},
-	ContextExpression(node) {
-		return new statement(
+	ContextExpression(node)
+	{
+		return new Statement(
 			node.prefix,
 			node.context,
 			...toArray(node.args)
 		);
 	},
 	// Struct >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-	Struct(node, parent) {
-		let stat = new statement(
+	Struct(node, parent)
+	{
+		let stat = new Statement(
 			'struct',
 			node.id
 		);
-		let body = new codeblock();
+		let body = new Codeblock();
 		body.wrapped = true;
 		body.indent = true;
 		if (isArrayUsed(node.body)) {
 			// handle struct members...
 			let stack;
-			node.body.forEach(e => {
+			node.body.forEach(e =>
+			{
 				// test for structScope
 				if (typeof e === 'string' && /(?:private|public)$/mi.test(e)) {
 					if (stack) {
@@ -802,7 +869,7 @@ let conversionRules = {
 					body.add(e);
 				} else {
 					if (!stack) {
-						stack = new elements(e);
+						stack = new Elements(e);
 						stack.listed = true;
 					} else {
 						stack.add(e);
@@ -814,123 +881,131 @@ let conversionRules = {
 		} else if (isNotEmpty(node.body)) {
 			body.add(node.body);
 		}
-		let res = new codeblock(stat, body); 
+		let res = new Codeblock(stat, body);
 		return res;
 	},
 	StructScope(node) { return node.value; },
 	// StructScope: wrap(nodeValue);
 	//-------------------------------------------------------------------------
 	// Plugin
-	EntityPlugin(node) {
-		let stat = new statement(
+	EntityPlugin(node)
+	{
+		let stat = new Statement(
 			'plugin',
 			node.superclass,
 			node.class,
 			...toArray(node.params)
 		);
-		let body = new codeblock(...toArray(node.body));
+		let body = new Codeblock(...toArray(node.body));
 		body.wrapped = true;
 		body.indent = true;
-		let res = new codeblock(
+		let res = new Codeblock(
 			stat,
 			body
 		);
 		return res;
 	},
-	EntityPlugin_params(node) {
-		let stat = new statement(
+	EntityPlugin_params(node)
+	{
+		let stat = new Statement(
 			'parameters',
 			node.id,
 			...toArray(node.params)
 		);
-		let body = new codeblock(...toArray(node.body));
+		let body = new Codeblock(...toArray(node.body));
 		body.wrapped = true;
 		body.indent = true;
-		return new codeblock(
+		return new Codeblock(
 			stat,
 			body
 		);
 	},
-	PluginParam(node) {
-		return new statement(
+	PluginParam(node)
+	{
+		return new Statement(
 			node.id,
 			...toArray(node.params)
 		);
 	},
 	// Tool
-	EntityTool(node) {
-		let decl = new statement(
+	EntityTool(node)
+	{
+		let decl = new Statement(
 			'tool',
 			node.id,
 			...toArray(node.params)
 		);
-		let body = new codeblock(...toArray(node.body));
+		let body = new Codeblock(...toArray(node.body));
 		body.wrapped = true;
 		body.indent = true;
-		return new codeblock(
+		return new Codeblock(
 			decl,
 			body
 		);
 	},
 	// MacroScript
-	EntityMacroscript(node) {
-		let decl = new statement(
+	EntityMacroscript(node)
+	{
+		let decl = new Statement(
 			'macroScript',
-			node.id,
-			node.title,
+			node.id
 		);
-		let body = new codeblock(...toArray(node.body));
+		let body = new Codeblock(...toArray(node.body));
 		body.wrapped = true;
 		body.indent = true;
-		return new codeblock(
+		return new Codeblock(
 			decl,
 			...toArray(node.params),
 			body
 		);
 	},
 	// Utility - Rollout
-	EntityUtility(node) {
-		let decl = new statement(
+	EntityUtility(node)
+	{
+		let decl = new Statement(
 			'utility',
 			node.id,
 			node.title,
 			...toArray(node.params)
 		);
-		let body = new codeblock(...toArray(node.body));
+		let body = new Codeblock(...toArray(node.body));
 		body.wrapped = true;
 		body.indent = true;
-		return new codeblock(
+		return new Codeblock(
 			decl,
 			body
 		);
 	},
-	EntityRollout(node) {
-		let decl = new statement(
+	EntityRollout(node)
+	{
+		let decl = new Statement(
 			'rollout',
 			node.id,
 			node.title,
 			...toArray(node.params)
 		);
-		let body = new codeblock(...toArray(node.body));
+		let body = new Codeblock(...toArray(node.body));
 		body.wrapped = true;
 		body.indent = true;
-		return new codeblock(
+		return new Codeblock(
 			decl,
 			body
 		);
 	},
-	EntityRolloutGroup(node) {
-		let body = new codeblock(...toArray(node.body));
+	EntityRolloutGroup(node)
+	{
+		let body = new Codeblock(...toArray(node.body));
 		body.wrapped = true;
 		body.indent = true;
-		let res = new codeblock(
-			new statement('group', node.id),
+		let res = new Codeblock(
+			new Statement('group', node.id),
 			body
 		);
 		return res;
 	},
-	EntityRolloutControl(node) {
-		return new statement(
+	EntityRolloutControl(node)
+	{
+		return new Statement(
 			node.class,
 			node.id,
 			node.text,
@@ -938,71 +1013,78 @@ let conversionRules = {
 		);
 	},
 	// rcMenu
-	EntityRcmenu(node) {
-		let body = new codeblock(...toArray(node.body));
+	EntityRcmenu(node)
+	{
+		let body = new Codeblock(...toArray(node.body));
 		body.wrapped = true;
 		body.indent = true;
-		return new codeblock(
-			new statement('rcmenu', node.id),
+		return new Codeblock(
+			new Statement('rcmenu', node.id),
 			body
 		);
 	},
-	EntityRcmenu_submenu(node) {
-		let stat = new statement(
+	EntityRcmenu_submenu(node)
+	{
+		let stat = new Statement(
 			'subMenu',
 			node.label,
 			...toArray(node.params)
 		);
-		let body = new codeblock(...toArray(node.body));
+		let body = new Codeblock(...toArray(node.body));
 		body.wrapped = true;
 		body.indent = true;
-		return new codeblock(
+		return new Codeblock(
 			stat,
 			body
 		);
 	},
-	EntityRcmenu_menuitem(node) {
-		return new statement(
+	EntityRcmenu_menuitem(node)
+	{
+		return new Statement(
 			'menuItem',
 			node.id,
 			node.label,
 			...toArray(node.params)
 		);
 	},
-	EntityRcmenu_separator(node) {
-		return new statement(
+	EntityRcmenu_separator(node)
+	{
+		return new Statement(
 			'separator',
 			node.id,
 			...toArray(node.params)
 		);
 	},
 	// Event
-	Event(node) {
-		let stat = new statement(
+	Event(node)
+	{
+		let stat = new Statement(
 			'on',
 			...toArray(node.args),
 			node.modifier
 		);
-		let res = new codeblock(
+		let res = new Codeblock(
 			stat,
 			node.body
 		);
 		return res;
 	},
-	EventArgs(node) {
-		return new statement(
+	EventArgs(node)
+	{
+		return new Statement(
 			node.target,
 			node.event,
 			...toArray(node.args)
 		);
 	},
-	WhenStatement(node) {
-		let stat = new statement(
+	WhenStatement(node)
+	{
+		let stat = new Statement(
 			'when',
 			...node.args.flat(),
 			'do'
 		);
-		let res = new codeblock(
+		let res = new Codeblock(
 			stat,
 			...toArray(node.body)
 		);
@@ -1010,7 +1092,8 @@ let conversionRules = {
 	},
 };
 //-----------------------------------------------------------------------------------
-function mxsReflow(cst) {
+function mxsReflow(cst)
+{
 	// derive code tree
 	derive(cst, conversionRules);
 	// reduce the tree. use options
