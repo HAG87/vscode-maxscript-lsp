@@ -30,7 +30,7 @@ export function isPositionInString(feed: string): boolean
  * find word before dot character, if any
  * @param line
  */
-export function precWord(line: string): string | undefined
+export function precWord(line: string)
 {
 	let pattern = /(\w+)\.$/g;
 	let wordmatches = pattern.exec(line);

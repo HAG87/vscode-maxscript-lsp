@@ -307,7 +307,7 @@ connection.onDocumentSymbol((params, cancelation) =>
 			.catch(
 				error =>
 				{
-					connection.window.showInformationMessage('MaxScript symbols provider fail:' + error.message);
+					connection.window.showInformationMessage('MaxScript symbols provider fail: ' + error.message);
 					diagnoseDocument(document, []);
 					resolve([]);
 				}
@@ -333,6 +333,7 @@ connection.onDefinition(async (params, cancellation) =>
 {
 
 	let settings = await getDocumentSettings(params.textDocument.uri);
+	console.log(params.textDocument.uri);
 	if (!settings.GoToDefinition) { return; }
 
 	// method 1: regex match the file
@@ -348,7 +349,7 @@ connection.onDefinition(async (params, cancellation) =>
 			// mxsDocumentSymbols.msxParser.parsedCST
 		);
 	} catch (err) {
-		// connection.console.log('MaxScript Definitions unhandled error: ' + err.message);
+		connection.console.log('MaxScript Definitions unhandled error: ' + err.message);
 		return [];
 	}
 });

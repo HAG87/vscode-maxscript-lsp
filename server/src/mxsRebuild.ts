@@ -33,7 +33,7 @@ export async function prettyData(data: unknown | unknown[] | string, settings?: 
 {
 	if (typeof data === 'string') {
 		let results = await parseSource(data);
-		if (results.result !== undefined) {
+		if (results.result) {
 			return prettyCode(results.result);
 		} else {
 			throw new Error('Parser failed.');

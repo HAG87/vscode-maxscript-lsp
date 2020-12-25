@@ -126,7 +126,7 @@ export async function deriveSymbolsTree(nodes: any | any[], documentRange: Range
 				selectionRange: loc
 				// children: []
 			};
-			parent.children != undefined ? parent.children.push(_node) : parent.children = [_node];
+			parent.children != null ? parent.children.push(_node) : parent.children = [_node];
 		} else {
 			_node = parent;
 		}

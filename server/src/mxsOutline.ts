@@ -94,7 +94,7 @@ export class mxsDocumentSymbolProvider
 	{
 		const documentSymbols = await spawn(new Worker('./workers/symbols.worker'));
 		try {
-			let source = document.getText();
+			const source = document.getText();
 			let loc = {
 				start: {
 					line: 0,
@@ -130,7 +130,7 @@ export class mxsDocumentSymbolProvider
 				.catch((error) =>
 				{
 					// show alert
-					// console.log('NOTWORKING!', error.message);
+					console.log('NOTWORKING!', error.message);
 					connection.window.showInformationMessage(`MaxScript: can't parse the code.\nCode minifier, beautifier, diagnostics and hierarchical symbols will be unavailable.\nReason: ${error.message}`);
 					return getDocumentSymbolsLegacy(document);
 				})
@@ -142,7 +142,10 @@ export class mxsDocumentSymbolProvider
 							diagnostics: []
 						});
 					})
-				.catch(e => reject(e));
+				.catch(error => {
+					console.log('NOTWORKING!', error.message);
+					reject(error);
+				});
 			// setTimeout(() => source.cancel(), 50, 'Request timeout');
 		});
 	}

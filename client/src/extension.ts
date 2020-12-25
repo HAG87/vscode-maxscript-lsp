@@ -104,7 +104,7 @@ export function activate(context: ExtensionContext)
 				}).then(
 					async uris =>
 					{
-						if (uris === undefined) { return; }
+						if (!uris) { return; }
 
 						let params: MinifyDocParams = {
 							command: 'mxs.minify.files',
@@ -119,7 +119,7 @@ export function activate(context: ExtensionContext)
 			{
 				let activeEditorUri = window.activeTextEditor?.document.uri;
 
-				if (activeEditorUri === undefined
+				if (!activeEditorUri
 					|| activeEditorUri.scheme !== 'file'
 					|| window.activeTextEditor?.document.isDirty) {
 					await window.showInformationMessage('MaxScript minify: Save your file first.');
@@ -145,7 +145,7 @@ export function activate(context: ExtensionContext)
 			{
 				let activeEditorUri = window.activeTextEditor?.document.uri;
 
-				if (activeEditorUri === undefined
+				if (!activeEditorUri
 					|| activeEditorUri.scheme !== 'file'
 					|| window.activeTextEditor?.document.isDirty) {
 					await window.showInformationMessage('MaxScript prettifier: Save your file first.');
@@ -163,7 +163,7 @@ export function activate(context: ExtensionContext)
 	client.start();
 }
 
-export function deactivate(): Thenable<void> | undefined
+export function deactivate()
 {
 	if (!client) { return undefined; }
 	return client.stop();

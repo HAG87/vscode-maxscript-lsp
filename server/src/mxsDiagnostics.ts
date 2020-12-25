@@ -43,9 +43,7 @@ export class ParserError extends Error
 export const mxsDiagnosticCollection: Diagnostic[] = [];
 //--------------------------------------------------------------------------------
 const tokenListToValues = (tokenList: Dictionary<string>[]): string[] =>
-{
-	return [...new Set((tokenList).map(item => item.type))];
-};
+	[...new Set((tokenList).map(item => item.type))];
 
 /**
  * Provide a message that list possible solutions
@@ -68,8 +66,8 @@ function correctionList(tokenList: Dictionary<string>[]): string
  */
 export function provideParserDiagnostic(error: ParserError): Diagnostic[]
 {
+	const tokenList = [...error.tokens];
 	let diagnostics: Diagnostic[];
-	let tokenList = [...error.tokens];
 	diagnostics = tokenList.map(
 		t =>
 		{
