@@ -5,32 +5,17 @@
 import
 {
 	createConnection,
-	// DefinitionParams,
 	Diagnostic,
 	DidChangeConfigurationNotification,
 	DocumentSymbol,
-	// DocumentSymbolParams,
-	// ExecuteCommandParams,
-	InitializeParams,
 	InitializeResult,
 	ProposedFeatures,
 	SymbolInformation,
-	// TextDocumentPositionParams,
 	TextDocuments,
 	TextDocumentSyncKind,
-	// DocumentFormattingParams,
 	RequestType,
 	ResponseError,
 	InitializeError,
-	// WorkspaceChange,
-	// WorkspaceEdit
-	// WorkspaceSymbolParams
-	// CreateFile
-	// CreateFileOptions
-	// Position,
-	// Range,
-	// DocumentRangeFormattingParams
-	SemanticTokensLegend,
 	SemanticTokensRegistrationOptions,
 	SemanticTokensRegistrationType
 
@@ -325,15 +310,13 @@ connection.onCompletion(async params =>
 		documents.get(params.textDocument.uri)!,
 		params.position
 	);
-}
-);
+});
 // This handler provides Definition results
 // unhandled: Error defaults to no results 
 connection.onDefinition(async (params, cancellation) =>
 {
 
 	let settings = await getDocumentSettings(params.textDocument.uri);
-	console.log(params.textDocument.uri);
 	if (!settings.GoToDefinition) { return; }
 
 	// method 1: regex match the file
