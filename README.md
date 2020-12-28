@@ -44,15 +44,16 @@ None.
 
 ## Syntax Highlight
 
-Suggested settings for **Custom highlighting**. List of available scopes [here](./TextMate-scopes.md)
+Basic settings for **Custom highlighting**.
 
-```json
+There is a list of available scopes [here](./TextMate-scopes.md), and some example rules [here](./tokenColorCustomizations-example.jsonc)
+
+```jsonc
   /*
   * Syntax highlight options for language maxscript
   */
   "editor.tokenColorCustomizations": {
     "textMateRules": [
-      // Extras
       {
         "name": "Todo",
         "scope": "documentation.todo.mxs",
@@ -68,119 +69,7 @@ Suggested settings for **Custom highlighting**. List of available scopes [here](
         "scope": "documentation.plain.mxs",
         "settings": { "foreground": "#cecece", "fontStyle": ""}
       },
-      // Characters
-      {
-        "name": "Linebreak",
-        "scope": "keyword.operator.linebreak.mxs",
-        "settings": { "foreground": "#6d6d6d", "fontStyle": "bold" }
-      },
-      {
-        "name": "byReference keyword",
-        "scope": "keyword.operator.byref.mxs",
-        "settings": { "foreground": "#78C28E", "fontStyle": "italic" }
-      },
-      // Values
-      // {
-      //   "name": "Name values",
-      //   "scope": "string.unquoted.name.mxs",
-      //   "settings": { "foreground": "#c678dd" }
-      // },
-      {
-        "name": "Verbatim string",
-        "scope": "string.quoted.double.verbatim.mxs",
-        "settings": { "fontStyle": "italic" }
-      },
-      {
-        "name": "Localized resources",
-        "scope": "string.quoted.other.mxs",
-        "settings": { "foreground": "#8f724a" }
-      },
-      // Misc
-      {
-        "name": "Properties",
-        "scope": "variable.property.mxs",
-        "settings": { "foreground": "#ce9b3d", }
-      },
-     {
-        "name": "Event target",
-        "scope": "entity.target",
-        "settings": { "foreground": "#E6B52E", "fontStyle": "italic" }
-      },
-      // Variables
-      {
-        "name": "Path names",
-        "scope": "variable.other.pathname.mxs",
-        "settings": { "foreground": "#7A9F4D" }
-      },
-      // Declaration
-      {
-        "name": "Declaration",
-        "scope": "storage.type.mxs",
-        "settings": { "fontStyle": "" }
-      },
-      // Keywords
-      {
-        "name": "mxs keyword operator",
-        "scope": "keyword.operator.mxs, keyword.operator.word.mxs",
-        "settings": { "foreground": "#78BEC2" }
-      },
-      {
-        "name": "Keyword other",
-        "scope": "keyword.other.mxs",
-        "settings": { "foreground": "#78C28E" }
-      },
-      {
-        "name": "mxs constant",
-        "scope": "constant.language, variable.language.mxs",
-        "settings": { "foreground": "#528BFF" }
-      },
-      // Types
-      {
-        "name": "mxs array",
-        "scope": "storage.type.array.mxs, storage.type.bitarray.mxs",
-        "settings": { "foreground": "#E5CB82", "fontStyle": "" }
-      },
-      // support
-      {
-        "name": "Types",
-        "scope": "support.type.primitive.mxs",
-        "settings": { "foreground": "#477FB0" }
-      },
-      {
-        "name": "Objectset",
-        "scope": "support.variable.objectset.mxs",
-        "settings": { "foreground": "#E6B52E" }
-      },
-      {
-        "name": "Interfaces",
-        "scope": "support.type.interface.mxs",
-        "settings": { "foreground": "#759FD1" }
-      },
-      {
-        "name": "Class",
-        "scope": "support.class.mxs",
-        "settings": { "foreground": "#A875D1" }
-      },
-      {
-        "name": "Structs",
-        "scope": "storage.type.struct.mxs",
-        "settings": { "foreground": "#7b6ccd" }
-      },
-      {
-        "name": "Constant",
-        "scope": "support.constant.mxs",
-        "settings": { "foreground": "#c56038" }
-      },
-      {
-        "name": "Superclass",
-        "scope": "support.superclass.mxs",
-        "settings": { "foreground": "#6c7bcd" }
-      },
-      {
-        "name": "Variables",
-        "scope": "support.variable.system.mxs",
-        "settings": { "foreground": "#cda06c" }
-      },
+      //...
     ]
   },
 ```
