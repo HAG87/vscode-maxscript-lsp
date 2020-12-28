@@ -7,6 +7,7 @@ All notable changes to the "language-maxscript" extension will be documented in 
 - Implemented multi-threading
 - Several fixes & performance improvements.
 - updated to vscode-languageserver v7.0.0
+- moved Semantic tokens to server
 - updated and standardized syntax highlight rules
 
 ## [1.23.0]
