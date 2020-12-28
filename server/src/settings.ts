@@ -22,8 +22,8 @@ export interface MaxScriptSettings
 		list?: {
 			useLineBreaks: boolean
 		}
-	}
-	// language?: { semantics: boolean };
+	},
+	language?: { semantics: boolean };
 	// ...
 }
 //------------------------------------------------------------------------------------------
@@ -53,6 +53,6 @@ export const defaultSettings: MaxScriptSettings = {
 		list: {
 			useLineBreaks: true
 		}
-	}
-	//language?: { semantics: true },
+	},
+	language: { semantics: true },
 };
