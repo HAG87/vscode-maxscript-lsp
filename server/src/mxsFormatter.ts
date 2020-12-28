@@ -22,8 +22,8 @@ import { mxsFormatterLexer } from './lib/mooTokenize-formatter';
 import { rangeUtil } from './lib/astUtils';
 // note: keywords could be used to indent, at start or end of line. this will require a per-line aproach... split the documents in lines, and feed the tokenizer one line at the time.
 //-----------------------------------------------------------------------------------
-const filterCurrent = ['newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange'];
-const filterAhead = ['newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange'];
+const filterCurrent = ['assign', 'newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange'];
+const filterAhead = ['assign', 'newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange'];
 
 const IndentTokens = ['lparen', 'arraydef', 'lbracket', 'lbrace', 'bitarraydef'];
 const UnIndentTokens = ['rparen', 'rbracket', 'rbrace'];
@@ -53,7 +53,10 @@ function mxsSimpleTextEditFormatter(document: TextDocument | string, action: Sim
 {
 	return new Promise<TextEdit[]>((resolve, reject) =>
 	{
-		let source = typeof document === 'string' ? document :document.getText();
+
+		const source = typeof document === 'string' ? document :document.getText();
+		// add to results
+		let Add = (res: TextEdit | undefined) => { if (res) { edits.push(res); } };
 
 		let indentation = 0;
 		let edits: TextEdit[] = [];
@@ -64,8 +67,6 @@ function mxsSimpleTextEditFormatter(document: TextDocument | string, action: Sim
 
 		// return if no results
 		if (tokenizedSource && !tokenizedSource.length) { reject(edits); }
-		// add to results
-		let Add = (res: TextEdit | undefined) => { if (res) { edits.push(res); } };
 
 		// main loop
 		for (let i = 0; i < tokenizedSource.length; i++) {
@@ -151,7 +152,7 @@ export async function mxsSimpleRangeFormatter(document: TextDocument, range: Ran
 	// let start = range.start;
 	// let end = range.end;
 	// offsets --- use only line offset
-	let offLine = range.start.line;
+	const offLine = range.start.line;
 	// let offChar = range.start.character;
 
 	/*

@@ -20,6 +20,8 @@ import
 	TextDocumentSyncKind,
 	// DocumentFormattingParams,
 	RequestType,
+	ResponseError,
+	InitializeError,
 	// WorkspaceChange,
 	// WorkspaceEdit
 	// WorkspaceSymbolParams
@@ -28,13 +30,17 @@ import
 	// Position,
 	// Range,
 	// DocumentRangeFormattingParams
-} from 'vscode-languageserver';
+	SemanticTokensLegend,
+	SemanticTokensRegistrationOptions,
+	SemanticTokensRegistrationType
+
+} from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as Path from 'path';
 //------------------------------------------------------------------------------------------
 import { MaxScriptSettings, defaultSettings } from './settings';
 import { mxsCapabilities } from './capabilities';
-
+//------------------------------------------------------------------------------------------
 import * as utils from './lib/utils';
 import { replaceText } from './lib/workspaceEdits';
 import * as mxsCompletion from './mxsCompletions';
@@ -43,15 +49,15 @@ import * as mxsMinifier from './mxsMin';
 import * as mxsPretty from './mxsRebuild';
 import * as mxsDefinitions from './mxsDefinitions';
 import { mxsSimpleDocumentFormatter } from './mxsFormatter';
+import { mxsSemanticTokens } from './mxsSemantics';
 //------------------------------------------------------------------------------------------
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 export let connection = createConnection(ProposedFeatures.all);
 // Create a simple text document manager. Supports full document sync only
 let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
-
 /* Client Capabilities */
-export let Capabilities = new mxsCapabilities();
+let Capabilities = new mxsCapabilities();
 //------------------------------------------------------------------------------------------
 // Current document
 /* Store the current document Symbols for later use*/
@@ -59,53 +65,71 @@ let currentDocumentSymbols: DocumentSymbol[] | SymbolInformation[] = [];
 let currentTextDocument: TextDocument;
 //------------------------------------------------------------------------------------------
 connection.onInitialize(
-	(params: InitializeParams) =>
+	(params, cancel, progress): Thenable<InitializeResult> | ResponseError<InitializeError> | InitializeResult =>
 	{
+		progress.begin('Initializing MaxScript Server');
 		Capabilities.initialize(params.capabilities);
-		//...
-		const result: InitializeResult = {
-			capabilities: {
-				textDocumentSync: TextDocumentSyncKind.Incremental,
-				// Tell the client that the server supports code completion
-				completionProvider: {
-					resolveProvider: false,
-					triggerCharacters: ['.']
-				},
-				documentSymbolProvider: true,
-				definitionProvider: true,
-				documentFormattingProvider: true,
-				// UNFNISHED!
-				// documentRangeFormattingProvider: true,
-				// declarationProvider: true,
-				// referencesProvider: true,
-				// typeDefinitionProvider: true,
-				// implementationProvider: true,
-				// ...
-			}
-		};
 
-		//TODO: Implement workspace capabilities
 		/*
-		if (Capabilities.hasWorkspaceFolderCapability) {
-			result.capabilities.workspace = {
-				workspaceFolders: {
-					supported: true
-				}
-			};
+		for (let folder of params.workspaceFolders) {
+			connection.console.log(`${folder.name} ${folder.uri}`);
+		}
+		if (params.workspaceFolders && params.workspaceFolders.length > 0) {
+			folder = params.workspaceFolders[0].uri;
 		}
 		*/
-		return result;
+		return new Promise((resolve, reject) =>
+		{
+			let result: InitializeResult = {
+			capabilities: {
+				textDocumentSync: TextDocumentSyncKind.Incremental,
+					completionProvider:
+						Capabilities.hasCompletionCapability
+							? {
+					resolveProvider: false,
+					triggerCharacters: ['.']
+							}
+							: undefined,
+					documentSymbolProvider: Capabilities.hasDocumentSymbolCapability,
+					definitionProvider: Capabilities.hasDefinitionCapability,
+					documentFormattingProvider: Capabilities.hasDocumentFormattingCapability,
+
+					// workspaceSymbolProvider: true,
+				// documentRangeFormattingProvider: true,
+					// documentOnTypeFormattingProvider: {
+					// 	firstTriggerCharacter: ';',
+					// 	moreTriggerCharacter: ['}', '\n']
+					// },
+					// renameProvider: true,
+					// workspace: {
+					// 	workspaceFolders: {
+					// 		supported: true,
+					// 		changeNotifications: true
+					// 	}
+					// },
+				// typeDefinitionProvider: true,
+					// declarationProvider: { workDoneProgress: true },
+					// executeCommandProvider: {
+					// 	commands: ['testbed.helloWorld']
+					// },
+					// callHierarchyProvider: true,
+					// selectionRangeProvider: { workDoneProgress: true }
+			}
+		};
+			setTimeout(() =>
+			{
+				resolve(result);
+			}, 50);
+		});
 	});
 //------------------------------------------------------------------------------------------
-connection.onInitialized(
-	() =>
+connection.onInitialized(() =>
 	{
 		if (Capabilities.hasConfigurationCapability) {
-			// Register for all configuration changes.
 			connection.client.register(DidChangeConfigurationNotification.type, undefined);
 		}
 		/*
-		if (hasWorkspaceFolderCapability) {
+	if (Capabilities.hasWorkspaceFolderCapability) {
 			connection.workspace.onDidChangeWorkspaceFolders(_event => {
 				connection.console.log('Workspace folder change event received.');
 			});
@@ -120,9 +144,6 @@ let documentSettings: Map<string, Thenable<MaxScriptSettings>> = new Map();
 
 function getDocumentSettings(resource: string): Thenable<MaxScriptSettings>
 {
-	if (!Capabilities.hasConfigurationCapability) {
-		return Promise.resolve(globalSettings);
-	}
 	let result = documentSettings.get(resource);
 	if (!result) {
 		result = connection.workspace.getConfiguration({
@@ -142,22 +163,14 @@ function diagnoseDocument(document: TextDocument, diagnose: Diagnostic[])
 	connection.sendDiagnostics({ uri: document.uri, diagnostics: diagnose });
 }
 
-async function validateDocument(textDocument: TextDocument): Promise<void>
+async function validateDocument(textDocument: TextDocument)
 {
-	// TODO: Diagnostics for unsaved documents keeps showing. maybe has to do with 'shema'?...
-
-	// connection.console.log('We received a content change event');
-	// connection.sendRequest()
-
 	// revalidate settings
 	await getDocumentSettings(textDocument.uri);
-	// reset diagnostics
-	diagnoseDocument(textDocument, []);
 	//...
 }
 //------------------------------------------------------------------------------------------
-connection.onDidChangeConfiguration(
-	change =>
+connection.onDidChangeConfiguration(change =>
 	{
 		if (Capabilities.hasConfigurationCapability) {
 			// Reset all cached document settings
@@ -177,16 +190,15 @@ connection.onDidChangeConfiguration(
 documents.onDidChangeContent(
 	change =>
 	{
-		validateDocument(change.document);
+		diagnoseDocument(change.document, []);
 	});
 */
 // Only keep settings for open documents
 // documents.
-documents.onDidClose(
-	change =>
+documents.onDidClose(change =>
 	{
 		documentSettings.delete(change.document.uri);
-		validateDocument(change.document);
+	diagnoseDocument(change.document, []);
 	});
 //------------------------------------------------------------------------------------------
 // documents.onDidOpen
@@ -205,8 +217,7 @@ connection.onDidChangeWatchedFiles(_change => {
 */
 //------------------------------------------------------------------------------------------
 // Document formatter
-connection.onDocumentFormatting(
-	async params =>
+connection.onDocumentFormatting(async params =>
 	{
 		/* let options: FormattingOptions = {
 			tabSize: 5,
@@ -215,8 +226,6 @@ connection.onDocumentFormatting(
 			trimTrailingWhitespace: true,
 			trimFinalNewlines : true
 		}; */
-		if (!Capabilities.hasDocumentFormattingCapability && !globalSettings.formatter.indentOnly) { return; }
-		// let settings = await getDocumentSettings(_DocumentFormattingParams.textDocument.uri);
 
 		let document = documents.get(params.textDocument.uri)!;
 		let formatterSettings = {
@@ -247,8 +256,7 @@ connection.onDocumentRangeFormatting(
 //------------------------------------------------------------------------------------------
 // Update the parsed document, and diagnostics on Symbols request... ?
 // unhandled: Error defaults to no results 
-connection.onDocumentSymbol(
-	(params, cancelation) =>
+connection.onDocumentSymbol((params, cancelation) =>
 	{
 		/*
 		currentDocumentSymbols = await parseDocument(document, cancelation);
@@ -256,8 +264,6 @@ connection.onDocumentSymbol(
 		*/
 		return new Promise<SymbolInformation[] | DocumentSymbol[]>((resolve, reject) =>
 		{
-			if (!Capabilities.hasDocumentSymbolCapability) { resolve([]); }
-
 			let options = { recovery: true, attemps: 10, memoryLimit: 0.9 };
 			getDocumentSettings(params.textDocument.uri)
 				.then(
@@ -286,7 +292,7 @@ connection.onDocumentSymbol(
 				.catch(
 					error =>
 					{
-						connection.window.showInformationMessage('MaxScript symbols provider fail:' + error.message);
+					connection.window.showInformationMessage('MaxScript symbols provider fail: ' + error.message);
 						diagnoseDocument(document, []);
 						resolve([]);
 					}
@@ -295,25 +301,24 @@ connection.onDocumentSymbol(
 
 	});
 // This handler provides the initial list of the completion items.
-connection.onCompletion(
-	async params =>
+connection.onCompletion(async params =>
 	{
-
 		let settings = await getDocumentSettings(params.textDocument.uri);
-		if (!Capabilities.hasCompletionCapability && !settings.Completions) { return; }
+	if (!settings.Completions) { return; }
 
-		let document = documents.get(params.textDocument.uri)!;
-		return mxsCompletion.provideCompletionItems(document, params.position);
+	return mxsCompletion.provideCompletionItems(
+		documents.get(params.textDocument.uri)!,
+		params.position
+	);
 	}
 );
 // This handler provides Definition results
 // unhandled: Error defaults to no results 
-connection.onDefinition(
-	async (params, cancellation) =>
+connection.onDefinition(async (params, cancellation) =>
 	{
 
 		let settings = await getDocumentSettings(params.textDocument.uri);
-		if (!Capabilities.hasDefinitionCapability && !settings.GoToDefinition) { return; }
+	if (!settings.GoToDefinition) { return; }
 
 		// method 1: regex match the file
 		// method 2: search the parse tree for a match
@@ -328,7 +333,7 @@ connection.onDefinition(
 				// mxsDocumentSymbols.msxParser.parsedCST
 			);
 		} catch (err) {
-			// connection.console.log('MaxScript Definitions unhandled error: ' + err.message);
+		connection.console.log('MaxScript Definitions unhandled error: ' + err.message);
 			return [];
 		}
 	});
@@ -352,8 +357,7 @@ namespace PrettifyDocRequest
 {
 	export const type = new RequestType<PrettifyDocParams, string[] | null, void>('MaxScript/prettify');
 }
-connection.onRequest(MinifyDocRequest.type,
-	async params =>
+connection.onRequest(MinifyDocRequest.type, async params =>
 	{
 		let settings = await getDocumentSettings(params.uri[0]);
 
@@ -398,8 +402,7 @@ connection.onRequest(MinifyDocRequest.type,
 		}
 		return null;
 	});
-connection.onRequest(PrettifyDocRequest.type,
-	async params =>
+connection.onRequest(PrettifyDocRequest.type, async params =>
 	{
 		let settings = await getDocumentSettings(params.uri[0]);
 		let opts = {

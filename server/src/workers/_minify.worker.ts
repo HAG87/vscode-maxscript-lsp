@@ -22,7 +22,7 @@ expose(
 		setOptions();
 		if (typeof data === 'string') {
 			let results = await parseSource(data);
-			if (results.result !== undefined) {
+			if (results.result) {
 				return mxsReflow(results.result);
 			} else {
 				throw new Error('Parser failed.');

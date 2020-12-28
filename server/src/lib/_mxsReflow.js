@@ -1,24 +1,9 @@
 'use strict';
-import moo from 'moo';
-import * as nodetype from './mxsParserNodesType';
 //-----------------------------------------------------------------------------------
 // options....
-export class reflowOptions //implements reflowOptions
+class reflowOptions
 {
-	indent: string
-	spacer: string
-	linebreak: string
-	wrapIdentities: boolean
-	elements: { useLineBreaks: boolean }
-	statements: { optionalWhitespace: boolean }
-	codeblock: {
-		newlineAtParens: boolean,
-		newlineAllways: boolean,
-		spaced: boolean
-	}
-	indentAt: RegExp
-	
-	constructor(spacer?: string, linebreak?: string, indent?: string)
+	constructor(spacer, linebreak, indent)
 	{
 		this.indent = indent ?? '\t';
 		this.spacer = spacer ?? ' ';
@@ -57,9 +42,9 @@ export class reflowOptions //implements reflowOptions
 		this.indentAt = new RegExp(`${this.linebreak}`, 'g');
 	}
 }
-export const options = new reflowOptions();
+const options = new reflowOptions();
 //-----------------------------------------------------------------------------------
-function optionalWS(values: string[], empty = '', ws = ' ')
+function optionalWS(values, empty = '', ws = ' ')
 {
 	// at the end
 	let w_ = /\w$/im;
@@ -102,12 +87,7 @@ function optionalWS(values: string[], empty = '', ws = ' ')
 // statement
 class Statement
 {
-	value: any[]
-	type: string
-	optionalWhitespace: boolean
-	addLinebreaks: boolean
-
-	constructor(...args: any)
+	constructor(...args)
 	{
 		this.type = 'statement';
 		this.value = [];
@@ -133,21 +113,16 @@ class Statement
 		}
 	}
 
-	add(...value: any)
+	add(...value)
 	{
-		this.value = this.value.concat(...value.filter((e:any) => e != null));
+		this.value = this.value.concat(...value.filter(e => e != null));
 	}
 }
 // join elemns with NL.. block of code
 //block
 class Codeblock
 {
-	value: any[]
-	type: string
-	indent: boolean
-	wrapped: boolean
-
-	constructor(...args: any)
+	constructor(...args)
 	{
 		this.type = 'codeblock';
 		this.value = [];
@@ -167,7 +142,7 @@ class Codeblock
 		}
 		if (this.wrapped) {
 			if (options.codeblock.newlineAtParens && pass) {
-				let res = ([] as string[]).concat('(', this.value).join(options.linebreak);
+				let res = [].concat('(', this.value).join(options.linebreak);
 				if (this.indent) {
 					res = res.replace(options.indentAt, `${options.linebreak}${options.indent}`);
 				}
@@ -191,23 +166,18 @@ class Codeblock
 		}
 	}
 
-	add(...value:any)
+	add(...value)
 	{
 		if (value[0] != null) {
-			this.value = this.value.concat(...value.filter((e:any) => e != null));
+			this.value = this.value.concat(...value.filter(e => e != null));
 		}
 	}
 }
-// join elems with ',' list of items
 //list
+// join elems with ',' list of items
 class Elements
 {
-	value: any[]
-	type: string
-	indent: boolean
-	listed: boolean
-	
-	constructor(...args:any)
+	constructor(...args)
 	{
 		this.listed = false;
 		this.type = 'elements';
@@ -229,19 +199,17 @@ class Elements
 		}
 	}
 
-	add(...value: any)
+	add(...value)
 	{
 		if (value[0] != null) {
-			this.value = this.value.concat(...value.filter((e:any) => e != null));
+			this.value = this.value.concat(...value.filter(e => e != null));
 		}
 	}
 }
 // expressions
 class Expr
 {
-	type: string
-	value: any[]
-	constructor(...args: any)
+	constructor(...args)
 	{
 		this.type = 'expr';
 		this.value = [];
@@ -253,9 +221,9 @@ class Expr
 		return this.value.join('');
 	}
 
-	add(...value: any)
+	add(...value)
 	{
-		this.value = this.value.concat(...value.filter((e:any) => e != null));
+		this.value = this.value.concat(...value.filter(e => e != null));
 	}
 }
 //-----------------------------------------------------------------------------------
@@ -263,7 +231,7 @@ class Expr
  * Check if value is node
  * @param {any} node CST node
  */
-function isNode(node: any)
+function isNode(node)
 {
 	return (typeof node === 'object' && node != undefined);
 }
@@ -271,14 +239,14 @@ function isNode(node: any)
  * filter nodes by type property
  * @param {any} node CST node
  */
-function getNodeType(node: any): string
+function getNodeType(node)
 {
-	return (node.hasOwnProperty('type')) ? node.type : undefined;
+	return ('type' in node) ? node.type : undefined;
 }
 /**
  * Apply node transform to PARENT KEY!
  */
-function editNode(callback: Function, node: any, parent: any, key: string, level: number | null, index: number | null)
+function editNode(callback, node, parent, key, level, index)
 {
 	let res = callback(node, parent, key, level, index);
 	// apply indentation to hig-level rules
@@ -298,9 +266,9 @@ function removeNode(node, parent, key, index) {
  * @param {any} tree CST node
  * @param {any} callbackMap Patterns function
  */
-function derive(this: any, tree: any, callbackMap: any)
+function derive(tree, callbackMap)
 {
-	let _visit = (node: any, parent: any, key: string | null, level: number, index: number | null) =>
+	function _visit(node, parent, key, level, index)
 	{
 		const nodeType = getNodeType(node);
 		// get the node keys
@@ -323,23 +291,23 @@ function derive(this: any, tree: any, callbackMap: any)
 			}
 		}
 
-		if (callbackMap[nodeType]) {
+		if (nodeType in callbackMap) {
 			if (parent) {
-				editNode.call(this, callbackMap[nodeType], node, parent, key!, level, index);
+				editNode.call(this, callbackMap[nodeType], node, parent, key, level, index);
 			} else {
 				return node;
 			}
 		}
-	};
+	}
 	_visit(tree, tree, null, 0, null);
 }
 /**
  * Visit and derive Code from a recoverable code map
  * @param {any} tree CodeMap node
  */
-function reduce(tree: any)
+function reduce(tree)
 {
-	function _visit(node: any, parent: any, key: string | null, level: number, index: number | null)
+	function _visit(node, parent, key, level, index)
 	{
 		const keys = Object.keys(node);
 		for (let i = 0; i < keys.length; i++) {
@@ -372,9 +340,9 @@ function reduce(tree: any)
 }
 //-----------------------------------------------------------------------------------
 // utility functions
-const isArrayUsed = (val: any) => val && Array.isArray(val) && val.length > 0 ? true : false;
-const isNotEmpty = (val: any) => val && !Array.isArray(val) || Array.isArray(val) && val.length > 0 ? true : false;
-const toArray = (val: any) => Array.isArray(val) ? val : [val];
+const isArrayUsed = val => val && Array.isArray(val) && val.length > 0 ? true : false;
+const isNotEmpty = val => val && !Array.isArray(val) || Array.isArray(val) && val.length > 0 ? true : false;
+const toArray = val => Array.isArray(val) ? val : [val];
 /*
 var wrap = function (func) {
 	return function () {
@@ -382,10 +350,10 @@ var wrap = function (func) {
 		return func.apply(this, args);
 	};
 };
-function nodeText(node:any) {
+function nodeText(node) {
 	index != null ? parent[key][index] = node.text : parent[key] = node.text;
 }
-function nodeValue(node:any) {
+function nodeValue(node) {
 	index != null ? parent[key][index] = node.value : parent[key] = node.value;
 }
 function wrapInParens(node, key) {
@@ -396,85 +364,86 @@ function wrapInParens(node, key) {
 	];
 }
 */
+
 //-----------------------------------------------------------------------------------
 /**
  * Token transformations
  */
 let tokensValue = {
-	global_typed(node: moo.Token) { return node.text; },
-	hex(node: moo.Token) { return node.text; },
-	identity(node: moo.Token) { return node.text; },
-	locale(node: moo.Token) { return node.text; },
-	name(node: moo.Token) { return node.text; },
-	number(node: moo.Token) { return node.text; },
-	path(node: moo.Token) { return node.text; },
-	string(node: moo.Token) { return node.text; },
-	time(node: moo.Token) { return node.text; },
-	typed_iden(node: moo.Token) { return node.text; },
-	property(node: moo.Token) { return node.value; },
-	params(node: moo.Token) { return node.value; },
-	math(node: moo.Token) { return node.value; },
-	assign(node: moo.Token) { return node.value; },
-	comparison(node: moo.Token) { return node.value; },
-	keyword(node: moo.Token) { return node.text; },
+	global_typed(node) { return node.text; },
+	hex(node) { return node.text; },
+	identity(node) { return node.text; },
+	locale(node) { return node.text; },
+	name(node) { return node.text; },
+	number(node) { return node.text; },
+	path(node) { return node.text; },
+	string(node) { return node.text; },
+	time(node) { return node.text; },
+	typed_iden(node) { return node.text; },
+	property(node) { return node.value; },
+	params(node) { return node.value; },
+	math(node) { return node.value; },
+	assign(node) { return node.value; },
+	comparison(node) { return node.value; },
+	keyword(node) { return node.text; },
 
-	kw_about(node: moo.Token) { return node.text; },
-	kw_as(node: moo.Token) { return node.text; },
-	kw_at(node: moo.Token) { return node.text; },
-	kw_bool(node: moo.Token) { return node.text; },
-	kw_by(node: moo.Token) { return node.text; },
-	kw_case(node: moo.Token) { return node.text; },
-	kw_catch(node: moo.Token) { return node.text; },
-	kw_collect(node: moo.Token) { return node.text; },
-	kw_compare(node: moo.Token) { return node.text; },
-	kw_context(node: moo.Token) { return node.text; },
-	kw_coordsys(node: moo.Token) { return node.text; },
-	kw_defaultAction(node: moo.Token) { return node.text; },
-	kw_do(node: moo.Token) { return node.text; },
-	kw_else(node: moo.Token) { return node.text; },
-	kw_exit(node: moo.Token) { return node.text; },
-	kw_for(node: moo.Token) { return node.text; },
-	kw_from(node: moo.Token) { return node.text; },
-	kw_function(node: moo.Token) { return node.text; },
-	kw_global(node: moo.Token) { return node.text; },
-	kw_group(node: moo.Token) { return node.text; },
-	kw_if(node: moo.Token) { return node.text; },
-	kw_in(node: moo.Token) { return node.text; },
-	kw_level(node: moo.Token) { return node.text; },
-	kw_local(node: moo.Token) { return node.text; },
-	kw_macroscript(node: moo.Token) { return node.text; },
-	kw_mapped(node: moo.Token) { return node.text; },
-	kw_menuitem(node: moo.Token) { return node.text; },
-	kw_not(node: moo.Token) { return node.text; },
-	kw_null(node: moo.Token) { return node.text; },
-	kw_objectset(node: moo.Token) { return node.text; },
-	kw_of(node: moo.Token) { return node.text; },
-	kw_on(node: moo.Token) { return node.text; },
-	kw_parameters(node: moo.Token) { return node.text; },
-	kw_persistent(node: moo.Token) { return node.text; },
-	kw_plugin(node: moo.Token) { return node.text; },
-	kw_rcmenu(node: moo.Token) { return node.text; },
-	kw_return(node: moo.Token) { return node.text; },
-	kw_rollout(node: moo.Token) { return node.text; },
-	kw_scope(node: moo.Token) { return node.value; },
-	kw_separator(node: moo.Token) { return node.text; },
-	kw_set(node: moo.Token) { return node.text; },
-	kw_struct(node: moo.Token) { return node.text; },
-	kw_submenu(node: moo.Token) { return node.text; },
-	kw_then(node: moo.Token) { return node.text; },
-	kw_time(node: moo.Token) { return node.text; },
-	kw_to(node: moo.Token) { return node.text; },
-	kw_tool(node: moo.Token) { return node.text; },
-	kw_try(node: moo.Token) { return node.text; },
-	kw_uicontrols(node: moo.Token) { return node.text; },
-	kw_undo(node: moo.Token) { return node.text; },
-	kw_utility(node: moo.Token) { return node.text; },
-	kw_when(node: moo.Token) { return node.text; },
-	kw_where(node: moo.Token) { return node.text; },
-	kw_while(node: moo.Token) { return node.text; },
-	kw_with(node: moo.Token) { return node.text; },
+	kw_about(node) { return node.text; },
+	kw_as(node) { return node.text; },
+	kw_at(node) { return node.text; },
+	kw_bool(node) { return node.text; },
+	kw_by(node) { return node.text; },
+	kw_case(node) { return node.text; },
+	kw_catch(node) { return node.text; },
+	kw_collect(node) { return node.text; },
+	kw_compare(node) { return node.text; },
+	kw_context(node) { return node.text; },
+	kw_coordsys(node) { return node.text; },
+	kw_defaultAction(node) { return node.text; },
+	kw_do(node) { return node.text; },
+	kw_else(node) { return node.text; },
+	kw_exit(node) { return node.text; },
+	kw_for(node) { return node.text; },
+	kw_from(node) { return node.text; },
+	kw_function(node) { return node.text; },
+	kw_global(node) { return node.text; },
+	kw_group(node) { return node.text; },
+	kw_if(node) { return node.text; },
+	kw_in(node) { return node.text; },
+	kw_level(node) { return node.text; },
+	kw_local(node) { return node.text; },
+	kw_macroscript(node) { return node.text; },
+	kw_mapped(node) { return node.text; },
+	kw_menuitem(node) { return node.text; },
+	kw_not(node) { return node.text; },
+	kw_null(node) { return node.text; },
+	kw_objectset(node) { return node.text; },
+	kw_of(node) { return node.text; },
+	kw_on(node) { return node.text; },
+	kw_parameters(node) { return node.text; },
+	kw_persistent(node) { return node.text; },
+	kw_plugin(node) { return node.text; },
+	kw_rcmenu(node) { return node.text; },
+	kw_return(node) { return node.text; },
+	kw_rollout(node) { return node.text; },
+	kw_scope(node) { return node.value; },
+	kw_separator(node) { return node.text; },
+	kw_set(node) { return node.text; },
+	kw_struct(node) { return node.text; },
+	kw_submenu(node) { return node.text; },
+	kw_then(node) { return node.text; },
+	kw_time(node) { return node.text; },
+	kw_to(node) { return node.text; },
+	kw_tool(node) { return node.text; },
+	kw_try(node) { return node.text; },
+	kw_uicontrols(node) { return node.text; },
+	kw_undo(node) { return node.text; },
+	kw_utility(node) { return node.text; },
+	kw_when(node) { return node.text; },
+	kw_where(node) { return node.text; },
+	kw_while(node) { return node.text; },
+	kw_with(node) { return node.text; },
 
-	error(node: moo.Token) { return node.text; },
+	error(node) { return node.text; },
 };
 /**
  * expressions-statements tranformations
@@ -483,25 +452,25 @@ let conversionRules = {
 	// TOKENS
 	...tokensValue,
 	// LITERALS
-	Literal(node: moo.Token) { return node.value; },
-	Identifier(node: moo.Token) { return options.wrapIdentities ? `'${node.value}'` : node.value; },
+	Literal(node) { return node.value; },
+	Identifier(node) { return options.wrapIdentities ? `'${node.value}'` : node.value; },
 	EmptyParens() { return '()'; },
-	Parameter(node: moo.Token) { return new Expr(node.value, ':'); },
-	BitRange(node: any) { return new Expr(node.start, '..', node.end); },
+	Parameter(node) { return new Expr(node.value, ':'); },
+	BitRange(node) { return new Expr(node.start, '..', node.end); },
 	//-------------------------------------------------------------------------------------------
 	// DECLARATION
-	Declaration(node: nodetype.Declaration)
+	Declaration(node)
 	{
 		return new Statement(node.id, node.operator, node.value);
 	},
 	// Types
-	ObjectArray(node: nodetype.ObjectDecl)
+	ObjectArray(node)
 	{
 		let res = new Expr('#(');
 		if (isArrayUsed(node.elements)) {
 			let elems = new Elements();
 			node.elements.forEach(
-				(e:any) =>
+				e =>
 				{
 					// just to be safe, it should be reduced by now...
 					if (isArrayUsed(e)) {
@@ -520,14 +489,14 @@ let conversionRules = {
 
 		return res;
 	},
-	ObjectBitArray(node: nodetype.ObjectDecl)
+	ObjectBitArray(node)
 	{
 		let res = new Expr('#{');
 
 		if (isArrayUsed(node.elements)) {
 			let elems = new Elements();
 			node.elements.forEach(
-				(e:any) =>
+				e =>
 				{
 					// just to be safe, it should be reduced by now...
 					if (isArrayUsed(e)) {
@@ -546,7 +515,7 @@ let conversionRules = {
 
 		return res;
 	},
-	ObjectPoint4(node: nodetype.ObjectDecl)
+	ObjectPoint4(node)
 	{
 		return new Expr(
 			'[',
@@ -554,7 +523,7 @@ let conversionRules = {
 			']'
 		);
 	},
-	ObjectPoint3(node: nodetype.ObjectDecl)
+	ObjectPoint3(node)
 	{
 		return new Expr(
 			'[',
@@ -562,7 +531,7 @@ let conversionRules = {
 			']'
 		);
 	},
-	ObjectPoint2(node: nodetype.ObjectDecl)
+	ObjectPoint2(node)
 	{
 		return new Expr(
 			'[',
@@ -571,7 +540,7 @@ let conversionRules = {
 		);
 	},
 	// Accesors
-	AccessorIndex(node: nodetype.AccessorIndex)
+	AccessorIndex(node)
 	{
 		return new Expr(
 			node.operand,
@@ -580,7 +549,7 @@ let conversionRules = {
 			']'
 		);
 	},
-	AccessorProperty(node: nodetype.AccessorProperty)
+	AccessorProperty(node)
 	{
 		return new Expr(
 			node.operand,
@@ -589,7 +558,7 @@ let conversionRules = {
 		);
 	},
 	// Call
-	CallExpression(node: nodetype.CallExpression)
+	CallExpression(node)
 	{
 		let res = new Statement(
 			node.calle,
@@ -603,7 +572,7 @@ let conversionRules = {
 		return res;
 	},
 	// Assign
-	ParameterAssignment(node: nodetype.ParameterAssignment)
+	ParameterAssignment(node)
 	{
 		let res = new Statement(
 			node.param,
@@ -612,7 +581,7 @@ let conversionRules = {
 		res.addLinebreaks = false;
 		return res;
 	},
-	AssignmentExpression(node: nodetype.AssignmentExpression)
+	AssignmentExpression(node)
 	{
 		return new Statement(
 			node.operand,
@@ -621,7 +590,7 @@ let conversionRules = {
 		);
 	},
 	// Functions
-	Function(node: nodetype.Function)
+	Function(node)
 	{
 		let stat = new Statement(
 			node.modifier,
@@ -638,7 +607,7 @@ let conversionRules = {
 		res.indent = false;
 		return res;
 	},
-	FunctionReturn(node: any)
+	FunctionReturn(node)
 	{
 		return new Statement(
 			'return',
@@ -646,7 +615,7 @@ let conversionRules = {
 		);
 	},
 	// Declarations
-	VariableDeclaration(node: nodetype.VariableDeclaration)
+	VariableDeclaration(node)
 	{
 		let decls;
 		if (isArrayUsed(node.decls)) {
@@ -656,7 +625,7 @@ let conversionRules = {
 			} else {
 				decls = node.decls;
 			}
-		} else if (isNotEmpty(node.decls)) {
+		} else if (isNotEmpty(node.dacls)) {
 			decls = [node.decls];
 		}
 
@@ -669,7 +638,7 @@ let conversionRules = {
 	},
 	// SIMPLE EXPRESSIONS - OK
 	// TODO: This will need and exeption for --
-	MathExpression(node: nodetype.MathExpression)
+	MathExpression(node)
 	{
 		return new Statement(
 			node.left,
@@ -677,7 +646,7 @@ let conversionRules = {
 			node.right
 		);
 	},
-	LogicalExpression(node: nodetype.LogicalExpression)
+	LogicalExpression(node)
 	{
 		return new Statement(
 			node.left,
@@ -686,7 +655,7 @@ let conversionRules = {
 		);
 	},
 	// TODO: This will need and exeption for --
-	UnaryExpression(node: nodetype.UnaryExpression)
+	UnaryExpression(node)
 	{
 		return new Expr(
 			node.operator,
@@ -694,7 +663,7 @@ let conversionRules = {
 		);
 	},
 	// STATEMENTS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-	BlockStatement(node: nodetype.BlockStatement)
+	BlockStatement(node)
 	{
 		// /*
 		let res = new Codeblock(...toArray(node.body));
@@ -711,7 +680,7 @@ let conversionRules = {
 		return res;
 		*/
 	},
-	IfStatement(node: nodetype.IfStatement)
+	IfStatement(node)
 	{
 		let res;
 		let stat = new Statement(
@@ -748,7 +717,7 @@ let conversionRules = {
 		}
 		return res;
 	},
-	TryStatement(node: nodetype.TryStatement)
+	TryStatement(node)
 	{
 		let test = new Statement(
 			'try',
@@ -764,7 +733,7 @@ let conversionRules = {
 		);
 		return res;
 	},
-	DoWhileStatement(node: nodetype.DoWhileStatement)
+	DoWhileStatement(node)
 	{
 		let stat = new Statement(
 			'do',
@@ -780,7 +749,7 @@ let conversionRules = {
 		);
 		return res;
 	},
-	WhileStatement(node: nodetype.WhileStatement)
+	WhileStatement(node)
 	{
 		let res = new Statement(
 			'while',
@@ -790,7 +759,7 @@ let conversionRules = {
 		);
 		return res;
 	},
-	ForStatement(node: nodetype.ForStatement)
+	ForStatement(node)
 	{
 		let res;
 		let stat = new Statement(
@@ -810,17 +779,17 @@ let conversionRules = {
 		}
 		return res;
 	},
-	ForLoopSequence(node: nodetype.ForLoopSequence)
+	ForLoopSequence(node)
 	{
 		let _to = isNotEmpty(node.to) ? ['to', ...toArray(node.to)] : null;
 		let _by = isNotEmpty(node.by) ? ['by', ...toArray(node.by)] : null;
 		let _while = isNotEmpty(node.while) ? ['while', ...toArray(node.while)] : null;
 		let _where = isNotEmpty(node.where) ? ['where', ...toArray(node.where)] : null;
 
-		let stats = ([] as any[]).concat(_to, _by, _while, _where).filter(e => e != null);
+		let stats = [].concat(_to, _by, _while, _where).filter(e => e != null);
 		return new Statement(...stats);
 	},
-	LoopExit(node: nodetype.LoopExit)
+	LoopExit(node)
 	{
 		let res = new Statement('exit');
 		if (node.body) {
@@ -833,7 +802,7 @@ let conversionRules = {
 		}
 		return res;
 	},
-	CaseStatement(node: nodetype.CaseStatement)
+	CaseStatement(node)
 	{
 		let stat = new Statement(
 			'case',
@@ -848,7 +817,7 @@ let conversionRules = {
 			body
 		);
 	},
-	CaseClause(node: nodetype.CaseClause)
+	CaseClause(node)
 	{
 		let res = new Statement(
 			node.case,
@@ -859,14 +828,14 @@ let conversionRules = {
 		return res;
 	},
 	// context expressions
-	ContextStatement(node: nodetype.ContextStatement)
+	ContextStatement(node)
 	{
 		return new Statement(
 			node.context,
 			node.body
 		);
 	},
-	ContextExpression(node: nodetype.ContextExpression)
+	ContextExpression(node)
 	{
 		return new Statement(
 			node.prefix,
@@ -875,7 +844,7 @@ let conversionRules = {
 		);
 	},
 	// Struct >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-	Struct(node: nodetype.Struct)
+	Struct(node, parent)
 	{
 		let stat = new Statement(
 			'struct',
@@ -886,8 +855,8 @@ let conversionRules = {
 		body.indent = true;
 		if (isArrayUsed(node.body)) {
 			// handle struct members...
-			let stack: Elements | null = null;
-			node.body.forEach((e:any) =>
+			let stack;
+			node.body.forEach(e =>
 			{
 				// test for structScope
 				if (typeof e === 'string' && /(?:private|public)$/mi.test(e)) {
@@ -908,20 +877,18 @@ let conversionRules = {
 				}
 			});
 			// add last stack
-			if (stack) {
-				body.add(stack);
-			}
+			body.add(stack);
 		} else if (isNotEmpty(node.body)) {
 			body.add(node.body);
 		}
 		let res = new Codeblock(stat, body);
 		return res;
 	},
-	StructScope(node: nodetype.StructScope) { return node.value; },
+	StructScope(node) { return node.value; },
 	// StructScope: wrap(nodeValue);
 	//-------------------------------------------------------------------------
 	// Plugin
-	EntityPlugin(node: nodetype.EntityPlugin)
+	EntityPlugin(node)
 	{
 		let stat = new Statement(
 			'plugin',
@@ -938,7 +905,7 @@ let conversionRules = {
 		);
 		return res;
 	},
-	EntityPlugin_params(node: nodetype.EntityPlugin_params)
+	EntityPlugin_params(node)
 	{
 		let stat = new Statement(
 			'parameters',
@@ -953,7 +920,7 @@ let conversionRules = {
 			body
 		);
 	},
-	PluginParam(node: nodetype.PluginParam)
+	PluginParam(node)
 	{
 		return new Statement(
 			node.id,
@@ -961,7 +928,7 @@ let conversionRules = {
 		);
 	},
 	// Tool
-	EntityTool(node: nodetype.EntityTool)
+	EntityTool(node)
 	{
 		let decl = new Statement(
 			'tool',
@@ -977,7 +944,7 @@ let conversionRules = {
 		);
 	},
 	// MacroScript
-	EntityMacroscript(node: nodetype.EntityMacroscript)
+	EntityMacroscript(node)
 	{
 		let decl = new Statement(
 			'macroScript',
@@ -993,7 +960,7 @@ let conversionRules = {
 		);
 	},
 	// Utility - Rollout
-	EntityUtility(node: nodetype.EntityUtility)
+	EntityUtility(node)
 	{
 		let decl = new Statement(
 			'utility',
@@ -1009,7 +976,7 @@ let conversionRules = {
 			body
 		);
 	},
-	EntityRollout(node: nodetype.EntityRollout)
+	EntityRollout(node)
 	{
 		let decl = new Statement(
 			'rollout',
@@ -1025,7 +992,7 @@ let conversionRules = {
 			body
 		);
 	},
-	EntityRolloutGroup(node: nodetype.EntityRolloutGroup)
+	EntityRolloutGroup(node)
 	{
 		let body = new Codeblock(...toArray(node.body));
 		body.wrapped = true;
@@ -1036,7 +1003,7 @@ let conversionRules = {
 		);
 		return res;
 	},
-	EntityRolloutControl(node: nodetype.EntityRolloutControl)
+	EntityRolloutControl(node)
 	{
 		return new Statement(
 			node.class,
@@ -1046,7 +1013,7 @@ let conversionRules = {
 		);
 	},
 	// rcMenu
-	EntityRcmenu(node: nodetype.EntityRcmenu)
+	EntityRcmenu(node)
 	{
 		let body = new Codeblock(...toArray(node.body));
 		body.wrapped = true;
@@ -1056,7 +1023,7 @@ let conversionRules = {
 			body
 		);
 	},
-	EntityRcmenu_submenu(node: nodetype.EntityRcmenu_submenu)
+	EntityRcmenu_submenu(node)
 	{
 		let stat = new Statement(
 			'subMenu',
@@ -1071,7 +1038,7 @@ let conversionRules = {
 			body
 		);
 	},
-	EntityRcmenu_menuitem(node: nodetype.EntityRcmenu_menuitem)
+	EntityRcmenu_menuitem(node)
 	{
 		return new Statement(
 			'menuItem',
@@ -1080,7 +1047,7 @@ let conversionRules = {
 			...toArray(node.params)
 		);
 	},
-	EntityRcmenu_separator(node: nodetype.EntityRcmenu_separator)
+	EntityRcmenu_separator(node)
 	{
 		return new Statement(
 			'separator',
@@ -1089,7 +1056,7 @@ let conversionRules = {
 		);
 	},
 	// Event
-	Event(node: nodetype.Event)
+	Event(node)
 	{
 		let stat = new Statement(
 			'on',
@@ -1102,7 +1069,7 @@ let conversionRules = {
 		);
 		return res;
 	},
-	EventArgs(node: nodetype.EventArgs)
+	EventArgs(node)
 	{
 		return new Statement(
 			node.target,
@@ -1110,7 +1077,7 @@ let conversionRules = {
 			...toArray(node.args)
 		);
 	},
-	WhenStatement(node: nodetype.WhenStatement)
+	WhenStatement(node)
 	{
 		let stat = new Statement(
 			'when',
@@ -1125,7 +1092,7 @@ let conversionRules = {
 	},
 };
 //-----------------------------------------------------------------------------------
-export function mxsReflow(cst: any[])
+function mxsReflow(cst)
 {
 	// derive code tree
 	derive(cst, conversionRules);
@@ -1133,4 +1100,4 @@ export function mxsReflow(cst: any[])
 	reduce(cst);
 	return cst.join(options.linebreak);
 }
-// module.exports = { mxsReflow, options };
+module.exports = { mxsReflow, options, reflowOptions };

@@ -87,7 +87,7 @@ export default function getDocumentSymbolsLegacy(document: TextDocument): Promis
 	return new Promise((resolve, reject) =>
 	{
 		let SymbolInfCol: SymbolInformation[] = [];
-		let docTxt = document.getText();
+		const docTxt = document.getText();
 
 		mxsSymbols.forEach(type =>
 		{

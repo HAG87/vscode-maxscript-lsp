@@ -1,10 +1,10 @@
 'use strict';
 import { expose } from 'threads/worker';
 import { parseSource } from '../mxsParser';
-import { mxsReflow, options, ReflowOptions } from '../lib/mxsReflow';
+import { mxsReflow, options, reflowOptions } from '../lib/mxsReflow';
 //-----------------------------------------------------------------------------------
 expose(
-	async function prettyData(data: string, settings: Partial<ReflowOptions>)
+	async function prettyData(data: string, settings: Partial<reflowOptions>)
 	{
 		options.reset();
 		if (settings) {

@@ -27,15 +27,15 @@ expose(
 		let diagnostics: Diagnostic[] = [];
 		let results = await parseSource(source, options);
 
-		if (results.result !== undefined) {
+		if (results.result) {
 			SymbolInfCol = await deriveSymbolsTree(results.result, range);
-			if (results.error === undefined) {
+			if (!results.error) {
 				diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
 			} else {
 				diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
 				diagnostics.push(...provideParserDiagnostic(results.error));
 			}
-		} else if (results.error !== undefined) {
+		} else if (results.error) {
 			diagnostics.push(...provideParserDiagnostic(results.error));
 		}
 		return {

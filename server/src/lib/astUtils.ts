@@ -19,37 +19,16 @@ export interface Dictionary<T>
 }
 //-----------------------------------------------------------------------------------
 
-export function getFromCST(CST: any | any[], keyValPair: object)
-{
-	return getObj(CST, keyValPair);
-}
-
-export function getNodesByKeyFromCST(CST: any | any[], key: string | string[])
-{
-	let st = getAllValuesByKey(CST, key);
-	return st;
-}
-
-export const objFromKeys = (arr: any[], def: any) => arr.reduce((ac: any, a: any) => ({ ...ac, [a]: def }), {});
-
+export const getFromCST = (CST: any | any[], keyValPair: object) => getObj(CST, keyValPair);
 /**
- * Check if value is node
- * @param node CST node
+ * Get CST all nodes with key
+ * @param CST 
+ * @param key 
  */
-export const isNode = (node: any) => typeof node === 'object' && node != null;
+export const getNodesByKeyFromCST = (CST: any | any[], key: string | string[]) => getAllValuesByKey(CST, key);
 
-/**
- * filter nodes by type property
- * @param {any} node CST node
- */
-export const getNodeType = (node: any, key = 'type') => node !== undefined && (key in node) ? node.type : undefined;
-
-export function hasKey<O>(obj: O, key: keyof any): key is keyof O
-{
-	return key in obj;
-}
+export const hasKey = <O>(obj: O, key: keyof any): key is keyof O => key in obj;
 //-----------------------------------------------------------------------------------
-
 /**
  * Retrieve an object-path notation pruning n branches/leafs
  * Partially extracted from ast-monkey-util
@@ -115,7 +94,7 @@ export abstract class rangeUtil
 {
 	static offsetFromLineCol(src: string | string[], node: moo.Token)
 	{
-		let lines = Array.isArray(src) ? src : src.split('\n');
+		const lines = Array.isArray(src) ? src : src.split('\n');
 		let charcount = lines.slice(0, node.line - 1).reduce((prev, next) =>
 		{
 			return prev + next.length + 1;
@@ -124,13 +103,12 @@ export abstract class rangeUtil
 	}
 	static LineCol2charRange(src: string | string[], node: moo.Token): charRange
 	{
-		let offset = rangeUtil.offsetFromLineCol(src, node);
+		const offset = rangeUtil.offsetFromLineCol(src, node);
 		return {
 			start: offset,
 			end: offset + node.text.length
 		};
 	}
-	
 	/**
 	 * Get the range of the statement from the offset of the first and last child of the node
 	 * @param node CST node
@@ -152,8 +130,8 @@ export abstract class rangeUtil
 			return current;
 		});
 		// Childs
-		let start = childs[0].offset;
-		let last = childs[childs.length - 1];
+		const start = childs[0].offset;
+		const last = childs[childs.length - 1];
 
 		return {
 			start: start,
@@ -176,7 +154,7 @@ export abstract class rangeUtil
 			return current;
 		});
 
-		let last = childs[childs.length - 1];
+		const last = childs[childs.length - 1];
 
 		return {
 			start: {
@@ -215,7 +193,7 @@ export abstract class rangeUtil
 	 */
 	static equalize(ref: Range, rec: Range/*, document: TextDocument*/)
 	{
-		let compare = (a: Position, b: Position) =>
+		const compare = (a: Position, b: Position) =>
 		{
 			let res = Position.create(0, 0);
 			// line position of B can be less or eq
@@ -261,20 +239,22 @@ export abstract class rangeUtil
 	 * @param token 
 	 * @param document 
 	 */
-	static getTokenRange(token: moo.Token, document?: TextDocument)
+	static getTokenRange(token: moo.Token/* , document?: TextDocument */)
 	{
-		let tokenRange =
-			Range.create(
-				Position.create(token.line - 1, token.col - 1),
-				Position.create(
-					token.line + token.lineBreaks - 1,
-					token.col + (token.text.length || token.value.length) - 1
-				)
-			);
+		// let tokenRange =
+		return Range.create(
+			Position.create(token.line - 1, token.col - 1),
+			Position.create(
+				token.line + token.lineBreaks - 1,
+				token.col + (token.text.length || token.value.length) - 1
+			)
+		);
+		/*
 		if (document) {
-			// let sel = document.getText(tokenRange); console.log({ text: sel, range: tokenRange });
+			let sel = document.getText(tokenRange); console.log({ text: sel, range: tokenRange });
 		}
 		return tokenRange;
+		*/
 	}
 
 	static rangeFromWord(word: string, pos: Position)

@@ -84,7 +84,7 @@ function parseSync(source: string, parserInstance: nearley.Parser): parserResult
 function parseWithErrorsSync(source: string, parserInstance: nearley.Parser): parserResult
 {
 	// New method tokenizing the input could be a way to feed tokens to the parser
-	let src = TokenizeStream(source);
+	const src = TokenizeStream(source);
 	let state = parserInstance.save();
 
 	let badTokens: moo.Token[] = [];
