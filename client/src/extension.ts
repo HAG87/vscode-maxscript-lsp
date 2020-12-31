@@ -7,6 +7,7 @@ import
 {
 	commands,
 	ExtensionContext,
+	Uri,
 	workspace,
 	window,
 } from 'vscode';
@@ -19,8 +20,6 @@ import
 	TransportKind,
 	RequestType
 } from 'vscode-languageclient/node';
-//------------------------------------------------------------------------------------------
-import mxsHelp from './mxsHelp';
 //------------------------------------------------------------------------------------------
 let client: LanguageClient;
 //------------------------------------------------------------------------------------------
@@ -91,7 +90,16 @@ export function activate(context: ExtensionContext)
 	//------------------------------------------------------------------------------------------
 	context.subscriptions.push(
 		// MaxScript Help command
-		commands.registerTextEditorCommand('mxs.help', (textEditor) => { mxsHelp(textEditor); }),
+		commands.registerTextEditorCommand('mxs.help',
+			async (editor) =>
+			{
+				let uri = Uri.parse(encodeURI(
+					`${workspace.getConfiguration('maxscript').get('Help.Provider', 'http://help.autodesk.com/view/3DSMAX/2021/ENU/')
+					}?query=${editor.document.getText(editor.selection)!
+					}&cg=Scripting%20%26%20Customization`
+				));
+				await commands.executeCommand('vscode.open', uri);
+			}),
 		// minify commands
 		commands.registerCommand('mxs.minify.files',
 			async args =>
