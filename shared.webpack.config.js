@@ -10,7 +10,7 @@
 const path = require('path');
 const mergeOptions = require('merge-options');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
-const ThreadsPlugin = require('threads-plugin');
+// const ThreadsPlugin = require('threads-plugin');
 
 module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 	/** @type WebpackConfig */
@@ -33,9 +33,9 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 				})
 			]
 		},
-		plugins: [
+/* 		plugins: [
 			new ThreadsPlugin()
-		],
+		], */
 		module: {
 			rules: [
 				{
