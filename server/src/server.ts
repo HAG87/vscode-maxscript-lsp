@@ -33,7 +33,7 @@ import { mxsDocumentSymbols } from './mxsOutline';
 import * as mxsMinifier from './mxsMin';
 import * as mxsPretty from './mxsRebuild';
 import * as mxsDefinitions from './mxsDefinitions';
-import { mxsSimpleDocumentFormatter } from './mxsFormatter';
+import * as mxsFormatter from './mxsFormatter';
 import { mxsSemanticTokens } from './mxsSemantics';
 //------------------------------------------------------------------------------------------
 // Create a connection for the server. The connection uses Node's IPC as a transport.
@@ -234,7 +234,7 @@ connection.onDocumentFormatting(async params =>
 		whitespaceChar: ' '
 	};
 	try {
-		return await mxsSimpleDocumentFormatter(document, formatterSettings);
+		return await mxsFormatter.SimpleDocumentFormatter(document, formatterSettings);
 	} catch (err) {
 		// in case of error, swallow it and return undefined (no result)
 		return;

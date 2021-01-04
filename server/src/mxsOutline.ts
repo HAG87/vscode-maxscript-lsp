@@ -37,7 +37,7 @@ export interface ParserResult
  *  - implement async version
  * 	- implement child_process
  */
-export class mxsDocumentSymbolProvider
+export class DocumentSymbolProvider
 {
 	private async documentSymbolsFromCST(
 		CST: any,
@@ -154,4 +154,4 @@ export class mxsDocumentSymbolProvider
 /**
  * Initialized mxsDocumentSymbolProvider. Intended to be consumed by the SymbolProviders and be persistent for the current editor, i norder to acces it from the minifier
  */
-export const mxsDocumentSymbols = new mxsDocumentSymbolProvider();
+export const mxsDocumentSymbols = new DocumentSymbolProvider();

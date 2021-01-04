@@ -49,7 +49,7 @@ interface SimpleFormatterActions
 	wsAdd: (t: moo.Token) => TextEdit | undefined
 }
 //-----------------------------------------------------------------------------------
-function mxsSimpleTextEditFormatter(document: TextDocument | string, action: SimpleFormatterActions)
+function SimpleTextEditFormatter(document: TextDocument | string, action: SimpleFormatterActions)
 {
 	return new Promise<TextEdit[]>((resolve, reject) =>
 	{
@@ -128,7 +128,7 @@ export async function mxsStringFormatter(source: string, settings: SimpleFormatt
  * Simple code formater: context unaware, just reflow whitespace and indentation of balanced pairs 
  * @param document vscode document to format
  */
-export async function mxsSimpleDocumentFormatter(document: TextDocument, settings: SimpleFormatterSettings)
+export async function SimpleDocumentFormatter(document: TextDocument, settings: SimpleFormatterSettings)
 {
 	let TextEditActions: SimpleFormatterActions =
 	{
@@ -138,7 +138,7 @@ export async function mxsSimpleDocumentFormatter(document: TextDocument, setting
 		wsClean: t => !settings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' ') : undefined,
 		wsAdd: t => !settings.indentOnly ? TextEdit.insert(getPos(t.line - 1, t.col + t.text.length - 1), ' ') : undefined,
 	};
-	return await mxsSimpleTextEditFormatter(document.getText(), TextEditActions);
+	return await SimpleTextEditFormatter(document.getText(), TextEditActions);
 }
 
 /**
@@ -146,7 +146,7 @@ export async function mxsSimpleDocumentFormatter(document: TextDocument, setting
  * @param document
  * @param range
  */
-export async function mxsSimpleRangeFormatter(document: TextDocument, range: Range, settings: SimpleFormatterSettings)
+export async function SimpleRangeFormatter(document: TextDocument, range: Range, settings: SimpleFormatterSettings)
 {
 	// positions
 	// let start = range.start;
@@ -167,5 +167,5 @@ export async function mxsSimpleRangeFormatter(document: TextDocument, range: Ran
 		wsClean   : t => !settings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' '): undefined,
 		wsAdd     : t => !settings.indentOnly ? TextEdit.insert(getPos(t.line + offLine - 1, t.col + t.value.length - 1), ' ') : undefined,
 	};
-	return await mxsSimpleTextEditFormatter(document.getText(range), TextEditActions);
+	return await SimpleTextEditFormatter(document.getText(range), TextEditActions);
 }
