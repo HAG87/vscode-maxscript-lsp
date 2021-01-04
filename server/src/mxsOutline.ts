@@ -2,7 +2,7 @@
 import { spawn, Thread, Worker } from 'threads';
 import
 {
-	CancellationToken,
+	// CancellationToken,
 	// CancellationTokenSource,
 	Diagnostic,
 	SymbolInformation,
@@ -99,7 +99,6 @@ export class DocumentSymbolProvider
 				end: document.positionAt(source.length - 1)
 			};
 			return await documentSymbols(source, loc, options);
-			// console.log('Hashed password:', hashed);
 		} catch (err) {
 			throw err;
 		} finally {
@@ -146,6 +145,6 @@ export class DocumentSymbolProvider
 }
 
 /**
- * Initialized mxsDocumentSymbolProvider. Intended to be consumed by the SymbolProviders and be persistent for the current editor, i norder to acces it from the minifier
+ * Initialized mxsDocumentSymbolProvider. Intended to be consumed by the SymbolProviders and be persistent for the current editor
  */
 export const mxsDocumentSymbols = new DocumentSymbolProvider();

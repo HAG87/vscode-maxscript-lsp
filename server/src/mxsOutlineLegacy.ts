@@ -96,8 +96,6 @@ export default function getDocumentSymbolsLegacy(document: TextDocument): Promis
 			let matchSymbols;
 			while (matchSymbols = type.match.exec(docTxt)) {
 
-				// console.log(matchSymbols[0].normalize);
-				// /*
 				let scomment = singleComments(escapeRegex(matchSymbols[0])).test(docTxt);
 				let bcomment = blockComments(escapeRegex(matchSymbols[0])).test(docTxt);
 				let _string = strings(escapeRegex(matchSymbols[0])).test(docTxt);
@@ -113,7 +111,6 @@ export default function getDocumentSymbolsLegacy(document: TextDocument): Promis
 						)
 					)
 				);
-				// */
 			}
 		});
 		if (SymbolInfCol.length) { resolve(SymbolInfCol); } else { reject('Symbols unavailable'); }

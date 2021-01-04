@@ -45,72 +45,71 @@ let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 /* Client Capabilities */
 let Capabilities = new mxsCapabilities();
 //------------------------------------------------------------------------------------------
-// Current document
-/* Store the current document Symbols for later use*/
+/**  Current documentSymbols: Store the current document Symbols for later use */
 let currentDocumentSymbols: DocumentSymbol[] | SymbolInformation[] = [];
+/**  Current document: Store the current document for later use */
 let currentTextDocument: TextDocument;
+/** The semantic tokens provider */
 let semanticTokensProvider: mxsSemanticTokens;
 //------------------------------------------------------------------------------------------
-connection.onInitialize(
-	(params, cancel, progress): Thenable<InitializeResult> | ResponseError<InitializeError> | InitializeResult =>
+/* Initialize the server */
+connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> | ResponseError<InitializeError> | InitializeResult =>
+{
+	progress.begin('Initializing MaxScript Server');
+	Capabilities.initialize(params.capabilities);
+	// Initialize semanticToken provider
+	semanticTokensProvider = new mxsSemanticTokens(params.capabilities.textDocument!.semanticTokens!);
+	/*
+	for (let folder of params.workspaceFolders) {
+		connection.console.log(`${folder.name} ${folder.uri}`);
+	}
+	if (params.workspaceFolders && params.workspaceFolders.length > 0) {
+		folder = params.workspaceFolders[0].uri;
+	}
+	*/
+	return new Promise((resolve, reject) =>
 	{
-		progress.begin('Initializing MaxScript Server');
-		Capabilities.initialize(params.capabilities);
+		let result: InitializeResult = {
+			capabilities: {
+				textDocumentSync: TextDocumentSyncKind.Incremental,
+				completionProvider:
+					Capabilities.hasCompletionCapability
+						? {
+							resolveProvider: false,
+							triggerCharacters: ['.']
+						}
+						: undefined,
+				documentSymbolProvider: Capabilities.hasDocumentSymbolCapability,
+				definitionProvider: Capabilities.hasDefinitionCapability,
+				documentFormattingProvider: Capabilities.hasDocumentFormattingCapability,
 
-		semanticTokensProvider = new mxsSemanticTokens(params.capabilities.textDocument!.semanticTokens!);
-		/*
-		for (let folder of params.workspaceFolders) {
-			connection.console.log(`${folder.name} ${folder.uri}`);
-		}
-		if (params.workspaceFolders && params.workspaceFolders.length > 0) {
-			folder = params.workspaceFolders[0].uri;
-		}
-		*/
-		return new Promise((resolve, reject) =>
-		{
-			let result: InitializeResult = {
-				capabilities: {
-					textDocumentSync: TextDocumentSyncKind.Incremental,
-					completionProvider:
-						Capabilities.hasCompletionCapability
-							? {
-								resolveProvider: false,
-								triggerCharacters: ['.']
-							}
-							: undefined,
-					documentSymbolProvider: Capabilities.hasDocumentSymbolCapability,
-					definitionProvider: Capabilities.hasDefinitionCapability,
-					documentFormattingProvider: Capabilities.hasDocumentFormattingCapability,
-
-					// workspaceSymbolProvider: true,
-					// documentRangeFormattingProvider: true,
-					// documentOnTypeFormattingProvider: {
-					// 	firstTriggerCharacter: ';',
-					// 	moreTriggerCharacter: ['}', '\n']
-					// },
-					// renameProvider: true,
-					// workspace: {
-					// 	workspaceFolders: {
-					// 		supported: true,
-					// 		changeNotifications: true
-					// 	}
-					// },
-					// typeDefinitionProvider: true,
-					// declarationProvider: { workDoneProgress: true },
-					// executeCommandProvider: {
-					// 	commands: ['testbed.helloWorld']
-					// },
-					// callHierarchyProvider: true,
-					// selectionRangeProvider: { workDoneProgress: true }
-				}
-			};
-			setTimeout(() =>
-			{
-				resolve(result);
-			}, 50);
-		});
+				// workspaceSymbolProvider: true,
+				// documentRangeFormattingProvider: true,
+				// documentOnTypeFormattingProvider: {
+				// 	firstTriggerCharacter: ';',
+				// 	moreTriggerCharacter: ['}', '\n']
+				// },
+				// renameProvider: true,
+				// workspace: {
+				// 	workspaceFolders: {
+				// 		supported: true,
+				// 		changeNotifications: true
+				// 	}
+				// },
+				// typeDefinitionProvider: true,
+				// declarationProvider: { workDoneProgress: true },
+				// executeCommandProvider: {
+				// 	commands: ['testbed.helloWorld']
+				// },
+				// callHierarchyProvider: true,
+				// selectionRangeProvider: { workDoneProgress: true }
+			}
+		};
+		// wait to start...
+		setTimeout(() => { resolve(result); }, 50);
 	});
-//------------------------------------------------------------------------------------------
+});
+
 connection.onInitialized(() =>
 {
 	if (Capabilities.hasConfigurationCapability) {
@@ -138,7 +137,7 @@ connection.onInitialized(() =>
 	*/
 });
 //------------------------------------------------------------------------------------------
-// Settings
+/* Settings */
 let globalSettings: MaxScriptSettings = defaultSettings;
 // Cache the settings of all open documents
 let documentSettings: Map<string, Thenable<MaxScriptSettings>> = new Map();
@@ -156,7 +155,6 @@ function getDocumentSettings(resource: string): Thenable<MaxScriptSettings>
 	return result;
 }
 //------------------------------------------------------------------------------------------
-// TODO: Remove diagnoses for closed files
 function diagnoseDocument(document: TextDocument, diagnose: Diagnostic[])
 {
 	if (!Capabilities.hasDiagnosticCapability && !globalSettings.Diagnostics) { return; }
@@ -185,8 +183,13 @@ connection.onDidChangeConfiguration(change =>
 	documents.all().forEach(validateDocument);
 });
 
-// The content of a text document has changed. This event is emitted
-// when the text document first opened or when its content has changed.
+documents.onDidClose(change =>
+{
+	// Only keep settings for open documents
+	documentSettings.delete(change.document.uri);
+	// Remove diagnostics for closed document 
+	diagnoseDocument(change.document, []);
+});
 /*
 documents.onDidChangeContent(
 	change =>
@@ -194,30 +197,10 @@ documents.onDidChangeContent(
 		diagnoseDocument(change.document, []);
 	});
 */
-// Only keep settings for open documents
-// documents.
-documents.onDidClose(change =>
-{
-	documentSettings.delete(change.document.uri);
-	diagnoseDocument(change.document, []);
-});
-//------------------------------------------------------------------------------------------
 // documents.onDidOpen
 // documents.onDidSave
-
-// This handler resolves additional information for the item selected in the completion list.
-// connection.onCompletionResolve
-// connection.onSelectionRanges
-// connection.onTypeDefinition
 //------------------------------------------------------------------------------------------
-/*
-connection.onDidChangeWatchedFiles(_change => {
-	Monitored files have change in VSCode
-	connection.console.log('We received an file change event');
-});
-*/
-//------------------------------------------------------------------------------------------
-// Document formatter
+/* Document formatter */
 connection.onDocumentFormatting(async params =>
 {
 	/* let options: FormattingOptions = {
@@ -241,8 +224,9 @@ connection.onDocumentFormatting(async params =>
 		return;
 	}
 });
-/*
+
 // Document Range formatter - WIP
+/*
 connection.onDocumentRangeFormatting(
 	async (_DocumentRangeFormattingParams: DocumentRangeFormattingParams) =>
 	{
@@ -255,8 +239,7 @@ connection.onDocumentRangeFormatting(
 	});
 // */
 //------------------------------------------------------------------------------------------
-// Update the parsed document, and diagnostics on Symbols request... ?
-// unhandled: Error defaults to no results 
+/* Provide DocumentSymbols and diagnostics  */
 connection.onDocumentSymbol((params, cancelation) =>
 {
 	/*
@@ -298,7 +281,8 @@ connection.onDocumentSymbol((params, cancelation) =>
 	});
 
 });
-// This handler provides the initial list of the completion items.
+
+/* Completion Items */
 connection.onCompletion(async params =>
 {
 	let settings = await getDocumentSettings(params.textDocument.uri);
@@ -309,8 +293,8 @@ connection.onCompletion(async params =>
 		params.position
 	);
 });
-// This handler provides Definition results
-// unhandled: Error defaults to no results 
+
+/* Definition provider */
 connection.onDefinition(async (params, cancellation) =>
 {
 	return new Promise((resolve, reject) =>
@@ -343,6 +327,7 @@ connection.onDefinition(async (params, cancellation) =>
 	});
 });
 //------------------------------------------------------------------------------------------
+/*  Provide semantic tokens */
 connection.languages.semanticTokens.on((params) =>
 {
 	const document = documents.get(params.textDocument.uri);
@@ -462,6 +447,16 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 	}
 	return null;
 });
+//------------------------------------------------------------------------------------------
+/*
+connection.onDidChangeWatchedFiles(_change => {
+	Monitored files have change in VSCode
+	connection.console.log('We received an file change event');
+});
+*/
+// connection.onCompletionResolve
+// connection.onSelectionRanges
+// connection.onTypeDefinition
 //------------------------------------------------------------------------------------------
 // Make the text document manager listen on the connection
 // for open, change and close text document events

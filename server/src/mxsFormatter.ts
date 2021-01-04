@@ -1,18 +1,11 @@
 import
 {
-	// CancellationToken,
-	// TextDocumentPositionParams,
-	// TextDocuments,
-	// TextDocumentSyncKind,
-	// TextDocumentEdit,
 	TextEdit,
 	Position,
 	Range
 } from 'vscode-languageserver';
 import
 {
-	// Position,
-	// Range,
 	TextDocument
 } from 'vscode-languageserver-textdocument';
 

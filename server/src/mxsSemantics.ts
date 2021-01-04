@@ -3,8 +3,7 @@ import
 {
 	SemanticTokensBuilder,
 	SemanticTokensLegend,
-	SemanticTokensClientCapabilities,
-	SemanticTokens
+	SemanticTokensClientCapabilities
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 //-------------------------------------------------------------------------------------------------------------
@@ -15,29 +14,6 @@ import { mxsFormatterLexer } from './lib/mooTokenize-formatter';
 // This is a simplified ruleset of the parser tokenizer
 let lexer = mxsFormatterLexer(maxAPI);
 //-------------------------------------------------------------------------------------------------------------
-/*
-	const tokenTypesLegend = [
-		'comment',
-		'keyword',
-		'operator',
-		'namespace',
-		'type',
-		'struct',
-		'class',
-		'interface',
-		'enum',
-		'typeParameter',
-		'function',
-		'member',
-		'macro',
-		'variable',
-		'parameter',
-		// 'property',
-		// 'label',
-		// 'string',
-		// 'number',
-	];
-*/
 enum TokenTypes
 {
 	class = 0,
