@@ -18,16 +18,17 @@ import
 	InitializeError,
 	SemanticTokensRegistrationOptions,
 	SemanticTokensRegistrationType
-
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as Path from 'path';
+import * as Uri from 'vscode-uri';
 //------------------------------------------------------------------------------------------
 import { MaxScriptSettings, defaultSettings } from './settings';
 import { mxsCapabilities } from './capabilities';
 //------------------------------------------------------------------------------------------
-import * as utils from './lib/utils';
 import { replaceText } from './lib/workspaceEdits';
+import { prefixFile } from './lib/utils';
+//------------------------------------------------------------------------------------------
 import * as mxsCompletion from './mxsCompletions';
 import { mxsDocumentSymbols } from './mxsOutline';
 import * as mxsMinifier from './mxsMin';
@@ -262,41 +263,38 @@ connection.onDocumentSymbol((params, cancelation) =>
 	currentDocumentSymbols = await parseDocument(document, cancelation);
 	return currentDocumentSymbols;
 	*/
-	return new Promise<SymbolInformation[] | DocumentSymbol[]>((resolve, reject) =>
+	return new Promise((resolve, reject) =>
 	{
+		// cancellation request
+		cancelation.onCancellationRequested(/* async */() => resolve);
+		// settings
 		let options = { recovery: true, attemps: 10, memoryLimit: 0.9 };
 		getDocumentSettings(params.textDocument.uri)
-			.then(
-				result =>
-				{
-					options.recovery = result.parser.errorCheck;
-					if (!result.GoToSymbol) { resolve([]); }
-				}
-			);
+			.then(result =>
+			{
+				options.recovery = result.parser.errorCheck;
+				if (!result.GoToSymbol) { resolve; }
+			});
 
 		let document = documents.get(params.textDocument.uri)!;
-		// console.log('Current symbols: ' + params.textDocument.uri);
-		mxsDocumentSymbols.parseDocument(document, cancelation, connection, options)
-			.then(
-				result =>
-				{
-					// connection.console.log('--> symbols sucess ');
-					//-----------------------------------
-					currentDocumentSymbols = result.symbols;
-					currentTextDocument = document;
-					//-----------------------------------
-					diagnoseDocument(document, result.diagnostics);
-					resolve(result.symbols);
-				}
-			)
-			.catch(
-				error =>
-				{
-					connection.window.showInformationMessage('MaxScript symbols provider fail: ' + error.message);
-					diagnoseDocument(document, []);
-					resolve([]);
-				}
-			);
+		mxsDocumentSymbols.parseDocument(document, connection, options)
+			.then(result =>
+			{
+				// connection.console.log('--> symbols sucess ');
+				//-----------------------------------
+				currentDocumentSymbols = result.symbols;
+				currentTextDocument = document;
+				//-----------------------------------
+				diagnoseDocument(document, result.diagnostics);
+				resolve(result.symbols);
+			})
+			.catch(error =>
+			{
+				// console.log(error);
+				connection.window.showInformationMessage('MaxScript symbols provider fail: ' + error.message);
+				diagnoseDocument(document, []);
+				resolve;
+			});
 	});
 
 });
@@ -315,26 +313,34 @@ connection.onCompletion(async params =>
 // unhandled: Error defaults to no results 
 connection.onDefinition(async (params, cancellation) =>
 {
-
-	let settings = await getDocumentSettings(params.textDocument.uri);
-	if (!settings.GoToDefinition) { return; }
-
-	// method 1: regex match the file
-	// method 2: search the parse tree for a match
-	// method 2.1: implement Workspace capabilities
-
-	try {
-		return await mxsDefinitions.getDocumentDefinitions(
+	return new Promise((resolve, reject) =>
+	{
+		// cancellation request
+		cancellation.onCancellationRequested(/* async */() => resolve);
+		// settings
+		getDocumentSettings(params.textDocument.uri)
+			.then(result =>
+			{
+				if (!result.GoToDefinition) { resolve; }
+			});
+		// method 1: regex match the file
+		// method 2: search the parse tree for a match
+		// method 2.1: implement Workspace capabilities
+		mxsDefinitions.getDocumentDefinitions(
 			documents.get(params.textDocument.uri)!,
 			params.position,
-			cancellation,
 			params.textDocument.uri === currentTextDocument.uri ? currentDocumentSymbols : undefined,
-			// mxsDocumentSymbols.msxParser.parsedCST
-		);
-	} catch (err) {
-		connection.console.log('MaxScript Definitions unhandled error: ' + err.message);
-		return [];
-	}
+			/* mxsDocumentSymbols.msxParser.parsedCST */)
+			.then(result =>
+			{
+				resolve(result);
+			})
+			.catch(error =>
+			{
+				connection.console.log('MaxScript Definitions unhandled error: ' + error.message);
+				resolve;
+			})
+	});
 });
 //------------------------------------------------------------------------------------------
 connection.languages.semanticTokens.on((params) =>
@@ -346,7 +352,8 @@ connection.languages.semanticTokens.on((params) =>
 	return semanticTokensProvider.provideSemanticTokens(document);
 });
 
-connection.languages.semanticTokens.onDelta((params) => {
+connection.languages.semanticTokens.onDelta((params) =>
+{
 	const document = documents.get(params.textDocument.uri);
 	if (document === undefined) {
 		return { edits: [] };
@@ -373,18 +380,18 @@ namespace PrettifyDocRequest
 {
 	export const type = new RequestType<PrettifyDocParams, string[] | null, void>('MaxScript/prettify');
 }
+
 connection.onRequest(MinifyDocRequest.type, async params =>
 {
 	let settings = await getDocumentSettings(params.uri[0]);
 
 	if (params.command === 'mxs.minify' || params.command === 'mxs.minify.file') {
 		for (let i = 0; i < params.uri.length; i++) {
-			let uri = params.uri[i];
-			let path = utils.uriToPath(uri)!;
-			let newPath = utils.prefixFile(path, settings.MinifyFilePrefix);
-			let doc = documents.get(uri);
+			let doc = documents.get(params.uri[i]);
+			let path = Uri.URI.parse(params.uri[i]).fsPath;
+			let newPath = prefixFile(path, settings.MinifyFilePrefix);
 			if (!doc) {
-				connection.window.showInformationMessage(
+				connection.window.showWarningMessage(
 					`MaxScript minify: Failed at ${Path.basename(path)}. Reason: Can't read the file`
 				);
 				continue;
@@ -402,22 +409,19 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 		}
 	} else {
 		for (let i = 0; i < params.uri.length; i++) {
-			let uri = params.uri[i];
-			let path = utils.uriToPath(uri)!;
-			let newPath = utils.prefixFile(path, settings.MinifyFilePrefix);
+			let path = Uri.URI.parse(params.uri[i]).fsPath;
+			let newPath = prefixFile(path, settings.MinifyFilePrefix);
 			try {
 				await mxsMinifier.MinifyFile(path, newPath);
-				connection.window.showInformationMessage(
-					`MaxScript minify: Document saved as ${Path.basename(newPath)}`);
+				connection.window.showInformationMessage(`MaxScript minify: Document saved as ${Path.basename(newPath)}`);
 			} catch (err) {
-				connection.window.showErrorMessage(
-					`MaxScript minify: Failed at ${Path.basename(newPath)}. Reason: ${err.message}`
-				);
+				connection.window.showErrorMessage(`MaxScript minify: Failed at ${Path.basename(newPath)}. Reason: ${err.message}`);
 			}
 		}
 	}
 	return null;
 });
+
 connection.onRequest(PrettifyDocRequest.type, async params =>
 {
 	let settings = await getDocumentSettings(params.uri[0]);
@@ -436,31 +440,23 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 	};
 	if (params.command === 'mxs.prettify') {
 		for (let i = 0; i < params.uri.length; i++) {
-			let uri = params.uri[i];
-			let doc = documents.get(uri);
+			let doc = documents.get(params.uri[i]);
+			let path = Uri.URI.parse(params.uri[i]).fsPath;
 			if (!doc) {
-				connection.window.showInformationMessage(
-					`MaxScript prettifier: Failed at ${Path.basename(utils.uriToPath(uri)!)}. Reason: Can't read the file`
-				);
+				connection.window.showWarningMessage(`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: Can't read the file`);
 				continue;
 			}
 			try {
 				let res = await mxsPretty.prettyData(doc.getText(), opts);
 				let reply = await replaceText.call(connection, doc, res);
-
 				if (reply.applied) {
-					connection.window.showInformationMessage(
-						`MaxScript prettifier sucess: ${Path.basename(utils.uriToPath(uri)!)}`
-					);
+					connection.window.showInformationMessage(`MaxScript prettifier sucess: ${Path.basename(path)}`);
 				} else {
-					connection.window.showInformationMessage(
-						`MaxScript prettifier: Failed at ${Path.basename(utils.uriToPath(uri)!)}. Reason: ${reply.failureReason}`
-					);
+					connection.window.showWarningMessage(`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: ${reply.failureReason}`);
 				}
 			} catch (err) {
-				connection.window.showInformationMessage(
-					`MaxScript prettifier: Failed at ${Path.basename(utils.uriToPath(uri)!)}. Reason: ${err.message}`
-				);
+				connection.window.showErrorMessage(`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: ${err.message}`);
+				// throw err;
 			}
 		}
 	}

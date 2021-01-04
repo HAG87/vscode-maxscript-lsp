@@ -140,16 +140,12 @@ function cstMatch(document: TextDocument, CST: any | any[], searchWord: string)
 export function getDocumentDefinitions(
 	document: TextDocument,
 	position: Position,
-	cancellation: CancellationToken,
 	documentSymbols?: DocumentSymbol[] | SymbolInformation[],
 	// parseCST?: any[],
 ): Promise<Definition | DefinitionLink[] | undefined>
 {
 	return new Promise((resolve, reject) =>
 	{
-		// cancellation request
-		cancellation.onCancellationRequested(async () => reject('Cancellation requested'));
-
 		// try to avoid words inside inline comments
 		const word = getWordAtPosition(document, position, '--');
 		if (!word) {
