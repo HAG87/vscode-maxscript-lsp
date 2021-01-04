@@ -1,18 +1,12 @@
 'use strict';
-// import { spawn, Thread, Worker } from 'threads';
-// import * as path from 'path';
-// import { Worker } from 'worker_threads';
 import { spawn, Thread, Worker } from 'threads';
 import { reflowOptions } from './lib/mxsReflow';
 //--------------------------------------------------------------------------------
 /*
-//@ts-ignore
-// import { parseSource } from './mxsParser';
-// import { mxsReflow, options } from './lib/mxsReflow';
-// import { fileRead, fileWrite } from './lib/utils';
-*/
+import { parseSource } from './mxsParser';
+import { mxsReflow, options } from './lib/mxsReflow';
+import {readFile, writeFile} from 'fs/promises'
 //--------------------------------------------------------------------------------
-/*
 function setOptions(settings?: Partial<ReflowOptions>)
 {
 	options.reset();
@@ -51,41 +45,12 @@ export async function prettyData(data: unknown | unknown[] | string, settings?: 
 
 export async function prettyFile(src: string, dest: string, settings?: Partial<ReflowOptions>)
 {
-	let data = await fileRead(src);
+	let data = await readFile(src);
 	let pretty = await prettyData(data, settings);
-	await fileWrite(dest, pretty);
+	await writeFile(dest, pretty);
 }
 */
-/*
-export async function prettyData(data: unknown | unknown[] | string, settings?: Partial<ReflowOptions>)
-{
-	return new Promise<string>((resolve, reject) => {
-		let worker = new Worker(path.resolve(__dirname, './workers/reflow.js'), {
-			workerData: {
-				source: data,
-				options: settings
-			}
-		});
-		
-		worker.on('message', (data: string) =>
-		{
-			resolve(data);
-		});
-		
-		worker.on('error', err =>
-		{
-			console.log(err);
-			reject(err);
-		});
-		
-		worker.on('exit', code =>
-		{
-			if (code != 0) { console.error(`Worker stopped with exit code ${code}`); }
-			reject(`Worker stopped with exit code ${code}`);
-		});
-	});
-}
-*/
+
 export async function prettyData(data: unknown | unknown[] | string, settings?: Partial<reflowOptions>)
 {
 	let prettyData = await spawn(new Worker('./workers/reflow.worker'));
