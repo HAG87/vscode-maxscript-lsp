@@ -295,7 +295,7 @@ connection.onCompletion(async params =>
 });
 
 /* Definition provider */
-connection.onDefinition(async (params, cancellation) =>
+connection.onDefinition((params, cancellation) =>
 {
 	return new Promise((resolve, reject) =>
 	{
@@ -315,13 +315,11 @@ connection.onDefinition(async (params, cancellation) =>
 			params.position,
 			params.textDocument.uri === currentTextDocument.uri ? currentDocumentSymbols : undefined,
 			/* mxsDocumentSymbols.msxParser.parsedCST */)
-			.then(result =>
-			{
-				resolve(result);
-			})
+			.then(result => resolve(result),
+				reason => resolve)
 			.catch(error =>
 			{
-				connection.console.log('MaxScript Definitions unhandled error: ' + error.message);
+				connection.console.log('MaxScript Definitions unhandled error: ' + error);
 				resolve;
 			})
 	});

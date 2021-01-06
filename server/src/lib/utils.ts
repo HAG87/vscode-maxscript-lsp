@@ -90,8 +90,8 @@ export function getWordAtPosition(document: TextDocument, position: Position, sk
 
 	if (start === null && end === null) { return; }
 
-	let a = start![0] ?? '';
-	let b = end![0] ?? '';
+	let a = start && start[0] ? start[0] : '';
+	let b = end && end[0] ? end[0] : '';
 
 	return a + b;
 }

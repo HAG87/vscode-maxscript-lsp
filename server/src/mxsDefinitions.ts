@@ -123,7 +123,7 @@ function cstMatch(document: TextDocument, CST: any | any[], searchWord: string)
 {
 	//TODO: use only valid statements, declarations, etc.
 	const prospect = getFromCST(CST, { 'value': searchWord });
-	if (prospect.length <= 0) { return;}
+	if (prospect.length <= 0) { return; }
 	// first element in collection
 	let tokenRange = rangeUtil.getTokenRange(prospect[0]);
 	return LocationLink.create(document.uri, tokenRange, tokenRange);
@@ -148,21 +148,18 @@ export function getDocumentDefinitions(
 	{
 		// try to avoid words inside inline comments
 		const word = getWordAtPosition(document, position, '--');
-		if (!word) {
-			// console.log('DEFINITIONS: No input word.');
-			reject('No input word.');
-			return;
-		}
-		// use documentSymbols
-		// console.log('DEFINITIONS: symbols available');
-		if (documentSymbols) {
-			let _symbolMatch = symbolMatch(document, documentSymbols as DocumentSymbol[], word);
-			_symbolMatch ? resolve(_symbolMatch) : reject('No matches');
+		if (word) {
+			// use documentSymbols
+			if (documentSymbols) {
+				let _symbolMatch = symbolMatch(document, documentSymbols as DocumentSymbol[], word);
+				_symbolMatch ? resolve(_symbolMatch) : reject('No matches');
+			} else {
+				// fallback to regex match
+				let _wordMatch = wordMatch(document, word, position);
+				_wordMatch ? resolve(_wordMatch) : reject('No matches.');
+			}
 		} else {
-			// fallback to regex match
-			// console.log('DEFINITIONS: symbols un-available, using regex');
-			let _wordMatch = wordMatch(document, word, position);
-			_wordMatch ? resolve(_wordMatch) : reject('No matches.');
+			reject('No input word.');
 		}
 		// use the parse tree -- DISABLED
 		/*
