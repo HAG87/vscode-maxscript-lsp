@@ -21,7 +21,7 @@ import
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as Path from 'path';
-import * as Uri from 'vscode-uri';
+import { URI } from 'vscode-uri';
 //------------------------------------------------------------------------------------------
 import { MaxScriptSettings, defaultSettings } from './settings';
 import { mxsCapabilities } from './capabilities';
@@ -273,8 +273,7 @@ connection.onDocumentSymbol((params, cancelation) =>
 			})
 			.catch(error =>
 			{
-				// console.log(error);
-				connection.window.showInformationMessage('MaxScript symbols provider fail: ' + error.message);
+				connection.window.showInformationMessage('MaxScript symbols provider unhandled error: ' + error);
 				diagnoseDocument(document, []);
 				resolve;
 			});
@@ -371,7 +370,8 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 	if (params.command === 'mxs.minify' || params.command === 'mxs.minify.file') {
 		for (let i = 0; i < params.uri.length; i++) {
 			let doc = documents.get(params.uri[i]);
-			let path = Uri.URI.parse(params.uri[i]).fsPath;
+			let path = URI.parse(params.uri[i]).fsPath;
+			// let path = Path.normalize(params.uri[i]);
 			let newPath = prefixFile(path, settings.MinifyFilePrefix);
 			if (!doc) {
 				connection.window.showWarningMessage(
@@ -386,19 +386,20 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 				);
 			} catch (err) {
 				connection.window.showErrorMessage(
-					`MaxScript minify: Failed at ${Path.basename(newPath)}. Reason: ${err.message}`
+					`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${err.message}`
 				);
 			}
 		}
 	} else {
 		for (let i = 0; i < params.uri.length; i++) {
-			let path = Uri.URI.parse(params.uri[i]).fsPath;
+			let path = URI.parse(params.uri[i]).fsPath;
+			// let path = Path.normalize(params.uri[i]);
 			let newPath = prefixFile(path, settings.MinifyFilePrefix);
 			try {
 				await mxsMinifier.MinifyFile(path, newPath);
 				connection.window.showInformationMessage(`MaxScript minify: Document saved as ${Path.basename(newPath)}`);
 			} catch (err) {
-				connection.window.showErrorMessage(`MaxScript minify: Failed at ${Path.basename(newPath)}. Reason: ${err.message}`);
+				connection.window.showErrorMessage(`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${err.message}`);
 			}
 		}
 	}
@@ -424,7 +425,8 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 	if (params.command === 'mxs.prettify') {
 		for (let i = 0; i < params.uri.length; i++) {
 			let doc = documents.get(params.uri[i]);
-			let path = Uri.URI.parse(params.uri[i]).fsPath;
+			let path = URI.parse(params.uri[i]).fsPath;
+			// let path = params.uri[i];
 			if (!doc) {
 				connection.window.showWarningMessage(`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: Can't read the file`);
 				continue;
