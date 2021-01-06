@@ -84,11 +84,11 @@ function parseSync(source: string, parserInstance: nearley.Parser): parserResult
 function parseWithErrorsSync(source: string, parserInstance: nearley.Parser): parserResult
 {
 	// New method tokenizing the input could be a way to feed tokens to the parser
-	let src = TokenizeStream(source);
+	const src = TokenizeStream(source);
 	let state = parserInstance.save();
 
-	let badTokens: any[] = [];
-	let errorReport: any[] = [];
+	let badTokens: moo.Token[] = [];
+	// let errorReport: any[] = [];
 
 	// let next = 0;
 	let total = src.length - 1;
@@ -100,9 +100,10 @@ function parseWithErrorsSync(source: string, parserInstance: nearley.Parser): pa
 			// this.parserInstance.feed(src[next].text);
 		} catch (err) {
 			// catch non parsing related errors.
+			// console.log(err);
 			if (!err.token) { throw err; }
-			// console.log(err.token);
-			badTokens.push(src[next]);
+
+			badTokens.push(err.token);
 			/* DISABLED FEATURE - NEEDS OPTIMIZATION */
 			// errorReport.push({token:src[next], alternatives: this.PossibleTokens(this.parserInstance) });
 			let filler = replaceWithWS(err.token.text);
@@ -125,7 +126,7 @@ function parseWithErrorsSync(source: string, parserInstance: nearley.Parser): pa
 		newErr.name = 'ERR_RECOVER';
 		newErr.recoverable = true;
 		newErr.tokens = badTokens;
-		newErr.details = errorReport;
+		// newErr.details = errorReport;
 		return newErr;
 	};
 	let reportFailure = () =>
@@ -134,7 +135,7 @@ function parseWithErrorsSync(source: string, parserInstance: nearley.Parser): pa
 		newErr.name = 'ERR_FATAL';
 		newErr.recoverable = false;
 		newErr.tokens = badTokens;
-		newErr.details = errorReport;
+		// newErr.details = errorReport;
 		return newErr;
 	};
 	return {
@@ -181,7 +182,7 @@ function PossibleTokens(parserInstance: nearley.Parser)
  * @param source Data to parse 
  * @param parserInstance Nearley parser instance
  */
-export function parseAsync(source: string, parserInstance: nearley.Parser, ms = 5): Promise<parserResult>
+export function parseAsync(source: string, parserInstance: nearley.Parser): Promise<parserResult>
 {
 	return new Promise((resolve, reject) =>
 	{
@@ -202,7 +203,7 @@ export function parseAsync(source: string, parserInstance: nearley.Parser, ms = 
 function parseWithErrorsAsync(
 	source: string,
 	parserInstance: nearley.Parser,
-	options = { recovery: true, attemps: 10, memoryLimit: 0.9 }
+	options = { recovery: true, attemps: -1, memoryLimit: 0.9 }
 ): Promise<parserResult>
 {
 	const totalHeapSizeThreshold = getHeapStatistics().heap_size_limit * options.memoryLimit;
@@ -210,8 +211,8 @@ function parseWithErrorsAsync(
 	let src = TokenizeStream(source);
 	let state = parserInstance.save();
 
-	let badTokens: any[] = [];
-	let errorReport: any[] = [];
+	let badTokens: moo.Token[] = [];
+	// let errorReport: any[] = [];
 
 	let reportSuccess = () =>
 	{
@@ -219,7 +220,7 @@ function parseWithErrorsAsync(
 		newErr.name = 'ERR_RECOVER';
 		newErr.recoverable = true;
 		newErr.tokens = badTokens;
-		newErr.details = errorReport;
+		// newErr.details = errorReport;
 		return newErr;
 	};
 	let reportFailure = () =>
@@ -228,7 +229,7 @@ function parseWithErrorsAsync(
 		newErr.name = 'ERR_FATAL';
 		newErr.recoverable = false;
 		newErr.tokens = badTokens;
-		newErr.details = errorReport;
+		// newErr.details = errorReport;
 		return newErr;
 	};
 
@@ -250,22 +251,24 @@ function parseWithErrorsAsync(
 						state = parserInstance.save();
 						return { done: false };
 					} catch (err) {
+
 						if (!err.token) { throw (err); }
 						if (!options.recovery) { return { done: true }; }
-						if (attemp++ >= options.attemps)  { return { done: true }; }
-						// console.log(err.token);
+						if (options.attemps > 0 && attemp++ >= options.attemps)  { return { done: true }; }
+												
 						// collect bad tokens
 						badTokens.push(err.token);
-						// badTokens.push(src[next]);
+						
 						// create a report of possible fixes *DISBLED*
+						// console.log(PossibleTokens(parserInstance));
 						// errorReport.push({token:src[next], alternatives: this.PossibleTokens(mxsParser) });
+						
 						// replace the faulty token with a filler value
 						let filler = replaceWithWS(err.token.text);
-						err.token.text = filler;
-						err.token.value = filler;
-						err.token.type = 'ws';
-						// src.splice(next, 1, err.token);
-						src[next] = err.token;
+						src[next].text = filler;
+						src[next].value = filler;
+						src[next].type = 'ws';
+						// console.log(src[next]);
 						// backtrack
 						parserInstance.restore(state);
 					}
@@ -275,62 +278,7 @@ function parseWithErrorsAsync(
 			}
 		};
 	}
-	/*
-	let errParser = (callback: any) =>
-	{
-		let parsings = (
-			src: moo.Token[],
-			next: number,
-			total: number
-		): any | undefined =>
-		{
-			try {
-				// check for memory overflow
-				if ((getHeapStatistics().total_heap_size) > totalHeapSizeThreshold) {
-					// console.log('memory leak');
-					// reject('memory leak');
-					// return callback();
-					process.exit(1);
-				}	
-				parserInstance.feed(src[next].text);
-			} catch (err) {
-				if (options.recovery) {
-					// catch non parsing related errors.
-					if (!err.token) { throw (err); }
-					// collect bad tokens
-					badTokens.push(src[next]);
-					// create a report of possible fixes *DISBLED*
-					// errorReport.push({token:src[next], alternatives: this.PossibleTokens(mxsParser) });
-					// replace the faulty token with a filler value
-					let filler = replaceWithWS(err.token.text);
-					err.token.text = filler;
-					err.token.value = filler;
-					err.token.type = 'ws';
-					// src.splice(next, 1, err.token);
-					src[next] = err.token;
-					// backtrack
-					next -= 1;
-					parserInstance.restore(state);
-				} else {
-					return callback();
-				}
-			}
-			state = parserInstance.save();
 
-			if (next >= total) {
-				if (parserInstance.results) {
-					return callback(parserInstance.results[0]);
-				} else {
-					return callback();
-				}
-			} else {
-				// setImmediate(() => parsings(src, next + 1, total));
-				parsings(src, next + 1, total);
-			}
-		};
-		parsings(src, 0, total);
-	};
-	//*/
 	return new Promise((resolve, reject) =>
 	{
 		let it = parserIterator(src);
@@ -341,16 +289,6 @@ function parseWithErrorsAsync(
 		} else {
 			resolve({ result: undefined, error: reportFailure() });
 		}
-		/*
-		errParser((result: any | undefined) =>
-		{
-			if (result) {
-				resolve({ result: <any>result, error: reportSuccess() });
-			} else {
-				resolve({ result: undefined, error: reportFailure() });
-			}
-		});
-		*/
 	});
 }
 
@@ -358,13 +296,12 @@ function parseWithErrorsAsync(
 /**
  * Parse MaxScript code
  * @param source source code string
- * @param options recovery; enable the error recovery parser
+ * @param options recovery; enable the error recovery parser. set attemps to -1 to disable attemps limit
  */
 export function parseSource(source: string, options = { recovery: true, attemps: 10, memoryLimit: 0.9}): Promise<parserResult>
 {
 	return new Promise((resolve, reject) =>
 	{
-		// /*
 		parseAsync(source, declareParser())
 			.then(
 				result => resolve(result),
@@ -378,8 +315,7 @@ export function parseSource(source: string, options = { recovery: true, attemps:
 					}
 				}
 			)
-			// */
-		// parseWithErrorsAsync(source, declareParser(), options)
+			// parseWithErrorsAsync(source, declareParser(), options)
 			.then(result =>
 			{
 				// console.log('PARSER HAS RECOVERED FROM ERROR');

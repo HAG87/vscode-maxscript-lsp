@@ -8,7 +8,7 @@ import
 } from 'vscode-languageserver';
 //@ts-ignore
 import traverse from 'ast-monkey-traverse';
-import * as moo from 'moo';
+import moo from 'moo';
 //-----------------------------------------------------------------------------------
 /**
  * Generic dictionary Interface
@@ -50,10 +50,7 @@ const SymbolKindMatch: Dictionary<SymbolKind> = {
 	'Include': SymbolKind.Module,
 };
 //-----------------------------------------------------------------------------------
-function isNode(node: any | undefined)
-{
-	return (node != null && typeof node === 'object');
-}
+const isNode = (node: any) => typeof node === 'object' && node != null;
 //-----------------------------------------------------------------------------------
 /**
  * collect Nodes visiting the Tree
@@ -64,7 +61,7 @@ function isNode(node: any | undefined)
  * @param document source document
  * @param keyFilter? Object with keys:[] to be collected.
  */
-export async function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyFilter = 'id'): Promise<DocumentSymbol | DocumentSymbol[]>
+export async function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyFilter = 'id'): Promise<DocumentSymbol[]>
 {
 	/**
 	 * Ranges produced by moo needs to be adjusted, since it starts at 1:1, and for vscode is 0:0
@@ -129,7 +126,7 @@ export async function deriveSymbolsTree(nodes: any | any[], documentRange: Range
 				selectionRange: loc
 				// children: []
 			};
-			parent.children != undefined ? parent.children.push(_node) : parent.children = [_node];
+			parent.children != null ? parent.children.push(_node) : parent.children = [_node];
 		} else {
 			_node = parent;
 		}

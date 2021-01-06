@@ -7,7 +7,7 @@ import
 {
 	commands,
 	ExtensionContext,
-	languages,
+	Uri,
 	workspace,
 	window,
 } from 'vscode';
@@ -19,10 +19,7 @@ import
 	ServerOptions,
 	TransportKind,
 	RequestType
-} from 'vscode-languageclient';
-//------------------------------------------------------------------------------------------
-import { mxsDocumentSemanticTokensProvider, legend } from './mxsSemantics';
-import mxsHelp from './mxsHelp';
+} from 'vscode-languageclient/node';
 //------------------------------------------------------------------------------------------
 let client: LanguageClient;
 //------------------------------------------------------------------------------------------
@@ -93,7 +90,16 @@ export function activate(context: ExtensionContext)
 	//------------------------------------------------------------------------------------------
 	context.subscriptions.push(
 		// MaxScript Help command
-		commands.registerTextEditorCommand('mxs.help', (textEditor) => { mxsHelp(textEditor); }),
+		commands.registerTextEditorCommand('mxs.help',
+			async (editor) =>
+			{
+				let uri = Uri.parse(encodeURI(
+					`${workspace.getConfiguration('maxscript').get('Help.Provider', 'http://help.autodesk.com/view/3DSMAX/2021/ENU/')
+					}?query=${editor.document.getText(editor.selection)!
+					}&cg=Scripting%20%26%20Customization`
+				));
+				await commands.executeCommand('vscode.open', uri);
+			}),
 		// minify commands
 		commands.registerCommand('mxs.minify.files',
 			async args =>
@@ -106,7 +112,7 @@ export function activate(context: ExtensionContext)
 				}).then(
 					async uris =>
 					{
-						if (uris === undefined) { return; }
+						if (!uris) { return; }
 
 						let params: MinifyDocParams = {
 							command: 'mxs.minify.files',
@@ -121,7 +127,7 @@ export function activate(context: ExtensionContext)
 			{
 				let activeEditorUri = window.activeTextEditor?.document.uri;
 
-				if (activeEditorUri === undefined
+				if (!activeEditorUri
 					|| activeEditorUri.scheme !== 'file'
 					|| window.activeTextEditor?.document.isDirty) {
 					await window.showInformationMessage('MaxScript minify: Save your file first.');
@@ -147,7 +153,7 @@ export function activate(context: ExtensionContext)
 			{
 				let activeEditorUri = window.activeTextEditor?.document.uri;
 
-				if (activeEditorUri === undefined
+				if (!activeEditorUri
 					|| activeEditorUri.scheme !== 'file'
 					|| window.activeTextEditor?.document.isDirty) {
 					await window.showInformationMessage('MaxScript prettifier: Save your file first.');
@@ -161,27 +167,12 @@ export function activate(context: ExtensionContext)
 			})
 	);
 	//------------------------------------------------------------------------------------------
-	// FEATURES IMPLEMENTED IN CLIENT...
-	let mxsConfig = (workspace.getConfiguration('MaxScript'));
-
-	// semantics
-	if (mxsConfig.get('language.semantics', true)) {
-		context.subscriptions.push(
-			languages.registerDocumentSemanticTokensProvider(
-				MXS_DOC.language!,
-				new mxsDocumentSemanticTokensProvider(),
-				legend
-			));
-	}
-	//------------------------------------------------------------------------------------------
 	// Start the client. This will also launch the server
 	client.start();
 }
 
-export function deactivate(): Thenable<void> | undefined
+export function deactivate()
 {
-	if (!client) {
-		return undefined;
-	}
+	if (!client) { return undefined; }
 	return client.stop();
 }

@@ -2,8 +2,8 @@
 import
 {
 	Diagnostic,
-	// DiagnosticRelatedInformation,
 	DiagnosticSeverity,
+	// DiagnosticRelatedInformation,
 } from 'vscode-languageserver';
 //--------------------------------------------------------------------------------
 import moo from 'moo';
@@ -43,16 +43,13 @@ export class ParserError extends Error
 export const mxsDiagnosticCollection: Diagnostic[] = [];
 //--------------------------------------------------------------------------------
 const tokenListToValues = (tokenList: Dictionary<string>[]): string[] =>
-{
-	return [...new Set((tokenList).map(item => item.type))];
-};
-
+	[...new Set((tokenList).map(item => item.type))];
 
 /**
  * Provide a message that list possible solutions
- * @param {token[]} tokenList List of possible tokens
+ * @param tokenList List of possible tokens
  */
-const correctionList = (tokenList: Dictionary<string>[]): string =>
+function correctionList(tokenList: Dictionary<string>[]): string
 {
 	// get a list of the types
 	let list = tokenListToValues(tokenList);
@@ -60,7 +57,7 @@ const correctionList = (tokenList: Dictionary<string>[]): string =>
 	// map the types to description...
 	let str = 'It was expected one of the followings:\n - ' + tokenDesc.join('\n - ');
 	return str;
-};
+}
 
 /**
  * Provides a basic syntax error diagnostic.
@@ -69,8 +66,8 @@ const correctionList = (tokenList: Dictionary<string>[]): string =>
  */
 export function provideParserDiagnostic(error: ParserError): Diagnostic[]
 {
+	const tokenList = [...error.tokens];
 	let diagnostics: Diagnostic[];
-	let tokenList = [...error.tokens];
 	diagnostics = tokenList.map(
 		t =>
 		{
@@ -81,11 +78,13 @@ export function provideParserDiagnostic(error: ParserError): Diagnostic[]
 				DiagnosticSeverity.Error
 			);
 			diag.source = 'MaxScript';
-			// diag.code = error.name;
 			// DISABLED: List of possible tokens
-			// let list = tokenListToValues(error.alternatives);
-			// let tokenDesc: string[] = list.map(item => tokenDefinitions[item]).sort();
-			// diag.relatedInformation = tokenDesc.map( item => new DiagnosticRelatedInformation(new Location(document.uri, vsRange), item));
+			/*
+				diag.code = error.name;
+				let list = tokenListToValues(error.alternatives);
+				let tokenDesc: string[] = list.map(item => tokenDefinitions[item]).sort();
+				diag.relatedInformation = tokenDesc.map( item => new DiagnosticRelatedInformation(new Location(document.uri, vsRange), item));
+			*/
 			return diag;
 		});
 	return diagnostics;

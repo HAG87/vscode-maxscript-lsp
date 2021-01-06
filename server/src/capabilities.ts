@@ -1,7 +1,7 @@
 import { ClientCapabilities } from 'vscode-languageserver';
 
 //------------------------------------------------------------------------------------------
-export interface mxsCapabilities
+export class mxsCapabilities
 {
 	hasConfigurationCapability: boolean;
 	hasWorkspaceFolderCapability: boolean;
@@ -11,18 +11,7 @@ export interface mxsCapabilities
 	hasDocumentSymbolCapability: boolean;
 	hasDefinitionCapability: boolean;
 	hasDocumentFormattingCapability: boolean;
-}
-export class mxsCapabilities implements mxsCapabilities
-{
-	hasConfigurationCapability: boolean;
-	hasWorkspaceFolderCapability: boolean;
-	hasCompletionCapability: boolean;
-	hasDiagnosticRelatedInformationCapability: boolean;
-	hasDiagnosticCapability: boolean;
-	hasDocumentSymbolCapability: boolean;
-	hasDefinitionCapability: boolean;
-	hasDocumentFormattingCapability: boolean;
-
+	hasDocumentSemanticTokensCapability: boolean;
 	constructor()
 	{
 		this.hasConfigurationCapability = false;
@@ -33,42 +22,21 @@ export class mxsCapabilities implements mxsCapabilities
 		this.hasDocumentSymbolCapability = false;
 		this.hasDefinitionCapability = false;
 		this.hasDocumentFormattingCapability = false;
+		this.hasDocumentSemanticTokensCapability = false;
 	}
 
 	initialize(capabilities: ClientCapabilities)
 	{
 		// Does the client support the `workspace/configuration` request?
 		// If not, we will fall back using global settings
-		this.hasConfigurationCapability = !!(
-			capabilities.workspace && !!capabilities.workspace.configuration
-		);
-		this.hasWorkspaceFolderCapability = !!(
-			capabilities.workspace && !!capabilities.workspace.workspaceFolders
-		);
-		this.hasDiagnosticCapability = !!(
-			capabilities.textDocument &&
-			capabilities.textDocument.publishDiagnostics
-		);
-		this.hasDiagnosticRelatedInformationCapability = !!(
-			capabilities.textDocument &&
-			capabilities.textDocument.publishDiagnostics &&
-			capabilities.textDocument.publishDiagnostics.relatedInformation
-		);
-		this.hasDocumentSymbolCapability = !!(
-			capabilities.textDocument &&
-			capabilities.textDocument.documentSymbol
-		);
-		this.hasDefinitionCapability = !!(
-			capabilities.textDocument &&
-			capabilities.textDocument.definition
-		);
-		this.hasCompletionCapability = !!(
-			capabilities.textDocument &&
-			capabilities.textDocument.completion
-		);
-		this.hasDocumentFormattingCapability = !!(
-			capabilities.textDocument &&
-			capabilities.textDocument.formatting
-		);
+		this.hasConfigurationCapability = !!(capabilities.workspace?.configuration);
+		this.hasWorkspaceFolderCapability = !!(capabilities.workspace?.workspaceFolders);
+		this.hasDiagnosticCapability = !!(capabilities.textDocument?.publishDiagnostics);
+		this.hasDiagnosticRelatedInformationCapability = !!(capabilities.textDocument?.publishDiagnostics);
+		this.hasDocumentSymbolCapability = !!(capabilities.textDocument?.documentSymbol);
+		this.hasDefinitionCapability = !!(capabilities.textDocument?.definition);
+		this.hasCompletionCapability = !!(capabilities.textDocument?.completion);
+		this.hasDocumentFormattingCapability = !!(capabilities.textDocument?.formatting);
+		this.hasDocumentSemanticTokensCapability = !!(capabilities.textDocument?.semanticTokens);
 	}
 }

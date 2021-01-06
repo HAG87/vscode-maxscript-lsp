@@ -1,29 +1,22 @@
 import
 {
-	// CancellationToken,
-	// TextDocumentPositionParams,
-	// TextDocuments,
-	// TextDocumentSyncKind,
-	// TextDocumentEdit,
 	TextEdit,
 	Position,
 	Range
 } from 'vscode-languageserver';
 import
 {
-	// Position,
-	// Range,
 	TextDocument
 } from 'vscode-languageserver-textdocument';
 
-import { Token } from 'moo';
+import moo from 'moo';
 import { TokenizeStream as mxsTokenizer } from './mxsParser';
-import mooTokenizer from './lib/mooTokenize-formatter';
+import { mxsFormatterLexer } from './lib/mooTokenize-formatter';
 import { rangeUtil } from './lib/astUtils';
 // note: keywords could be used to indent, at start or end of line. this will require a per-line aproach... split the documents in lines, and feed the tokenizer one line at the time.
 //-----------------------------------------------------------------------------------
-const filterCurrent = ['newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange'];
-const filterAhead = ['newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange'];
+const filterCurrent = ['assign', 'newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange'];
+const filterAhead = ['assign', 'newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange'];
 
 const IndentTokens = ['lparen', 'arraydef', 'lbracket', 'lbrace', 'bitarraydef'];
 const UnIndentTokens = ['rparen', 'rbracket', 'rbrace'];
@@ -43,28 +36,30 @@ interface SimpleFormatterSettings
 }
 interface SimpleFormatterActions
 {
-	wsReIndent: (t: Token, i: number) => TextEdit | undefined
-	wsIndent: (t: Token, i: number) => TextEdit | undefined
-	wsClean: (t: Token) => TextEdit | undefined
-	wsAdd: (t: Token) => TextEdit | undefined
+	wsReIndent: (t: moo.Token, i: number) => TextEdit | undefined
+	wsIndent: (t: moo.Token, i: number) => TextEdit | undefined
+	wsClean: (t: moo.Token) => TextEdit | undefined
+	wsAdd: (t: moo.Token) => TextEdit | undefined
 }
 //-----------------------------------------------------------------------------------
-function mxsSimpleTextEditFormatter(document: TextDocument | string, action: SimpleFormatterActions)
+function SimpleTextEditFormatter(document: TextDocument | string, action: SimpleFormatterActions)
 {
 	return new Promise<TextEdit[]>((resolve, reject) =>
 	{
-		let source = typeof document === 'string' ? document :document.getText();
+
+		const source = typeof document === 'string' ? document :document.getText();
+		// add to results
+		let Add = (res: TextEdit | undefined) => { if (res) { edits.push(res); } };
 
 		let indentation = 0;
 		let edits: TextEdit[] = [];
 		let prevLine: number = 1;
 
 		// token stream. if this fail will throw an error
-		let tokenizedSource: Token[] = mxsTokenizer(source, undefined, mooTokenizer);
+		let tokenizedSource: moo.Token[] = mxsTokenizer(source, undefined, mxsFormatterLexer());
+
 		// return if no results
 		if (tokenizedSource && !tokenizedSource.length) { reject(edits); }
-		// add to results
-		let Add = (res: TextEdit | undefined) => { if (res) { edits.push(res); } };
 
 		// main loop
 		for (let i = 0; i < tokenizedSource.length; i++) {
@@ -126,7 +121,7 @@ export async function mxsStringFormatter(source: string, settings: SimpleFormatt
  * Simple code formater: context unaware, just reflow whitespace and indentation of balanced pairs 
  * @param document vscode document to format
  */
-export async function mxsSimpleDocumentFormatter(document: TextDocument, settings: SimpleFormatterSettings)
+export async function SimpleDocumentFormatter(document: TextDocument, settings: SimpleFormatterSettings)
 {
 	let TextEditActions: SimpleFormatterActions =
 	{
@@ -136,7 +131,7 @@ export async function mxsSimpleDocumentFormatter(document: TextDocument, setting
 		wsClean: t => !settings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' ') : undefined,
 		wsAdd: t => !settings.indentOnly ? TextEdit.insert(getPos(t.line - 1, t.col + t.text.length - 1), ' ') : undefined,
 	};
-	return await mxsSimpleTextEditFormatter(document.getText(), TextEditActions);
+	return await SimpleTextEditFormatter(document.getText(), TextEditActions);
 }
 
 /**
@@ -144,13 +139,13 @@ export async function mxsSimpleDocumentFormatter(document: TextDocument, setting
  * @param document
  * @param range
  */
-export async function mxsSimpleRangeFormatter(document: TextDocument, range: Range, settings: SimpleFormatterSettings)
+export async function SimpleRangeFormatter(document: TextDocument, range: Range, settings: SimpleFormatterSettings)
 {
 	// positions
 	// let start = range.start;
 	// let end = range.end;
 	// offsets --- use only line offset
-	let offLine = range.start.line;
+	const offLine = range.start.line;
 	// let offChar = range.start.character;
 
 	/*
@@ -165,5 +160,5 @@ export async function mxsSimpleRangeFormatter(document: TextDocument, range: Ran
 		wsClean   : t => !settings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' '): undefined,
 		wsAdd     : t => !settings.indentOnly ? TextEdit.insert(getPos(t.line + offLine - 1, t.col + t.value.length - 1), ' ') : undefined,
 	};
-	return await mxsSimpleTextEditFormatter(document.getText(range), TextEditActions);
+	return await SimpleTextEditFormatter(document.getText(range), TextEditActions);
 }

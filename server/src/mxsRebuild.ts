@@ -1,27 +1,13 @@
 'use strict';
-// import { spawn, Thread, Worker } from 'threads';
+import { spawn, Thread, Worker } from 'threads';
+import { reflowOptions } from './lib/mxsReflow';
 //--------------------------------------------------------------------------------
-//@ts-ignore
+/*
 import { parseSource } from './mxsParser';
 import { mxsReflow, options } from './lib/mxsReflow';
-import { fileRead, fileWrite } from './lib/utils';
+import {readFile, writeFile} from 'fs/promises'
 //--------------------------------------------------------------------------------
-interface prettyOptions
-{
-	elements: {
-		useLineBreaks: boolean
-	}
-	statements: {
-		optionalWhitespace: boolean
-	}
-	codeblock: {
-		newlineAtParens: boolean,
-		newlineAllways: boolean,
-		spaced: boolean
-	}
-}
-
-function setOptions(settings?: prettyOptions)
+function setOptions(settings?: Partial<ReflowOptions>)
 {
 	options.reset();
 	if (settings) {
@@ -29,8 +15,7 @@ function setOptions(settings?: prettyOptions)
 	}
 }
 //--------------------------------------------------------------------------------
-// make this async...
-function prettyCode(parserTree: any[], settings?: prettyOptions)
+function prettyCode(parserTree: unknown[], settings?: Partial<ReflowOptions>)
 {
 	setOptions(settings);
 	// options.wrapIdentities = true;
@@ -38,30 +23,42 @@ function prettyCode(parserTree: any[], settings?: prettyOptions)
 	// return mxsMinify(parserTree);
 }
 
-export async function prettyData(data: any | any[] | string, settings?: prettyOptions)
+export async function prettyData(data: unknown | unknown[] | string, settings?: Partial<ReflowOptions>)
 {
 	if (typeof data === 'string') {
-		
-		//---------------------------------------------------------------
 		let results = await parseSource(data);
-		if (results.result !== undefined) {
+		if (results.result) {
 			return prettyCode(results.result);
 		} else {
 			throw new Error('Parser failed.');
 		}
 	} else {
-		return prettyCode(data, settings);
+		// throw new Error('Invalid document');
+		return prettyCode(data);
 	}
 }
 
-// export async function prettyDoc(data: any | any[] | string, savePath: string)
+// export async function prettyDoc(data: unknown | unknown[] | string, savePath: string)
 // {
 // 	return await prettyData(data);
 // }
 
-export async function prettyFile(src: string, dest: string, settings?: prettyOptions)
+export async function prettyFile(src: string, dest: string, settings?: Partial<ReflowOptions>)
 {
-	let data = await fileRead(src);
-	let minify = await prettyData(data, settings);
-	await fileWrite(dest, minify);
+	let data = await readFile(src);
+	let pretty = await prettyData(data, settings);
+	await writeFile(dest, pretty);
+}
+*/
+
+export async function prettyData(data: unknown | unknown[] | string, settings?: Partial<reflowOptions>)
+{
+	let prettyData = await spawn(new Worker('./workers/reflow.worker'));
+	try {
+		return await prettyData(data, settings);
+	} catch (err) {
+		throw err;
+	} finally {
+		await Thread.terminate(prettyData);
+	}
 }
