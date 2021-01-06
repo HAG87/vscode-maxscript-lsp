@@ -287,10 +287,6 @@
 			"patterns": [
 				{
 					"name": "constant.numeric.mxs",
-					"match": "(?<!\\.)\\b[+-]?\\d+[LP]?\\b"
-				},
-				{
-					"name": "constant.numeric.mxs",
 					"match": "\\b\\d+\\.\\d+([EeDd][+-]?\\d+)?\\b"
 				},
 				{
@@ -300,6 +296,10 @@
 				{
 					"name": "constant.numeric.mxs",
 					"match": "(?<!\\w)(\\.\\d+([EeDd][+-]?\\d+)?)"
+				},
+				{
+					"name": "constant.numeric.mxs",
+					"match": "(?<!\\.)\\b[+-]?\\d+[LP]?\\b"
 				},
 				{
 					"name": "constant.numeric.mxs",
