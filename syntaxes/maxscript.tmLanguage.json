@@ -267,7 +267,11 @@
 					"patterns": [
 						{
 							"name": "constant.character.escape.mxs",
-							"match": "\\\\(\"|n|r|t|\\*|\\?|\\|%|x[A-Fa-f0-9]+)"
+							"match": "\\\\(?:n|r|t|\\*|\\?|\\|%|x[A-Fa-f0-9]+)"
+						},
+						{
+							"name": "constant.character.escape.mxs",
+							"match": "(?m)(\\\\\")(?!$)"
 						}
 					]
 				},
