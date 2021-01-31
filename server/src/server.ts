@@ -367,7 +367,7 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 {
 	let settings = await getDocumentSettings(params.uri[0]);
 
-	if (params.command === 'mxs.minify' || params.command === 'mxs.minify.file') {
+	if (params.command === 'mxs.minify'/*  || params.command === 'mxs.minify.file' */) {
 		for (let i = 0; i < params.uri.length; i++) {
 			let doc = documents.get(params.uri[i]);
 			let path = URI.parse(params.uri[i]).fsPath;

@@ -57,7 +57,7 @@ export async function MinifyFile(src: string, dest: string)
 	let minifyData = await spawn(new Worker('./workers/minify.worker'));
 	try {
 		let data = await fs.promises.readFile(src);
-		let minify = await minifyData(data);
+		let minify = await minifyData(data.toString());
 		await fs.promises.writeFile(dest, minify);
 	} catch (err) {
 		throw err;
