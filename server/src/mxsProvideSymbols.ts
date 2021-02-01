@@ -7,7 +7,7 @@ import
 	DocumentSymbol
 } from 'vscode-languageserver';
 //@ts-ignore
-import traverse from 'ast-monkey-traverse';
+import { traverse } from 'ast-monkey-traverse';
 import moo from 'moo';
 //-----------------------------------------------------------------------------------
 /**
@@ -98,7 +98,7 @@ export async function deriveSymbolsTree(nodes: any | any[], documentRange: Range
 			let loc: Range;
 			if (node.range) {
 				loc = <Range>node.range;
-				
+
 			} else {
 				// if node doesnt has a location, infer it from the id...
 				loc = {

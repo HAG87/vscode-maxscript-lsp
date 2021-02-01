@@ -67,13 +67,15 @@ function optionalWS(values: string[], empty = '', ws = ' ')
 	let m_ = /-$/im;
 	let d_ = /\d$/im;
 	let c_ = /\:$/im;
+	let cc_ = /\:\:$/im;
 	// at the start
 	let _w = /^\w/im;
 	let _s = /^\W/im;
 	let _m = /^-/im;
 	let _d = /^\d/im;
 	let _c = /^\:/im;
-
+	let _cc = /^\:\:/im;
+	let _eq = /^=/im;
 	let res = values.reduce((acc, curr) =>
 	{
 		if (
@@ -89,6 +91,12 @@ function optionalWS(values: string[], empty = '', ws = ' ')
 			|| d_.test(acc) && _c.test(curr)
 			// colon - number
 			// || c_.test(acc) && _d.test(curr)
+			// alphanum - double colon
+			|| w_.test(acc) && _cc.test(curr)
+			// param: - param:
+			|| c_.test(acc) && c_.test(curr)
+			// param: =
+			|| c_.test(acc) && _eq.test(curr)
 		) {
 			return (acc + ws + curr);
 		} else {
