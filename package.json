@@ -298,5 +298,7 @@
 		"webpack-cli": "^4.4.0",
 		"webpack-node-externals": "^2.5.2"
 	},
-	"dependencies": {}
+	"dependencies": {
+		"typescript-language-server": "^0.5.1"
+	}
 }

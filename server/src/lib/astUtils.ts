@@ -4,14 +4,13 @@ import objectPath from 'object-path';
 //@ts-ignore
 import { pathUp } from 'ast-monkey-util';
 //@ts-ignore
-import getObj from 'ast-get-object';
+import { getObj } from 'ast-get-object';
 //@ts-ignore
-import getAllValuesByKey from 'ast-get-values-by-key';
+import { getByKey } from 'ast-get-values-by-key';
 //@ts-ignore
-import traverse from 'ast-monkey-traverse';
+import { traverse } from 'ast-monkey-traverse';
 
 import { Range, Position } from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
 //-----------------------------------------------------------------------------------
 export interface Dictionary<T>
 {
@@ -25,7 +24,7 @@ export const getFromCST = (CST: any | any[], keyValPair: object) => getObj(CST, 
  * @param CST 
  * @param key 
  */
-export const getNodesByKeyFromCST = (CST: any | any[], key: string | string[]) => getAllValuesByKey(CST, key);
+export const getNodesByKeyFromCST = (CST: any | any[], key: string | string[]) => getByKey(CST, key);
 
 export const hasKey = <O>(obj: O, key: keyof any): key is keyof O => key in obj;
 //-----------------------------------------------------------------------------------
