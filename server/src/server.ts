@@ -48,7 +48,8 @@ let Capabilities = new mxsCapabilities();
 /**  Current documentSymbols: Store the current document Symbols for later use */
 let currentDocumentSymbols: DocumentSymbol[] | SymbolInformation[] = [];
 /**  Current document: Store the current document for later use */
-let currentTextDocument: TextDocument;
+// let currentTextDocument: TextDocument;
+let currentTextDocumentURI: string | undefined;
 /** The semantic tokens provider */
 let semanticTokensProvider: mxsSemanticTokens;
 //------------------------------------------------------------------------------------------
@@ -187,6 +188,7 @@ documents.onDidClose(change =>
 {
 	// Only keep settings for open documents
 	documentSettings.delete(change.document.uri);
+	currentTextDocumentURI = undefined;
 	// Remove diagnostics for closed document 
 	diagnoseDocument(change.document, []);
 });
@@ -266,7 +268,8 @@ connection.onDocumentSymbol((params, cancelation) =>
 				// connection.console.log('--> symbols sucess ');
 				//-----------------------------------
 				currentDocumentSymbols = result.symbols;
-				currentTextDocument = document;
+				// currentTextDocument = document;
+				currentTextDocumentURI = params.textDocument.uri;
 				//-----------------------------------
 				diagnoseDocument(document, result.diagnostics);
 				resolve(result.symbols);
@@ -312,7 +315,8 @@ connection.onDefinition((params, cancellation) =>
 		mxsDefinitions.getDocumentDefinitions(
 			documents.get(params.textDocument.uri)!,
 			params.position,
-			params.textDocument.uri === currentTextDocument.uri ? currentDocumentSymbols : undefined,
+			// currentTextDocument && params.textDocument.uri === currentTextDocument.uri ? currentDocumentSymbols : undefined,
+			currentTextDocumentURI === params.textDocument.uri ? currentDocumentSymbols : undefined,
 			/* mxsDocumentSymbols.msxParser.parsedCST */)
 			.then(result => resolve(result),
 				reason => resolve)
