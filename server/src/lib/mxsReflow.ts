@@ -841,6 +841,10 @@ let conversionRules = {
 		}
 		return res;
 	},
+	/*
+	case statement is somewhat broken, will never get this thing right
+	adding a terminator to overcome this
+	*/
 	CaseStatement(node: nodetype.CaseStatement)
 	{
 		let stat = new Statement(
@@ -848,12 +852,14 @@ let conversionRules = {
 			node.test,
 			'of'
 		);
+		let fix = new Statement(options.linebreak);
 		let body = new Codeblock(...toArray(node.cases));
 		body.wrapped = true;
 		body.indent = true;
 		return new Codeblock(
 			stat,
-			body
+			body,
+			fix
 		);
 	},
 	CaseClause(node: nodetype.CaseClause)
