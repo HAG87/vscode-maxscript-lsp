@@ -103,7 +103,8 @@
 			{
 				"command": "mxs.minify",
 				"title": "Minify open document",
-				"category": "MaxScript"
+				"category": "MaxScript",
+				"icon": "$(package)"
 			},
 			{
 				"command": "mxs.minify.file",
@@ -118,10 +119,21 @@
 			{
 				"command": "mxs.prettify",
 				"title": "Prettify document",
-				"category": "MaxScript"
+				"category": "MaxScript",
+				"icon": "$(pencil)"
 			}
 		],
 		"menus": {
+			"editor/title": [
+				{
+					"command": "mxs.minify",
+					"when": "editorLangId  == maxscript && resourceExtname == .ms || resourceExtname == .mcr"
+				},
+				{
+					"command": "mxs.prettify",
+					"when": "editorLangId  == maxscript && resourceExtname == .ms || resourceExtname == .mcr"
+				}
+			],
 			"explorer/context": [
 				{
 					"command": "mxs.minify.file",
@@ -139,14 +151,14 @@
 			"commandPalette": [
 				{
 					"command": "mxs.minify",
-					"when": "editorLangId  == maxscript"
+					"when": "editorLangId  == maxscript  && resourceExtname == .ms || resourceExtname == .mcr"
 				},
 				{
 					"command": "mxs.minify.files"
 				},
 				{
-					"when": "editorLangId  == maxscript",
-					"command": "mxs.prettify"
+					"command": "mxs.prettify",
+					"when": "editorLangId  == maxscript  && resourceExtname == .ms || resourceExtname == .mcr"
 				}
 			]
 		},
