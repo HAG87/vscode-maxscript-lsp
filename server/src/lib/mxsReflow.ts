@@ -59,6 +59,7 @@ export class reflowOptions //implements reflowOptions
 }
 export const options = new reflowOptions();
 //-----------------------------------------------------------------------------------
+//TODO: MINUS WHITESPACE -- KEEP ONLY FOR UNARY EXPRESSION!!!
 function optionalWS(values: string[], empty = '', ws = ' ')
 {
 	// at the end
@@ -86,7 +87,7 @@ function optionalWS(values: string[], empty = '', ws = ' ')
 			// alpha - minus
 			|| w_.test(acc) && _m.test(curr)
 			// minus - alpha
-			// || m_.test(acc) && _w.test(curr)
+			|| m_.test(acc) && _w.test(curr)
 			// number - colon
 			|| d_.test(acc) && _c.test(curr)
 			// colon - number
