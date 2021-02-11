@@ -9,13 +9,13 @@
 			"runtimeExecutable": "${execPath}",
 			"args": [
 				// "--disable-extensions",
-				"--extensionDevelopmentPath=${workspaceRoot}"
+				"--extensionDevelopmentPath=${workspaceFolder}"
 			],
-			"outFiles": ["${workspaceRoot}/client/out/**/*.js"],
+			"outFiles": ["${workspaceFolder}/client/out/**/*.js"],
 			"preLaunchTask": {
 				"type": "npm",
 				"script": "watch"
-			}
+			},
 		},
 		{
 			"type": "extensionHost",
@@ -23,9 +23,9 @@
 			"name": "Launch Client - production",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"--extensionDevelopmentPath=${workspaceRoot}"
+				"--extensionDevelopmentPath=${workspaceFolder}"
 			],
-			"outFiles": ["${workspaceRoot}/client/out/**/*.js"]
+			"outFiles": ["${workspaceFolder}/client/out/**/*.js"]
 		},
 		{
 			"type": "node",
@@ -33,7 +33,10 @@
 			"name": "Attach to Server",
 			"port": 6009,
 			"restart": true,
-			"outFiles": ["${workspaceRoot}/server/out/**/*.js"]
+			"outFiles": ["${workspaceFolder}/server/out/**/*.js"],
+			"skipFiles": [
+				"${workspaceFolder}/server/out/workers/*.js"
+			]
 		},
 		// {
 		// 	"name": "Language Server E2E Test",
@@ -41,11 +44,11 @@
 		// 	"request": "launch",
 		// 	"runtimeExecutable": "${execPath}",
 		// 	"args": [
-		// 		"--extensionDevelopmentPath=${workspaceRoot}",
-		// 		"--extensionTestsPath=${workspaceRoot}/client/out/test/index",
-		// 		"${workspaceRoot}/client/testFixture"
+		// 		"--extensionDevelopmentPath=${workspaceFolder}",
+		// 		"--extensionTestsPath=${workspaceFolder}/client/out/test/index",
+		// 		"${workspaceFolder}/client/testFixture"
 		// 	],
-		// 	"outFiles": ["${workspaceRoot}/client/out/test/**/*.js"],
+		// 	"outFiles": ["${workspaceFolder}/client/out/test/**/*.js"],
 		// 	"sourceMaps": true
 		// }
 	],
