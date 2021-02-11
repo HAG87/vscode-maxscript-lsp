@@ -84,10 +84,10 @@ function optionalWS(values: string[], empty = '', ws = ' ')
 			w_.test(acc) && _w.test(curr)
 			// minus - minus
 			|| m_.test(acc) && _m.test(curr)
-			// alpha - minus
-			|| w_.test(acc) && _m.test(curr)
-			// minus - alpha
-			|| m_.test(acc) && _w.test(curr)
+			// alpha - minus *** this will break expressions
+			// || w_.test(acc) && _m.test(curr)
+			// minus - alpha *** this will break expressions
+			// || m_.test(acc) && _w.test(curr)
 			// number - colon
 			|| d_.test(acc) && _c.test(curr)
 			// colon - number
@@ -677,7 +677,6 @@ let conversionRules = {
 		return res;
 	},
 	// SIMPLE EXPRESSIONS - OK
-	// TODO: This will need and exeption for --
 	MathExpression(node: nodetype.MathExpression)
 	{
 		return new Statement(
@@ -694,13 +693,21 @@ let conversionRules = {
 			node.right
 		);
 	},
-	// TODO: This will need and exeption for --
+	/** Added a dummy whitespace */
 	UnaryExpression(node: nodetype.UnaryExpression)
 	{
-		return new Expr(
-			node.operator,
-			node.right
-		);
+		if (options.statements.optionalWhitespace) {
+			return new Expr(
+				options.spacer,
+				node.operator,
+				node.right
+			);
+		} else {
+			return new Expr(
+				node.operator,
+				node.right
+			);
+		}
 	},
 	// STATEMENTS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	BlockStatement(node: nodetype.BlockStatement)
