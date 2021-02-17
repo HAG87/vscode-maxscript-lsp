@@ -420,6 +420,7 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 		statements: {
 			optionalWhitespace: settings.prettifier.statements?.optionalWhitespace || false
 		},
+		// TODO: expression.useWhiteSpace...
 		codeblock: {
 			newlineAtParens: settings.prettifier.codeblock?.newlineAtParens || true,
 			newlineAllways: settings.prettifier.codeblock?.newlineAllways || true,

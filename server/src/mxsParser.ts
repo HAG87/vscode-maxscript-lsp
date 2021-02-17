@@ -265,9 +265,11 @@ function parseWithErrorsAsync(
 						
 						// replace the faulty token with a filler value
 						let filler = replaceWithWS(err.token.text);
-						src[next].text = filler;
-						src[next].value = filler;
-						src[next].type = 'ws';
+						if (src[next]) {
+							src[next].text = filler;
+							src[next].value = filler;
+							src[next].type = 'ws';
+						}
 						// console.log(src[next]);
 						// backtrack
 						parserInstance.restore(state);
@@ -305,6 +307,7 @@ export function parseSource(source: string, options = { recovery: true, attemps:
 		parseAsync(source, declareParser())
 			.then(
 				result => resolve(result),
+				// /*
 				reason =>
 				{
 					// console.log('PARSER HAS FAILED! ATTEMP TO RECOVER');
@@ -314,13 +317,16 @@ export function parseSource(source: string, options = { recovery: true, attemps:
 						reject(reason);
 					}
 				}
+				// */
 			)
 			// parseWithErrorsAsync(source, declareParser(), options)
+			// /*
 			.then(result =>
 			{
 				// console.log('PARSER HAS RECOVERED FROM ERROR');
 				resolve(<parserResult>result);
 			})
+			// */
 			.catch(err => reject(err));
 	});
 }

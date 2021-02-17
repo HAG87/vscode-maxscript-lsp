@@ -11,6 +11,7 @@ export class reflowOptions //implements reflowOptions
 	wrapIdentities: boolean
 	elements: { useLineBreaks: boolean }
 	statements: { optionalWhitespace: boolean }
+	expression: {useWhiteSpace: boolean}
 	codeblock: {
 		newlineAtParens: boolean,
 		newlineAllways: boolean,
@@ -30,6 +31,7 @@ export class reflowOptions //implements reflowOptions
 		this.statements = {
 			optionalWhitespace: false
 		};
+		this.expression = {useWhiteSpace: false};
 		this.codeblock = {
 			newlineAtParens: true,
 			newlineAllways: true,
@@ -49,6 +51,7 @@ export class reflowOptions //implements reflowOptions
 		this.statements = {
 			optionalWhitespace: false
 		};
+		this.expression = {useWhiteSpace: false};
 		this.codeblock = {
 			newlineAtParens: true,
 			newlineAllways: true,
@@ -259,7 +262,11 @@ class Expr
 
 	get toString()
 	{
-		return this.value.join('');
+		if (options.expression.useWhiteSpace){
+			return optionalWS(this.value);
+		} else {
+			return this.value.join('');
+		}
 	}
 
 	add(...value: any)
@@ -698,7 +705,7 @@ let conversionRules = {
 	{
 		if (options.statements.optionalWhitespace) {
 			return new Expr(
-				options.spacer,
+				' ',
 				node.operator,
 				node.right
 			);

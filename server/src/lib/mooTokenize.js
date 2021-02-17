@@ -45,6 +45,7 @@ const mxLexer = moo.compile({
 		// value: x => x.slice(0, -1)
 	},
 	*/
+
 	identity: [
 		// properties
 		/(?<=\.)[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
