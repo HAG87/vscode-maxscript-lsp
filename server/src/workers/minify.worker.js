@@ -12,6 +12,7 @@ function setOptions() {
 	options.codeblock.newlineAllways = false;
 	options.elements.useLineBreaks = false;
 	options.statements.optionalWhitespace = true;
+	options.expression.useWhiteSpace = false;
 }
 
 expose (

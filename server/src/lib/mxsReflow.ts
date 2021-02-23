@@ -11,6 +11,7 @@ export class reflowOptions //implements reflowOptions
 	wrapIdentities: boolean
 	elements: { useLineBreaks: boolean }
 	statements: { optionalWhitespace: boolean }
+	expression: {useWhiteSpace: boolean}
 	codeblock: {
 		newlineAtParens: boolean,
 		newlineAllways: boolean,
@@ -30,6 +31,7 @@ export class reflowOptions //implements reflowOptions
 		this.statements = {
 			optionalWhitespace: false
 		};
+		this.expression = {useWhiteSpace: false};
 		this.codeblock = {
 			newlineAtParens: true,
 			newlineAllways: true,
@@ -49,6 +51,7 @@ export class reflowOptions //implements reflowOptions
 		this.statements = {
 			optionalWhitespace: false
 		};
+		this.expression = {useWhiteSpace: false};
 		this.codeblock = {
 			newlineAtParens: true,
 			newlineAllways: true,
@@ -59,6 +62,7 @@ export class reflowOptions //implements reflowOptions
 }
 export const options = new reflowOptions();
 //-----------------------------------------------------------------------------------
+//TODO: MINUS WHITESPACE -- KEEP ONLY FOR UNARY EXPRESSION!!!
 function optionalWS(values: string[], empty = '', ws = ' ')
 {
 	// at the end
@@ -83,9 +87,9 @@ function optionalWS(values: string[], empty = '', ws = ' ')
 			w_.test(acc) && _w.test(curr)
 			// minus - minus
 			|| m_.test(acc) && _m.test(curr)
-			// alpha - minus
-			|| w_.test(acc) && _m.test(curr)
-			// minus - alpha
+			// alpha - minus *** this will break expressions
+			// || w_.test(acc) && _m.test(curr)
+			// minus - alpha *** this will break expressions
 			// || m_.test(acc) && _w.test(curr)
 			// number - colon
 			|| d_.test(acc) && _c.test(curr)
@@ -258,7 +262,11 @@ class Expr
 
 	get toString()
 	{
-		return this.value.join('');
+		if (options.expression.useWhiteSpace){
+			return optionalWS(this.value);
+		} else {
+			return this.value.join('');
+		}
 	}
 
 	add(...value: any)
@@ -676,7 +684,6 @@ let conversionRules = {
 		return res;
 	},
 	// SIMPLE EXPRESSIONS - OK
-	// TODO: This will need and exeption for --
 	MathExpression(node: nodetype.MathExpression)
 	{
 		return new Statement(
@@ -693,13 +700,21 @@ let conversionRules = {
 			node.right
 		);
 	},
-	// TODO: This will need and exeption for --
+	/** Added a dummy whitespace */
 	UnaryExpression(node: nodetype.UnaryExpression)
 	{
-		return new Expr(
-			node.operator,
-			node.right
-		);
+		if (options.statements.optionalWhitespace) {
+			return new Expr(
+				' ',
+				node.operator,
+				node.right
+			);
+		} else {
+			return new Expr(
+				node.operator,
+				node.right
+			);
+		}
 	},
 	// STATEMENTS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	BlockStatement(node: nodetype.BlockStatement)
@@ -841,6 +856,10 @@ let conversionRules = {
 		}
 		return res;
 	},
+	/*
+	case statement is somewhat broken, will never get this thing right
+	adding a terminator to overcome this
+	*/
 	CaseStatement(node: nodetype.CaseStatement)
 	{
 		let stat = new Statement(
@@ -848,12 +867,14 @@ let conversionRules = {
 			node.test,
 			'of'
 		);
+		let fix = new Statement(options.linebreak);
 		let body = new Codeblock(...toArray(node.cases));
 		body.wrapped = true;
 		body.indent = true;
 		return new Codeblock(
 			stat,
-			body
+			body,
+			fix
 		);
 	},
 	CaseClause(node: nodetype.CaseClause)
