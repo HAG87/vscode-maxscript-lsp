@@ -133,8 +133,8 @@
         },
         {
           "name": "documentation.plain.mxs",
-          "begin": "\\|",
-          "end": "\\|",
+          "begin": "´´",
+          "end": "´´",
           "patterns": [
             {
               "include": "#numeric"
@@ -147,9 +147,6 @@
             },
             {
               "include": "#support"
-            },
-            {
-              "include": "#notes"
             }
           ]
         },
@@ -177,8 +174,8 @@
         },
         {
           "name": "comment.block.documentation.mxs",
-          "begin": "(?m)/\\*\\*",
-          "end": "(?m)\\*/",
+          "begin": "/\\*\\*",
+          "end": "\\*/",
           "captures": {
             "0": {
               "name": "punctuation.definition.comment.mxs"
@@ -204,7 +201,7 @@
         },
         {
           "name": "comment.block.mxs",
-          "begin": "/\\*",
+          "begin": "/\\*(?!\\*)",
           "end": "\\*/",
           "captures": {
             "0": {
