@@ -2529,6 +2529,7 @@ const maxStructs: CompletionItem[] = [
 	{label: 'globalMotionClipOps', detail: 'Max StructDef', kind: CompletionItemKind.Struct},
 	{label: 'globalVars', detail: 'Max StructDef', kind: CompletionItemKind.Struct},
 	{label: 'gw', detail: 'Viewport drawing methods', kind: CompletionItemKind.Struct},
+	{label: 'keyboard', detail: 'Keyboard keystrokes', kind: CompletionItemKind.Struct},
 	{label: 'internet', detail: 'Max StructDef', kind: CompletionItemKind.Struct},
 	{label: 'KeyVal_struct', detail: 'Max StructDef', kind: CompletionItemKind.Struct},
 	{label: 'lightCreationToolStr', detail: 'Max StructDef', kind: CompletionItemKind.Struct},
