@@ -117,8 +117,8 @@ export class DocumentSymbolProvider
 
 		return new Promise(/* async */(resolve, reject) =>
 		{
-			// this._getDocumentSymbols(document)
-			this._getDocumentSymbolsThreaded(document, options)
+			this._getDocumentSymbols(document)
+			// this._getDocumentSymbolsThreaded(document, options)
 				.then(result => resolve(result))
 				.catch(error =>
 				{

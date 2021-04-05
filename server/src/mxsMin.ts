@@ -1,8 +1,8 @@
 'use strict';
-import { spawn, Thread, Worker } from 'threads';
+// import { spawn, Thread, Worker } from 'threads';
 import * as fs from 'fs';
 //--------------------------------------------------------------------------------
-/*
+// /*
 import { parseSource } from './mxsParser';
 import { mxsReflow, options } from './lib/mxsReflow';
 //--------------------------------------------------------------------------------
@@ -25,7 +25,7 @@ function minCode(parserTree: unknown[])
 	// return mxsMinify(parserTree);
 }
 
-export async function MinifyData(data: unknown | unknown[] | string)
+export async function MinifyData(data: unknown[] | string)
 {
 	if (typeof data === 'string') {
 		let results = await parseSource(data);
@@ -38,20 +38,20 @@ export async function MinifyData(data: unknown | unknown[] | string)
 		return minCode(data);
 	}
 }
-export async function MinifyDoc(data: unknown | unknown[] | string, dest: string)
+export async function MinifyDoc(data: unknown[] | string, dest: string)
 {
 	let minify = await MinifyData(data);
-	await writeFile(dest, minify);
+	await fs.promises.writeFile(dest, minify);
 }
 
 export async function MinifyFile(src: string, dest: string)
 {
-	let data = await readFile(src);
+	let data = (await fs.promises.readFile(src)).toString();
 	let minify = await MinifyData(data);
-	await writeFile(dest, minify);
+	await fs.promises.writeFile(dest, minify);
 }
-*/
-
+// */
+/*
 export async function MinifyFile(src: string, dest: string)
 {
 	let minifyData = await spawn(new Worker('./workers/minify.worker'));
@@ -78,3 +78,4 @@ export async function MinifyDoc(src: string, dest: string)
 		await Thread.terminate(minifyData);
 	}
 }
+*/
