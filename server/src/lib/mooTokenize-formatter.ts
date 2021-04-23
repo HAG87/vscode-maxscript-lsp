@@ -16,8 +16,10 @@ export const mxsFormatterLexer = (keywords:keywordsMap = keywordsDB) => moo.comp
 		{ match: /@"(?:\\"|[^"])*?(?:"|\\")/, lineBreaks: true },
 		{ match: /"(?:\\["\\rntsx]|[^"])*?"/, lineBreaks: true },
 	],
-	// whitespace -  also matches line continuations
-	ws: { match: /(?:[ \t]+|(?:[\\][ \t\r\n]+))/, lineBreaks: true },
+	// whitespace -  also matches line continuation backslash: needs to be a separated token
+	// bkslsh: {match: /(?:[\\][ \t]+)/},
+	// ws: { match: /(?:[ \t]+)/},
+	ws: { match: /(?:[ \t]+|(?:[\\][ \t]+))/},
 	newline: { match: /(?:[\r\n]+)/, lineBreaks: true },
 	
 	// Identities
