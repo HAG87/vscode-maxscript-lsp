@@ -15,10 +15,10 @@ import { mxsFormatterLexer } from './lib/mooTokenize-formatter';
 import { rangeUtil } from './lib/astUtils';
 // note: keywords could be used to indent, at start or end of line. this will require a per-line aproach... split the documents in lines, and feed the tokenizer one line at the time.
 //-----------------------------------------------------------------------------------
-const filterCurrent = ['assign', 'newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange'];
-const filterAhead = ['assign', 'newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange'];
+const filterCurrent = ['assign', 'newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange'/*, 'bkslash' */];
+const filterAhead = ['assign', 'newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange'/*, 'bkslash' */];
 
-const IndentTokens = ['lparen', 'arraydef', 'lbracket', 'lbrace', 'bitarraydef'];
+const IndentTokens = ['lparen', 'arraydef', 'lbracket', 'lbrace', 'bitarraydef'/*, 'bkslash' */];
 const UnIndentTokens = ['rparen', 'rbracket', 'rbrace'];
 //-----------------------------------------------------------------------------------
 // Helpers
@@ -78,6 +78,7 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 			if (ctok.line > prevLine && ctok.type !== 'newline') {
 				if (ctok.type === 'ws') {
 					// if token is 'ws', replace
+					// check for line continuation !!
 					Add(action.wsReIndent(ctok, indentation));
 				} else {
 					// if not 'ws', insert
@@ -87,12 +88,15 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 				// tokens belonging to the same line
 				// clean whitespace
 				// TODO: check for illegal whitespaces
-				if (ctok.type === 'ws') {
+				// TODO: backslash!
+				if (ctok.type === 'ws' /* || ctock.type === 'bkslsh'*/) {
 					if (/^[\s\t]{2,}$/m.test(ctok.toString())) {
 						Add(action.wsClean(ctok));
-					}
-					// skip last token
+					}					
+				} else if (ntok === 'bkslsh') {
+					// deal with backslash here!
 				} else if (ntok !== undefined) {
+					// skip last token?
 					// insert whitespaces
 					// skip tokens where whitespace btw doesn't apply
 					let fCurrent = filterCurrent.includes(ctok.type!);
@@ -125,10 +129,13 @@ export async function SimpleDocumentFormatter(document: TextDocument, settings: 
 {
 	let TextEditActions: SimpleFormatterActions =
 	{
+		// modify indentation
 		wsReIndent: (t, i) => TextEdit.replace(rangeUtil.getTokenRange(t), settings.indentChar.repeat(i)),
+		// insert indentation
 		wsIndent: (t, i) => TextEdit.insert(getPos(t.line - 1, t.col - 1), settings.indentChar.repeat(i)),
-
+		// clean whitespace
 		wsClean: t => !settings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' ') : undefined,
+		// insert whitespace
 		wsAdd: t => !settings.indentOnly ? TextEdit.insert(getPos(t.line - 1, t.col + t.text.length - 1), ' ') : undefined,
 	};
 	return await SimpleTextEditFormatter(document.getText(), TextEditActions);
