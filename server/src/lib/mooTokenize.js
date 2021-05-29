@@ -25,26 +25,16 @@ const mxLexer = moo.compile({
 
 	// strings ~RESOURCE~
 	locale: /~[A-Za-z0-9_]+~/,
-
-	// path_name $mounstrosity*/_?
-	path: /\$(?:(?:[A-Za-z0-9_*?\/]|\.{3}|\\\\)+|'(?:[^'\n\r])+')?/,
-
+	path: [
+		{ match: /\$(?:(?:[A-Za-z0-9_*?/]|\.{3}|\\[\\/"'])+)?/ },
+		{ match: /\$'(?:[^']+)'/, lineBreaks: true },
+	],
+	// IDENTIFIERS
 	// ::global variable
 	global_typed: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+/,
-	// property <object>.<property>
-	// property: { match: /\.[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/, value: x => x.slice(1) },
-
-	// IDENTIFIERS
-	// a mounstrosity
-	typed_iden: /'(?:\\['\\rn]|[^'\\\n])*?'/,
-
-	// parameter <param_name>:
-	/*
-	param_name: {
-		match:/[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[:])/,
-		// value: x => x.slice(0, -1)
-	},
-	*/
+	
+	// typed_iden: /'(?:\\['\\rn]|[^'\\\n])*?'/,
+	typed_iden: { match: /'(?:(?:[^']|[\r\n])+)'/, lineBreaks: true },
 
 	identity: [
 		// properties
@@ -53,6 +43,7 @@ const mxLexer = moo.compile({
 		'?',
 		// param names
 		/[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[:])/,
+		// identifier
 		{
 			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?![:.])/,
 			type: caseInsensitiveKeywords(keywordsTypeDB)
@@ -64,27 +55,31 @@ const mxLexer = moo.compile({
 	// PARENS
 	lparen: '(',
 	rparen: ')',
-
 	// BRACKETS, BRACES...
 	lbracket: '[',
 	rbracket: ']',
 	lbrace: /{/,
 	rbrace: /}/,
-
 	// Operators.
-	comparison: ['==', '!=', '>', '<', '>=', '<='],
-	assign: ['=', '+=', '-=', '*=', '/='],
+	comparison: [
+		'==', '!=', '>', '<', '>=', '<='
+	],
+	assign: [
+		'=', '+=', '-=', '*=', '/='
+	],
+
 	// unary: {match: /(?<=[^\w)-])-(?![-\s])/},
 	// unaryminus: /(?<=[=/+*^,:[({][\s\t\r\n]*)-/,
-	math: ['+', '-', '*', '/', '^'],
 
+	math: [
+		'+', '-', '*', '/', '^'
+	],
 	// time format
 	time: [
 		/(?:(?:[0-9]+[.])?[0-9]+[msft])+/,
 		/(?:(?:[0-9]+[.])[0-9]*[msft])+/,
 		/[0-9]+[:][0-9]+[.][0-9]*/
 	],
-
 	// number formats
 	bitrange: '..',
 	hex: /0[xX][0-9a-fA-F]+/,
@@ -94,13 +89,11 @@ const mxLexer = moo.compile({
 		/[0-9]+(?:[LP]|[eEdD][+-]?[0-9]+)?/, // 456 | 123e-5 | integers
 		/(?:(?<!\.)\.[0-9]+(?:[eEdD][+-]?[0-9]+)?)/ // -.789e-9
 	],
-
 	// #name literals .. should go higher??
 	name: [
 		/#[A-Za-z0-9_]+\b/,
 		/#'[A-Za-z0-9_]+'/
 	],
-
 	// DELIMITERS
 	delimiter: '.',
 	sep: ',',

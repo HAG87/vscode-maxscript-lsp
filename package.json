@@ -300,7 +300,7 @@
 		"@babel/types": "^7.13.14",
 		"@types/node": "^14.14.37",
 		"merge-options": "^3.0.4",
-		"threads": "^1.6.3",
+		"threads": "^1.6.4",
 		"threads-plugin": "^1.4.0",
 		"ts-loader": "^8.1.0",
 		"ts-node": "^9.1.1",
