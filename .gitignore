@@ -5,3 +5,4 @@ client/server
 *.vsix
 *.tsbuildinfo
 *.log
+*.zip
