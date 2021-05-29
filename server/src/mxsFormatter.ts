@@ -15,8 +15,8 @@ import { mxsFormatterLexer } from './lib/mooTokenize-formatter';
 import { rangeUtil } from './lib/astUtils';
 // note: keywords could be used to indent, at start or end of line. this will require a per-line aproach... split the documents in lines, and feed the tokenizer one line at the time.
 //-----------------------------------------------------------------------------------
-const filterCurrent = ['assign', 'newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange'];
-const filterAhead = ['assign', 'newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange'];
+const filterCurrent = ['assign', 'newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange'/*, 'bkslash' */];
+const filterAhead = ['assign', 'newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange'/*, 'bkslash' */];
 
 const IndentTokens = ['lparen', 'arraydef', 'lbracket', 'lbrace', 'bitarraydef'];
 const UnIndentTokens = ['rparen', 'rbracket', 'rbrace'];
@@ -46,8 +46,8 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 {
 	return new Promise<TextEdit[]>((resolve, reject) =>
 	{
-
-		const source = typeof document === 'string' ? document :document.getText();
+		// console.log('Debugging formatter');
+		const source = typeof document === 'string' ? document : document.getText();
 		// add to results
 		let Add = (res: TextEdit | undefined) => { if (res) { edits.push(res); } };
 
@@ -57,6 +57,7 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 
 		// token stream. if this fail will throw an error
 		let tokenizedSource: moo.Token[] = mxsTokenizer(source, undefined, mxsFormatterLexer());
+		console.log(tokenizedSource);
 
 		// return if no results
 		if (tokenizedSource && !tokenizedSource.length) { reject(edits); }
@@ -78,21 +79,26 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 			if (ctok.line > prevLine && ctok.type !== 'newline') {
 				if (ctok.type === 'ws') {
 					// if token is 'ws', replace
+					// check for line continuation !!
 					Add(action.wsReIndent(ctok, indentation));
 				} else {
 					// if not 'ws', insert
 					Add(action.wsIndent(ctok, indentation));
 				}
+			// } else if (ntok.type === 'bkslsh') {
+				// deal with backslash here!
 			} else {
 				// tokens belonging to the same line
 				// clean whitespace
 				// TODO: check for illegal whitespaces
-				if (ctok.type === 'ws') {
+				if (ctok.type === 'ws' /* || ctock.type === 'bkslsh'*/) {
 					if (/^[\s\t]{2,}$/m.test(ctok.toString())) {
 						Add(action.wsClean(ctok));
 					}
-					// skip last token
+				// } else if (ntok.type === 'bkslsh') {
+					// deal with backslash here!
 				} else if (ntok !== undefined) {
+					// skip last token?
 					// insert whitespaces
 					// skip tokens where whitespace btw doesn't apply
 					let fCurrent = filterCurrent.includes(ctok.type!);
@@ -125,10 +131,13 @@ export async function SimpleDocumentFormatter(document: TextDocument, settings: 
 {
 	let TextEditActions: SimpleFormatterActions =
 	{
+		// modify indentation
 		wsReIndent: (t, i) => TextEdit.replace(rangeUtil.getTokenRange(t), settings.indentChar.repeat(i)),
+		// insert indentation
 		wsIndent: (t, i) => TextEdit.insert(getPos(t.line - 1, t.col - 1), settings.indentChar.repeat(i)),
-
+		// clean whitespace
 		wsClean: t => !settings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' ') : undefined,
+		// insert whitespace
 		wsAdd: t => !settings.indentOnly ? TextEdit.insert(getPos(t.line - 1, t.col + t.text.length - 1), ' ') : undefined,
 	};
 	return await SimpleTextEditFormatter(document.getText(), TextEditActions);
@@ -156,9 +165,9 @@ export async function SimpleRangeFormatter(document: TextDocument, range: Range,
 	let TextEditActions: SimpleFormatterActions =
 	{
 		wsReIndent: (t, i) => TextEdit.replace(rangeUtil.getTokenRange(t), settings.indentChar.repeat(i)),
-		wsIndent  : (t, i) => TextEdit.insert(getPos(t.line + offLine - 1, t.col - 1), settings.indentChar.repeat(i)),
-		wsClean   : t => !settings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' '): undefined,
-		wsAdd     : t => !settings.indentOnly ? TextEdit.insert(getPos(t.line + offLine - 1, t.col + t.value.length - 1), ' ') : undefined,
+		wsIndent: (t, i) => TextEdit.insert(getPos(t.line + offLine - 1, t.col - 1), settings.indentChar.repeat(i)),
+		wsClean: t => !settings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' ') : undefined,
+		wsAdd: t => !settings.indentOnly ? TextEdit.insert(getPos(t.line + offLine - 1, t.col + t.value.length - 1), ' ') : undefined,
 	};
 	return await SimpleTextEditFormatter(document.getText(range), TextEditActions);
 }

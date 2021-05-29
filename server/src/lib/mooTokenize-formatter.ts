@@ -15,9 +15,13 @@ export const mxsFormatterLexer = (keywords:keywordsMap = keywordsDB) => moo.comp
 	string: [
 		{ match: /@"(?:\\"|[^"])*?(?:"|\\")/, lineBreaks: true },
 		{ match: /"(?:\\["\\rntsx]|[^"])*?"/, lineBreaks: true },
+		{ match: /~[A-Za-z0-9_]+~/ }
 	],
-	// whitespace -  also matches line continuations
-	ws: { match: /(?:[ \t]+|(?:[\\][ \t\r\n]+))/, lineBreaks: true },
+	// whitespace -  also matches line continuation backslash: needs to be a separated token
+	// bkslsh: {match: /(?:[\\][ \t]+)/},
+	bkslsh: {match: /\\/},
+	ws: { match: /(?:[ \t]+)/},
+	// ws: { match: /(?:[ \t]+|(?:[\\][ \t]+))/},
 	newline: { match: /(?:[\r\n]+)/, lineBreaks: true },
 	
 	// Identities
@@ -26,8 +30,10 @@ export const mxsFormatterLexer = (keywords:keywordsMap = keywordsDB) => moo.comp
 		{ match: /#[A-Za-z0-9_]+\b/ },
 		{ match: /#'[A-Za-z0-9_]+'/ },
 	],
-	locale: { match: /~[A-Za-z0-9_]+~/ },
-	path: { match: /\$(?:(?:[A-Za-z0-9_*?\/]|\.{3}|\\\\)+|'(?:[^'\n\r])+')?/},
+	path: [
+		{ match: /\$(?:(?:[A-Za-z0-9_*?/]|\.{3}|\\[\\/"'])+)?/ },
+		{ match: /\$'(?:[^'])+'/, lineBreaks: true },
+	],
 	property: { match: /(?<=\.)[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/ },
 	identity: [
 		{ match: /'(?:\\['\\rn]|[^'\\\n])*'/},
