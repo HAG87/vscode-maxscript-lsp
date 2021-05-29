@@ -18,7 +18,7 @@ import { rangeUtil } from './lib/astUtils';
 const filterCurrent = ['assign', 'newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange'/*, 'bkslash' */];
 const filterAhead = ['assign', 'newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange'/*, 'bkslash' */];
 
-const IndentTokens = ['lparen', 'arraydef', 'lbracket', 'lbrace', 'bitarraydef'/*, 'bkslash' */];
+const IndentTokens = ['lparen', 'arraydef', 'lbracket', 'lbrace', 'bitarraydef'];
 const UnIndentTokens = ['rparen', 'rbracket', 'rbrace'];
 //-----------------------------------------------------------------------------------
 // Helpers
@@ -46,8 +46,8 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 {
 	return new Promise<TextEdit[]>((resolve, reject) =>
 	{
-
-		const source = typeof document === 'string' ? document :document.getText();
+		// console.log('Debugging formatter');
+		const source = typeof document === 'string' ? document : document.getText();
 		// add to results
 		let Add = (res: TextEdit | undefined) => { if (res) { edits.push(res); } };
 
@@ -57,6 +57,7 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 
 		// token stream. if this fail will throw an error
 		let tokenizedSource: moo.Token[] = mxsTokenizer(source, undefined, mxsFormatterLexer());
+		console.log(tokenizedSource);
 
 		// return if no results
 		if (tokenizedSource && !tokenizedSource.length) { reject(edits); }
@@ -84,16 +85,17 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 					// if not 'ws', insert
 					Add(action.wsIndent(ctok, indentation));
 				}
+			// } else if (ntok.type === 'bkslsh') {
+				// deal with backslash here!
 			} else {
 				// tokens belonging to the same line
 				// clean whitespace
 				// TODO: check for illegal whitespaces
-				// TODO: backslash!
 				if (ctok.type === 'ws' /* || ctock.type === 'bkslsh'*/) {
 					if (/^[\s\t]{2,}$/m.test(ctok.toString())) {
 						Add(action.wsClean(ctok));
-					}					
-				} else if (ntok === 'bkslsh') {
+					}
+				// } else if (ntok.type === 'bkslsh') {
 					// deal with backslash here!
 				} else if (ntok !== undefined) {
 					// skip last token?
@@ -163,9 +165,9 @@ export async function SimpleRangeFormatter(document: TextDocument, range: Range,
 	let TextEditActions: SimpleFormatterActions =
 	{
 		wsReIndent: (t, i) => TextEdit.replace(rangeUtil.getTokenRange(t), settings.indentChar.repeat(i)),
-		wsIndent  : (t, i) => TextEdit.insert(getPos(t.line + offLine - 1, t.col - 1), settings.indentChar.repeat(i)),
-		wsClean   : t => !settings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' '): undefined,
-		wsAdd     : t => !settings.indentOnly ? TextEdit.insert(getPos(t.line + offLine - 1, t.col + t.value.length - 1), ' ') : undefined,
+		wsIndent: (t, i) => TextEdit.insert(getPos(t.line + offLine - 1, t.col - 1), settings.indentChar.repeat(i)),
+		wsClean: t => !settings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' ') : undefined,
+		wsAdd: t => !settings.indentOnly ? TextEdit.insert(getPos(t.line + offLine - 1, t.col + t.value.length - 1), ' ') : undefined,
 	};
 	return await SimpleTextEditFormatter(document.getText(range), TextEditActions);
 }
