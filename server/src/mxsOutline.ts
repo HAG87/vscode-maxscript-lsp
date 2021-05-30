@@ -52,7 +52,10 @@ export class DocumentSymbolProvider
 		return <DocumentSymbol[]>deriv;
 	}
 
-	private async _getDocumentSymbols(document: TextDocument): Promise<ParserResult>
+	private async _getDocumentSymbols(
+		document: TextDocument,
+		options = { recovery: true, attemps: 10, memoryLimit: 0.9 }
+	): Promise<ParserResult>
 	{
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
 		let diagnostics: Diagnostic[] = [];
@@ -108,6 +111,7 @@ export class DocumentSymbolProvider
 	parseDocument(
 		document: TextDocument,
 		connection: Connection,
+		threading = true,
 		options = { recovery: true, attemps: 15, memoryLimit: 0.9 }
 	): Promise<ParserResult>
 	{
@@ -117,7 +121,14 @@ export class DocumentSymbolProvider
 
 		return new Promise(/* async */(resolve, reject) =>
 		{
-			this._getDocumentSymbols(document)
+			let documentSymbols: Promise<ParserResult>;
+			if (threading) {
+				documentSymbols = this._getDocumentSymbolsThreaded(document, options)
+			} else {
+				documentSymbols = this._getDocumentSymbols(document, options)
+			}
+			// this._getDocumentSymbols(document, options)
+			documentSymbols
 			// this._getDocumentSymbolsThreaded(document, options)
 				.then(result => resolve(result))
 				.catch(error =>

@@ -1,12 +1,12 @@
 'use strict';
-// import { spawn, Thread, Worker } from 'threads';
+import { spawn, Thread, Worker } from 'threads';
 import * as fs from 'fs';
 //--------------------------------------------------------------------------------
-// /*
 import { parseSource } from './mxsParser';
 import { mxsReflow, options } from './lib/mxsReflow';
 //--------------------------------------------------------------------------------
-function setOptions() {
+function setOptions()
+{
 	options.indent = '';
 	options.linebreak = ';';
 	options.spacer = '';
@@ -21,7 +21,7 @@ function minCode(parserTree: unknown[])
 {
 	setOptions();
 	// options.wrapIdentities = true;
-	return mxsReflow(parserTree);	
+	return mxsReflow(parserTree);
 	// return mxsMinify(parserTree);
 }
 
@@ -38,44 +38,41 @@ export async function MinifyData(data: unknown[] | string)
 		return minCode(data);
 	}
 }
-export async function MinifyDoc(data: unknown[] | string, dest: string)
+export async function MinifyDoc(data: unknown[] | string, dest: string, threading = false)
 {
-	let minify = await MinifyData(data);
-	await fs.promises.writeFile(dest, minify);
-}
-
-export async function MinifyFile(src: string, dest: string)
-{
-	let data = (await fs.promises.readFile(src)).toString();
-	let minify = await MinifyData(data);
-	await fs.promises.writeFile(dest, minify);
-}
-// */
-/*
-export async function MinifyFile(src: string, dest: string)
-{
-	let minifyData = await spawn(new Worker('./workers/minify.worker'));
-	try {
-		let data = await fs.promises.readFile(src);
-		let minify = await minifyData(data.toString());
+	if (threading) {
+		let minifyData = await spawn(new Worker('./workers/minify.worker'));
+		try {
+			let minify = await minifyData(data);
+			await fs.promises.writeFile(dest, minify);
+		} catch (err) {
+			throw err;
+		} finally {
+			await Thread.terminate(minifyData);
+		}
+	} else {
+		let minify = await MinifyData(data);
 		await fs.promises.writeFile(dest, minify);
-	} catch (err) {
-		throw err;
-	} finally {
-		await Thread.terminate(minifyData);
+
 	}
 }
 
-export async function MinifyDoc(src: string, dest: string)
+export async function MinifyFile(src: string, dest: string, threading = false)
 {
-	let minifyData = await spawn(new Worker('./workers/minify.worker'));
-	try {
-		let minify = await minifyData(src);
+	if (threading) {
+		let minifyData = await spawn(new Worker('./workers/minify.worker'));
+		try {
+			let data = await fs.promises.readFile(src);
+			let minify = await minifyData(data.toString());
+			await fs.promises.writeFile(dest, minify);
+		} catch (err) {
+			throw err;
+		} finally {
+			await Thread.terminate(minifyData);
+		}
+	} else {
+		let data = (await fs.promises.readFile(src)).toString();
+		let minify = await MinifyData(data);
 		await fs.promises.writeFile(dest, minify);
-	} catch (err) {
-		throw err;
-	} finally {
-		await Thread.terminate(minifyData);
 	}
 }
-*/
