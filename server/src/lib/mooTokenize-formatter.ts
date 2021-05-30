@@ -74,10 +74,10 @@ export const mxsFormatterLexer = (keywords:keywordsMap = keywordsDB) => moo.comp
 	// unaryminus: {match: /(?<=[^\w)-])-(?![-])/},
 	// Operators
 	unaryminus: [
-		// preceded by WS and suceeded by non WS
-		{ match: /(?<=[\s\t\n\r])[-](?![\s\t])/},
+		// preceded by WS and suceeded by non WS nor =
+		{ match: /(?<=[\s\t\n\r])[-](?![\s\t=])/},
 		// preceded by an operator and WS
-		{ match: /(?<=['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='][\s\t]*)[-]/}
+		{ match: /(?<=['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='][\s\t]*)[-](?![=])/}
 	],
 	operator: ['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='],
 

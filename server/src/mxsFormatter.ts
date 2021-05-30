@@ -57,7 +57,6 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 
 		// token stream. if this fail will throw an error
 		let tokenizedSource: moo.Token[] = mxsTokenizer(source, undefined, mxsFormatterLexer());
-		console.log(tokenizedSource);
 
 		// return if no results
 		if (tokenizedSource && !tokenizedSource.length) { reject(edits); }
