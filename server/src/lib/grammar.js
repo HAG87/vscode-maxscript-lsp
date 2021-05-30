@@ -641,9 +641,9 @@ var grammar = {
     {"name": "FOR_LOOP$ebnf$1$subexpression$1", "symbols": ["_", "for_sequence"]},
     {"name": "FOR_LOOP$ebnf$1", "symbols": ["FOR_LOOP$ebnf$1$subexpression$1"], "postprocess": id},
     {"name": "FOR_LOOP$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "FOR_LOOP", "symbols": ["FOR_LOOP$subexpression$1", "VAR_NAME", "_S", "for_iterator", "_S", "expr", "FOR_LOOP$ebnf$1", "_", "for_action", "_", "expr"], "postprocess":  d => ({
+    {"name": "FOR_LOOP", "symbols": ["FOR_LOOP$subexpression$1", "for_index", "_S", "for_iterator", "_S", "expr", "FOR_LOOP$ebnf$1", "_", "for_action", "_", "expr"], "postprocess":  d => ({
             type:     'ForStatement',
-            variable:  d[1],
+            index:     d[1],
             iteration: d[3],
             value:     d[5],
             sequence:  filterNull(d[6]),
@@ -683,6 +683,24 @@ var grammar = {
             by:    null,
             while: d[0],
             where: null
+        })},
+    {"name": "for_index", "symbols": ["VAR_NAME", "_S", "LIST_SEP", "_", "VAR_NAME", "_S", "LIST_SEP", "_", "VAR_NAME"], "postprocess":  d=> ({
+            type: 'ForLoopIndex',
+            variable: d[0],
+            index_name: d[4],
+            filtered_index_name: d[8]
+        })},
+    {"name": "for_index", "symbols": ["VAR_NAME", "_S", "LIST_SEP", "_", "VAR_NAME"], "postprocess":  d=> ({
+            type: 'ForLoopIndex',
+            variable: d[0],
+            index_name: d[4],
+            filtered_index_name: null
+        })},
+    {"name": "for_index", "symbols": ["VAR_NAME"], "postprocess":  d=> ({
+            type: 'ForLoopIndex',
+            variable: d[0],
+            index_name: null,
+            filtered_index_name: null
         })},
     {"name": "for_iterator", "symbols": [{"literal":"="}], "postprocess": id},
     {"name": "for_iterator", "symbols": [(mxLexer.has("kw_in") ? {type: "kw_in"} : kw_in)], "postprocess": id},
