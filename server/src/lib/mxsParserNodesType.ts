@@ -200,12 +200,18 @@ export interface CaseClause
 }
 export interface ForStatement
 {
-	variable: any
+	index: any | any[]
 	iteration: any
 	value: any
 	sequence: any | any[]
 	action: any
 	body: any | any[]
+}
+export interface ForLoopIndex
+{
+	variable: any
+	index_name: any | null
+	filtered_index_name: any | null
 }
 export interface ForLoopSequence
 {
