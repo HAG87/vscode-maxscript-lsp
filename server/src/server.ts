@@ -344,6 +344,7 @@ connection.onDefinition((params, cancellation) =>
 });
 //------------------------------------------------------------------------------------------
 /*  Provide semantic tokens */
+// TODO: Fix tokens update
 connection.languages.semanticTokens.on(params =>
 {
 	const document = documents.get(params.textDocument.uri);
