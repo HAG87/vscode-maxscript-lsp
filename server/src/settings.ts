@@ -7,8 +7,14 @@ export interface MaxScriptSettings
 	Diagnostics: boolean;
 	Completions: boolean;
 	MinifyFilePrefix: string;
-	formatter: { indentOnly: boolean },
-	parser: { errorCheck: boolean }
+	formatter: {
+		indentOnly: boolean,
+		indentChar: string,
+		whitespaceChar: string },
+	parser: {
+		errorCheck: boolean,
+		multiThreading: boolean
+	}
 	prettifier: {
 		filePrefix: string,
 		codeblock?: {
@@ -38,8 +44,15 @@ export const defaultSettings: MaxScriptSettings = {
 	Diagnostics: true,
 	Completions: true,
 	MinifyFilePrefix: 'min_',
-	formatter: { indentOnly: true },
-	parser: { errorCheck: true },
+	formatter: {
+		indentOnly: true,
+		indentChar: '\t',
+		whitespaceChar: ' '
+	},
+	parser: {
+		errorCheck: true,
+		multiThreading: true
+	},
 	prettifier: {
 		filePrefix: 'pretty_',
 		codeblock: {

@@ -34,6 +34,21 @@ interface SimpleFormatterSettings
 	indentChar: string
 	whitespaceChar: string
 }
+
+/* let options: FormattingOptions = {
+	tabSize: 5,
+	insertSpaces: false,
+	insertFinalNewline: true,
+	trimTrailingWhitespace: true,
+	trimFinalNewlines : true
+}; */
+
+const FormatterSettings:SimpleFormatterSettings = {
+	indentOnly: false,
+	indentChar: '\t',
+	whitespaceChar: ' '
+}
+
 interface SimpleFormatterActions
 {
 	wsReIndent: (t: moo.Token, i: number) => TextEdit | undefined
@@ -126,18 +141,20 @@ export async function mxsStringFormatter(source: string, settings: SimpleFormatt
  * Simple code formater: context unaware, just reflow whitespace and indentation of balanced pairs 
  * @param document vscode document to format
  */
-export async function SimpleDocumentFormatter(document: TextDocument, settings: SimpleFormatterSettings)
+export async function SimpleDocumentFormatter(document: TextDocument, settings: Partial<SimpleFormatterSettings>)
 {
+	Object.assign(FormatterSettings, settings);
+
 	let TextEditActions: SimpleFormatterActions =
 	{
 		// modify indentation
-		wsReIndent: (t, i) => TextEdit.replace(rangeUtil.getTokenRange(t), settings.indentChar.repeat(i)),
+		wsReIndent: (t, i) => TextEdit.replace(rangeUtil.getTokenRange(t), FormatterSettings.indentChar.repeat(i)),
 		// insert indentation
-		wsIndent: (t, i) => TextEdit.insert(getPos(t.line - 1, t.col - 1), settings.indentChar.repeat(i)),
+		wsIndent: (t, i) => TextEdit.insert(getPos(t.line - 1, t.col - 1), FormatterSettings.indentChar.repeat(i)),
 		// clean whitespace
-		wsClean: t => !settings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' ') : undefined,
+		wsClean: t => !FormatterSettings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' ') : undefined,
 		// insert whitespace
-		wsAdd: t => !settings.indentOnly ? TextEdit.insert(getPos(t.line - 1, t.col + t.text.length - 1), ' ') : undefined,
+		wsAdd: t => !FormatterSettings.indentOnly ? TextEdit.insert(getPos(t.line - 1, t.col + t.text.length - 1), ' ') : undefined,
 	};
 	return await SimpleTextEditFormatter(document.getText(), TextEditActions);
 }
@@ -147,8 +164,9 @@ export async function SimpleDocumentFormatter(document: TextDocument, settings: 
  * @param document
  * @param range
  */
-export async function SimpleRangeFormatter(document: TextDocument, range: Range, settings: SimpleFormatterSettings)
+export async function SimpleRangeFormatter(document: TextDocument, range: Range, settings: Partial<SimpleFormatterSettings>)
 {
+	Object.assign(FormatterSettings, settings);
 	// positions
 	// let start = range.start;
 	// let end = range.end;
@@ -163,10 +181,10 @@ export async function SimpleRangeFormatter(document: TextDocument, range: Range,
 	*/
 	let TextEditActions: SimpleFormatterActions =
 	{
-		wsReIndent: (t, i) => TextEdit.replace(rangeUtil.getTokenRange(t), settings.indentChar.repeat(i)),
-		wsIndent: (t, i) => TextEdit.insert(getPos(t.line + offLine - 1, t.col - 1), settings.indentChar.repeat(i)),
-		wsClean: t => !settings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' ') : undefined,
-		wsAdd: t => !settings.indentOnly ? TextEdit.insert(getPos(t.line + offLine - 1, t.col + t.value.length - 1), ' ') : undefined,
+		wsReIndent: (t, i) => TextEdit.replace(rangeUtil.getTokenRange(t), FormatterSettings.indentChar.repeat(i)),
+		wsIndent: (t, i) => TextEdit.insert(getPos(t.line + offLine - 1, t.col - 1), FormatterSettings.indentChar.repeat(i)),
+		wsClean: t => !FormatterSettings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' ') : undefined,
+		wsAdd: t => !FormatterSettings.indentOnly ? TextEdit.insert(getPos(t.line + offLine - 1, t.col + t.value.length - 1), ' ') : undefined,
 	};
 	return await SimpleTextEditFormatter(document.getText(range), TextEditActions);
 }

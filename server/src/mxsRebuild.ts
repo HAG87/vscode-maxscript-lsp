@@ -2,12 +2,12 @@
 import { spawn, Thread, Worker } from 'threads';
 import { reflowOptions } from './lib/mxsReflow';
 //--------------------------------------------------------------------------------
-/*
+// /*
 import { parseSource } from './mxsParser';
 import { mxsReflow, options } from './lib/mxsReflow';
-import {readFile, writeFile} from 'fs/promises'
+// import * as fs from 'fs';
 //--------------------------------------------------------------------------------
-function setOptions(settings?: Partial<ReflowOptions>)
+function setOptions(settings?: Partial<reflowOptions>)
 {
 	options.reset();
 	if (settings) {
@@ -15,7 +15,7 @@ function setOptions(settings?: Partial<ReflowOptions>)
 	}
 }
 //--------------------------------------------------------------------------------
-function prettyCode(parserTree: unknown[], settings?: Partial<ReflowOptions>)
+function prettyCode(parserTree: unknown[], settings?: Partial<reflowOptions>)
 {
 	setOptions(settings);
 	// options.wrapIdentities = true;
@@ -23,42 +23,36 @@ function prettyCode(parserTree: unknown[], settings?: Partial<ReflowOptions>)
 	// return mxsMinify(parserTree);
 }
 
-export async function prettyData(data: unknown | unknown[] | string, settings?: Partial<ReflowOptions>)
+export async function prettyData(data: unknown[] | string, settings?: Partial<reflowOptions>, threading = false)
 {
-	if (typeof data === 'string') {
-		let results = await parseSource(data);
-		if (results.result) {
-			return prettyCode(results.result);
-		} else {
-			throw new Error('Parser failed.');
+	if (threading) {
+		let prettyData = await spawn(new Worker('./workers/reflow.worker'));
+		try {
+			return await prettyData(data, settings);
+		} catch (err) {
+			throw err;
+		} finally {
+			await Thread.terminate(prettyData);
 		}
 	} else {
-		// throw new Error('Invalid document');
-		return prettyCode(data);
+		if (typeof data === 'string') {
+			let results = await parseSource(data);
+			if (results.result) {
+				return prettyCode(results.result);
+			} else {
+				throw new Error('Parser failed.');
+			}
+		} else {
+			// throw new Error('Invalid document');
+			return prettyCode(data);
+		}
 	}
 }
-
-// export async function prettyDoc(data: unknown | unknown[] | string, savePath: string)
-// {
-// 	return await prettyData(data);
-// }
-
-export async function prettyFile(src: string, dest: string, settings?: Partial<ReflowOptions>)
+/*
+export async function prettyFile(src: string, dest: string, settings?: Partial<reflowOptions>)
 {
-	let data = await readFile(src);
+	let data = (await fs.promises.readFile(src)).toString();
 	let pretty = await prettyData(data, settings);
-	await writeFile(dest, pretty);
+	await fs.promises.writeFile(dest, pretty);
 }
 */
-
-export async function prettyData(data: unknown | unknown[] | string, settings?: Partial<reflowOptions>)
-{
-	let prettyData = await spawn(new Worker('./workers/reflow.worker'));
-	try {
-		return await prettyData(data, settings);
-	} catch (err) {
-		throw err;
-	} finally {
-		await Thread.terminate(prettyData);
-	}
-}
