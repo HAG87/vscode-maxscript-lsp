@@ -741,11 +741,26 @@ Main -> _ _expr_seq _ {% d => d[1] %}
     # for <var_name> [, <index_name>[, <filtered_index_name>]] ( in | = )<sequence> ( do | collect ) <expr>
     for_index ->
         VAR_NAME _S LIST_SEP _ VAR_NAME _S LIST_SEP _ VAR_NAME
-            {% d=> ({ variable: d[0], index_name: d[4], filtered_index_name: d[8] })%}
+            {% d=> ({
+                type: 'ForLoopIndex',
+                variable: d[0],
+                index_name: d[4],
+                filtered_index_name: d[8]
+            })%}
         | VAR_NAME _S LIST_SEP _ VAR_NAME
-            {% d=> ({ variable: d[0], index_name: d[4], filtered_index_name: null })%}
+            {% d=> ({
+                type: 'ForLoopIndex',
+                variable: d[0],
+                index_name: d[4],
+                filtered_index_name: null
+            })%}
         | VAR_NAME
-            {% d=> ({ variable: d[0], index_name: null, filtered_index_name: null })%}
+            {% d=> ({
+                type: 'ForLoopIndex',
+                variable: d[0],
+                index_name: null,
+                filtered_index_name: null
+            })%}
     
     for_iterator -> "=" {% id %} | %kw_in {% id %}
 
