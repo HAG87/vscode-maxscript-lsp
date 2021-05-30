@@ -116,6 +116,7 @@ connection.onInitialized(() =>
 	if (Capabilities.hasConfigurationCapability) {
 		connection.client.register(DidChangeConfigurationNotification.type, undefined);
 	}
+
 	// Semantic tokens
 	if (Capabilities.hasDocumentSemanticTokensCapability) {
 		const registrationOptions: SemanticTokensRegistrationOptions = {
@@ -128,7 +129,8 @@ connection.onInitialized(() =>
 		};
 		connection.client.register(SemanticTokensRegistrationType.type, registrationOptions);
 	}
-
+	// Settings...
+	// getGlobalSettings()
 	/*
 	if (Capabilities.hasWorkspaceFolderCapability) {
 		connection.workspace.onDidChangeWorkspaceFolders(_event => {
@@ -139,12 +141,38 @@ connection.onInitialized(() =>
 });
 //------------------------------------------------------------------------------------------
 /* Settings */
+// let globalSettings: MaxScriptSettings = { ...defaultSettings };
 let globalSettings: MaxScriptSettings = defaultSettings;
 // Cache the settings of all open documents
 let documentSettings: Map<string, Thenable<MaxScriptSettings>> = new Map();
-
-function getDocumentSettings(resource: string): Thenable<MaxScriptSettings>
+/*
+async function getGlobalSettings()
 {
+	type KeysOfType<T, U> = { [k in keyof T]-?: T[k] extends U ? k : never }[keyof T];
+
+	let src = await connection.workspace.getConfiguration({
+		section: 'MaxScript'
+	}) as MaxScriptSettings;
+
+	Object.keys(globalSettings).forEach(key =>
+	{
+		let K = key as KeysOfType<MaxScriptSettings, boolean>
+		// hasOwnProperty(src, key)
+		if (src[K]) {
+			if (typeof src[K] === 'object') {
+				Object.assign(globalSettings[K], src[K]);
+			} else {
+				globalSettings[K] =  src[K];
+			}
+		}
+	});
+}
+*/
+function getDocumentSettings(resource: string)
+{
+	if (!Capabilities.hasConfigurationCapability) {
+		return Promise.resolve(globalSettings);
+	}
 	let result = documentSettings.get(resource);
 	if (!result) {
 		result = connection.workspace.getConfiguration({
@@ -162,13 +190,6 @@ function diagnoseDocument(document: TextDocument, diagnose: Diagnostic[])
 	// connection.console.log('We received a Diagnostic update event');
 	connection.sendDiagnostics({ uri: document.uri, diagnostics: diagnose });
 }
-
-async function validateDocument(textDocument: TextDocument)
-{
-	// revalidate settings
-	await getDocumentSettings(textDocument.uri);
-	//...
-}
 //------------------------------------------------------------------------------------------
 connection.onDidChangeConfiguration(change =>
 {
@@ -181,7 +202,10 @@ connection.onDidChangeConfiguration(change =>
 		);
 	}
 	// Revalidate all open text documents
-	documents.all().forEach(validateDocument);
+	documents.all().forEach(async (textDocument: TextDocument) =>
+	{
+		await getDocumentSettings(textDocument.uri)
+	});
 });
 
 documents.onDidClose(change =>
@@ -192,6 +216,7 @@ documents.onDidClose(change =>
 	// Remove diagnostics for closed document 
 	diagnoseDocument(change.document, []);
 });
+
 /*
 documents.onDidChangeContent(
 	change =>
@@ -199,28 +224,15 @@ documents.onDidChangeContent(
 		diagnoseDocument(change.document, []);
 	});
 */
-// documents.onDidOpen
-// documents.onDidSave
 //------------------------------------------------------------------------------------------
 /* Document formatter */
 connection.onDocumentFormatting(async params =>
 {
-	/* let options: FormattingOptions = {
-		tabSize: 5,
-		insertSpaces: false,
-		insertFinalNewline: true,
-		trimTrailingWhitespace: true,
-		trimFinalNewlines : true
-	}; */
-
-	let document = documents.get(params.textDocument.uri)!;
-	let formatterSettings = {
-		indentOnly: globalSettings.formatter.indentOnly,
-		indentChar: '\t',
-		whitespaceChar: ' '
-	};
 	try {
-		return await mxsFormatter.SimpleDocumentFormatter(document, formatterSettings);
+		return await mxsFormatter.SimpleDocumentFormatter(
+			documents.get(params.textDocument.uri)!,
+			(await getDocumentSettings(params.textDocument.uri))?.formatter
+		);
 	} catch (err) {
 		// in case of error, swallow it and return undefined (no result)
 		return;
@@ -248,21 +260,24 @@ connection.onDocumentSymbol((params, cancelation) =>
 	currentDocumentSymbols = await parseDocument(document, cancelation);
 	return currentDocumentSymbols;
 	*/
-	return new Promise((resolve, reject) =>
+	return new Promise(resolve =>
 	{
 		// cancellation request
 		cancelation.onCancellationRequested(/* async */() => resolve);
 		// settings
-		let options = { recovery: true, attemps: 10, memoryLimit: 0.9 };
+		const options = { recovery: true, attemps: 10, memoryLimit: 0.9 };
+		let threading = false;
 		getDocumentSettings(params.textDocument.uri)
 			.then(result =>
 			{
 				options.recovery = result.parser.errorCheck;
+				threading = result.parser.multiThreading;
 				if (!result.GoToSymbol) { resolve; }
 			});
 
 		let document = documents.get(params.textDocument.uri)!;
-		mxsDocumentSymbols.parseDocument(document, connection, options)
+
+		mxsDocumentSymbols.parseDocument(document, connection, threading, options)
 			.then(result =>
 			{
 				// connection.console.log('--> symbols sucess ');
@@ -287,8 +302,7 @@ connection.onDocumentSymbol((params, cancelation) =>
 /* Completion Items */
 connection.onCompletion(async params =>
 {
-	let settings = await getDocumentSettings(params.textDocument.uri);
-	if (!settings.Completions) { return; }
+	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) { return; }
 
 	return mxsCompletion.provideCompletionItems(
 		documents.get(params.textDocument.uri)!,
@@ -299,7 +313,7 @@ connection.onCompletion(async params =>
 /* Definition provider */
 connection.onDefinition((params, cancellation) =>
 {
-	return new Promise((resolve, reject) =>
+	return new Promise(resolve =>
 	{
 		// cancellation request
 		cancellation.onCancellationRequested(/* async */() => resolve);
@@ -318,8 +332,9 @@ connection.onDefinition((params, cancellation) =>
 			// currentTextDocument && params.textDocument.uri === currentTextDocument.uri ? currentDocumentSymbols : undefined,
 			currentTextDocumentURI === params.textDocument.uri ? currentDocumentSymbols : undefined,
 			/* mxsDocumentSymbols.msxParser.parsedCST */)
-			.then(result => resolve(result),
-				reason => resolve)
+			.then(
+				result => resolve(result),
+				() => resolve)
 			.catch(error =>
 			{
 				connection.console.log('MaxScript Definitions unhandled error: ' + error);
@@ -329,22 +344,16 @@ connection.onDefinition((params, cancellation) =>
 });
 //------------------------------------------------------------------------------------------
 /*  Provide semantic tokens */
-connection.languages.semanticTokens.on((params) =>
+connection.languages.semanticTokens.on(params =>
 {
 	const document = documents.get(params.textDocument.uri);
-	if (document === undefined) {
-		return { data: [] };
-	}
-	return semanticTokensProvider.provideSemanticTokens(document);
+	return document !== undefined ? semanticTokensProvider.provideSemanticTokens(document) : { data: [] };
 });
 
-connection.languages.semanticTokens.onDelta((params) =>
+connection.languages.semanticTokens.onDelta(params =>
 {
 	const document = documents.get(params.textDocument.uri);
-	if (document === undefined) {
-		return { edits: [] };
-	}
-	return semanticTokensProvider.provideDeltas(document, params.textDocument.uri);
+	return document !== undefined ? semanticTokensProvider.provideDeltas(document, params.textDocument.uri) : { edits: [] };
 });
 //------------------------------------------------------------------------------------------
 /* Commands */
@@ -366,7 +375,7 @@ namespace PrettifyDocRequest
 {
 	export const type = new RequestType<PrettifyDocParams, string[] | null, void>('MaxScript/prettify');
 }
-
+/* Minifier */
 connection.onRequest(MinifyDocRequest.type, async params =>
 {
 	let settings = await getDocumentSettings(params.uri[0]);
@@ -384,7 +393,7 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 				continue;
 			}
 			try {
-				await mxsMinifier.MinifyDoc(doc.getText(), newPath);
+				await mxsMinifier.MinifyDoc(doc.getText(), newPath, settings.parser.multiThreading);
 				connection.window.showInformationMessage(
 					`MaxScript minify: Document saved as ${Path.basename(newPath)}`
 				);
@@ -400,7 +409,7 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 			// let path = Path.normalize(params.uri[i]);
 			let newPath = prefixFile(path, settings.MinifyFilePrefix);
 			try {
-				await mxsMinifier.MinifyFile(path, newPath);
+				await mxsMinifier.MinifyFile(path, newPath, settings.parser.multiThreading);
 				connection.window.showInformationMessage(`MaxScript minify: Document saved as ${Path.basename(newPath)}`);
 			} catch (err) {
 				connection.window.showErrorMessage(`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${err.message}`);
@@ -410,6 +419,7 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 	return null;
 });
 
+/* Prettyfier */
 connection.onRequest(PrettifyDocRequest.type, async params =>
 {
 	let settings = await getDocumentSettings(params.uri[0]);
@@ -437,8 +447,11 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 				continue;
 			}
 			try {
-				let res = await mxsPretty.prettyData(doc.getText(), opts);
-				let reply = await replaceText.call(connection, doc, res);
+				let reply = await replaceText.call(
+					connection,
+					doc,
+					await mxsPretty.prettyData(doc.getText(), opts, settings.parser.multiThreading)
+				);
 				if (reply.applied) {
 					connection.window.showInformationMessage(`MaxScript prettifier sucess: ${Path.basename(path)}`);
 				} else {
@@ -452,16 +465,6 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 	}
 	return null;
 });
-//------------------------------------------------------------------------------------------
-/*
-connection.onDidChangeWatchedFiles(_change => {
-	Monitored files have change in VSCode
-	connection.console.log('We received an file change event');
-});
-*/
-// connection.onCompletionResolve
-// connection.onSelectionRanges
-// connection.onTypeDefinition
 //------------------------------------------------------------------------------------------
 // Make the text document manager listen on the connection
 // for open, change and close text document events

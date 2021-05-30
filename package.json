@@ -177,28 +177,11 @@
 			"type": "object",
 			"title": "MaxScript",
 			"properties": {
-				"MaxScript.trace.server": {
-					"scope": "window",
-					"type": "string",
-					"enum": [
-						"off",
-						"messages",
-						"verbose"
-					],
-					"default": "off",
-					"description": "Traces the communication between VS Code and the language server."
-				},
 				"MaxScript.GoToSymbol": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Enable Document Symbols and Diagnostics."
-				},
-				"MaxScript.parser.errorCheck": {
-					"scope": "resource",
-					"type": "boolean",
-					"default": true,
-					"description": "Enable grammar checking (beta feature, currently slow and prone to fail). Disable if you're having issues with the extension"
 				},
 				"MaxScript.GoToDefinition": {
 					"scope": "resource",
@@ -272,11 +255,34 @@
 					"default": true,
 					"description": "Enable Semantic highlight"
 				},
+				"MaxScript.parser.errorCheck": {
+					"scope": "resource",
+					"type": "boolean",
+					"default": true,
+					"description": "Enable grammar checking (beta feature, currently slow and prone to fail). Disable if you're having issues with the extension"
+				},
+				"maxScript.parser.multiThreading": {
+					"scope": "resource",
+					"type": "boolean",
+					"default": true,
+					"description": "Disable multithreading. This feature can be unstable. Disable it if you encounter too many crashes using the extension."
+				},
 				"MaxScript.help.provider": {
 					"scope": "resource",
 					"type": "string",
 					"default": "http://help.autodesk.com/view/3DSMAX/2021/ENU/",
 					"description": "MaxScript help source"
+				},
+				"MaxScript.trace.server": {
+					"scope": "window",
+					"type": "string",
+					"enum": [
+						"off",
+						"messages",
+						"verbose"
+					],
+					"default": "off",
+					"description": "Traces the communication between VS Code and the language server."
 				}
 			}
 		}

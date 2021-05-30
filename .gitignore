@@ -2,6 +2,7 @@ out
 node_modules
 client/server
 .vscode-test
+*/bookmarks.json
 *.vsix
 *.tsbuildinfo
 *.log
