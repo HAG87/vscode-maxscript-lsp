@@ -2,6 +2,21 @@
 
 All notable changes to the "language-maxscript" extension will be documented in this file.
 
+## [1.25.0]
+
+- Added support for new optional variables in for loop (3ds Max 2021)
+
+```ebnf
+for <var_name> [, <index_name>[, <filtered_index_name>]] ( in | = )<sequence> ( do | collect ) <expr>
+```
+
+## [1.24.9]
+
+- Fixed some problems with the code formatter
+- Added setting to disable multi threading. (multi-threading is somewhat unstable, turn it off if you're experiencing problems)
+- Fixed some syntax rules
+- optimizations
+
 ## [1.24.0]
 
 - Implemented multi-threading
