@@ -700,10 +700,10 @@ Main -> _ _expr_seq _ {% d => d[1] %}
 #---------------------------------------------------------------
 # FOR EXPRESSION --- OK # TODO: FINISH LOCATION
     FOR_LOOP
-        -> (%kw_for __) VAR_NAME _S for_iterator _S expr ( _ for_sequence ):? _ for_action _ expr
+        -> (%kw_for __) for_index _S for_iterator _S expr ( _ for_sequence ):? _ for_action _ expr
             {% d => ({
                 type:     'ForStatement',
-                variable:  d[1],
+                index:     d[1],
                 iteration: d[3],
                 value:     d[5],
                 sequence:  filterNull(d[6]),
@@ -737,7 +737,31 @@ Main -> _ _expr_seq _ {% d => d[1] %}
                 while: d[0],
                 where: null
             })%}
-
+            
+    # for <var_name> [, <index_name>[, <filtered_index_name>]] ( in | = )<sequence> ( do | collect ) <expr>
+    for_index ->
+        VAR_NAME _S LIST_SEP _ VAR_NAME _S LIST_SEP _ VAR_NAME
+            {% d=> ({
+                type: 'ForLoopIndex',
+                variable: d[0],
+                index_name: d[4],
+                filtered_index_name: d[8]
+            })%}
+        | VAR_NAME _S LIST_SEP _ VAR_NAME
+            {% d=> ({
+                type: 'ForLoopIndex',
+                variable: d[0],
+                index_name: d[4],
+                filtered_index_name: null
+            })%}
+        | VAR_NAME
+            {% d=> ({
+                type: 'ForLoopIndex',
+                variable: d[0],
+                index_name: null,
+                filtered_index_name: null
+            })%}
+    
     for_iterator -> "=" {% id %} | %kw_in {% id %}
 
     for_to    -> %kw_to    _S expr {% d => d[2] %}

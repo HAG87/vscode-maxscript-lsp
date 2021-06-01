@@ -818,7 +818,7 @@ let conversionRules = {
 		let res;
 		let stat = new Statement(
 			'for',
-			node.variable,
+			node.index,
 			node.iteration,
 			node.value,
 			...toArray(node.sequence),
@@ -832,6 +832,13 @@ let conversionRules = {
 			res = stat;
 		}
 		return res;
+	},
+	ForLoopIndex(node: nodetype.ForLoopIndex)
+	{
+		return new Elements(
+		node.variable,
+		node.index_name,
+		node.filtered_index_name)
 	},
 	ForLoopSequence(node: nodetype.ForLoopSequence)
 	{
