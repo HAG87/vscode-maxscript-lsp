@@ -270,7 +270,7 @@
 				"MaxScript.help.provider": {
 					"scope": "resource",
 					"type": "string",
-					"default": "http://help.autodesk.com/view/3DSMAX/2021/ENU/",
+					"default": "https://help.autodesk.com/view/MAXDEV/2022/ENU/",
 					"description": "MaxScript help source"
 				},
 				"MaxScript.trace.server": {

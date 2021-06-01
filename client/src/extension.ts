@@ -94,9 +94,7 @@ export function activate(context: ExtensionContext)
 			async (editor) =>
 			{
 				let uri = Uri.parse(encodeURI(
-					`${workspace.getConfiguration('maxscript').get('Help.Provider', 'http://help.autodesk.com/view/3DSMAX/2021/ENU/')
-					}?query=${editor.document.getText(editor.selection)!
-					}&cg=Scripting%20%26%20Customization`
+					`${workspace.getConfiguration('maxscript').get('Help.Provider', 'https://help.autodesk.com/view/MAXDEV/2022/ENU/')}?query=${editor.document.getText(editor.selection)!}`
 				));
 				await commands.executeCommand('vscode.open', uri);
 			}),
