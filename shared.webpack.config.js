@@ -41,7 +41,7 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 				{
 					test: /\.tsx?$/,
 					exclude: /node_modules/,
-					use: [{
+					// use: [{
 						loader: 'ts-loader',
 						options: {
 							// configure TypeScript loader:
@@ -53,7 +53,7 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 							// transpileOnly: false,
 							// onlyCompileBundledFiles: true,
 						}
-					}]
+					// }]
 				},
 				/* {
 					test: /worker\.[tj]s$/,

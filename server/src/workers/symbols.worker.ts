@@ -6,7 +6,7 @@ import
 	DocumentSymbol,
 	Range
 } from 'vscode-languageserver';
-import { expose } from 'threads/worker';
+import { expose } from "threads/worker"
 import { deriveSymbolsTree, collectTokens } from '../mxsProvideSymbols';
 import
 {

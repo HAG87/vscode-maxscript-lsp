@@ -20,5 +20,15 @@ module.exports = withDefaults({
 	},
 	plugins: [
 		new ThreadsPlugin()
-	]
+	]/* ,
+	module: {
+		rules:[{
+			options: {
+				compilerOptions: {
+					module: 'esnext'
+				},
+				projectReferences: true,
+			}
+		}]
+	} */
 });

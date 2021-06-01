@@ -1,5 +1,5 @@
 'use strict';
-import { spawn, Thread, Worker } from 'threads';
+import { spawn, Thread, Worker } from "threads"
 import
 {
 	// CancellationToken,
