@@ -303,17 +303,17 @@
 		"webpack": "npm run clean && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js"
 	},
 	"devDependencies": {
-		"@babel/types": "^7.13.14",
-		"@types/node": "^14.14.37",
+		"@babel/types": "^7.14.4",
+		"@types/node": "^15.6.1",
 		"merge-options": "^3.0.4",
 		"threads": "^1.6.4",
 		"threads-plugin": "^1.4.0",
-		"ts-loader": "^8.1.0",
-		"ts-node": "^9.1.1",
+		"ts-loader": "^8.3.0",
+		"ts-node": "^10.0.0",
 		"tsconfig-paths-webpack-plugin": "^3.5.1",
-		"typescript": "^4.2.3",
+		"typescript": "^4.3.2",
 		"webpack": "^4.46.0",
-		"webpack-cli": "^4.6.0",
+		"webpack-cli": "^4.7.0",
 		"webpack-node-externals": "^2.5.2"
 	},
 	"dependencies": {
