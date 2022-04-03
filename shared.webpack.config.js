@@ -5,7 +5,6 @@
 
 //@ts-check
 /** @typedef {import('webpack').Configuration} WebpackConfig **/
-'use strict';
 
 const path = require('path');
 const mergeOptions = require('merge-options');

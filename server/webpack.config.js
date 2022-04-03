@@ -3,8 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 //@ts-check
-'use strict';
-
 const withDefaults = require('../shared.webpack.config');
 const path = require('path');
 const ThreadsPlugin = require('threads-plugin');
