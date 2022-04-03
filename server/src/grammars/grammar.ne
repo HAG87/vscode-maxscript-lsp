@@ -214,7 +214,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
             {% d => ({
                 type:   'EntityRcmenu_submenu',
                 label:  d[1],
-                params: fd[2] != null ? d[2][1] : null,
+                params: d[2] != null ? d[2][1] : null,
                 body:   d[5],
                 range: getLoc(d[0][0], d[6])
             })%}
@@ -254,11 +254,11 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
             attributes_clauses
         RPAREN
         {% d => ({
-            type:  'EntityAttributes',
-            id:   d[1],
+            type:   'EntityAttributes',
+            id:     d[1],
             params: d[2] != null ? d[4][1] : null,
             body:   d[5],
-            range:    getLoc(d[0][0], d[6])
+            range:  getLoc(d[0][0], d[6])
         })%}
 
     attributes_clauses -> attributes_clause (EOL attributes_clause):* {% d => merge(...d) %}
@@ -282,7 +282,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
                 id:         d[3],
                 params:     d[4] != null ? d[4][1] : null,
                 body:       d[7],
-                range:    getLoc(d[0][0], d[8])
+                range:      getLoc(d[0][0], d[8])
             })%}
 
     plugin_clauses -> plugin_clause (EOL plugin_clause):* {% d => merge(...d) %}
@@ -306,7 +306,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
                 id:     d[1],
                 params: d[2] != null ? d[2][1] : null,
                 body:   d[5],
-                range: getLoc(d[0][0], d[6])
+                range:  getLoc(d[0][0], d[6])
             })%}
 
     param_clauses -> param_clause (EOL param_clause):* {% d => merge(...d) %}
@@ -395,10 +395,10 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
                 group_clauses
             RPAREN
             {% d => ({
-                type: 'EntityRolloutGroup',
-                id:   d[1],
-                body: d[4],
-                range:getLoc(d[0][0], d[5])
+                type:  'EntityRolloutGroup',
+                id:    d[1],
+                body:  d[4],
+                range: getLoc(d[0][0], d[5])
             })%}
     
     group_clauses
@@ -462,9 +462,9 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
                 struct_members
             RPAREN
             {% d => ({
-                type: 'Struct',
-                id:   d[1],
-                body: flatten(d[4]),
+                type:  'Struct',
+                id:    d[1],
+                body:  flatten(d[4]),
                 range: getLoc(d[0][0], d[5])
             })%}
 
@@ -599,10 +599,10 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
     function_decl
         -> (%kw_mapped __):?  %kw_function
             {% d => ({
-                type:   'Function',
+                type:     'Function',
                 modifier: d[0] != null ? d[0][0] : null,
-                keyword: d[1],
-                range: getLoc(d[0] != null ? d[0][0] : d[1])
+                keyword:  d[1],
+                range:    getLoc(d[0] != null ? d[0][0] : d[1])
             })%}
 
     # This is for parameter declaration 
@@ -613,8 +613,8 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
 # FUNCTION RETURN --- OK
     FN_RETURN -> %kw_return _ expr
         {% d => ({
-            type: 'FunctionReturn',
-            body: d[2],
+            type:  'FunctionReturn',
+            body:  d[2],
             range: getLoc(d[0], d[2])
         })%}
 #===============================================================
@@ -633,11 +633,11 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
     context
         -> %kw_at __ (%kw_level | %kw_time) _ unary_operand
             {% d => ({
-                type:    'ContextExpression',
+                type:     'ContextExpression',
                 prefix :  null,
-                context: d[0],
-                args:    [].concat(d[2][0], d[4]),
-                range:   getLoc(d[0], d[4])
+                context:  d[0],
+                args:     [].concat(d[2][0], d[4]),
+                range:    getLoc(d[0], d[4])
             })%}
         | %kw_in _ unary_operand
             {% d => ({
@@ -649,7 +649,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
             })%}
         | (%kw_in __):? %kw_coordsys _ (%kw_local | unary_operand)
             {% d => ({
-                type: 'ContextExpression',
+                type:    'ContextExpression',
                 prefix : (d[0] != null ? d[0][0] : null),
                 context: d[1],
                 args:    d[3],
@@ -657,7 +657,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
             })%}
         | %kw_about _ (%kw_coordsys | unary_operand)
             {% d => ({
-                type: 'ContextExpression',
+                type:    'ContextExpression',
                 prefix : null,
                 context: d[0],
                 args:    d[2],
@@ -665,14 +665,14 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
             })%}
         | (%kw_with __):? %kw_context _ (LOGICAL_EXPR | bool)
             {% d => ({
-                type: 'ContextExpression',
+                type:    'ContextExpression',
                 prefix : (d[0] != null ? d[0][0] : null),
                 context: d[1],
                 args:    d[3]
             })%}
         | %kw_with __ %kw_defaultAction _ ("#logmsg"|"#logtofile"|"#abort")
             {% d => ({
-                type: 'ContextExpression',
+                type:    'ContextExpression',
                 prefix : d[0],
                 context: d[2],
                 args:    d[4],
@@ -759,22 +759,22 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
     for_index ->
         VAR_NAME _S LIST_SEP _ VAR_NAME _S LIST_SEP _ VAR_NAME
             {% d=> ({
-                type: 'ForLoopIndex',
-                variable: d[0],
+                type:       'ForLoopIndex',
+                variable:   d[0],
                 index_name: d[4],
                 filtered_index_name: d[8]
             })%}
         | VAR_NAME _S LIST_SEP _ VAR_NAME
             {% d=> ({
-                type: 'ForLoopIndex',
-                variable: d[0],
+                type:       'ForLoopIndex',
+                variable:   d[0],
                 index_name: d[4],
                 filtered_index_name: null
             })%}
         | VAR_NAME
             {% d=> ({
-                type: 'ForLoopIndex',
-                variable: d[0],
+                type:       'ForLoopIndex',
+                variable:   d[0],
                 index_name: null,
                 filtered_index_name: null
             })%}
