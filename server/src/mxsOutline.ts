@@ -1,4 +1,3 @@
-'use strict';
 import { spawn, Thread, Worker } from "threads"
 import
 {

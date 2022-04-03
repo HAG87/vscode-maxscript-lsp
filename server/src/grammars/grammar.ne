@@ -23,8 +23,6 @@
         let res = [];
         args.forEach( elem => {
             if (Array.isArray(elem)) {
-                // console.log(elem);
-                // res.push(...elem);
                 res = res.concat.apply(res, elem);
             } else {
                 res.push(elem);
@@ -35,11 +33,6 @@
         return res.length ? res.filter(e => e != null) : null;
     };
 
-    const convertToken = (token, newtype) => {
-        let node = {...token};
-            node.type = newtype;
-        return node;
-    };
     // Offset is not reilable, changed to line - character
     const getLoc = (start, end) => {
         if (!start) {return null;}
@@ -120,7 +113,7 @@
 @lexer mxLexer
 #===============================================================
 # ENTRY POINT
-Main -> _ _expr_seq _ {% d => d[1] %}
+Main -> _ _expr_seq:? _ {% d => d[1] %}
 #---------------------------------------------------------------
 # Expressions main recursion
     # _EXPR -> expr (EOL expr):*    {% d => merge(...d) %}

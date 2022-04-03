@@ -1,5 +1,3 @@
-'use strict';
-//-----------------------------------------------------------------------------------
 import { getHeapStatistics } from 'v8';
 import nearley from 'nearley';
 import moo from 'moo';
@@ -98,7 +96,7 @@ function parseWithErrorsSync(source: string, parserInstance: nearley.Parser): pa
 		try {
 			parserInstance.feed(src[next].toString());
 			// this.parserInstance.feed(src[next].text);
-		} catch (err) {
+		} catch (err: any) {
 			// catch non parsing related errors.
 			// console.log(err);
 			if (!err.token) { throw err; }
@@ -250,7 +248,7 @@ function parseWithErrorsAsync(
 						parserInstance.feed(src[next++].value);
 						state = parserInstance.save();
 						return { done: false };
-					} catch (err) {
+					} catch (err: any) {
 
 						if (!err.token) { throw (err); }
 						if (!options.recovery) { return { done: true }; }

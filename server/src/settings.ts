@@ -1,4 +1,3 @@
-'use strict';
 // Settings
 export interface MaxScriptSettings
 {

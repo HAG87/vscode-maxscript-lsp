@@ -1,4 +1,3 @@
-'use strict';
 
 import objectPath from 'object-path';
 //@ts-ignore

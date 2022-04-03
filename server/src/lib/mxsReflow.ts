@@ -1,4 +1,3 @@
-'use strict';
 import moo from 'moo';
 import * as nodetype from './mxsParserNodesType';
 //-----------------------------------------------------------------------------------

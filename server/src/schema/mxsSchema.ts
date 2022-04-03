@@ -1,4 +1,3 @@
-'use strict';
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 //-----------------------------------------------------------------------------------------------------------------
 const maxVariable: CompletionItem[] = [
@@ -1323,8 +1322,8 @@ const maxKeywords1: CompletionItem[] = [
 	{label: 'macroscript', detail: 'macroscript code-block definition', kind: CompletionItemKind.Keyword},
 	{label: 'parameters', detail: 'plugin parameters code-block definition', kind: CompletionItemKind.Keyword},
 	{label: 'plugin', detail: 'plugin code-block definition', kind: CompletionItemKind.Keyword},
-	{label: 'tool', detail: 'tool code-block definition', kind: CompletionItemKind.Keyword},
-	{label: 'utility', detail: 'utility code-block definition', kind: CompletionItemKind.Keyword}
+	{label: 'tool', detail: 'Tool code-block definition', kind: CompletionItemKind.Keyword},
+	{label: 'utility', detail: 'Utility code-block definition', kind: CompletionItemKind.Keyword}
 ];
 const maxUIcontrols: CompletionItem[] = [
 	{label: 'angle', detail: 'Rollout UI control', kind: CompletionItemKind.Keyword},

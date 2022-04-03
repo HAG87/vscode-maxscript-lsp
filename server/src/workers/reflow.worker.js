@@ -1,4 +1,3 @@
-'use strict';
 import { expose } from 'threads/worker';
 import { parseSource } from '../mxsParser';
 import { mxsReflow, options } from '../lib/mxsReflow';

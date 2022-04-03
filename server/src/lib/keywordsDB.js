@@ -1,8 +1,6 @@
 /**	
  * DB for tokenizer keywords
  */
-'use strict';
-
 const keywordsDB = {
 	'keyword': [
 		'about',
