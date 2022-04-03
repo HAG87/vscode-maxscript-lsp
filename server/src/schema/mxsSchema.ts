@@ -1316,6 +1316,7 @@ const maxObjectSet: CompletionItem[] = [
 	{label: 'systems', detail: 'ObjectSet collection', kind: CompletionItemKind.Value}
 ];
 const maxKeywords1: CompletionItem[] = [
+	{label: 'attributes', detail: 'Custom Attributes let you create and assign additional parameters to any object, modifier, or material', kind: CompletionItemKind.Keyword},
 	{label: 'function', detail: 'Function definition', kind: CompletionItemKind.Keyword},
 	{label: 'fn', detail: 'Function definition', kind: CompletionItemKind.Keyword},
 	{label: 'Struct', detail: 'Struct definition', kind: CompletionItemKind.Keyword},

@@ -390,6 +390,7 @@ let tokensValue = {
 	kw_about(node) { return node.text; },
 	kw_as(node) { return node.text; },
 	kw_at(node) { return node.text; },
+	kw_attributes(node) { return node.text; },
 	kw_bool(node) { return node.text; },
 	kw_by(node) { return node.text; },
 	kw_case(node) { return node.text; },
@@ -887,6 +888,22 @@ let conversionRules = {
 	StructScope(node) { return node.value; },
 	// StructScope: wrap(nodeValue);
 	//-------------------------------------------------------------------------
+	// Attributes
+	EntityAttributes(node)
+	{
+		let stat = new Statement(
+			'attributes',
+			node.id,
+			...toArray(node.params)
+		)
+		let body = new Codeblock(...toArray(node.body));
+		body.wrapped = true;
+		body.indent = true;
+		return new Codeblock(
+			stat,
+			body
+		);
+	},
 	// Plugin
 	EntityPlugin(node)
 	{

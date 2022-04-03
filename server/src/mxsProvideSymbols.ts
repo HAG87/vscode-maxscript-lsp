@@ -21,6 +21,7 @@ interface Dictionary<T>
  * Maps values from type > vcode kind enumeration
  */
 const SymbolKindMatch: Dictionary<SymbolKind> = {
+	'EntityAttributes': SymbolKind.Object,
 	'EntityRcmenu': SymbolKind.Object,
 	'EntityRcmenu_submenu': SymbolKind.Constructor,
 	'EntityRcmenu_separator': SymbolKind.Object,

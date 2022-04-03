@@ -8,6 +8,7 @@ export const tokenDefinitions: { [key: string] : string } = {
 	'identity':       'Identifier',
 	'kw_about':       '<about> keyword',
 	'kw_at':          '<at> keyword',
+	'kw_attributes':  'Custom attributes definition',
 	'kw_bool':        'Boolean value <false|off>',
 	'kw_case':        '<case> keyword',
 	'kw_context':     'Context statement',

@@ -10,6 +10,12 @@ export interface BlockStatement
 {
 	body: any[]
 }
+export interface EntityAttributes
+{
+	id: any
+	params: any[]
+	body: any[]
+}
 export interface EntityRcmenu
 {
 	id: any

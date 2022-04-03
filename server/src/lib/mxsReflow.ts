@@ -437,6 +437,7 @@ let tokensValue = {
 	kw_about(node: moo.Token) { return node.text; },
 	kw_as(node: moo.Token) { return node.text; },
 	kw_at(node: moo.Token) { return node.text; },
+	kw_attributes(node: moo.Token) { return node.text; },
 	kw_bool(node: moo.Token) { return node.text; },
 	kw_by(node: moo.Token) { return node.text; },
 	kw_case(node: moo.Token) { return node.text; },
@@ -956,6 +957,22 @@ let conversionRules = {
 	StructScope(node: nodetype.StructScope) { return node.value; },
 	// StructScope: wrap(nodeValue);
 	//-------------------------------------------------------------------------
+	// Attributes
+	EntityAttributes(node: nodetype.EntityAttributes)
+	{
+		let stat = new Statement(
+			'attributes',
+			node.id,
+			...toArray(node.params)
+		)
+		let body = new Codeblock(...toArray(node.body));
+		body.wrapped = true;
+		body.indent = true;
+		return new Codeblock(
+			stat,
+			body
+		);
+	},
 	// Plugin
 	EntityPlugin(node: nodetype.EntityPlugin)
 	{

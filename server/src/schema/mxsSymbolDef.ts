@@ -10,6 +10,11 @@ export interface mxsSymbolMatch {
 
 export const mxsSymbols: mxsSymbolMatch[] = [
 	{
+		type: 'attributes',
+		match: /attributes\s+(\b\w+)/ig,
+		kind: SymbolKind.Constructor,
+	},
+	{
 		type: 'struct',
 		match: /struct\s+(\b\w+)/ig,
 		kind: SymbolKind.Struct,

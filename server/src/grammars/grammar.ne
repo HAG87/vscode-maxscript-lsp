@@ -134,6 +134,7 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         -> SIMPLE_EXPR    {% id %}
         | VARIABLE_DECL   {% id %}
         | ASSIGNMENT      {% id %}
+        | ATTRIBUTES_DEF  {% id %}
         | IF_EXPR         {% id %}
         | WHILE_LOOP      {% id %}
         | DO_LOOP         {% id %}
@@ -252,9 +253,32 @@ Main -> _ _expr_seq _ {% d => d[1] %}
             return res;
         }%}
 #---------------------------------------------------------------
+# ATTRIBUTES DEFINITION
+# attributes <name> [version:n] [silentErrors:t/f] [initialRollupState:0xnnnnn] [remap:#(<old_param_names_array>, <new_param_names_array>)]
+    ATTRIBUTES_DEF
+        -> (%kw_attributes __) VAR_NAME (_ parameter_seq):? _
+        LPAREN
+            attributes_clauses
+        RPAREN
+        {% d => ({
+            type:  'EntityAttributes',
+            id:   d[1],
+            params: d[2] != null ? d[4][1] : null,
+            body:   d[5],
+            range:    getLoc(d[0][0], d[6])
+        })%}
+
+    attributes_clauses -> attributes_clause (EOL attributes_clause):* {% d => merge(...d) %}
+
+    attributes_clause
+        -> VARIABLE_DECL    {% id %}
+        | EVENT_HANDLER     {% id %}
+        | plugin_parameter  {% id %}
+        | ROLLOUT_DEF       {% id %}
+#---------------------------------------------------------------
 # PLUGIN DEFINITION --- OK
     PLUGIN_DEF
-        -> (%kw_plugin __) VAR_NAME __ VAR_NAME  (_ parameter_seq):? _
+        -> (%kw_plugin __) VAR_NAME __ VAR_NAME (_ parameter_seq):? _
             LPAREN
                 plugin_clauses
             RPAREN
@@ -1282,7 +1306,8 @@ Main -> _ _expr_seq _ {% d => d[1] %}
         | %kw_set          {% id %}
 
     kw_override
-        -> %kw_uicontrols  {% id %}
+        -> %kw_attributes  {% id %}
+        | %kw_uicontrols   {% id %}
         | %kw_group        {% id %}
         | %kw_level        {% id %}
         | %kw_menuitem     {% id %}
