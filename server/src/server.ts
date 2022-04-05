@@ -265,8 +265,9 @@ connection.onDocumentSymbol((params, cancelation) =>
 		// cancellation request
 		cancelation.onCancellationRequested(/* async */() => resolve);
 		// settings
-		const options = { recovery: true, attemps: 10, memoryLimit: 0.9 };
+		const options = { recovery: false, attemps: 10, memoryLimit: 0.9 };
 		let threading = false;
+		
 		getDocumentSettings(params.textDocument.uri)
 			.then(result =>
 			{
@@ -398,7 +399,7 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 				connection.window.showInformationMessage(
 					`MaxScript minify: Document saved as ${Path.basename(newPath)}`
 				);
-			} catch (err) {
+			} catch (err: any) {
 				connection.window.showErrorMessage(
 					`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${err.message}`
 				);
@@ -412,7 +413,7 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 			try {
 				await mxsMinifier.MinifyFile(path, newPath, settings.parser.multiThreading);
 				connection.window.showInformationMessage(`MaxScript minify: Document saved as ${Path.basename(newPath)}`);
-			} catch (err) {
+			} catch (err: any) {
 				connection.window.showErrorMessage(`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${err.message}`);
 			}
 		}
@@ -458,7 +459,7 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 				} else {
 					connection.window.showWarningMessage(`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: ${reply.failureReason}`);
 				}
-			} catch (err) {
+			} catch (err: any) {
 				connection.window.showErrorMessage(`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: ${err.message}`);
 				// throw err;
 			}
