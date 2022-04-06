@@ -16,7 +16,7 @@ function id(x) { return x[0]; }
     }
 
     //function flatten(x) { return x != null ? x.flat().filter(e => e != null) : []; }
-   const flatten = arr => arr != null ? arr.flat(2).filter(e => e != null) : [];
+    const flatten = arr => arr != null ? arr.flat(2).filter(e => e != null) : [];
 
     const collectSub = (arr, index) => arr != null ? arr.map(e => e[index]) : [];
 
@@ -106,6 +106,10 @@ function id(x) { return x[0]; }
     //----------------------------------------------------------
     // RULES
     //----------------------------------------------------------
+    // EXPERIMENT: THIS WILL DROP MOO TOKENS, REDUCING THE TREE SIZE
+    // const Literal = (x, d) => ({ type: 'Literal', kind: d, value: x[0].value, range:getLoc(x[0]) });
+    // const Identifier = x => ({ type: 'Identifier', value: x[0].value, range:getLoc(x[0]) });
+
     const Literal = x => ({ type: 'Literal', value: x[0], range:getLoc(x[0]) });
     const Identifier = x => ({ type: 'Identifier', value: x[0], range:getLoc(x[0]) });
 var grammar = {
@@ -434,36 +438,29 @@ var grammar = {
             event:  d[2],
             args:   flatten(d[3])
         }) },
-    {"name": "CHANGE_HANDLER$ebnf$1$subexpression$1", "symbols": ["when_param", "_"]},
-    {"name": "CHANGE_HANDLER$ebnf$1$subexpression$1", "symbols": ["when_param", "_", "when_param", "_"]},
-    {"name": "CHANGE_HANDLER$ebnf$1", "symbols": ["CHANGE_HANDLER$ebnf$1$subexpression$1"], "postprocess": id},
-    {"name": "CHANGE_HANDLER$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "CHANGE_HANDLER$ebnf$2$subexpression$1", "symbols": ["VAR_NAME", "__"]},
-    {"name": "CHANGE_HANDLER$ebnf$2", "symbols": ["CHANGE_HANDLER$ebnf$2$subexpression$1"], "postprocess": id},
+    {"name": "CHANGE_HANDLER$subexpression$1", "symbols": ["VAR_NAME"]},
+    {"name": "CHANGE_HANDLER$subexpression$1", "symbols": ["kw_override"]},
+    {"name": "CHANGE_HANDLER$ebnf$1", "symbols": []},
+    {"name": "CHANGE_HANDLER$ebnf$1$subexpression$1", "symbols": ["parameter", "_"]},
+    {"name": "CHANGE_HANDLER$ebnf$1", "symbols": ["CHANGE_HANDLER$ebnf$1", "CHANGE_HANDLER$ebnf$1$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
+    {"name": "CHANGE_HANDLER$ebnf$2", "symbols": ["operand"], "postprocess": id},
     {"name": "CHANGE_HANDLER$ebnf$2", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "CHANGE_HANDLER", "symbols": [(mxLexer.has("kw_when") ? {type: "kw_when"} : kw_when), "__", "VAR_NAME", "__", "unary_operand", "__", "VAR_NAME", "__", "CHANGE_HANDLER$ebnf$1", "CHANGE_HANDLER$ebnf$2", (mxLexer.has("kw_do") ? {type: "kw_do"} : kw_do), "_", "expr"], "postprocess":  d=> ({
+    {"name": "CHANGE_HANDLER", "symbols": [(mxLexer.has("kw_when") ? {type: "kw_when"} : kw_when), "__", "CHANGE_HANDLER$subexpression$1", "__", "operand", "__", "VAR_NAME", "__", "CHANGE_HANDLER$ebnf$1", "CHANGE_HANDLER$ebnf$2", "_", (mxLexer.has("kw_do") ? {type: "kw_do"} : kw_do), "_", "expr"], "postprocess":  d=> ({
             type:  'WhenStatement',
-            args:  merge(...d.slice(2,10)),
-            body:  d[12],
-            range: getLoc(d[0], d[12])
+            args:  merge(...d.slice(2,9)),
+            body:  d[13],
+            range: getLoc(d[0], d[13])
         })},
-    {"name": "CHANGE_HANDLER$ebnf$3$subexpression$1", "symbols": ["when_param", "_"]},
-    {"name": "CHANGE_HANDLER$ebnf$3$subexpression$1", "symbols": ["when_param", "_", "when_param", "_"]},
-    {"name": "CHANGE_HANDLER$ebnf$3", "symbols": ["CHANGE_HANDLER$ebnf$3$subexpression$1"], "postprocess": id},
-    {"name": "CHANGE_HANDLER$ebnf$3", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "CHANGE_HANDLER$ebnf$4$subexpression$1", "symbols": ["VAR_NAME", "_"]},
-    {"name": "CHANGE_HANDLER$ebnf$4", "symbols": ["CHANGE_HANDLER$ebnf$4$subexpression$1"], "postprocess": id},
+    {"name": "CHANGE_HANDLER$ebnf$3", "symbols": []},
+    {"name": "CHANGE_HANDLER$ebnf$3$subexpression$1", "symbols": ["parameter", "_"]},
+    {"name": "CHANGE_HANDLER$ebnf$3", "symbols": ["CHANGE_HANDLER$ebnf$3", "CHANGE_HANDLER$ebnf$3$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
+    {"name": "CHANGE_HANDLER$ebnf$4", "symbols": ["operand"], "postprocess": id},
     {"name": "CHANGE_HANDLER$ebnf$4", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "CHANGE_HANDLER", "symbols": [(mxLexer.has("kw_when") ? {type: "kw_when"} : kw_when), "__", "unary_operand", "__", "VAR_NAME", "__", "CHANGE_HANDLER$ebnf$3", "CHANGE_HANDLER$ebnf$4", (mxLexer.has("kw_do") ? {type: "kw_do"} : kw_do), "_", "expr"], "postprocess":  d=> ({
+    {"name": "CHANGE_HANDLER", "symbols": [(mxLexer.has("kw_when") ? {type: "kw_when"} : kw_when), "__", "operand", "__", "VAR_NAME", "__", "CHANGE_HANDLER$ebnf$3", "CHANGE_HANDLER$ebnf$4", "_", (mxLexer.has("kw_do") ? {type: "kw_do"} : kw_do), "_", "expr"], "postprocess":  d=> ({
             type:  'WhenStatement',
-            args:  merge(...d.slice(2,8)),
-            body:  d[10],
-            range: getLoc(d[0], d[10])
-        })},
-    {"name": "when_param", "symbols": ["param_name", "_", "NAME_VALUE"], "postprocess":  d => ({
-            type: 'ParameterAssignment',
-            param: d[0],
-            value: d[2],
+            args:  merge(...d.slice(2,7)),
+            body:  d[11],
+            range: getLoc(d[0], d[11])
         })},
     {"name": "FUNCTION_DEF$ebnf$1$subexpression$1", "symbols": ["_", "VAR_NAME"]},
     {"name": "FUNCTION_DEF$ebnf$1", "symbols": ["FUNCTION_DEF$ebnf$1$subexpression$1"]},
@@ -803,20 +800,8 @@ var grammar = {
     {"name": "decl_list$ebnf$1$subexpression$1", "symbols": ["LIST_SEP", "decl"]},
     {"name": "decl_list$ebnf$1", "symbols": ["decl_list$ebnf$1", "decl_list$ebnf$1$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
     {"name": "decl_list", "symbols": ["decl", "decl_list$ebnf$1"], "postprocess": flatten},
-    {"name": "decl", "symbols": ["VAR_NAME"], "postprocess":  d => ({
-            type:     'Declaration',
-            id:       d[0],
-            operator: null,
-            value:    null,
-            range:    getLoc(d[0])
-        }) },
-    {"name": "decl", "symbols": ["ASSIGNMENT"], "postprocess":  d => {
-            let res = {...d[0]};
-            res.type = 'Declaration';
-            res.id = res.operand;
-            delete res.operand;
-            return res;
-        } },
+    {"name": "decl", "symbols": ["VAR_NAME"], "postprocess": id},
+    {"name": "decl", "symbols": ["ASSIGNMENT"], "postprocess": id},
     {"name": "ASSIGNMENT", "symbols": ["destination", "_S", (mxLexer.has("assign") ? {type: "assign"} : assign), "_", "expr"], "postprocess":  d => ({
             type:     'AssignmentExpression',
             operand:  d[0],
