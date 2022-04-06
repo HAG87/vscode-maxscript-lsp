@@ -511,31 +511,27 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
 #---------------------------------------------------------------
 # CHANGE HANDLER -- WHEN CONSTRUCTOR -- OK
     CHANGE_HANDLER
-        -> %kw_when __ VAR_NAME __ unary_operand __ VAR_NAME __
-          (when_param _ | when_param _ when_param _):? (VAR_NAME __ ):?
-          %kw_do _ expr
+        -> %kw_when __ (VAR_NAME | kw_override) __ operand __ VAR_NAME __ (parameter _):* operand:? _ %kw_do _ expr
             {% d=> ({
                 type:  'WhenStatement',
-                args:  merge(...d.slice(2,10)),
-                body:  d[12],
-                range: getLoc(d[0], d[12])
+                args:  merge(...d.slice(2,9)),
+                body:  d[13],
+                range: getLoc(d[0], d[13])
             })%}
-        | %kw_when __ unary_operand __ VAR_NAME __
-          (when_param _ | when_param _ when_param _):? (VAR_NAME _):?
-          %kw_do _ expr
+        | %kw_when __ operand __ VAR_NAME __ (parameter _):* operand:? _ %kw_do _ expr
             {% d=> ({
                 type:  'WhenStatement',
-                args:  merge(...d.slice(2,8)),
-                body:  d[10],
-                range: getLoc(d[0], d[10])
+                args:  merge(...d.slice(2,7)),
+                body:  d[11],
+                range: getLoc(d[0], d[11])
             })%}
 
-    when_param -> param_name _ NAME_VALUE
-        {% d => ({
-            type: 'ParameterAssignment',
-            param: d[0],
-            value: d[2],
-        })%}
+    # when_param -> param_name _ NAME_VALUE
+    #     {% d => ({
+    #         type: 'ParameterAssignment',
+    #         param: d[0],
+    #         value: d[2],
+    #     })%}
 #---------------------------------------------------------------
 # FUNCTION DEFINITION --- OK
     FUNCTION_DEF
@@ -621,25 +617,24 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
                 range:   getLoc(d[0], d[3])
             })%}
 
+    # at level <node> || at time <time>
+    # in <node>
 
-# at level <node> || at time <time>
-# in <node>
+    # [ in ] coordsys <coordsys>
+    # about <center_spec>
 
-# [ in ] coordsys <coordsys>
-# about <center_spec>
+    # [ with ] animate <boolean> 
+    # [ with ] redraw <boolean>
+    # [ with ] quiet <boolean>
+    # [ with ] redraw <boolean>
+    # [ with ] printAllElements <boolean>
 
-# [ with ] animate <boolean> 
-# [ with ] redraw <boolean>
-# [ with ] quiet <boolean>
-# [ with ] redraw <boolean>
-# [ with ] printAllElements <boolean>
+    # [ with ] MXSCallstackCaptureEnabled <boolean>
+    # [ with ] dontRepeatMessages <boolean>
+    # [ with ] macroRecorderEmitterEnabled <boolean>
 
-# [ with ] MXSCallstackCaptureEnabled <boolean>
-# [ with ] dontRepeatMessages <boolean>
-# [ with ] macroRecorderEmitterEnabled <boolean>
-
-# [ with ] defaultAction <action>
-# [ with ] undo <boolean>
+    # [ with ] defaultAction <action>
+    # [ with ] undo <boolean>
 
     context
         -> %kw_at __ (%kw_level | %kw_time) _ unary_operand
@@ -952,7 +947,6 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
     #             })%}
     #     | as {% id %}
     #     | math_operand {% id %}
-
     #     uny 
     #         -> _S "-" _ uny
     #             {% d => ({
