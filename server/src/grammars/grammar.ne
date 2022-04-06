@@ -13,7 +13,7 @@
     }
 
     //function flatten(x) { return x != null ? x.flat().filter(e => e != null) : []; }
-   const flatten = arr => arr != null ? arr.flat(2).filter(e => e != null) : [];
+    const flatten = arr => arr != null ? arr.flat(2).filter(e => e != null) : [];
 
     const collectSub = (arr, index) => arr != null ? arr.map(e => e[index]) : [];
 
@@ -103,6 +103,10 @@
     //----------------------------------------------------------
     // RULES
     //----------------------------------------------------------
+    // EXPERIMENT: THIS WILL DROP MOO TOKENS, REDUCING THE TREE SIZE
+    // const Literal = (x, d) => ({ type: 'Literal', kind: d, value: x[0].value, range:getLoc(x[0]) });
+    // const Identifier = x => ({ type: 'Identifier', value: x[0].value, range:getLoc(x[0]) });
+
     const Literal = x => ({ type: 'Literal', value: x[0], range:getLoc(x[0]) });
     const Identifier = x => ({ type: 'Identifier', value: x[0], range:getLoc(x[0]) });
 %}
@@ -887,26 +891,30 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
         | %kw_persistent __ %kw_global {% d => ({modifier: d[0], scope: d[2], range:getLoc(d[0], d[2])}) %}
 
     decl_list -> decl (LIST_SEP decl):*  {% flatten %}
+    # decl_list -> decl  | decl_list LIST_SEP decl  {% flatten %}
     
     decl
-        -> VAR_NAME
-            {% d => ({
-                type:     'Declaration',
-                id:       d[0],
-                operator: null,
-                value:    null,
-                range:    getLoc(d[0])
-            }) %}
-        | ASSIGNMENT
-            {% d => {
-                let res = {...d[0]};
-                res.type = 'Declaration';
-                res.id = res.operand;
-                delete res.operand;
-                return res;
-            } %}
+        -> VAR_NAME  {% id %}
+        | ASSIGNMENT {% id %}
+    # decl
+    #     -> VAR_NAME
+    #         {% d => ({
+    #             type:     'Declaration',
+    #             id:       d[0],
+    #             operator: null,
+    #             value:    null,
+    #             range:    getLoc(d[0])
+    #         }) %}
+    #     | ASSIGNMENT
+    #         {% d => {
+    #             let res = {...d[0]};
+    #             res.type = 'Declaration';
+    #             res.id = res.operand;
+    #             delete res.operand;
+    #             return res;
+    #         } %}
 #---------------------------------------------------------------
-#ASSIGNEMENT --- OK
+#ASSIGNMENT --- OK
     ASSIGNMENT
     -> destination _S %assign _ expr
         {% d => ({
@@ -1294,7 +1302,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
          | %global_typed  {% Identifier %}
          | %typed_iden    {% Identifier %}
          | kw_reserved    {% Identifier %}
-        #| VOID           {% Identifier %}
+
 # CONTEXTUAL KEYWORDS...can be used as identifiers outside the context...
     kw_reserved
         -> %kw_uicontrols  {% id %}
@@ -1336,13 +1344,13 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
 #---------------------------------------------------------------
 # TOKENS
     # Time
-    TIME -> %time          {% Literal %}
+    TIME -> %time          {% Literal %} #{% d => Literal(d, 'time') %}
     # Bool
     BOOL
-        -> %kw_bool        {% Literal %}
-        | %kw_on           {% Literal %}
+        -> %kw_bool        {% Literal %} #{% d => Literal(d, 'boolean') %}
+        | %kw_on           {% Literal %} #{% d => Literal(d, 'boolean') %}
     # Void values
-    VOID -> %kw_null       {% Literal %}
+    VOID -> %kw_null       {% Literal %} #{% d => Literal(d, 'void') %}
     #---------------------------------------------------------------
     # Numbers
     NUMBER
