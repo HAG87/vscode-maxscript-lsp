@@ -1,6 +1,6 @@
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 
-export const mxStructsMembers: {[key: string]: CompletionItem[]} = {
+export const mxStructsMembers: Record<string, CompletionItem[]> = {
 	'gw': [
 		{ label: 'dualPlane', kind: CompletionItemKind.Property },
 		{ label: 'GetCPDisp', kind: CompletionItemKind.Method },

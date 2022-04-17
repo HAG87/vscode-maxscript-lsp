@@ -76,3 +76,4 @@ export const mxsSymbols: mxsSymbolMatch[] = [
 		kind: SymbolKind.Package,
 	}
 ];
+//# sourceMappingURL=mxsSymbolDefs.js.map
