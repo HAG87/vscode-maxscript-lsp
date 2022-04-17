@@ -31,9 +31,11 @@ export const mxsFormatterLexer = (keywords:keywordsMap = keywordsDB) => moo.comp
 		{ match: /#'[A-Za-z0-9_]+'/ },
 	],
 	path: [
-		{ match: /\$(?:(?:[A-Za-z0-9_*?/]|\.{3}|\\[\\/"'])+)?/ },
+		{ match: /\$(?:[A-Za-z0-9_*?/]|\.{3}|\\[\\/"'])+/ },
 		{ match: /\$'(?:[^'])+'/, lineBreaks: true },
+		{ match: /\$/ }
 	],
+	//pathliteral: { match: /\$'(?:[^'])+'/, lineBreaks: true },
 	property: { match: /(?<=\.)[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/ },
 	identity: [
 		{ match: /'(?:\\['\\rn]|[^'\\\n])*'/},

@@ -26,8 +26,9 @@ const mxLexer = moo.compile({
 	// strings ~RESOURCE~
 	locale: /~[A-Za-z0-9_]+~/,
 	path: [
-		{ match: /\$(?:(?:[A-Za-z0-9_*?/]|\.{3}|\\[\\/"'])+)?/ },
-		{ match: /\$'(?:[^']+)'/, lineBreaks: true },
+		{ match: /\$(?:[A-Za-z0-9_*?/]|\.{3}|\\[\\/"'])+/ },
+		{ match: /\$'(?:[^'])+'/, lineBreaks: true },
+		{ match: /\$/ }
 	],
 	// IDENTIFIERS
 	// ::global variable
@@ -52,14 +53,13 @@ const mxLexer = moo.compile({
 	// array marker #(...) | #{...}
 	arraydef: /#[ \t]*\(/,
 	bitarraydef: /#[ \t]*\{/,
-	// PARENS
-	lparen: '(',
-	rparen: ')',
-	// BRACKETS, BRACES...
+	// PARENS, BRACKETS, BRACES
+	lparen:   '(',
+	rparen:   ')',
 	lbracket: '[',
 	rbracket: ']',
-	lbrace: /{/,
-	rbrace: /}/,
+	lbrace:   '{',
+	rbrace:   '}',
 	// Operators.
 	comparison: [
 		'==', '!=', '>', '<', '>=', '<='
