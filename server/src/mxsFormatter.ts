@@ -72,7 +72,7 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 
 		// token stream. if this fail will throw an error
 		let tokenizedSource: moo.Token[] = mxsTokenizer(source, undefined, mxsFormatterLexer());
-
+		// console.log(tokenizedSource);
 		// return if no results
 		if (tokenizedSource && !tokenizedSource.length) { reject(edits); }
 
@@ -139,6 +139,7 @@ export async function mxsStringFormatter(source: string, settings: SimpleFormatt
 */
 /**
  * Simple code formater: context unaware, just reflow whitespace and indentation of balanced pairs 
+ * TODO: Add Reflow as an engine when parser tree is available.
  * @param document vscode document to format
  */
 export async function SimpleDocumentFormatter(document: TextDocument, settings: Partial<SimpleFormatterSettings>)

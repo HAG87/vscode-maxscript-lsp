@@ -1,3 +1,6 @@
+/**
+ * Provide document symbols via parse tree.
+ */
 import { spawn, Thread, Worker } from "threads"
 import
 {
@@ -29,19 +32,10 @@ export interface ParserResult
 }
 
 // type cancellationToken = { cancel: () => void};
-/**
- * Provide document symbols. Impements the parser.
- * TODO:
- *  - fallback to safe regex match
- *  - implement async version
- * 	- implement child_process
- */
+
 export class DocumentSymbolProvider
 {
-	private async documentSymbolsFromCST(
-		CST: any,
-		document: TextDocument
-	): Promise<SymbolInformation[] | DocumentSymbol[]>
+	private async documentSymbolsFromCST(CST: any, document: TextDocument): Promise<SymbolInformation[] | DocumentSymbol[]>
 	{
 		let loc = {
 			start: { line: 0, character: 0 },

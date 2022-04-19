@@ -267,7 +267,7 @@ connection.onDocumentSymbol((params, cancelation) =>
 		// settings
 		const options = { recovery: false, attemps: 10, memoryLimit: 0.9 };
 		let threading = false;
-		
+
 		getDocumentSettings(params.textDocument.uri)
 			.then(result =>
 			{
@@ -445,7 +445,9 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 			let path = URI.parse(params.uri[i]).fsPath;
 			// let path = params.uri[i];
 			if (!doc) {
-				connection.window.showWarningMessage(`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: Can't read the file`);
+				connection.window.showWarningMessage(
+					`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: Can't read the file`
+				);
 				continue;
 			}
 			try {
@@ -455,12 +457,18 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 					await mxsPretty.prettyData(doc.getText(), opts, settings.parser.multiThreading)
 				);
 				if (reply.applied) {
-					connection.window.showInformationMessage(`MaxScript prettifier sucess: ${Path.basename(path)}`);
+					connection.window.showInformationMessage(
+						`MaxScript prettifier sucess: ${Path.basename(path)}`
+					);
 				} else {
-					connection.window.showWarningMessage(`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: ${reply.failureReason}`);
+					connection.window.showWarningMessage(
+						`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: ${reply.failureReason}`
+					);
 				}
 			} catch (err: any) {
-				connection.window.showErrorMessage(`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: ${err.message}`);
+				connection.window.showErrorMessage(
+					`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: ${err.message}`
+				);
 				// throw err;
 			}
 		}

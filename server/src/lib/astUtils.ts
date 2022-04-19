@@ -1,4 +1,4 @@
-
+import { Range, Position } from 'vscode-languageserver';
 import objectPath from 'object-path';
 //@ts-ignore
 import { pathUp } from 'ast-monkey-util';
@@ -8,15 +8,8 @@ import { getObj } from 'ast-get-object';
 import { getByKey } from 'ast-get-values-by-key';
 //@ts-ignore
 import { traverse } from 'ast-monkey-traverse';
-
-import { Range, Position } from 'vscode-languageserver';
 //-----------------------------------------------------------------------------------
-export interface Dictionary<T>
-{
-	[key: string]: T;
-}
-//-----------------------------------------------------------------------------------
-
+export const hasKey = <O>(obj: O, key: keyof any): key is keyof O => key in obj;
 export const getFromCST = (CST: any | any[], keyValPair: object) => getObj(CST, keyValPair);
 /**
  * Get CST all nodes with key
@@ -24,8 +17,6 @@ export const getFromCST = (CST: any | any[], keyValPair: object) => getObj(CST, 
  * @param key 
  */
 export const getNodesByKeyFromCST = (CST: any | any[], key: string | string[]) => getByKey(CST, key);
-
-export const hasKey = <O>(obj: O, key: keyof any): key is keyof O => key in obj;
 //-----------------------------------------------------------------------------------
 /**
  * Retrieve an object-path notation pruning n branches/leafs
@@ -234,8 +225,7 @@ export abstract class rangeUtil
 	}
 	/**
 	 * Get Range from token line & col
-	 * @param token 
-	 * @param document 
+	 * @param token moo token
 	 */
 	static getTokenRange(token: moo.Token/* , document?: TextDocument */)
 	{

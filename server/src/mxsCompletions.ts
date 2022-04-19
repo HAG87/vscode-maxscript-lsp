@@ -1,10 +1,11 @@
-import {
-	CompletionItem,
-	CompletionItemKind,
-	Range,
-	Position
-} from 'vscode-languageserver';
-import { TextDocument, } from 'vscode-languageserver-textdocument';
+import
+	{
+		CompletionItem,
+		CompletionItemKind,
+		Range,
+		Position
+	} from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 //------------------------------------------------------------------------------------------
 import { maxCompletions } from './schema/mxsSchema';
 import { mxClassMembers } from './schema/mxsSchema-clases';
@@ -20,21 +21,23 @@ const dotPattern = /([A-Za-z_][A-Za-z0-9_]+)[.]$/mi;
  */
 export function provideCompletionItems(document: TextDocument, position: Position): CompletionItem[]
 {
+	const lineTillCurrentPosition = document.getText(
+		Range.create(
+			position.line, 0,
+			position.line,
+			position.character
+		));
 
-	const lineTillCurrentPosition =
-		document.getText(Range.create(position.line, 0, position.line, position.character));
-
-	// escape strings - NOT WORKING RIGHT
-	// if (!(util.isPositionInString(lineTillCurrentPosition))) {
-	// 	return [];
-	// }
+	// TODO: Escape strings
+	// if (!(util.isPositionInString(lineTillCurrentPosition))) { return []; }
 
 	let result: CompletionItem[] = [];
 
 	const termMatch = dotPattern.exec(lineTillCurrentPosition);
 	if (termMatch) {
 		// return properties, methods...
-		maxCompletions.forEach(item => {
+		maxCompletions.forEach(item =>
+		{
 			if (item.label === termMatch![1]) {
 				switch (item.kind) {
 					case CompletionItemKind.Class:

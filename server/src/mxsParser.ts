@@ -2,12 +2,10 @@ import { getHeapStatistics } from 'v8';
 import nearley from 'nearley';
 import moo from 'moo';
 
-// import grammar from './lib/grammar';
-// import mxLexer from './lib/mooTokenize.js';
-
 const grammar = require('./lib/grammar');
 const mxsTokenizer = require('./lib/mooTokenize');
-
+// import grammar from './lib/grammar';
+// import mxLexer from './lib/mooTokenize.js';
 import { ParserError } from './mxsDiagnostics';
 //-----------------------------------------------------------------------------------
 function replaceWithWS(str: string)
@@ -21,6 +19,25 @@ interface parserResult
 	result: any | undefined
 	error: ParserError | undefined
 }
+
+let reportSuccess = (toks: moo.Token[]) =>
+{
+	let newErr = new ParserError('Parser failed. Partial parsings has been recovered.');
+	newErr.name = 'ERR_RECOVER';
+	newErr.recoverable = true;
+	newErr.tokens = toks;
+	// newErr.details = errorReport;
+	return newErr;
+};
+let reportFailure = (toks: moo.Token[]) =>
+{
+	let newErr = new ParserError('Parser failed. Unrecoverable errors.');
+	newErr.name = 'ERR_FATAL';
+	newErr.recoverable = false;
+	newErr.tokens = toks;
+	// newErr.details = errorReport;
+	return newErr;
+};
 //-----------------------------------------------------------------------------------
 /**
  * Tokenize mxs string
@@ -47,7 +64,7 @@ export function TokenizeStream(source: string, filter?: string[], Tokenizer = mx
 	}
 	return toks;
 }
-
+//-----------------------------------------------------------------------------------
 function declareParser()
 {
 	return new nearley.Parser(
@@ -56,92 +73,7 @@ function declareParser()
 			keepHistory: true
 		});
 }
-/**
- *
- * @param source String to parse
- * @param parserInstance Instance of initialized parser
- * @param tree Index of the parsed tree I want in return, results are multiple when the parser finds and ambiguity
- */
-function parseSync(source: string, parserInstance: nearley.Parser): parserResult
-{
-	// Set a clean state - DISABLED FOR WORKAROUND OF PROBLEM -> ERROR RECOVERY DECLARES A CLEAN PARSER INSTANCE
-	// this.reset();
-	try {
-		parserInstance.feed(source);
-		return parserInstance.results[0];
-	} catch (err) {
-		return parseWithErrorsSync(source, parserInstance);
-	}
-}
-
-/**
- * Parser with error recovery
- * @param source 
- * @param parserInstance nearley parser instance
- */
-function parseWithErrorsSync(source: string, parserInstance: nearley.Parser): parserResult
-{
-	// New method tokenizing the input could be a way to feed tokens to the parser
-	const src = TokenizeStream(source);
-	let state = parserInstance.save();
-
-	let badTokens: moo.Token[] = [];
-	// let errorReport: any[] = [];
-
-	// let next = 0;
-	let total = src.length - 1;
-
-	for (var next = 0; next < total; next++) {
-		// while (next <= total) {
-		try {
-			parserInstance.feed(src[next].toString());
-			// this.parserInstance.feed(src[next].text);
-		} catch (err: any) {
-			// catch non parsing related errors.
-			// console.log(err);
-			if (!err.token) { throw err; }
-
-			badTokens.push(err.token);
-			/* DISABLED FEATURE - NEEDS OPTIMIZATION */
-			// errorReport.push({token:src[next], alternatives: this.PossibleTokens(this.parserInstance) });
-			let filler = replaceWithWS(err.token.text);
-			err.token.text = filler;
-			err.token.value = filler;
-			err.token.type = 'ws';
-			// src.splice(next, 1, err.token);
-			src[next] = err.token;
-			// console.log(src[next]);
-			// console.log(badTokens);
-			next--;
-			parserInstance.restore(state);
-		}
-		state = parserInstance.save();
-		next++;
-	}
-	let reportSuccess = () =>
-	{
-		let newErr = new ParserError('Parser failed. Partial parsings has been recovered.');
-		newErr.name = 'ERR_RECOVER';
-		newErr.recoverable = true;
-		newErr.tokens = badTokens;
-		// newErr.details = errorReport;
-		return newErr;
-	};
-	let reportFailure = () =>
-	{
-		let newErr = new ParserError('Parser failed. Unrecoverable errors.');
-		newErr.name = 'ERR_FATAL';
-		newErr.recoverable = false;
-		newErr.tokens = badTokens;
-		// newErr.details = errorReport;
-		return newErr;
-	};
-	return {
-		result: parserInstance.results[0] || [],
-		error: parserInstance.results[0] ? reportSuccess() : reportFailure()
-	};
-}
-
+//-----------------------------------------------------------------------------------
 /**
  * Get a list of possible error corections
  * @param parserInstance 
@@ -176,6 +108,70 @@ function PossibleTokens(parserInstance: nearley.Parser)
 }
 //-----------------------------------------------------------------------------------
 /**
+ *
+ * @param source String to parse
+ * @param parserInstance Instance of initialized parser
+ */
+function parseSync(source: string, parserInstance: nearley.Parser): parserResult
+{
+	try {
+		parserInstance.feed(source);
+		return { result: parserInstance.results[0], error: undefined };
+	} catch (err: any) {
+		return { result: undefined, error: err };
+	}
+}
+/**
+ * Parser with error recovery
+ * @param source 
+ * @param parserInstance nearley parser instance
+ */
+function parseWithErrorsSync(source: string, parserInstance: nearley.Parser): parserResult
+{
+	// New method tokenizing the input could be a way to feed tokens to the parser
+	const src = TokenizeStream(source);
+	let state = parserInstance.save();
+
+	let badTokens: moo.Token[] = [];
+	// let errorReport: any[] = [];
+
+	// let next = 0;
+	let total = src.length - 1;
+
+	for (var next = 0; next < total; next++) {
+		// while (next <= total) {
+		try {
+			parserInstance.feed(src[next].toString());
+			// this.parserInstance.feed(src[next].text);
+		} catch (err: any) {
+			// catch non parsing related errors.
+			if (!err.token) { throw err; }
+			// collect bad tokens
+			badTokens.push(err.token);
+			/* DISABLED FEATURE - NEEDS OPTIMIZATION */
+			// errorReport.push({token:src[next], alternatives: this.PossibleTokens(this.parserInstance) });
+			let filler = replaceWithWS(err.token.text);
+			err.token.text = filler;
+			err.token.value = filler;
+			err.token.type = 'ws';
+			// src.splice(next, 1, err.token);
+			src[next] = err.token;
+			// console.log(src[next]);
+			// console.log(badTokens);
+			next--;
+			parserInstance.restore(state);
+		}
+		state = parserInstance.save();
+		next++;
+	}
+
+	return {
+		result: parserInstance.results[0] || [],
+		error: parserInstance.results[0] ? reportSuccess(badTokens) : reportFailure(badTokens)
+	};
+}
+//-----------------------------------------------------------------------------------
+/**
  * Async Parser
  * @param source Data to parse 
  * @param parserInstance Nearley parser instance
@@ -187,7 +183,7 @@ export function parseAsync(source: string, parserInstance: nearley.Parser): Prom
 		try {
 			parserInstance.feed(source);
 			resolve({ result: parserInstance.results[0], error: undefined });
-		} catch (err) {
+		} catch (err: any) {
 			reject({ result: undefined, error: err });
 		}
 	});
@@ -211,26 +207,6 @@ function parseWithErrorsAsync(
 
 	let badTokens: moo.Token[] = [];
 	// let errorReport: any[] = [];
-
-	let reportSuccess = () =>
-	{
-		let newErr = new ParserError('Parser failed. Partial parsings has been recovered.');
-		newErr.name = 'ERR_RECOVER';
-		newErr.recoverable = true;
-		newErr.tokens = badTokens;
-		// newErr.details = errorReport;
-		return newErr;
-	};
-	let reportFailure = () =>
-	{
-		let newErr = new ParserError('Parser failed. Unrecoverable errors.');
-		newErr.name = 'ERR_FATAL';
-		newErr.recoverable = false;
-		newErr.tokens = badTokens;
-		// newErr.details = errorReport;
-		return newErr;
-	};
-
 	function parserIterator(src: moo.Token[])
 	{
 		let next = 0;
@@ -240,25 +216,24 @@ function parseWithErrorsAsync(
 			{
 				if (next < src.length) {
 					try {
-
+						// Force exit if memory heap is reached ... does it works??
 						if ((getHeapStatistics().total_heap_size) > totalHeapSizeThreshold) {
 							process.exit();
 						}
-
 						parserInstance.feed(src[next++].value);
 						state = parserInstance.save();
+
 						return { done: false };
 					} catch (err: any) {
-
+						// Error unrelated to bad tokens
 						if (!err.token) { throw (err); }
-						if (!options.recovery) { return { done: true }; }
-						if (options.attemps > 0 && attemp++ >= options.attemps)  { return { done: true }; }
-												
+						// if (!options.recovery) { return { done: true }; }
+						// Set max errors limit
+						if (options.attemps > 0 && attemp++ >= options.attemps) { return { done: true }; }
 						// collect bad tokens
 						badTokens.push(err.token);
-						
-						// create a report of possible fixes *DISBLED*
-						// console.log(PossibleTokens(parserInstance));
+
+						// create a report of possible fixes *DISABLED TOO RESOURCES INTENSIVE*
 						// errorReport.push({token:src[next], alternatives: this.PossibleTokens(mxsParser) });
 						
 						// replace the faulty token with a filler value
@@ -284,11 +259,11 @@ function parseWithErrorsAsync(
 		let it = parserIterator(src);
 		while (!it.next()?.done) { }
 		let res = it.next()?.value;
-		if (res) {
-			resolve({ result: <any>res, error: reportSuccess() });
-		} else {
-			resolve({ result: undefined, error: reportFailure() });
-		}
+		resolve(
+			{
+				result: res,
+				error: res ? reportSuccess(badTokens) : reportFailure(badTokens)
+			});
 	});
 }
 

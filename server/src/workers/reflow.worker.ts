@@ -9,14 +9,14 @@ expose(
 		if (settings) {
 			Object.assign(options, settings);
 		}
-		
+
+		// OPTIMIZATION ---> Use the already bilt parse tree
 		if (typeof data === 'string') {
 			let results = await parseSource(data);
-			if (results.result) {
-				return mxsReflow(results.result);
-			} else {
+			if (results.result!) {
 				throw new Error('Parser failed.');
 			}
+			return mxsReflow(results.result);
 		} else {
 			// this will fail if the cst is not plain...
 			// return mxsReflow(data);

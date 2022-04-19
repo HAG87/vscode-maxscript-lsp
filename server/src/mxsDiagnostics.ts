@@ -33,7 +33,7 @@ export class ParserError extends Error
 	name: string = 'parse_error';
 	recoverable!: boolean;
 	tokens: moo.Token[] = [];
-	details: ErrorDetail[] = [];
+	details?: ErrorDetail[];
 }
 //--------------------------------------------------------------------------------
 /**
