@@ -32,7 +32,6 @@ import { prefixFile } from './lib/utils';
 import * as mxsCompletion from './mxsCompletions';
 import { mxsDocumentSymbols } from './mxsOutline';
 import * as mxsMinifier from './mxsMin';
-import * as mxsPretty from './mxsRebuild';
 import * as mxsDefinitions from './mxsDefinitions';
 import * as mxsSimpleFormatter from './mxsSimpleFormatter';
 import * as mxsFormatter from './mxsFormatter';
@@ -467,7 +466,7 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 				let reply = await replaceText.call(
 					connection,
 					doc,
-					await mxsPretty.prettyData(doc.getText(), opts, settings.parser.multiThreading)
+					settings.parser.multiThreading ? await mxsFormatter.FormatDataThreaded(doc.getText(), opts) : await mxsFormatter.FormatData(doc.getText(), opts)
 				);
 				if (reply.applied) {
 					connection.window.showInformationMessage(
