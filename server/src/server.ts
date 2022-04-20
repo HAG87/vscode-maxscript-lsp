@@ -34,6 +34,7 @@ import { mxsDocumentSymbols } from './mxsOutline';
 import * as mxsMinifier from './mxsMin';
 import * as mxsPretty from './mxsRebuild';
 import * as mxsDefinitions from './mxsDefinitions';
+import * as mxsSimpleFormatter from './mxsSimpleFormatter';
 import * as mxsFormatter from './mxsFormatter';
 import { mxsSemanticTokens } from './mxsSemantics';
 //------------------------------------------------------------------------------------------
@@ -229,7 +230,7 @@ documents.onDidChangeContent(
 connection.onDocumentFormatting(async params =>
 {
 	try {
-		return await mxsFormatter.SimpleDocumentFormatter(
+		return await mxsSimpleFormatter.SimpleDocumentFormatter(
 			documents.get(params.textDocument.uri)!,
 			(await getDocumentSettings(params.textDocument.uri))?.formatter
 		);
