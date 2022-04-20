@@ -1,6 +1,6 @@
 import { expose } from 'threads/worker';
-import { mxsReflow, options } from '../lib/mxsReflow';
 import { parseSource } from '../mxsParser';
+import { mxsReflow, options } from '../lib/mxsReflow';
 //--------------------------------------------------------------------------------
 // declare const self: Worker;
 

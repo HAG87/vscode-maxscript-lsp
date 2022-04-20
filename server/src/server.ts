@@ -395,7 +395,11 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 				continue;
 			}
 			try {
-				await mxsMinifier.MinifyDoc(doc.getText(), newPath, settings.parser.multiThreading);
+				if (settings.parser.multiThreading) {
+					await mxsMinifier.MinifyDocThreaded(doc.getText(), newPath);
+				} else {
+					await mxsMinifier.MinifyDoc(doc.getText(), newPath);
+				}
 				connection.window.showInformationMessage(
 					`MaxScript minify: Document saved as ${Path.basename(newPath)}`
 				);
@@ -411,10 +415,18 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 			// let path = Path.normalize(params.uri[i]);
 			let newPath = prefixFile(path, settings.MinifyFilePrefix);
 			try {
-				await mxsMinifier.MinifyFile(path, newPath, settings.parser.multiThreading);
-				connection.window.showInformationMessage(`MaxScript minify: Document saved as ${Path.basename(newPath)}`);
+				if (settings.parser.multiThreading) {
+					await mxsMinifier.MinifyFileThreaded(path, newPath);
+				} else {
+					await mxsMinifier.MinifyFile(path, newPath);
+				}
+				connection.window.showInformationMessage(
+					`MaxScript minify: Document saved as ${Path.basename(newPath)}`
+				);
 			} catch (err: any) {
-				connection.window.showErrorMessage(`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${err.message}`);
+				connection.window.showErrorMessage(
+					`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${err.message}`
+				);
 			}
 		}
 	}
