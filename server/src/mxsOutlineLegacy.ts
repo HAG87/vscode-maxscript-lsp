@@ -1,4 +1,10 @@
-import { SymbolInformation, Range } from 'vscode-languageserver';
+import
+{
+	Diagnostic,
+	SymbolInformation,
+	DocumentSymbol,
+	Range,
+} from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { mxsSymbols } from './schema/mxsSymbolDef';
 
@@ -10,7 +16,13 @@ let blockComments = (x: string): RegExp => new RegExp('\\/\\*[^\\*\\/]*' + x, 'i
 let singleComments = (x: string): RegExp => new RegExp('--.*(' + x + ').*$', 'im');
 let strings = (x: string): RegExp => new RegExp('"([^"]|[\\"])*(' + x + ')([^"]|[\\"])*$"', 'im');
 
-export default function getDocumentSymbolsLegacy(document: TextDocument): Promise<SymbolInformation[]>
+interface ParserResult
+{
+	symbols: SymbolInformation[] | DocumentSymbol[]
+	diagnostics: Diagnostic[]
+}
+
+export default function getDocumentSymbolsLegacy(document: TextDocument): Promise<ParserResult>
 {
 	return new Promise((resolve, reject) =>
 	{
@@ -41,6 +53,14 @@ export default function getDocumentSymbolsLegacy(document: TextDocument): Promis
 				);
 			}
 		});
-		if (SymbolInfCol.length) { resolve(SymbolInfCol); } else { reject('Symbols unavailable'); }
+
+		if (SymbolInfCol.length) {
+			resolve({
+				symbols: SymbolInfCol,
+				diagnostics: []
+			});
+		} else {
+			reject('Symbols unavailable');
+		}
 	});
 }

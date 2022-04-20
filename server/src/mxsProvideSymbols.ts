@@ -1,83 +1,82 @@
 import
 {
 	Range,
+	// Position,
 	SymbolKind,
 	DocumentSymbol
 } from 'vscode-languageserver';
 //@ts-ignore
 import { traverse } from 'ast-monkey-traverse';
-import moo from 'moo';
+import { Token } from 'moo';
+import { SymbolKindMatch } from './schema/mxsSymbolDef';
 //-----------------------------------------------------------------------------------
-/**
- * Generic dictionary Interface
- */
-interface Dictionary<T>
-{
-	[key: string]: T;
-}
-/**
- * Maps values from type > vcode kind enumeration
- */
-const SymbolKindMatch: Record<string, SymbolKind> = {
-	'EntityAttributes':       SymbolKind.Object,
-	'EntityRcmenu':           SymbolKind.Object,
-	'EntityRcmenu_submenu':   SymbolKind.Constructor,
-	'EntityRcmenu_separator': SymbolKind.Object,
-	'EntityRcmenu_menuitem':  SymbolKind.Constructor,
-	'EntityPlugin':           SymbolKind.Object,
-	'EntityPlugin_params':    SymbolKind.Object,
-	'PluginParam':            SymbolKind.Constructor,
-	'EntityTool':             SymbolKind.Object,
-	'EntityUtility':          SymbolKind.Object,
-	'EntityRollout':          SymbolKind.Object,
-	'EntityRolloutGroup':     SymbolKind.Object,
-	'EntityRolloutControl':   SymbolKind.Constructor,
-	'EntityMacroscript':      SymbolKind.Object,
-	'Struct':                 SymbolKind.Struct,
-	'Event':                  SymbolKind.Event,
-	'Function':               SymbolKind.Function,
-	'AssignmentExpression':   SymbolKind.Method,
-	'CallExpression':         SymbolKind.Method,
-	'ParameterAssignment':    SymbolKind.Property,
-	'AccessorProperty':       SymbolKind.Property,
-	'AccessorIndex':          SymbolKind.Property,
-	'Literal':                SymbolKind.Constant,
-	'Identifier':             SymbolKind.Property,
-	'Parameter':              SymbolKind.TypeParameter,
-	'VariableDeclaration':    SymbolKind.Variable,
-	'Declaration':            SymbolKind.Variable,
-	'Include':                SymbolKind.Module,
-};
-//-----------------------------------------------------------------------------------
+/** Verify that the node is valid */
 const isNode = (node: any) => typeof node === 'object' && node != null;
+/**
+ * Ranges produced by moo needs to be adjusted, since it starts at 1:1, and for vscode is 0:0
+ * line: the line number of the beginning of the match, starting from 1.
+ * col: the column where the match begins, starting from 1.
+ * @param r Range
+ */
+const rangeRemap = (r: Range): Range =>
+({
+	start: {
+		line: r.start.line - 1,
+		character: r.start.character - 1
+	},
+	end: {
+		line: r.end.line - 1,
+		character: r.end.character - 1
+	}
+
+});
+/* const rangeRemap = (r: Range) =>
+	Object.fromEntries(
+		Object.entries(r).map(
+			([key, pos]): [string, Position] => [key, <Position>positionMap(pos)]
+		));
+const positionMap = (p: Position) => Object.fromEntries(
+	Object.entries(p).map(
+		([key, value]): [string, number] => [key, value - 1]
+	)
+);*/
+/* const rangeRemap = (r: Range) => {
+	let k: keyof typeof r;
+	for (k in r) {
+		let pos = r[k];
+		let v: keyof typeof pos;
+		for (v in pos) {
+			pos[v] -= 1;
+		}
+	}
+}; */
+/** Derive Range from token location */
+const tokenRange = (t: Token): Range =>
+({
+	start: {
+		line: t.line,
+		character: t.col
+	},
+	end: {
+		line: t.line,
+		character: t.col + t.text.length
+	}
+});
 //-----------------------------------------------------------------------------------
 /**
- * collect Nodes visiting the Tree
- * collects all node types in the filter.
- * I'm retrieving only the paths, because will need to get the parents location later.
- * I will not be using this for now, since vscode only cares about definitions, I can later reference-search that definition
- * @param nodes Abstract Syntax tree source
- * @param document source document
- * @param keyFilter? Object with keys:[] to be collected.
+ * Derive a DocumentSymbol collection from the CSTree
+ * Collects only node types in the filter.
+ * Only constructs like functions, structs, declarations, etc have an ID property and will form part of the Outline tree
+ * @param {any | any[]} nodes Abstract Syntax tree source
+ * @param {Range} documentRange Document START and END ranges
+ * @param {string} keyFilter ? Object with keys:[] to be collected.
  */
-export async function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyFilter = 'id'): Promise<DocumentSymbol[]>
+export function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyFilter = 'id')
 {
-	/**
-	 * Ranges produced by moo needs to be adjusted, since it starts at 1:1, and for vscode is 0:0
-	 * line: the line number of the beginning of the match, starting from 1.
-	 * col: the column where the match begins, starting from 1.
-	 * @param r Range
-	 */
-	let rangeRemap = (r: Range) =>
-	{
-		r.start.line -= 1;
-		r.start.character -= 1;
-		r.end.line -= 1;
-		r.end.character -= 1;
-	};
-	// start with a root dummy...
-	let stack = <DocumentSymbol>{
-		id: '',
+
+	// start with a root dummynode ...
+	const stack: DocumentSymbol = {
+		//id: '',
 		name: '',
 		kind: 1,
 		range: documentRange,
@@ -85,46 +84,27 @@ export async function deriveSymbolsTree(nodes: any | any[], documentRange: Range
 		children: []
 	};
 
-	async function _visit(node: any, parent: any | null, key: string | null, index: number | null)
+	function _visit(node: any, parent: any | null)
 	{
 		// if (!node) { return []; }
 		let _node: DocumentSymbol;
 
 		if (isNode(node) && keyFilter in node) {
-			// value is the same as the text, unless you provide a value transform.
-			let id: moo.Token = node[keyFilter].value;
 
-			let loc: Range;
-			if (node.range) {
-				loc = <Range>node.range;
+			// only constructs like functions, strutcts and so on have an ID property
+			// the node 'id' value is a moo token with the node identifier
+			const token: Token = node[keyFilter].value;
+			// if node doesnt have a location, infer it from the token AND adjust line and char difference !
+			const loc = <Range>rangeRemap(node.range || tokenRange(token));
 
-			} else {
-				// if node doesnt has a location, infer it from the id...
-				loc = {
-					start: {
-						line: id.line,
-						character: id.col
-					},
-					end: {
-						line: id.line,
-						character: id.col + id.text.length
-					}
-				};
-			}
-			// adjust line and char difference !
-			rangeRemap(loc);
-			// if (node.type === 'Event') {
-			// 	console.log(document.getText(node.range));
-			// }
-			// TODO: deal with siblings...
 			_node = {
-				name: id.text,	//.toString(),
+				name: token.text,
 				detail: node.type || 'unknown',
 				kind: node.type != null ? (SymbolKindMatch[node.type] || SymbolKind.Method) : SymbolKind.Method,
 				range: loc,
 				selectionRange: loc
-				// children: []
 			};
+			// Push the node in the parent child collection
 			parent.children != null ? parent.children.push(_node) : parent.children = [_node];
 		} else {
 			_node = parent;
@@ -143,15 +123,16 @@ export async function deriveSymbolsTree(nodes: any | any[], documentRange: Range
 				for (let j = 0; j < child.length; j++) {
 					// visit each node in the array
 					if (isNode(child[j])) {
-						await _visit(child[j], _node, key, j);
+						_visit(child[j], _node);
 					}
 				}
 			} else if (isNode(child)) {
-				await _visit(child, _node, key, null);
+				_visit(child, _node);
 			}
 		}
 	}
-	await _visit(nodes, stack, null, 0);
+	// start visit
+	_visit(nodes, stack);
 	// return only the root node childrens...
 	return stack.children!;
 }
@@ -162,24 +143,24 @@ export async function deriveSymbolsTree(nodes: any | any[], documentRange: Range
  */
 export function collectTokens(CST: any, key: string = 'type', value?: string)
 {
-	let Tokens: moo.Token[] = [];
+	const Tokens: Token[] = [];
 	if (value) {
 		traverse(CST, (key1: string, val1: string | null, innerObj: { parent: any }) =>
 		{
-			const current = val1 ?? key1;
+			// const current = val1 ?? key1;
 			if (key1 === key && val1 === value) {
 				Tokens.push(innerObj.parent);
 			}
-			return current;
+			return val1 ?? key1; // current
 		});
 	} else {
 		traverse(CST, (key1: string, val1: string | null, innerObj: { parent: any }) =>
 		{
-			const current = val1 ?? key1;
+			// const current = val1 ?? key1;
 			if (key1 === key) {
 				Tokens.push(innerObj.parent);
 			}
-			return current;
+			return val1 ?? key1; // current
 		});
 	}
 	return Tokens;

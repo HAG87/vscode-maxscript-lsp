@@ -76,4 +76,37 @@ export const mxsSymbols: mxsSymbolMatch[] = [
 		kind: SymbolKind.Package,
 	}
 ];
+/**
+ * Maps values from type > vcode kind enumeration
+ */
+export const SymbolKindMatch: Record<string, SymbolKind> = {
+	'EntityAttributes': SymbolKind.Object,
+	'EntityRcmenu': SymbolKind.Object,
+	'EntityRcmenu_submenu': SymbolKind.Constructor,
+	'EntityRcmenu_separator': SymbolKind.Object,
+	'EntityRcmenu_menuitem': SymbolKind.Constructor,
+	'EntityPlugin': SymbolKind.Object,
+	'EntityPlugin_params': SymbolKind.Object,
+	'PluginParam': SymbolKind.Constructor,
+	'EntityTool': SymbolKind.Object,
+	'EntityUtility': SymbolKind.Object,
+	'EntityRollout': SymbolKind.Object,
+	'EntityRolloutGroup': SymbolKind.Object,
+	'EntityRolloutControl': SymbolKind.Constructor,
+	'EntityMacroscript': SymbolKind.Object,
+	'Struct': SymbolKind.Struct,
+	'Event': SymbolKind.Event,
+	'Function': SymbolKind.Function,
+	'AssignmentExpression': SymbolKind.Method,
+	'CallExpression': SymbolKind.Method,
+	'ParameterAssignment': SymbolKind.Property,
+	'AccessorProperty': SymbolKind.Property,
+	'AccessorIndex': SymbolKind.Property,
+	'Literal': SymbolKind.Constant,
+	'Identifier': SymbolKind.Property,
+	'Parameter': SymbolKind.TypeParameter,
+	'VariableDeclaration': SymbolKind.Variable,
+	'Declaration': SymbolKind.Variable,
+	'Include': SymbolKind.Module,
+};
 //# sourceMappingURL=mxsSymbolDefs.js.map
