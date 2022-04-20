@@ -22,7 +22,7 @@ import
 	deriveSymbolsTree,
 	collectTokens
 } from './mxsProvideSymbols';
-import { parseSource } from './mxsParser';
+import { parseSource, parserOptions } from './mxsParser';
 import getDocumentSymbolsLegacy from './mxsOutlineLegacy';
 //--------------------------------------------------------------------------------
 export interface ParserResult
@@ -35,29 +35,27 @@ export interface ParserResult
 
 export class DocumentSymbolProvider
 {
-	private async documentSymbolsFromCST(CST: any, document: TextDocument): Promise<SymbolInformation[] | DocumentSymbol[]>
+	private documentSymbolsFromCST(CST: any, document: TextDocument): DocumentSymbol[]
 	{
-		let loc = {
+		const loc = {
 			start: { line: 0, character: 0 },
 			end: document.positionAt(document.getText().length - 1)
 		};
-		let deriv = await deriveSymbolsTree(CST, loc);
-		return <DocumentSymbol[]>deriv;
+		return deriveSymbolsTree(CST, loc);
 	}
 
-	private async _getDocumentSymbols(
-		document: TextDocument,
-		options = { recovery: true, attemps: 10, memoryLimit: 0.9 }
-	): Promise<ParserResult>
+	private async _parseTextDocument(document: TextDocument, options?: parserOptions): Promise<ParserResult>
 	{
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
 		let diagnostics: Diagnostic[] = [];
 
 		// feed the parser
-		let results = await parseSource(document.getText());
+		let results = await parseSource(document.getText(), options);
 		// the parser either finished at the first run, or recovered from an error, we have a CST...
 		if (results.result !== undefined) {
-			SymbolInfCol = await this.documentSymbolsFromCST(results.result, document);
+			//-----------------------------------
+			SymbolInfCol = this.documentSymbolsFromCST(results.result, document);
+			//-----------------------------------
 			if (results.error === undefined) {
 				// no problems so far...
 				// check for trivial errors
@@ -67,27 +65,25 @@ export class DocumentSymbolProvider
 				diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
 				diagnostics.push(...provideParserDiagnostic(results.error));
 			}
+
+			// fatal error, parser failed to provide a valid CST
 		} else if (results.error !== undefined) {
-			// fatal parser error
 			diagnostics.push(...provideParserDiagnostic(results.error));
-		} else {
+		} /* else {
 			throw new Error('Parser failed to provide results');
-		}
+		} */
 		return {
 			symbols: SymbolInfCol,
 			diagnostics: diagnostics
 		};
 	}
 
-	private async _getDocumentSymbolsThreaded(
-		document: TextDocument,
-		options = { recovery: true, attemps: 10, memoryLimit: 0.9 }
-	): Promise<ParserResult>
+	private async _parseTextDocumentThreaded(document: TextDocument, options?: parserOptions): Promise<ParserResult>
 	{
 		const documentSymbols = await spawn(new Worker('./workers/symbols.worker'));
 		try {
 			const source = document.getText();
-			let loc = {
+			const loc = {
 				start: {
 					line: 0,
 					character: 0
@@ -95,17 +91,19 @@ export class DocumentSymbolProvider
 				end: document.positionAt(source.length - 1)
 			};
 			return await documentSymbols(source, loc, options);
-		} catch (err) {
-			throw err;
+		} catch (e) {
+			throw e;
 		} finally {
 			await Thread.terminate(documentSymbols);
 		}
 	}
+
+	/** MXS document parser */
 	parseDocument(
 		document: TextDocument,
 		connection: Connection,
 		threading = true,
-		options = { recovery: true, attemps: 15, memoryLimit: 0.9 }
+		options: parserOptions = { recovery: true, attemps: 15, memoryLimit: 0.9 }
 	): Promise<ParserResult>
 	{
 		//TODO: Implement cancellation token, in the parser?
@@ -114,35 +112,29 @@ export class DocumentSymbolProvider
 
 		return new Promise(/* async */(resolve, reject) =>
 		{
-			let documentSymbols: Promise<ParserResult>;
-			if (threading) {
-				documentSymbols = this._getDocumentSymbolsThreaded(document, options)
-			} else {
-				documentSymbols = this._getDocumentSymbols(document, options)
-			}
+			const documentSymbols: Promise<ParserResult> =
+				threading
+					? this._parseTextDocumentThreaded(document, options)
+					: this._parseTextDocument(document, options);
 			// this._getDocumentSymbols(document, options)
-			documentSymbols
 			// this._getDocumentSymbolsThreaded(document, options)
+			/* if (threading) {
+				documentSymbols = this._parseTextDocumentThreaded(document, options)
+			} else {
+				documentSymbols = this._parseTextDocument(document, options)
+			} */
+			documentSymbols
 				.then(result => resolve(result))
-				.catch(error =>
+				.catch(e =>
 				{
-					// show alert
-					connection.window.showWarningMessage(`MaxScript: can't parse the code.\nCode minifier, beautifier, diagnostics and hierarchical symbols will be unavailable.\nReason: ${error.message}`);
-					return getDocumentSymbolsLegacy(document);
+					connection.window.showWarningMessage(
+						`MaxScript: can't parse the code.\nCode minifier, beautifier, diagnostics and hierarchical symbols will be unavailable.\nReason: ${e.message}`
+					);
+					// As last resort, use the simple regex method					
+					return getDocumentSymbolsLegacy(document);					
 				})
-				.then(
-					result =>
-					{
-						resolve({
-							symbols: <SymbolInformation[]>result,
-							diagnostics: []
-						});
-					}/* ,
-					() => resolve({
-						symbols: [],
-						diagnostics: []
-					})*/)
-				.catch(error => reject(error));
+				.then(result => resolve(<ParserResult>result))
+				.catch(e => reject(e));
 			// setTimeout(() => source.cancel(), 50, 'Request timeout');
 		});
 	}

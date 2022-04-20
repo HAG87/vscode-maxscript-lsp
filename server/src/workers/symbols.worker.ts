@@ -12,7 +12,7 @@ import
 	provideParserDiagnostic,
 	provideTokenDiagnostic,
 } from '../mxsDiagnostics';
-import { parseSource } from '../mxsParser';
+import { parseSource, parserOptions } from '../mxsParser';
 //-----------------------------------------------------------------------------------
 interface ParserResult
 {
@@ -20,7 +20,7 @@ interface ParserResult
 	diagnostics: Diagnostic[]
 }
 expose(
-	async function documentSymbols(source: string, range: Range, options = { recovery: true, attemps: 10, memoryLimit: 0.9 }): Promise<ParserResult>
+	async function documentSymbols(source: string, range: Range, options?: parserOptions): Promise<ParserResult>
 	{
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
 		let diagnostics: Diagnostic[] = [];

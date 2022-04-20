@@ -14,6 +14,12 @@ function replaceWithWS(str: string)
 	return ref.reduce((acc, next) => { return acc + ' '; }, '');
 }
 //-----------------------------------------------------------------------------------
+export class parserOptions
+{
+	recovery = false;
+	attemps = 10;
+	memoryLimit = 0.9;
+}
 interface parserResult
 {
 	result: any | undefined
@@ -194,11 +200,7 @@ export function parseAsync(source: string, parserInstance: nearley.Parser): Prom
  * @param source Data to parse
  * @param parserInstance Async Parser with Error recovery
  */
-function parseWithErrorsAsync(
-	source: string,
-	parserInstance: nearley.Parser,
-	options = { recovery: true, attemps: -1, memoryLimit: 0.9 }
-): Promise<parserResult>
+function parseWithErrorsAsync(source: string, parserInstance: nearley.Parser, options: parserOptions): Promise<parserResult>
 {
 	const totalHeapSizeThreshold = getHeapStatistics().heap_size_limit * options.memoryLimit;
 
@@ -273,33 +275,29 @@ function parseWithErrorsAsync(
  * @param source source code string
  * @param options recovery; enable the error recovery parser. set attemps to -1 to disable attemps limit
  */
-export function parseSource(source: string, options = { recovery: true, attemps: 10, memoryLimit: 0.9}): Promise<parserResult>
+export function parseSource(source: string, options = new parserOptions()): Promise<parserResult>
 {
 	return new Promise((resolve, reject) =>
 	{
+		// parseWithErrorsAsync(source, declareParser(), options)
 		parseAsync(source, declareParser())
 			.then(
 				result => resolve(result),
-				// /*
 				reason =>
 				{
-					// console.log('PARSER HAS FAILED! ATTEMP TO RECOVER');
 					if (options.recovery) {
+						// console.log('PARSER HAS FAILED! ATTEMP TO RECOVER');
 						return parseWithErrorsAsync(source, declareParser(), options);
 					} else {
 						reject(reason);
 					}
 				}
-				// */
 			)
-			// parseWithErrorsAsync(source, declareParser(), options)
-			// /*
 			.then(result =>
 			{
 				// console.log('PARSER HAS RECOVERED FROM ERROR');
 				resolve(<parserResult>result);
 			})
-			// */
 			.catch(err => reject(err));
 	});
 }
