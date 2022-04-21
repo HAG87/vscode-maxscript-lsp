@@ -4,4 +4,8 @@ declare module 'nearley' {
 		table: any[];
 		buildFirstStateStack(state:any, visited:any): any;
 	}
+	interface parserError extends Error {
+		offset: number
+		token: moo.Token
+	}
 }
