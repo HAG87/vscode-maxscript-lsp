@@ -5,7 +5,7 @@
 	"icon": "mxs.png",
 	"author": "Atelier Bump",
 	"license": "MIT",
-	"version": "1.26.0",
+	"version": "1.26.1",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/HAG87/vscode-maxscript-lsp"
@@ -263,7 +263,7 @@
 				},
 				"MaxScript.parser.errorLimit": {
 					"scope": "resource",
-					"type":"integer",
+					"type": "integer",
 					"default": 10,
 					"description": "Max number of problems to be checked. Set it to a lower value to increase perfomance."
 				},
