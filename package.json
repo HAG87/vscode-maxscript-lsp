@@ -261,6 +261,12 @@
 					"default": true,
 					"description": "Enable grammar checking (beta feature, currently slow and prone to fail). Disable if you're having issues with the extension"
 				},
+				"MaxScript.parser.errorLimit": {
+					"scope": "resource",
+					"type":"integer",
+					"default": 10,
+					"description": "Max number of problems to be checked. Set it to a lower value to increase perfomance."
+				},
 				"maxScript.parser.multiThreading": {
 					"scope": "resource",
 					"type": "boolean",

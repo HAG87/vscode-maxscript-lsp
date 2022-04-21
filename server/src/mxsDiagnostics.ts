@@ -5,14 +5,14 @@ import
 	// DiagnosticRelatedInformation,
 } from 'vscode-languageserver';
 //--------------------------------------------------------------------------------
-import moo from 'moo';
+import {Token} from 'moo';
 import { tokenDefinitions } from './schema/mxsTokenDefs';
 import { rangeUtil } from './lib/astUtils';
 //--------------------------------------------------------------------------------
 interface Dictionary<T> { [key: string]: T }
 
 type ErrorDetail = {
-	token?: moo.Token;
+	token?: Token;
 	expected: Dictionary<string>[];
 
 };
@@ -32,7 +32,7 @@ export class ParserError extends Error
 	}
 	name: string = 'parse_error';
 	recoverable!: boolean;
-	tokens: moo.Token[] = [];
+	tokens: Token[] = [];
 	details?: ErrorDetail[];
 }
 //--------------------------------------------------------------------------------
@@ -60,23 +60,20 @@ function correctionList(tokenList: Dictionary<string>[]): string
 
 /**
  * Provides a basic syntax error diagnostic.
- * @param document Document that emiited the parsing error
  * @param error parser error type
  */
 export function provideParserDiagnostic(error: ParserError): Diagnostic[]
 {
-	const tokenList = [...error.tokens];
-	let diagnostics: Diagnostic[];
-	diagnostics = tokenList.map(
+	const diagnostics = error.tokens.map(
 		t =>
 		{
-			let vsRange = rangeUtil.getTokenRange(t);
 			let diag = Diagnostic.create(
-				vsRange,
+				rangeUtil.getTokenRange(t),
 				`Unexpected \"${t}\".`,
-				DiagnosticSeverity.Error
+				DiagnosticSeverity.Error,
+				undefined,
+				'MaxScript'
 			);
-			diag.source = 'MaxScript';
 			// DISABLED: List of possible tokens
 			/*
 				diag.code = error.name;
@@ -91,19 +88,17 @@ export function provideParserDiagnostic(error: ParserError): Diagnostic[]
 
 /**
  * Provides bad token diagnosys based on lexer error token
- * @param document current document
- * @param CST parsed CST
  */
-export function provideTokenDiagnostic(errTokens: moo.Token[]): Diagnostic[]
+export function provideTokenDiagnostic(errTokens: Token[]): Diagnostic[]
 {
 	if (!errTokens) { return []; }
 	let diagnostics: Diagnostic[] = errTokens.map(
 		t => ({
-			// code: 'ERR_TOKEN',
-			message: `Unexpected token: ${t.text}`,
-			range: rangeUtil.getTokenRange(t),
+			range:    rangeUtil.getTokenRange(t),
+			message:  `Unexpected token: ${t.text}`,
 			severity: DiagnosticSeverity.Warning,
-			source: 'MaxScript'
+			// code: 'ERR_TOKEN',
+			source:   'MaxScript'
 		}));
 	return diagnostics;
 }

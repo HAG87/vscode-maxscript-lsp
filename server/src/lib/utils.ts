@@ -14,12 +14,12 @@ import { URI } from 'vscode-uri';
  * Test if number is Odd
  * @param x number to test
  */
-export const isOdd = function (x: number) { return x & 1; };
+export const isOdd = (x: number) => !!(x & 1);
 /**
  * Test if number is Even
  * @param x number to test
  */
-export const isEven = function (x: number) { return !(x & 1); };
+export const isEven = (x: number) => !(x & 1);
 //--------------------------------------------------------------------------------
 /**
  * Check if a file exists in source.

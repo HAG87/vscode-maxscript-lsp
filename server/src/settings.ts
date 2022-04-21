@@ -12,7 +12,8 @@ export interface MaxScriptSettings
 		whitespaceChar: string },
 	parser: {
 		errorCheck: boolean,
-		multiThreading: boolean
+		multiThreading: boolean,
+		errorLimit: number
 	}
 	prettifier: {
 		filePrefix: string,
@@ -50,7 +51,8 @@ export const defaultSettings: MaxScriptSettings = {
 	},
 	parser: {
 		errorCheck: true,
-		multiThreading: true
+		multiThreading: true,
+		errorLimit: 10
 	},
 	prettifier: {
 		filePrefix: 'pretty_',

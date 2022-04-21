@@ -272,6 +272,7 @@ connection.onDocumentSymbol((params, cancelation) =>
 			.then(result =>
 			{
 				options.recovery = result.parser.errorCheck;
+				options.attemps = result.parser.errorLimit;
 				threading = result.parser.multiThreading;
 				if (!result.GoToSymbol) { resolve; }
 			});

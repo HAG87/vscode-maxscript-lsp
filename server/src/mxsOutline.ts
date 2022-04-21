@@ -51,27 +51,23 @@ export class DocumentSymbolProvider
 
 		// feed the parser
 		let results = await parseSource(document.getText(), options);
+		// Parser didnt provide results -- abort!
+		if (!results.result && !results.error) {
+			throw new Error('Parser failed to provide results');
+		}
 		// the parser either finished at the first run, or recovered from an error, we have a CST...
 		if (results.result !== undefined) {
-			//-----------------------------------
+			//COLLECT SYMBOLDEFINITIONS
 			SymbolInfCol = this.documentSymbolsFromCST(results.result, document);
-			//-----------------------------------
-			if (results.error === undefined) {
-				// no problems so far...
-				// check for trivial errors
-				diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
-			} else {
-				//recovered from error
-				diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
-				diagnostics.push(...provideParserDiagnostic(results.error));
-			}
-
-			// fatal error, parser failed to provide a valid CST
-		} else if (results.error !== undefined) {
+			// check for trivial errors
+			diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
+		}
+		//recovered from error -- only if parseWithError is used... and it successfuly built a CSTree
+		// fatal error, parser failed to provide a valid CSTree for any case
+		if (results.error) {
 			diagnostics.push(...provideParserDiagnostic(results.error));
-		} /* else {
-			throw new Error('Parser failed to provide results');
-		} */
+		}
+
 		return {
 			symbols: SymbolInfCol,
 			diagnostics: diagnostics

@@ -156,14 +156,15 @@ function parseWithErrorsSync(source: string, parserInstance: nearley.Parser): pa
 			badTokens.push(err.token);
 			/* DISABLED FEATURE - NEEDS OPTIMIZATION */
 			// errorReport.push({token:src[next], alternatives: this.PossibleTokens(this.parserInstance) });
-			let filler = replaceWithWS(err.token.text);
-			err.token.text = filler;
-			err.token.value = filler;
-			err.token.type = 'ws';
-			// src.splice(next, 1, err.token);
-			src[next] = err.token;
-			// console.log(src[next]);
-			// console.log(badTokens);
+			if (src[next]) {
+				let filler = replaceWithWS(err.token.text);
+				Object.assign(src[next],
+					{
+						text: filler,
+						value: filler,
+						type: 'ws'
+					});
+			}
 			next--;
 			parserInstance.restore(state);
 		}
@@ -237,15 +238,18 @@ function parseWithErrorsAsync(source: string, parserInstance: nearley.Parser, op
 
 						// create a report of possible fixes *DISABLED TOO RESOURCES INTENSIVE*
 						// errorReport.push({token:src[next], alternatives: this.PossibleTokens(mxsParser) });
-						
+
 						// replace the faulty token with a filler value
-						let filler = replaceWithWS(err.token.text);
 						if (src[next]) {
-							src[next].text = filler;
-							src[next].value = filler;
-							src[next].type = 'ws';
+							let filler = replaceWithWS(err.token.text);
+							Object.assign(src[next],
+								{
+									text: filler,
+									value: filler,
+									type: 'ws'
+								});
 						}
-						// console.log(src[next]);
+
 						// backtrack
 						parserInstance.restore(state);
 					}
@@ -287,8 +291,11 @@ export function parseSource(source: string, options = new parserOptions()): Prom
 				{
 					if (options.recovery) {
 						// console.log('PARSER HAS FAILED! ATTEMP TO RECOVER');
+						// Error recovery attemp. Highly ineficcient!
 						return parseWithErrorsAsync(source, declareParser(), options);
 					} else {
+						// Since Nearly cannot recover from error, the grammar will fail to provide a valid CSTree, can only provide error tokens
+						// console.log('PARSER ABORTED WITH ERRORS'):
 						reject(reason);
 					}
 				}

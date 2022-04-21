@@ -25,20 +25,19 @@ expose(
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
 		let diagnostics: Diagnostic[] = [];
 		let results = await parseSource(source, options);
-
+		// Parser didnt provide results -- abort!
+		/* if (!results.result && !results.error) {
+			throw new Error('Parser failed to provide results');
+		} */
 		if (results.result) {
-			SymbolInfCol = await deriveSymbolsTree(results.result, range);
-			if (!results.error) {
-				diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
-			} else {
-				diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
-				diagnostics.push(...provideParserDiagnostic(results.error));
-			}
-		} else if (results.error) {
+			SymbolInfCol = deriveSymbolsTree(results.result, range);
+			diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
+		}
+		if (results.error) {
 			diagnostics.push(...provideParserDiagnostic(results.error));
 		}
 		return {
 			symbols: SymbolInfCol,
 			diagnostics: diagnostics
-		};
+		};	
 	});

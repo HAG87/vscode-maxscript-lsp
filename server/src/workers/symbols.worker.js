@@ -12,19 +12,17 @@ expose(
 		let diagnostics = [];
 		let results = await parseSource(source, options);
 
-		if (results.result !== undefined) {
-			SymbolInfCol = await deriveSymbolsTree(results.result, range);
-
-			if (results.error === undefined) {
-				diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
-			} else {
-				diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
-				diagnostics.push(...provideParserDiagnostic(results.error));
-			}
-		} else if (results.error !== undefined) {
-			diagnostics.push(...provideParserDiagnostic(results.error));
-		} else {
+		// Parser didnt provide results -- abort!
+		/* if (!results.result && !results.error) {
 			throw new Error('Parser failed to provide results');
+		} */
+		
+		if (results.result) {
+			SymbolInfCol = deriveSymbolsTree(results.result, range);
+			diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
+		}
+		if (results.error) {
+			diagnostics.push(...provideParserDiagnostic(results.error));
 		}
 		return {
 			symbols: SymbolInfCol,
