@@ -17,7 +17,7 @@ function setOptions(settings?: Partial<reflowOptions>)
  */
 export async function FormatData(data: unknown[] | string, settings?: Partial<reflowOptions>)
 {
-	console.log(data);
+	// console.log(data);
 	setOptions(settings);
 	// OPTIMIZATION ---> Use the already built parse tree
 	// TODO: Using the CST causes a crash when the document is edited and the CST was not updated...
