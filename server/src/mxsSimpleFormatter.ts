@@ -15,11 +15,15 @@ import { mxsFormatterLexer } from './lib/mooTokenize-formatter';
 import { rangeUtil } from './lib/astUtils';
 // note: keywords could be used to indent, at start or end of line. this will require a per-line aproach... split the documents in lines, and feed the tokenizer one line at the time.
 //-----------------------------------------------------------------------------------
-const filterCurrent = ['assign', 'newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange'/*, 'bkslash' */];
-const filterAhead = ['assign', 'newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange'/*, 'bkslash' */];
+const filterCurrent =
+	['assign', 'newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange', 'unaryminus'/*, 'bkslash' */];
+const filterAhead =
+	['assign', 'newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange', 'unaryminus'/*, 'bkslash' */];
 
-const IndentTokens = ['lparen', 'arraydef', 'lbracket', 'lbrace', 'bitarraydef'];
-const UnIndentTokens = ['rparen', 'rbracket', 'rbrace'];
+const IndentTokens =
+	['lparen', 'arraydef', 'lbracket', 'lbrace', 'bitarraydef'];
+const UnIndentTokens =
+	['rparen', 'rbracket', 'rbrace'];
 //-----------------------------------------------------------------------------------
 // Helpers
 const getPos = (line: number, col: number) => Position.create(line, col);
@@ -112,6 +116,7 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 				// } else if (ntok.type === 'bkslsh') {
 					// deal with backslash here!
 				} else if (ntok !== undefined) {
+					//console.log(ctok)
 					// skip last token?
 					// insert whitespaces
 					// skip tokens where whitespace btw doesn't apply

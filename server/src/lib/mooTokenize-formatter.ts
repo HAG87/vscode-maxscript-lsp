@@ -32,13 +32,13 @@ export const mxsFormatterLexer = (keywords:keywordsMap = keywordsDB) => moo.comp
 	],
 	path: [
 		{ match: /\$(?:[A-Za-z0-9_*?/]|\.{3}|\\[\\/"'])+/ },
-		{ match: /\$'(?:[^'])+'/, lineBreaks: true },
+		{ match: /\$'(?:[^'])*'/, lineBreaks: true },
 		{ match: /\$/ }
 	],
 	//pathliteral: { match: /\$'(?:[^'])+'/, lineBreaks: true },
 	property: { match: /(?<=\.)[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/ },
 	identity: [
-		{ match: /'(?:\\['\\rn]|[^'\\\n])*'/},
+		{ match: /'(?:[^'])*'/, lineBreaks: true},
 		{ match: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/},
 		{
 			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
@@ -47,15 +47,15 @@ export const mxsFormatterLexer = (keywords:keywordsMap = keywordsDB) => moo.comp
 	],
 	
 	time: [
-		{ match: /(?:[-]?(?:[0-9]+\.)?[0-9]+[msft])+/},
-		{ match: /(?:[-]?(?:[0-9]+\.)[0-9]*[msft])+/},
+		{ match: /(?:(?:(?:[0-9]*[.])?[0-9]+|[0-9]+[.])[msft])+/},
 		{ match: /[0-9]+[:][0-9]+\.[0-9]*/}
 	],
 
 	// Parens
-	arraydef: /#[ \t]*\(/,
+	arraydef: /#[\s\t]*\(/,
 	bitarraydef: /#[ \t]*\{/,
-	emptyparens: {match: /\([ \t]*\)/, lineBreaks: false},
+
+	emptyparens: {match: /\([ \t]*\)/, lineBreaks: false},	
 	lparen: '(',
 	rparen: ')',
 	emptybracket: {match: /\[[ \t]*\]/, lineBreaks: false},
@@ -64,24 +64,24 @@ export const mxsFormatterLexer = (keywords:keywordsMap = keywordsDB) => moo.comp
 	lbrace: '{',
 	rbrace: '}',
 	
+	
 	// Values
 	bitrange: '..',
 	number: [
 		{ match: /0[xX][0-9a-fA-F]+/},
-		{ match: /(?:[-]?[0-9]*)[.](?:[0-9]+(?:[eEdD][+-]?[0-9]+)?)/},
-		{ match: /(?:[-]?[0-9]+\.(?!\.))/},
-		{ match: /[-]?[0-9]+(?:[LP]|[eEdD][+-]?[0-9]+)?/},
-		{ match: /(?:(?<!\.)[-]?\.[0-9]+(?:[eEdD][+-]?[0-9]+)?)/}
+		{ match: /(?:[\s\t]-)?[0-9]+(?:[LP]|[eEdD][+-]?[0-9]+)?/},
+		{ match: /(?:[\s\t]-)?(?:[0-9]*)[.](?:[0-9]+(?:[eEdD][+-]?[0-9]+)?)/}
 	],
-	// unaryminus: {match: /(?<=[^\w)-])-(?![-])/},
+	operator_assign: ['=', '+=', '-=', '*=', '/='],
 	// Operators
 	unaryminus: [
-		// preceded by WS and suceeded by non WS nor =
+		// preceeded by WS and suceeded by non WS nor (N -n) =
 		{ match: /(?<=[\s\t\n\r])[-](?![\s\t=])/},
-		// preceded by an operator and WS
-		{ match: /(?<=['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='][\s\t]*)[-](?![=])/}
+		// preceeded by an operator
+		{ match: /(?<=[-+/*^=][\s\t]*)[-]/}
 	],
-	operator: ['+', '-', '*', '/', '^', '==', '!=', '>', '<', '>=', '<=', '=', '+=', '-=', '*=', '/='],
+	operator_compare: ['==', '!=', '>', '<', '>=', '<='],
+	operator_math: ['+', '-', '*', '/', '^'],
 
 	// Delimiters
 	assign: /(?<!:)\:(?!:)/,
