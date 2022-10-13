@@ -425,7 +425,6 @@ let tokensValue = {
 	path(node: moo.Token) { return node.text; },
 	string(node: moo.Token) { return node.text; },
 	time(node: moo.Token) { return node.text; },
-	typed_iden(node: moo.Token) { return node.text; },
 	property(node: moo.Token) { return node.value; },
 	params(node: moo.Token) { return node.value; },
 	math(node: moo.Token) { return node.value; },
@@ -501,6 +500,7 @@ let conversionRules = {
 	// LITERALS
 	Literal(node: moo.Token) { return node.value; },
 	Identifier(node: moo.Token) { return options.wrapIdentities ? `'${node.value}'` : node.value; },
+	Identifier_global(node: moo.Token) { return '::' + node.value; },
 	EmptyParens() { return '()'; },
 	Parameter(node: moo.Token) { return new Expr(node.value, ':'); },
 	BitRange(node: any) { return new Expr(node.start, '..', node.end); },

@@ -27,26 +27,21 @@ const mxLexer = moo.compile({
 	locale: /~[A-Za-z0-9_]+~/,
 	path: [
 		{ match: /\$(?:[A-Za-z0-9_*?/]|\.{3}|\\[\\/"'])+/ },
-		{ match: /\$'(?:[^'])+'/, lineBreaks: true },
+		{ match: /\$'(?:[^']|[\r\n])*'/, lineBreaks: true },
 		{ match: /\$/ }
 	],
 	// IDENTIFIERS
 	// ::global variable
-	global_typed: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]+/,
-	
-	// typed_iden: /'(?:\\['\\rn]|[^'\\\n])*?'/,
-	typed_iden: { match: /'(?:(?:[^']|[\r\n])+)'/, lineBreaks: true },
-
+	global_typed: '::',
 	identity: [
+		{ match: /'(?:(?:[^']|[\r\n])*)'/, lineBreaks: true },
+		'?',
 		// properties
 		/(?<=\.)[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
-		/[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[.])/,
-		'?',
-		// param names
-		/[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[:])/,
-		// identifier
+		/[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?=[.:])/,
 		{
-			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?![:.])/,
+			// match: /(?<!\.)[&]?[?A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?![:.])/,
+			match: /[&]?[?A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*(?![:.])/,
 			type: caseInsensitiveKeywords(keywordsTypeDB)
 		},
 	],
@@ -67,10 +62,6 @@ const mxLexer = moo.compile({
 	assign: [
 		'=', '+=', '-=', '*=', '/='
 	],
-
-	// unary: {match: /(?<=[^\w)-])-(?![-\s])/},
-	// unaryminus: /(?<=[=/+*^,:[({][\s\t\r\n]*)-/,
-
 	math: [
 		'+', '-', '*', '/', '^'
 	],

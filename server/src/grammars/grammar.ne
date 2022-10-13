@@ -105,8 +105,7 @@
     //----------------------------------------------------------
     // EXPERIMENT: THIS WILL DROP MOO TOKENS, REDUCING THE TREE SIZE
     // const Literal = (x, d) => ({ type: 'Literal', kind: d, value: x[0].value, range:getLoc(x[0]) });
-    // const Identifier = x => ({ type: 'Identifier', value: x[0].value, range:getLoc(x[0]) });
-
+    const Std = (x, b, r) => ({ type: x, body: b, range: r});
     const Literal = x => ({ type: 'Literal', value: x[0], range:getLoc(x[0]) });
     const Identifier = x => ({ type: 'Identifier', value: x[0], range:getLoc(x[0]) });
 %}
@@ -149,7 +148,6 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
         | PLUGIN_DEF      {% id %}
         | CHANGE_HANDLER  {% id %}
         # | event_handler  {% id %}
-        # | item_group     {% id %}
         # | rollout_item   {% id %}
 #---------------------------------------------------------------
 # EXPRESSIONS - RECURSION! IN FACCTOR
@@ -350,7 +348,6 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
         | event_handler  {% id %}
 #---------------------------------------------------------------
 # ROLLOUT / UTILITY DEFINITION --- OK
-       # -> (uistatement_def __ ) VAR_NAME _ unary_operand ( _ parameter):* _ expr_seq
         rollout_def
         -> (uistatement_def __ ) VAR_NAME _ operand ( _ parameter):* _
             LPAREN
@@ -434,7 +431,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
             })%}
 
     macro_script_param
-        -> param_name _ ( unary_operand | RESOURCE )
+        -> param_name _ ( operand | RESOURCE )
             {% d => ({
                 type: 'ParameterAssignment',
                 param: d[0],
@@ -641,7 +638,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
     # [ with ] undo <boolean>
 
     context
-        -> %kw_at __ (%kw_level | %kw_time) _ unary_operand
+        -> %kw_at __ (%kw_level | %kw_time) _ operand
             {% d => ({
                 type:    'ContextExpression',
                 prefix :  d[0],
@@ -649,7 +646,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
                 args:    d[4],
                 range:   getLoc(d[0], d[4])
             })%}
-        | %kw_in _ unary_operand
+        | %kw_in _ operand
             {% d => ({
                 type:    'ContextExpression',
                 prefix : null,
@@ -657,7 +654,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
                 args:    d[2],
                 range:   getLoc(d[0], d[2])
             })%}
-        | (%kw_in __ ):? %kw_coordsys _ (%kw_local | unary_operand)
+        | (%kw_in __ ):? %kw_coordsys _ (%kw_local | operand)
             {% d => ({
                 type: 'ContextExpression',
                 prefix : (d[0] != null ? d[0][0] : null),
@@ -665,7 +662,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
                 args:    d[3][0],
                 range:   getLoc(d[0] != null ? d[0][0] : d[1], d[3][0])
             })%}
-        | %kw_about _ (%kw_coordsys | unary_operand)
+        | %kw_about _ (%kw_coordsys | operand)
             {% d => ({
                 type: 'ContextExpression',
                 prefix : d[0],
@@ -964,7 +961,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
     #                 range: getLoc(d[0], d[2])
     #             }) %}
     #         | math_operand {% id %}
-
+    #TODO: MATH SHOULD NOT BE PASSTHROUGH!!!
     MATH_EXPR -> rest {% id %}
 
         rest -> rest minus_opt sum
@@ -1011,7 +1008,8 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
                     range: getLoc( Array.isArray(d[0]) ? d[0][0] : d[0], d[4] )
                 })%}
             | as {% id %}
-
+            
+        # TYPE CONVERSION
         as -> math_operand _S %kw_as __ VAR_NAME
                 {% d => ({
                     type:     'MathExpression',
@@ -1023,9 +1021,9 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
             # | uny {% id %}
             | math_operand {% id %}
 
-        # FN_CALL | operand | unary_operand | passthrough math expression
+        # FN_CALL | operand | operand | passthrough math expression
         math_operand
-            -> unary_operand   {% id %}
+            -> operand   {% id %}
             | FN_CALL          {% id %}
 #---------------------------------------------------------------
 # LOGIC EXPRESSION --- OK
@@ -1057,7 +1055,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
         }) %}
 
     logical_operand
-        -> unary_operand {% id %}
+        -> operand {% id %}
         | COMPARE_EXPR {% id %}
         | FN_CALL   {% id %}
 #---------------------------------------------------------------
@@ -1082,7 +1080,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
 
     compare_operand
         -> MATH_EXPR {% id %}
-        # -> unary_operand {% id %}
+        # -> operand {% id %}
         # | MATH_EXPR {% id %}
         # | FN_CALL {% id %}
 #---------------------------------------------------------------
@@ -1120,17 +1118,17 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
         -> (_S parameter):+ {% flatten %}
 
     call_args
-        -> ( _S_ unary_only_operand | _S operand):+ {% flatten %}
+        -> ( _S operand):+ {% flatten %}
 
     call_caller
-        -> unary_operand {% id %}
+        -> operand {% id %}
         # -> VAR_NAME {% id %}
         # | property  {% id %}
         # | index     {% id %}
 #---------------------------------------------------------------
 # PARAMETER CALL --- OK
     parameter
-        -> param_name _ unary_operand
+        -> param_name _ operand
             {% d => ({
                 type: 'ParameterAssignment',
                 param: d[0],
@@ -1172,30 +1170,17 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
         })%}
 #---------------------------------------------------------------
 # OPERANDS --- OK
-    unary_only_operand 
-        -> "-" operand
-            {% d => ({
-                type: 'UnaryExpression',
-                operator: d[0],
-                right:    d[1],
-                range: getLoc(d[0], d[1])
-            }) %}
-
-    unary_operand 
-        # -> "-" _ expr
-        -> "-" _ unary_operand
-            {% d => ({
-                type: 'UnaryExpression',
-                operator: d[0],
-                right:    d[2],
-                range: getLoc(d[0], d[2])
-            }) %}
-        | operand {% id %}
-
     operand
         -> factor     {% id %}
         | property    {% id %}
         | index       {% id %}
+        | "-" _ operand
+        {% d => ({
+            type: 'UnaryExpression',
+            operator: d[0],
+            right:    d[2],
+            range: getLoc(d[0], d[2])
+        }) %}
 #---------------------------------------------------------------
 # FACTORS --- OK
    factor
@@ -1215,6 +1200,7 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
         | "?" {% d => ({type: 'Keyword', value: d[0], range: getLoc(d[0]) })%}
         | %error     {% id %}
         # BLOCKSTATEMENT
+        # TODO: UNARY SHOULD BE HERE!
         | expr_seq   {% id %}
 #===============================================================
 # VALUES
@@ -1246,16 +1232,10 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
 #===============================================================
 # ARRAY --- OK
     array
-        -> %arraydef _ %rparen
-            {% d => ({
-                type:      'ObjectArray',
-                elements:  [],
-                range:       getLoc(d[0], d[2])
-            }) %}
-        | (%arraydef _) array_expr (_ %rparen)
+        -> (%arraydef _) array_expr:? (_ %rparen)
             {% d => ({
                 type:     'ObjectArray',
-                elements: d[1],
+                elements: filterNull(d[1]),
                 range:      getLoc(d[0][0], d[2][1])
             }) %}
 
@@ -1263,16 +1243,10 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
 #---------------------------------------------------------------
 # BITARRAY --- OK
     bitarray
-    -> %bitarraydef RBRACE
+    -> ( %bitarraydef _) bitarray_expr:? RBRACE
         {% d => ({
             type:     'ObjectBitArray',
-            elements: [],
-            range:    getLoc(d[0], d[1])
-        }) %}
-    | ( %bitarraydef _) bitarray_expr RBRACE
-        {% d => ({
-            type:     'ObjectBitArray',
-            elements: d[1],
+            elements: filterNull(d[1]),
             range:    getLoc(d[0][0], d[2])
         }) %}
 
@@ -1280,7 +1254,11 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
 
     # TODO: Fix groups
     bitarray_item
-        -> expr (_S %bitrange _) expr {% d => ({type: 'BitRange', start: d[0], end: d[2]}) %}
+        -> expr (_S %bitrange _) expr
+            {% d => ({
+                type: 'BitRange',
+                range: getLoc(d[0], d[2])
+            }) %}
         | expr {% id %}
 #===============================================================
 # UTILITIES
@@ -1299,8 +1277,12 @@ Main -> _ _expr_seq:? _ {% d => d[1] %}
     # some keywords can be VAR_NAME too...
     VAR_NAME
         -> %identity      {% Identifier %}
-         | %global_typed  {% Identifier %}
-         | %typed_iden    {% Identifier %}
+         | %global_typed %identity
+         {% d => ({
+            type: 'Identifier_global',
+            value: d[1],
+            range: getLoc(d[0], d[1])
+        }) %}
          | kw_reserved    {% Identifier %}
 
 # CONTEXTUAL KEYWORDS...can be used as identifiers outside the context...

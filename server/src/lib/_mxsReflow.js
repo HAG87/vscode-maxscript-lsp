@@ -377,7 +377,6 @@ let tokensValue = {
 	path(node) { return node.text; },
 	string(node) { return node.text; },
 	time(node) { return node.text; },
-	typed_iden(node) { return node.text; },
 	property(node) { return node.value; },
 	params(node) { return node.value; },
 	math(node) { return node.value; },
@@ -453,6 +452,7 @@ let conversionRules = {
 	// LITERALS
 	Literal(node) { return node.value; },
 	Identifier(node) { return options.wrapIdentities ? `'${node.value}'` : node.value; },
+	Identifier_global(node) { return '::' + node.value; },
 	EmptyParens() { return '()'; },
 	Parameter(node) { return new Expr(node.value, ':'); },
 	BitRange(node) { return new Expr(node.start, '..', node.end); },
