@@ -9,7 +9,10 @@ import { getByKey } from 'ast-get-values-by-key';
 //@ts-ignore
 import { traverse } from 'ast-monkey-traverse';
 //-----------------------------------------------------------------------------------
-export const hasKey = <O>(obj: O, key: keyof any): key is keyof O => key in obj;
+export function hasKey<T extends object>(obj: unknown, key: keyof T): obj is T {
+	return typeof obj === "object" && obj !== null && key in obj;
+  }
+
 export const getFromCST = (CST: any | any[], keyValPair: object) => getObj(CST, keyValPair);
 /**
  * Get CST all nodes with key
