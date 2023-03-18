@@ -48,7 +48,9 @@ export default function getDocumentSymbolsLegacy(document: TextDocument): Promis
 						Range.create(
 							document.positionAt(matchSymbols.index),
 							document.positionAt(matchSymbols.index + matchSymbols[0].length)
-						)
+						),
+						document.uri
+
 					)
 				);
 			}
