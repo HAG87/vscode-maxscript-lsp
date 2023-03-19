@@ -6,6 +6,7 @@ import
 {
 	// CancellationToken,
 	// CancellationTokenSource,
+	Range,
 	Diagnostic,
 	SymbolInformation,
 	DocumentSymbol,
@@ -14,15 +15,17 @@ import
 import { TextDocument, } from 'vscode-languageserver-textdocument';
 import
 {
+	ParserError,
 	provideParserDiagnostic,
 	provideTokenDiagnostic,
+	provideParserErrorInformation
 } from './mxsDiagnostics';
 import
 {
 	deriveSymbolsTree,
 	collectTokens
 } from './mxsProvideSymbols';
-import { parseSource, parserOptions } from './mxsParser';
+import { parseSource, parserOptions, parserResult } from './mxsParser';
 import getDocumentSymbolsLegacy from './mxsOutlineLegacy';
 //--------------------------------------------------------------------------------
 export interface ParserResult
@@ -48,30 +51,25 @@ export class DocumentSymbolProvider
 	{
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
 		let diagnostics: Diagnostic[] = [];
-
+		let results: parserResult;
 		// feed the parser
-		let results = await parseSource(document.getText(), options);
-		// Parser didnt provide results -- abort!
-		if (!results.result && !results.error) {
-			throw new Error('Parser failed to provide results');
-		}
-		// the parser either finished at the first run, or recovered from an error, we have a CST...
-		if (results.result !== undefined) {
+		try {
+			results = await parseSource(document.getText(), options);
 			//COLLECT SYMBOLDEFINITIONS
-			SymbolInfCol = this.documentSymbolsFromCST(results.result, document);
+			if (results.result!) {
+				SymbolInfCol = this.documentSymbolsFromCST(results.result, document);
+				diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
+			}
 			// check for trivial errors
-			diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
-		}
-		//recovered from error -- only if parseWithError is used... and it successfuly built a CSTree
-		// fatal error, parser failed to provide a valid CSTree for any case
-		if (results.error) {
-			diagnostics.push(...provideParserDiagnostic(results.error));
-		}
+			if (results.error!) {diagnostics.push(...provideParserDiagnostic(results.error));}
 
-		return {
-			symbols: SymbolInfCol,
-			diagnostics: diagnostics
-		};
+			return {
+				symbols: SymbolInfCol,
+				diagnostics: diagnostics
+			};
+		}catch (err:any) {		
+			throw err;
+		}		
 	}
 
 	private async _parseTextDocumentThreaded(document: TextDocument, options?: parserOptions): Promise<ParserResult>
@@ -95,44 +93,33 @@ export class DocumentSymbolProvider
 	}
 
 	/** MXS document parser */
-	parseDocument(
+	async parseDocument(
 		document: TextDocument,
 		connection: Connection,
 		threading = true,
 		options: parserOptions = { recovery: true, attemps: 15, memoryLimit: 0.9 }
 	): Promise<ParserResult>
 	{
-		//TODO: Implement cancellation token, in the parser?
-		// let source: CancellationTokenSource = new CancellationTokenSource();
-		// let timer = new Promise((resolve, reject) => setTimeout(reject, 500, 'Request timeout'));
-
-		return new Promise(/* async */(resolve, reject) =>
-		{
-			const documentSymbols: Promise<ParserResult> =
-				threading
-					? this._parseTextDocumentThreaded(document, options)
-					: this._parseTextDocument(document, options);
-			// this._getDocumentSymbols(document, options)
-			// this._getDocumentSymbolsThreaded(document, options)
-			/* if (threading) {
-				documentSymbols = this._parseTextDocumentThreaded(document, options)
-			} else {
-				documentSymbols = this._parseTextDocument(document, options)
-			} */
-			documentSymbols
-				.then(result => resolve(result))
-				.catch(e =>
-				{
-					connection.window.showWarningMessage(
-						`MaxScript: can't parse the code.\nCode minifier, beautifier, diagnostics and hierarchical symbols will be unavailable.\nReason: ${e.message}`
-					);
-					// As last resort, use the simple regex method					
-					return getDocumentSymbolsLegacy(document);					
-				})
-				.then(result => resolve(<ParserResult>result))
-				.catch(e => reject(e));
-			// setTimeout(() => source.cancel(), 50, 'Request timeout');
-		});
+		try {
+			let res = threading
+				? await this._parseTextDocumentThreaded(document, options)
+				: await this._parseTextDocument(document, options);
+				console.log(res);
+			return res;
+		} catch (e: any) {
+			// console.log('error!');
+			connection.window.showWarningMessage( `MaxScript: can't parse the code.\nCode minifier, beautifier, diagnostics and hierarchical symbols will be unavailable.\nReason: ${e.error.message}` );
+			/*
+			return {
+				symbols: [],
+				diagnostics: <Array<Diagnostic>> new Array(provideParserErrorInformation(<ParserError>e.error))
+			}
+			//*/
+			return getDocumentSymbolsLegacy(document, new Array(provideParserErrorInformation(<ParserError>e.error)));
+		} /*finally {
+			console.log('legacy symbols');
+			return getDocumentSymbolsLegacy(document);
+		}*/
 	}
 }
 

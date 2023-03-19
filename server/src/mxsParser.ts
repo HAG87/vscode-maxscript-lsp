@@ -20,7 +20,7 @@ export class parserOptions
 	attemps = 10;
 	memoryLimit = 0.9;
 }
-interface parserResult
+export interface parserResult
 {
 	result: any | undefined
 	error: ParserError | undefined
@@ -189,6 +189,8 @@ export function parseAsync(source: string, parserInstance: nearley.Parser): Prom
 	{
 		try {
 			parserInstance.feed(source);
+			// console.log(parserInstance.results[0]);
+			console.log('parser finished with results');
 			resolve({ result: parserInstance.results[0], error: undefined });
 		} catch (err: any) {
 			reject({ result: undefined, error: err });
@@ -286,16 +288,21 @@ export function parseSource(source: string, options = new parserOptions()): Prom
 		// parseWithErrorsAsync(source, declareParser(), options)
 		parseAsync(source, declareParser())
 			.then(
-				result => resolve(result),
+				result =>
+				{
+					// console.log('PARSING FINISHED');
+					resolve(result)
+				},
 				reason =>
 				{
+					// console.log(reason.error);
 					if (options.recovery) {
 						// console.log('PARSER HAS FAILED! ATTEMP TO RECOVER');
 						// Error recovery attemp. Highly ineficcient!
 						return parseWithErrorsAsync(source, declareParser(), options);
 					} else {
 						// Since Nearly cannot recover from error, the grammar will fail to provide a valid CSTree, can only provide error tokens
-						// console.log('PARSER ABORTED WITH ERRORS'):
+						// console.log('PARSER RECOVERY DISABLED');
 						reject(reason);
 					}
 				}

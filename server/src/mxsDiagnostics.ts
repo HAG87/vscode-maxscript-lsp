@@ -22,16 +22,15 @@ type ErrorDetail = {
  */
 export class ParserError extends Error
 {
-	constructor(message?: string)
+	constructor(message: string)
 	{
-		// 'Error' breaks prototype chain here
 		super(message);
-		// restore prototype chain
-		const actualProto = new.target.prototype;
-		Object.setPrototypeOf(this, actualProto);
+		// 👇️ because we are extending a built-in class
+		Object.setPrototypeOf(this, ParserError.prototype);
 	}
 	name: string = 'parse_error';
 	recoverable!: boolean;
+	token?: Token;
 	tokens: Token[] = [];
 	details?: ErrorDetail[];
 }
@@ -62,18 +61,19 @@ function correctionList(tokenList: Dictionary<string>[]): string
  * Provides a basic syntax error diagnostic.
  * @param error parser error type
  */
-export function provideParserDiagnostic(error: ParserError): Diagnostic[]
+export function provideParserDiagnostic(err: ParserError): Diagnostic[]
 {
-	const diagnostics = error.tokens.map(
+	return err.tokens.map(
 		t =>
 		{
-			let diag = Diagnostic.create(
-				rangeUtil.getTokenRange(t),
-				`Unexpected \"${t}\".`,
-				DiagnosticSeverity.Error,
-				undefined,
-				'MaxScript'
-			);
+			//TODO: format error message
+			let diag:Diagnostic =
+			{
+				range: rangeUtil.getTokenRange(t),
+				severity: err.recoverable ? DiagnosticSeverity.Warning : DiagnosticSeverity.Error,
+				source: 'MaxScript',
+				message: `Unexpected \"${t}\".`,
+			};
 			// DISABLED: List of possible tokens
 			/*
 				diag.code = error.name;
@@ -83,9 +83,21 @@ export function provideParserDiagnostic(error: ParserError): Diagnostic[]
 			*/
 			return diag;
 		});
-	return diagnostics;
 }
-
+/**
+ * Provides a symbol with information related to the parsing error
+ * @param err Parser error
+ * @returns Diagnostic related information
+ */
+export function provideParserErrorInformation(err: ParserError): Diagnostic
+{
+	return {
+		range: rangeUtil.getTokenRange(<Token>err.token),
+		severity: DiagnosticSeverity.Error,
+		source: 'MaxScript',
+		message: err.message || err.toString(),
+	};
+}
 /**
  * Provides bad token diagnosys based on lexer error token
  */

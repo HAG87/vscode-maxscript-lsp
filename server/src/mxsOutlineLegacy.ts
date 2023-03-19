@@ -22,8 +22,9 @@ interface ParserResult
 	diagnostics: Diagnostic[]
 }
 
-export default function getDocumentSymbolsLegacy(document: TextDocument): Promise<ParserResult>
+export default function getDocumentSymbolsLegacy(document: TextDocument, diagnostics: Diagnostic[] = []): Promise<ParserResult>
 {
+	//console.log('getDocumentSymbolsLegacy');
 	return new Promise((resolve, reject) =>
 	{
 		let SymbolInfCol: SymbolInformation[] = [];
@@ -59,7 +60,7 @@ export default function getDocumentSymbolsLegacy(document: TextDocument): Promis
 		if (SymbolInfCol.length) {
 			resolve({
 				symbols: SymbolInfCol,
-				diagnostics: []
+				diagnostics: diagnostics
 			});
 		} else {
 			reject('Symbols unavailable');
