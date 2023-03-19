@@ -342,7 +342,7 @@ Main -> __:? _expr_seq:? __:? {% d => d[1] %}
 # ROLLOUT / UTILITY DEFINITION --- OK
        # -> (uistatement_def __ ) VAR_NAME __:? unary_operand ( __:? parameter):* __:? expr_seq
         rollout_def
-        -> (uistatement_def __ ) VAR_NAME __:? unary_operand ( __:? parameter):* __:?
+        -> (uistatement_def __ ) VAR_NAME __:? operand ( __:? parameter):* __:?
             LPAREN
                 rollout_clauses
             RPAREN
@@ -394,7 +394,7 @@ Main -> __:? _expr_seq:? __:? {% d => d[1] %}
         # | null
     #---------------------------------------------------------------
     rollout_item
-        -> %kw_uicontrols __ VAR_NAME ( __:? unary_operand):? ( __:? parameter):*
+        -> %kw_uicontrols __ VAR_NAME ( __:? operand):? ( __:? parameter):*
             {% d => {
              let res = {
                     type:   'EntityRolloutControl',
@@ -507,7 +507,7 @@ Main -> __:? _expr_seq:? __:? {% d => d[1] %}
 # when <attribute> <objects> change[s] [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr>
 # when <objects> deleted               [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr> 
     CHANGE_HANDLER
-        -> %kw_when __ (VAR_NAME | kw_override):? __ unary_operand __ VAR_NAME __ (parameter __:?):* unary_operand:? __:? %kw_do __:? expr
+        -> %kw_when __ (VAR_NAME | kw_override):? __ operand __ VAR_NAME __ (parameter __:?):* operand:? __:? %kw_do __:? expr
             {% d=> ({
                 type:  'WhenStatement',
                 args:  merge(...d.slice(2,9)),
@@ -1085,7 +1085,7 @@ Main -> __:? _expr_seq:? __:? {% d => d[1] %}
         -> (_:? parameter):+ {% flatten %}
 
     call_args
-        -> (_:? unary_operand):+ {% flatten %}
+        -> ( _:? unary_only_operand | _:? operand):+ {% flatten %}
 
     call_caller
         -> unary_operand {% id %}
@@ -1113,7 +1113,7 @@ Main -> __:? _expr_seq:? __:? {% d => d[1] %}
 #---------------------------------------------------------------
 # ACCESSOR - PROPERTY --- OK
     property
-        -> operand "." (VAR_NAME | VOID | kw_override)
+        -> operand %delimiter (VAR_NAME | VOID | kw_override)
             {% d => ({
                 type:     'AccessorProperty',
                 operand:  d[0],
@@ -1131,14 +1131,14 @@ Main -> __:? _expr_seq:? __:? {% d => d[1] %}
         })%}
 #---------------------------------------------------------------
 # OPERANDS --- OK
-    # unary_only_operand 
-    #     -> "-" operand
-    #         {% d => ({
-    #             type: 'UnaryExpression',
-    #             operator: d[0],
-    #             right:    d[1],
-    #             range: getLoc(d[0], d[1])
-    #         }) %}
+    unary_only_operand 
+        -> "-" operand
+            {% d => ({
+                type: 'UnaryExpression',
+                operator: d[0],
+                right:    d[1],
+                range: getLoc(d[0], d[1])
+            }) %}
 
     unary_operand 
         # -> "-" __:? expr
