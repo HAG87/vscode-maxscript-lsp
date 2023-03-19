@@ -279,7 +279,8 @@ connection.onDocumentSymbol((params, cancelation) =>
 
 		let document = documents.get(params.textDocument.uri)!;
 
-		mxsDocumentSymbols.parseDocument(document, connection, threading, options)
+		// mxsDocumentSymbols.parseDocument(document, connection, threading, options)
+		mxsDocumentSymbols.parseDocument(document, connection, false, options)
 			.then(result =>
 			{
 				// connection.console.log('--> symbols sucess ');
@@ -288,12 +289,13 @@ connection.onDocumentSymbol((params, cancelation) =>
 				// currentTextDocument = document;
 				currentTextDocumentURI = params.textDocument.uri;
 				//-----------------------------------
+				console.log(result.diagnostics);
 				diagnoseDocument(document, result.diagnostics);
 				resolve(result.symbols);
 			})
 			.catch(error =>
 			{
-				connection.window.showInformationMessage('MaxScript symbols provider unhandled error: ' + error);
+				connection.window.showInformationMessage(`MaxScript symbols provider unhandled error:\n${error?.message}`);
 				diagnoseDocument(document, []);
 				resolve;
 			});
