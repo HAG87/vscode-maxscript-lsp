@@ -10,7 +10,7 @@ const keywordsDB = {
 		'as',
 		'at',
 		'attributes',
-		//'bitmap',
+		'bitmap',
 		'button',
 		'by',
 		'cameras',
@@ -27,7 +27,6 @@ const keywordsDB = {
 		'defaultaction',
 		'do',
 		'dontcollect',
-		'dictionary',
 		'dontrepeatmessages',
 		'dotnetcontrol',
 		'dropdownlist',
@@ -73,9 +72,7 @@ const keywordsDB = {
 		'pickbutton',
 		'plugin',
 		'popupmenu',
-		'print',
 		'printallelements',
-		'format',
 		'private',
 		'progressbar',
 		'public',
@@ -118,7 +115,7 @@ const keywordsDB = {
 
 const UIcontrols = [
 	'angle',
-	//'bitmap',
+	// 'bitmap',
 	'button',
 	'checkbox',
 	'checkbutton',
@@ -154,6 +151,7 @@ const kwContext = [
 	'quiet',
 	'redraw'
 ];
+/*
 const kwObjectSet = [
 	'cameras',
 	'geometry',
@@ -165,6 +163,7 @@ const kwObjectSet = [
 	'spacewarps',
 	'systems'
 ];
+*/
 const keywordsTypeDB = {
 	'kw_about'        : 'about',
 	'kw_as'           : 'as',
@@ -196,7 +195,7 @@ const keywordsTypeDB = {
 	'kw_menuitem'     : 'menuitem',
 	'kw_not'          : 'not',
 	'kw_null'         : ['undefined', 'unsupplied', 'ok', 'silentvalue'],
-	'kw_objectset'    : kwObjectSet,
+	// 'kw_objectset'    : kwObjectSet,
 	'kw_of'           : 'of',
 	'kw_on'           : 'on',
 	'kw_parameters'   : 'parameters',
