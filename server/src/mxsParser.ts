@@ -1,6 +1,7 @@
-import { getHeapStatistics } from 'v8';
 import nearley from 'nearley';
-import moo from 'moo';
+import { Token } from 'moo';
+import { getHeapStatistics } from 'v8';
+import { emmitTokenValue } from './lib/tokenSpecimens';
 
 const grammar = require('./lib/grammar');
 const mxsTokenizer = require('./lib/mooTokenize');
@@ -25,17 +26,43 @@ export interface parserResult
 	result: any | undefined
 	error: ParserError | undefined
 }
-
-let reportSuccess = (toks: moo.Token[]) =>
+/**
+ * ParserError extends js Error
+ */
+export class ParserError extends Error
 {
-	let newErr = new ParserError('Parser failed. Partial parsings has been recovered.');
+	constructor(message: string)
+	{
+		super(message);
+		// 👇️ because we are extending a built-in class
+		Object.setPrototypeOf(this, ParserError.prototype);
+	}
+	name: string = 'parse_error';
+	recoverable!: boolean;
+	description?: string;
+	token?: Token;
+	tokens: Token[] = [];
+	details?: ErrorDetail[];
+}
+
+interface Dictionary<T> { [key: string]: T }
+
+type ErrorDetail = {
+	token?: Token;
+	expected: Dictionary<string>[];
+
+};
+//-----------------------------------------------------------------------------------
+let reportSuccess = (toks: Token[]) =>
+{
+	let newErr = new ParserError('Parser failed. Partial parsing has been recovered.');
 	newErr.name = 'ERR_RECOVER';
 	newErr.recoverable = true;
 	newErr.tokens = toks;
 	// newErr.details = errorReport;
 	return newErr;
 };
-let reportFailure = (toks: moo.Token[]) =>
+let reportFailure = (toks: Token[]) =>
 {
 	let newErr = new ParserError('Parser failed. Unrecoverable errors.');
 	newErr.name = 'ERR_FATAL';
@@ -44,6 +71,25 @@ let reportFailure = (toks: moo.Token[]) =>
 	// newErr.details = errorReport;
 	return newErr;
 };
+let formatErrorMessage = (token: Token) =>
+{
+	let syntaxError =
+		`Syntax error at line: ${token.line} column: ${token.col}`;
+	let tokenDisplay =
+		'Unexpected ' + (token.type ? token.type.toUpperCase() + " token: " : "") + JSON.stringify(token.value !== undefined ? token.value : token);
+	return syntaxError.concat('\n', tokenDisplay);
+};
+let generateParserError = (err: any) =>
+{
+	let newErr = new ParserError("");
+	newErr = Object.assign(newErr, err)
+	newErr.message = formatErrorMessage(err.token);
+	newErr.name = 'ERR_FATAL';
+	newErr.recoverable = false;
+	newErr.token = err.token;
+	newErr.description = err.message;
+	return newErr;
+}
 //-----------------------------------------------------------------------------------
 /**
  * Tokenize mxs string
@@ -183,19 +229,17 @@ function parseWithErrorsSync(source: string, parserInstance: nearley.Parser): pa
  * @param source Data to parse 
  * @param parserInstance Nearley parser instance
  */
-export function parseAsync(source: string, parserInstance: nearley.Parser): Promise<parserResult>
+export async function parseAsync(source: string, parserInstance: nearley.Parser): Promise<parserResult>
 {
-	return new Promise((resolve, reject) =>
-	{
-		try {
-			parserInstance.feed(source);
-			// console.log(parserInstance.results[0]);
-			console.log('parser finished with results');
-			resolve({ result: parserInstance.results[0], error: undefined });
-		} catch (err: any) {
-			reject({ result: undefined, error: err });
-		}
-	});
+	try {
+		parserInstance.feed(source);
+		return {
+			result: parserInstance.results[0],
+			error: undefined
+		};
+	} catch (err: any) {
+		throw generateParserError(err);
+	}
 }
 
 /**
@@ -288,30 +332,18 @@ export function parseSource(source: string, options = new parserOptions()): Prom
 		// parseWithErrorsAsync(source, declareParser(), options)
 		parseAsync(source, declareParser())
 			.then(
-				result =>
-				{
-					// console.log('PARSING FINISHED');
-					resolve(result)
-				},
+				result => resolve(result),
 				reason =>
 				{
-					// console.log(reason.error);
-					if (options.recovery) {
-						// console.log('PARSER HAS FAILED! ATTEMP TO RECOVER');
-						// Error recovery attemp. Highly ineficcient!
+					if (true) {
+					// if (options.recovery) {
 						return parseWithErrorsAsync(source, declareParser(), options);
 					} else {
-						// Since Nearly cannot recover from error, the grammar will fail to provide a valid CSTree, can only provide error tokens
-						// console.log('PARSER RECOVERY DISABLED');
 						reject(reason);
 					}
 				}
 			)
-			.then(result =>
-			{
-				// console.log('PARSER HAS RECOVERED FROM ERROR');
-				resolve(<parserResult>result);
-			})
+			.then(result => resolve(<parserResult>result))
 			.catch(err => reject(err));
 	});
 }

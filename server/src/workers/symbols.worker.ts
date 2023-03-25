@@ -13,31 +13,22 @@ import
 	provideTokenDiagnostic,
 } from '../mxsDiagnostics';
 import { parseSource, parserOptions } from '../mxsParser';
+import { ParserSymbols } from '../mxsOutline';
 //-----------------------------------------------------------------------------------
-interface ParserResult
-{
-	symbols: SymbolInformation[] | DocumentSymbol[]
-	diagnostics: Diagnostic[]
-}
 expose(
-	async function documentSymbols(source: string, range: Range, options?: parserOptions): Promise<ParserResult>
+	async function documentSymbols(source: string, range: Range, options?: parserOptions): Promise<ParserSymbols>
 	{
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
 		let diagnostics: Diagnostic[] = [];
 		let results = await parseSource(source, options);
-		// Parser didnt provide results -- abort!
-		/* if (!results.result && !results.error) {
-			throw new Error('Parser failed to provide results');
-		} */
+
 		if (results.result) {
 			SymbolInfCol = deriveSymbolsTree(results.result, range);
 			diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
 		}
-		if (results.error) {
-			diagnostics.push(...provideParserDiagnostic(results.error));
-		}
+		if (results.error) { diagnostics.push(...provideParserDiagnostic(results.error)); }
 		return {
 			symbols: SymbolInfCol,
 			diagnostics: diagnostics
-		};	
+		};
 	});

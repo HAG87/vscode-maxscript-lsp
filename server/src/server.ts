@@ -279,8 +279,7 @@ connection.onDocumentSymbol((params, cancelation) =>
 
 		let document = documents.get(params.textDocument.uri)!;
 
-		// mxsDocumentSymbols.parseDocument(document, connection, threading, options)
-		mxsDocumentSymbols.parseDocument(document, connection, false, options)
+		mxsDocumentSymbols.parseDocument(document, connection, threading, options)
 			.then(result =>
 			{
 				// connection.console.log('--> symbols sucess ');
@@ -289,7 +288,7 @@ connection.onDocumentSymbol((params, cancelation) =>
 				// currentTextDocument = document;
 				currentTextDocumentURI = params.textDocument.uri;
 				//-----------------------------------
-				console.log(result.diagnostics);
+				// console.log(result.diagnostics);
 				diagnoseDocument(document, result.diagnostics);
 				resolve(result.symbols);
 			})

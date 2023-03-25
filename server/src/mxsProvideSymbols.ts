@@ -30,26 +30,7 @@ const rangeRemap = (r: Range): Range =>
 	}
 
 });
-/* const rangeRemap = (r: Range) =>
-	Object.fromEntries(
-		Object.entries(r).map(
-			([key, pos]): [string, Position] => [key, <Position>positionMap(pos)]
-		));
-const positionMap = (p: Position) => Object.fromEntries(
-	Object.entries(p).map(
-		([key, value]): [string, number] => [key, value - 1]
-	)
-);*/
-/* const rangeRemap = (r: Range) => {
-	let k: keyof typeof r;
-	for (k in r) {
-		let pos = r[k];
-		let v: keyof typeof pos;
-		for (v in pos) {
-			pos[v] -= 1;
-		}
-	}
-}; */
+
 /** Derive Range from token location */
 const tokenRange = (t: Token): Range =>
 ({
@@ -73,7 +54,6 @@ const tokenRange = (t: Token): Range =>
  */
 export function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyFilter = 'id')
 {
-
 	// start with a root dummynode ...
 	const stack: DocumentSymbol = {
 		//id: '',

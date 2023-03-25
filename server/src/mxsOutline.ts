@@ -6,7 +6,7 @@ import
 {
 	// CancellationToken,
 	// CancellationTokenSource,
-	Range,
+	// Range,
 	Diagnostic,
 	SymbolInformation,
 	DocumentSymbol,
@@ -15,7 +15,7 @@ import
 import { TextDocument, } from 'vscode-languageserver-textdocument';
 import
 {
-	ParserError,
+	
 	provideParserDiagnostic,
 	provideTokenDiagnostic,
 	provideParserErrorInformation
@@ -25,16 +25,19 @@ import
 	deriveSymbolsTree,
 	collectTokens
 } from './mxsProvideSymbols';
-import { parseSource, parserOptions, parserResult } from './mxsParser';
+import {
+	parserResult,
+	ParserError,
+	parserOptions,
+	parseSource
+} from './mxsParser';
 import getDocumentSymbolsLegacy from './mxsOutlineLegacy';
 //--------------------------------------------------------------------------------
-export interface ParserResult
+export interface ParserSymbols
 {
 	symbols: SymbolInformation[] | DocumentSymbol[]
 	diagnostics: Diagnostic[]
 }
-
-// type cancellationToken = { cancel: () => void};
 
 export class DocumentSymbolProvider
 {
@@ -47,32 +50,27 @@ export class DocumentSymbolProvider
 		return deriveSymbolsTree(CST, loc);
 	}
 
-	private async _parseTextDocument(document: TextDocument, options?: parserOptions): Promise<ParserResult>
+	private async _parseTextDocument(document: TextDocument, options?: parserOptions): Promise<ParserSymbols>
 	{
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
 		let diagnostics: Diagnostic[] = [];
-		let results: parserResult;
 		// feed the parser
-		try {
-			results = await parseSource(document.getText(), options);
-			//COLLECT SYMBOLDEFINITIONS
-			if (results.result!) {
-				SymbolInfCol = this.documentSymbolsFromCST(results.result, document);
-				diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
-			}
-			// check for trivial errors
-			if (results.error!) {diagnostics.push(...provideParserDiagnostic(results.error));}
+		let results: parserResult = await parseSource(document.getText(), options);
+		//COLLECT SYMBOLDEFINITIONS
+		if (results!.result) {
+			SymbolInfCol = this.documentSymbolsFromCST(results.result, document);
+			diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
+		}
+		// check for trivial errors
+		if (results!.error) {diagnostics.push(...provideParserDiagnostic(results.error));}
 
-			return {
-				symbols: SymbolInfCol,
-				diagnostics: diagnostics
-			};
-		}catch (err:any) {		
-			throw err;
-		}		
+		return {
+			symbols: SymbolInfCol,
+			diagnostics: diagnostics
+		};	
 	}
 
-	private async _parseTextDocumentThreaded(document: TextDocument, options?: parserOptions): Promise<ParserResult>
+	private async _parseTextDocumentThreaded(document: TextDocument, options?: parserOptions): Promise<ParserSymbols>
 	{
 		const documentSymbols = await spawn(new Worker('./workers/symbols.worker'));
 		try {
@@ -98,24 +96,18 @@ export class DocumentSymbolProvider
 		connection: Connection,
 		threading = true,
 		options: parserOptions = { recovery: true, attemps: 15, memoryLimit: 0.9 }
-	): Promise<ParserResult>
+	): Promise<ParserSymbols>
 	{
 		try {
 			let res = threading
 				? await this._parseTextDocumentThreaded(document, options)
 				: await this._parseTextDocument(document, options);
-				console.log(res);
+				// console.log(res);
 			return res;
 		} catch (e: any) {
-			// console.log('error!');
-			connection.window.showWarningMessage( `MaxScript: can't parse the code.\nCode minifier, beautifier, diagnostics and hierarchical symbols will be unavailable.\nReason: ${e.error.message}` );
-			/*
-			return {
-				symbols: [],
-				diagnostics: <Array<Diagnostic>> new Array(provideParserErrorInformation(<ParserError>e.error))
-			}
-			//*/
-			return getDocumentSymbolsLegacy(document, new Array(provideParserErrorInformation(<ParserError>e.error)));
+			connection.window.showWarningMessage( `MaxScript: can't parse the code.\nCode minifier, beautifier, diagnostics and hierarchical symbols will be unavailable.\nReason: ${e.message}` );
+			// console.log(e.description);
+			return getDocumentSymbolsLegacy(document, new Array(provideParserErrorInformation(<ParserError>e)));
 		} /*finally {
 			console.log('legacy symbols');
 			return getDocumentSymbolsLegacy(document);

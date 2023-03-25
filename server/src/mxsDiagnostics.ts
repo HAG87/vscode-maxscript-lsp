@@ -8,32 +8,9 @@ import
 import {Token} from 'moo';
 import { tokenDefinitions } from './schema/mxsTokenDefs';
 import { rangeUtil } from './lib/astUtils';
+import { ParserError } from './mxsParser';
 //--------------------------------------------------------------------------------
 interface Dictionary<T> { [key: string]: T }
-
-type ErrorDetail = {
-	token?: Token;
-	expected: Dictionary<string>[];
-
-};
-
-/**
- * ParserError extends js Error
- */
-export class ParserError extends Error
-{
-	constructor(message: string)
-	{
-		super(message);
-		// 👇️ because we are extending a built-in class
-		Object.setPrototypeOf(this, ParserError.prototype);
-	}
-	name: string = 'parse_error';
-	recoverable!: boolean;
-	token?: Token;
-	tokens: Token[] = [];
-	details?: ErrorDetail[];
-}
 //--------------------------------------------------------------------------------
 /**
  * Diagnostics collection.
@@ -84,6 +61,12 @@ export function provideParserDiagnostic(err: ParserError): Diagnostic[]
 			return diag;
 		});
 }
+/* function reportError(token) {
+	var tokenDisplay = (token.type ? token.type + " token: " : "") + JSON.stringify(token.value !== undefined ? token.value : token);
+	var lexerMessage = this.lexer.formatError(token, "Syntax error");
+	return this.reportErrorCommon(lexerMessage, tokenDisplay);
+} */
+
 /**
  * Provides a symbol with information related to the parsing error
  * @param err Parser error
