@@ -7,13 +7,10 @@ const grammar = require('./lib/grammar');
 const mxsTokenizer = require('./lib/mooTokenize');
 // import grammar from './lib/grammar';
 // import mxLexer from './lib/mooTokenize.js';
-import { ParserError } from './mxsDiagnostics';
 //-----------------------------------------------------------------------------------
-function replaceWithWS(str: string)
-{
-	let ref = [...str];
-	return ref.reduce((acc, next) => { return acc + ' '; }, '');
-}
+const replaceWithWS = (str: string) => [...str].reduce((acc, next) => (acc + ' '), '');
+// const uniqueArray = (x:any[]) => [...new Set(x.map(item => item.type || item.literal))];
+const uniqueArray = (array:any[]) => [...new Map(array.map(item => [item['type'] || item['literal'], item])).values()];
 //-----------------------------------------------------------------------------------
 export class parserOptions
 {
@@ -23,8 +20,8 @@ export class parserOptions
 }
 export interface parserResult
 {
-	result: any | undefined
-	error: ParserError | undefined
+	result?: any
+	error?: ParserError
 }
 /**
  * ParserError extends js Error
@@ -130,6 +127,7 @@ function declareParser()
  * Get a list of possible error corections
  * @param parserInstance 
  */
+/*
 function PossibleTokens(parserInstance: nearley.Parser)
 {
 	var possibleTokens: any[] = [];
@@ -157,6 +155,39 @@ function PossibleTokens(parserInstance: nearley.Parser)
 		possibleTokens.push(nextSymbol);
 	});
 	return possibleTokens;
+}
+*/
+function PossibleTokens(ParserInstance: nearley.Parser) {
+	var lastColumnIndex = ParserInstance.table.length - 2;
+	var lastColumn = ParserInstance.table[lastColumnIndex];
+	var expectantStates = lastColumn.states
+		.filter(function(state: nearley.LexerState) {
+			var nextSymbol = state.rule.symbols[state.dot];
+			return nextSymbol && typeof nextSymbol !== "string";
+		});
+	if (expectantStates.length === 0) {
+		//No viable alternatives
+	} else {
+		var stateStacks = expectantStates
+			.map(function(state: nearley.LexerState) {
+				return ParserInstance.buildFirstStateStack(state, []) || [state];
+			}, ParserInstance);
+		var symbolAlternatives = [];
+		stateStacks.forEach(function(stateStack: any) {
+			var state = stateStack[0];
+			var nextSymbol = state.rule.symbols[state.dot];
+			/*
+			if (
+				nextSymbol.type != "ws"
+				&& nextSymbol.type != "newline"
+				&& nextSymbol.type != "comment_SL"
+				&& nextSymbol.type != "comment_BLK"
+				) {symbolAlternatives.push(nextSymbol);}
+			// */
+			symbolAlternatives.push(nextSymbol);
+		}, ParserInstance);
+	}
+	return symbolAlternatives;	
 }
 //-----------------------------------------------------------------------------------
 /**
@@ -247,44 +278,86 @@ export async function parseAsync(source: string, parserInstance: nearley.Parser)
  * @param source Data to parse
  * @param parserInstance Async Parser with Error recovery
  */
-function parseWithErrorsAsync(source: string, parserInstance: nearley.Parser, options: parserOptions): Promise<parserResult>
+async function parseWithErrorsAsync(source: string, parserInstance: nearley.Parser, options: parserOptions): Promise<parserResult>
 {
 	const totalHeapSizeThreshold = getHeapStatistics().heap_size_limit * options.memoryLimit;
 
 	let src = TokenizeStream(source);
 	let state = parserInstance.save();
+	let errorState: any;
 
 	let badTokens: moo.Token[] = [];
 	// let errorReport: any[] = [];
-	function parserIterator(src: moo.Token[])
+
+	function parserIterator(src: Token[])
 	{
 		let next = 0;
 		let attemp = 0;
 		return {
 			next: function ()
 			{
+				// Force exit if memory heap is reached ... does it works??
+				if ((getHeapStatistics().total_heap_size) > totalHeapSizeThreshold) {
+							// process.exit();
+						return {value:null, done:true};
+					}
+
 				if (next < src.length) {
 					try {
-						// Force exit if memory heap is reached ... does it works??
-						if ((getHeapStatistics().total_heap_size) > totalHeapSizeThreshold) {
-							process.exit();
-						}
 						parserInstance.feed(src[next++].value);
 						state = parserInstance.save();
-
 						return { done: false };
 					} catch (err: any) {
+						// on error, the parser state is the previous token.
 						// Error unrelated to bad tokens
 						if (!err.token) { throw (err); }
-						// if (!options.recovery) { return { done: true }; }
-						// Set max errors limit
-						if (options.attemps > 0 && attemp++ >= options.attemps) { return { done: true }; }
 						// collect bad tokens
 						badTokens.push(err.token);
-
+						// /*
+						// Problem: the token feed breaks the parser. Beed a propper way to backtrack and catch errors
+						let tokenAlternatives = uniqueArray(PossibleTokens(parserInstance)!);
+						let nextToken = 0;
+						function parserErrorIterator(err:any)
+						{
+							return {
+								next: function ()
+								{
+									if (nextToken < tokenAlternatives.length) {
+										// emmit the possible next token ...
+										let currentTokentAlt = tokenAlternatives[nextToken++];
+										let tokenType = currentTokentAlt.type || currentTokentAlt.literal;
+										// let altToken = {...err.token, ...tokenAlternatives[nextToken++]};
+										let altToken = emmitTokenValue(err.token.value.length)[tokenType as keyof typeof emmitTokenValue];
+										// console.log(altToken);
+										try {
+											// restore parser state?
+											parserInstance.restore(state);
+											// attemp to parse token
+											parserInstance.feed(altToken);
+											//pass
+											return {done:true};
+										} catch (err) {
+											//this is not working
+											console.log(err);
+											// restore parser state?
+											parserInstance.restore(state);
+										}
+									} else {
+										return {done:false};
+									}
+								}
+							};
+						}
+						let it = parserErrorIterator(err);
+						while (!it.next()?.done || nextToken >= tokenAlternatives.length-1) { }
+						// advance the parser one token
+						if (it.next()?.done) { next++ }
+						//*/
+						/*
+						// Set max errors limit
+						if (options.attemps > 0 && attemp++ >= options.attemps) { return { done: true }; }					
 						// create a report of possible fixes *DISABLED TOO RESOURCES INTENSIVE*
 						// errorReport.push({token:src[next], alternatives: this.PossibleTokens(mxsParser) });
-
 						// replace the faulty token with a filler value
 						if (src[next]) {
 							let filler = replaceWithWS(err.token.text);
@@ -295,9 +368,9 @@ function parseWithErrorsAsync(source: string, parserInstance: nearley.Parser, op
 									type: 'ws'
 								});
 						}
-
 						// backtrack
 						parserInstance.restore(state);
+						//*/
 					}
 				} else {
 					return { value: parserInstance.results, done: true };
@@ -306,19 +379,16 @@ function parseWithErrorsAsync(source: string, parserInstance: nearley.Parser, op
 		};
 	}
 
-	return new Promise((resolve, reject) =>
-	{
-		let it = parserIterator(src);
-		while (!it.next()?.done) { }
-		let res = it.next()?.value;
-		resolve(
-			{
-				result: res,
-				error: res ? reportSuccess(badTokens) : reportFailure(badTokens)
-			});
-	});
-}
+	let it = parserIterator(src);
+	//Iterator
+	while (!it.next()?.done) { }
+	let res = it.next()?.value;
 
+	return {
+		result: res,
+		error: res ? reportSuccess(badTokens) : reportFailure(badTokens)
+	};
+}
 //-----------------------------------------------------------------------------------
 /**
  * Parse MaxScript code
@@ -335,7 +405,8 @@ export function parseSource(source: string, options = new parserOptions()): Prom
 				result => resolve(result),
 				reason =>
 				{
-					if (true) {
+					// if (true) {
+					if (options.recovery) {
 					// if (options.recovery) {
 						return parseWithErrorsAsync(source, declareParser(), options);
 					} else {
