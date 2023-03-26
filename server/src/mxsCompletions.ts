@@ -12,6 +12,7 @@ import { mxClassMembers } from './schema/mxsSchema-clases';
 import { mxInterfaceMembers } from './schema/mxsSchema-interfaces';
 import { mxStructsMembers } from './schema/mxsSchema-structs';
 //------------------------------------------------------------------------------------------
+// trigger completion for method call
 const dotPattern = /([A-Za-z_][A-Za-z0-9_]+)[.]$/mi;
 
 /**
@@ -28,11 +29,7 @@ export function provideCompletionItems(document: TextDocument, position: Positio
 			position.character
 		));
 
-	// TODO: Escape strings
 	// if (!(util.isPositionInString(lineTillCurrentPosition))) { return []; }
-
-	let result: CompletionItem[] = [];
-
 	const termMatch = dotPattern.exec(lineTillCurrentPosition);
 	if (termMatch) {
 		// return properties, methods...
@@ -41,21 +38,17 @@ export function provideCompletionItems(document: TextDocument, position: Positio
 			if (item.label === termMatch![1]) {
 				switch (item.kind) {
 					case CompletionItemKind.Class:
-						result = mxClassMembers?.[item.label];
-						break;
+						return mxClassMembers?.[item.label];
 					case CompletionItemKind.Struct:
-						result = mxStructsMembers?.[item.label];
-						break;
+						return mxStructsMembers?.[item.label];
 					case CompletionItemKind.Interface:
-						result = mxInterfaceMembers?.[item.label];
-						break;
+						return mxInterfaceMembers?.[item.label];
+					default:
+						return;
 				}
-				return;
 			}
 		});
-	} else {
-		// return complete list of completions
-		result = maxCompletions;
 	}
-	return result;
+	// return complete list of completions
+	return maxCompletions;
 }

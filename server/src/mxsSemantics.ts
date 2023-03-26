@@ -15,46 +15,41 @@ let lexer = mxsFormatterLexer(maxAPI);
 //-------------------------------------------------------------------------------------------------------------
 enum TokenTypes
 {
-	class = 0,
-	function = 1 ,
-	interface = 2,
-	namespace = 3,
-	struct = 4,
-	type = 5,
-	variable = 6 ,
-	enumMember = 7 ,
-	_ = 8
-	// comment = 0,
-	// keyword = 1,
-	// string = 2,
-	// number = 3,
-	// // regexp = 4,
-	// type = 5,
-	// class = 6,
-	// interface = 7,
-	// enum = 8,
-	// typeParameter = 9,
-	// function = 10,
-	// member = 11,
-	// property = 12,
-	// variable = 13,
-	// parameter = 14,
-	// lambdaFunction = 15,
-	// _ = 16
+	class,
+	function,
+	interface,
+	namespace,
+	struct,
+	type,
+	variable,
+	enumMember,
+	_
+	// comment,
+	// keyword,
+	// string,
+	// number,
+	// type,
+	// class,
+	// interface,
+	// enum,
+	// typeParameter,
+	// member,
+	// property,
+	// variable,
+	// parameter,
+	// lambdaFunction,
 }
-
 enum TokenModifiers
 {
-	declaration = 0,
-	documentation = 1,
-	readonly = 2,
-	static = 3,
-	abstract = 4,
-	deprecated = 5,
-	_ = 6
-	// abstract = 0,
-	// deprecated = 1,
-	// _ = 2,
+	declaration,
+	documentation,
+	readonly,
+	static,
+	abstract,
+	deprecated,
+	_
+	// abstract,
+	// deprecated,
 }
 //-------------------------------------------------------------------------------------------------------------
 interface IParsedToken
@@ -99,13 +94,16 @@ export class mxsSemanticTokens
 		};
 		let tokenType = (val: string) =>
 		{
-			if (this.tokenTypes.has(val)) {
-				return this.tokenTypes.get(val)!;
-			} else if (val === 'notInLegend') {
-				return this.tokenTypes.size + 2;
+			switch (true) {
+				case this.tokenTypes.has(val):
+					return this.tokenTypes.get(val)!;
+				case (val === 'notInLegend'):
+					return this.tokenTypes.size + 2;
+				default:
+					return 0;
 			}
-			return 0;
 		};
+
 		// feed the tokenizer
 		lexer.reset(text);
 		while (token = lexer.next()) {
@@ -118,8 +116,8 @@ export class mxsSemanticTokens
 						{
 							line: token.line - 1,
 							startCharacter: token.col - 1,
-							length: token.text.length,
-							tokenType: tokenType(typing[0]),
+							length:         token.text.length,
+							tokenType:      tokenType(typing[0]),
 							tokenModifiers: tokenMod(typing.slice(1))
 						}
 					);
@@ -160,10 +158,11 @@ export class mxsSemanticTokens
 	getTokenBuilder(document: TextDocument): SemanticTokensBuilder
 	{
 		let result = this.tokenBuilders.get(document.uri);
-		if (result !== undefined) {
-			return result;
-		}
+		// Return existing token builder
+		if (result !== undefined) { return result; }
+		// No builder found, create new one
 		result = new SemanticTokensBuilder();
+		// Add to tokenBuilders set
 		this.tokenBuilders.set(document.uri, result);
 		return result;
 	}
