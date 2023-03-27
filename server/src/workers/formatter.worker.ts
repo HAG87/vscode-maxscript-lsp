@@ -3,14 +3,14 @@ import { parseSource } from '../mxsParser';
 import { mxsReflow, options, reflowOptions } from '../lib/mxsReflow';
 //-----------------------------------------------------------------------------------
 expose(
-	async function formatData(data: string, settings: Partial<reflowOptions>)
+	function formatData(data: string, settings: Partial<reflowOptions>)
 	{
 		options.reset();
 		if (settings) {
 			Object.assign(options, settings);
 		}
 		if (typeof data === 'string') {
-			let results = await parseSource(data);
+			let results = parseSource(data);
 			if (results.result!) {
 				throw new Error('Parser worker failed.');
 			}

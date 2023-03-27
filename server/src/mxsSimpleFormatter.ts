@@ -10,20 +10,57 @@ import
 } from 'vscode-languageserver-textdocument';
 
 import moo from 'moo';
-import { TokenizeStream as mxsTokenizer } from './mxsParser';
+import { TokenizeStream } from './mxsParserBase';
 import { mxsFormatterLexer } from './lib/mooTokenize-formatter';
 import { rangeUtil } from './lib/astUtils';
 // note: keywords could be used to indent, at start or end of line. this will require a per-line aproach... split the documents in lines, and feed the tokenizer one line at the time.
 //-----------------------------------------------------------------------------------
+enum filterCurrenEnum {
+	assign,
+	newline,
+	delimiter,
+	lbracket,
+	emptyparens,
+	emptybraces,
+	bitrange,
+	unaryminus
+};
+enum filterAheadEnum {
+	assign,
+	newline,
+	delimiter,
+	sep,
+	ws,
+	lbracket,
+	rbracket,
+	emptyparens,
+	emptybraces,
+	bitrange,
+	unaryminus
+};
+enum indentTokensEnum {
+	lparen,
+	lbracket,
+	lbrace,
+	arraydef,
+	bitarraydef
+};
+enum unindentTokensEnum {
+	rparen,
+	rbracket,
+	rbrace
+}
+/*
 const filterCurrent =
-	['assign', 'newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange', 'unaryminus'/*, 'bkslash' */];
+	['assign', 'newline', 'delimiter', 'lbracket', 'emptyparens', 'emptybraces', 'bitrange', 'unaryminus'];
 const filterAhead =
-	['assign', 'newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange', 'unaryminus'/*, 'bkslash' */];
+	['assign', 'newline', 'delimiter', 'sep', 'ws', 'lbracket', 'rbracket', 'emptyparens', 'emptybraces', 'bitrange', 'unaryminus'];
 
 const IndentTokens =
 	['lparen', 'arraydef', 'lbracket', 'lbrace', 'bitarraydef'];
 const UnIndentTokens =
 	['rparen', 'rbracket', 'rbrace'];
+*/
 //-----------------------------------------------------------------------------------
 // Helpers
 const getPos = (line: number, col: number) => Position.create(line, col);
@@ -47,7 +84,7 @@ interface SimpleFormatterSettings
 	trimFinalNewlines : true
 }; */
 
-const FormatterSettings:SimpleFormatterSettings = {
+const FormatterSettings: SimpleFormatterSettings = {
 	indentOnly: false,
 	indentChar: '\t',
 	whitespaceChar: ' '
@@ -63,8 +100,6 @@ interface SimpleFormatterActions
 //-----------------------------------------------------------------------------------
 function SimpleTextEditFormatter(document: TextDocument | string, action: SimpleFormatterActions)
 {
-	return new Promise<TextEdit[]>((resolve, reject) =>
-	{
 		// console.log('Debugging formatter');
 		const source = typeof document === 'string' ? document : document.getText();
 		// add to results
@@ -75,10 +110,12 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 		let prevLine: number = 1;
 
 		// token stream. if this fail will throw an error
-		let tokenizedSource: moo.Token[] = mxsTokenizer(source, undefined, mxsFormatterLexer());
-		// console.log(tokenizedSource);
+		let tokenizedSource: moo.Token[] = TokenizeStream(source, undefined, mxsFormatterLexer());
+	
 		// return if no results
-		if (tokenizedSource && !tokenizedSource.length) { reject(edits); }
+		if (tokenizedSource && !tokenizedSource.length) {
+			throw new Error('Unable to format the document.');
+		}
 
 		// main loop
 		for (let i = 0; i < tokenizedSource.length; i++) {
@@ -91,7 +128,7 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 			if (ctok.type === undefined) { continue; }
 
 			// decrease indentation
-			if (ntok !== undefined && UnIndentTokens.includes(ntok.type!) && indentation >= 0) { indentation--; }
+			if (ntok !== undefined && ntok.type! in unindentTokensEnum && indentation >= 0) { indentation--; }
 
 			// reindent at newline. skip empty lines
 			if (ctok.line > prevLine && ctok.type !== 'newline') {
@@ -103,7 +140,7 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 					// if not 'ws', insert
 					Add(action.wsIndent(ctok, indentation));
 				}
-			// } else if (ntok.type === 'bkslsh') {
+				// } else if (ntok.type === 'bkslsh') {
 				// deal with backslash here!
 			} else {
 				// tokens belonging to the same line
@@ -113,41 +150,32 @@ function SimpleTextEditFormatter(document: TextDocument | string, action: Simple
 					if (/^[\s\t]{2,}$/m.test(ctok.toString())) {
 						Add(action.wsClean(ctok));
 					}
-				// } else if (ntok.type === 'bkslsh') {
+					// } else if (ntok.type === 'bkslsh') {
 					// deal with backslash here!
 				} else if (ntok !== undefined) {
 					//console.log(ctok)
 					// skip last token?
 					// insert whitespaces
 					// skip tokens where whitespace btw doesn't apply
-					let fCurrent = filterCurrent.includes(ctok.type!);
-					let fNext = filterAhead.includes(ntok.type!);
-
-					if (!fCurrent && !fNext) {
+					if (ctok.type! in filterCurrenEnum && ntok.type! in filterAheadEnum) {
 						// deal with missing whitespaces
 						Add(action.wsAdd(ctok));
 					}
 				}
 			}
 			// increase indentation
-			if (IndentTokens.includes(ctok.type)) { indentation++; }
+			if (ctok.type in indentTokensEnum) { indentation++; }
 			prevLine = ctok.line;
 		}
-		// return edits;
-		resolve(edits);
-	});
+		// RETURN;
+		return edits;
 }
-/*
-export async function mxsStringFormatter(source: string, settings: SimpleFormatterSettings) {
-	//...
-}
-*/
 /**
  * Simple code formater: context unaware, just reflow whitespace and indentation of balanced pairs 
  * TODO: Add Reflow as an engine when parser tree is available.
  * @param document vscode document to format
  */
-export async function SimpleDocumentFormatter(document: TextDocument, settings: Partial<SimpleFormatterSettings>)
+export function SimpleDocumentFormatter(document: TextDocument, settings: Partial<SimpleFormatterSettings>)
 {
 	Object.assign(FormatterSettings, settings);
 
@@ -162,7 +190,7 @@ export async function SimpleDocumentFormatter(document: TextDocument, settings: 
 		// insert whitespace
 		wsAdd: t => !FormatterSettings.indentOnly ? TextEdit.insert(getPos(t.line - 1, t.col + t.text.length - 1), ' ') : undefined,
 	};
-	return await SimpleTextEditFormatter(document.getText(), TextEditActions);
+	return SimpleTextEditFormatter(document.getText(), TextEditActions);
 }
 
 /**
@@ -170,7 +198,7 @@ export async function SimpleDocumentFormatter(document: TextDocument, settings: 
  * @param document
  * @param range
  */
-export async function SimpleRangeFormatter(document: TextDocument, range: Range, settings: Partial<SimpleFormatterSettings>)
+export function SimpleRangeFormatter(document: TextDocument, range: Range, settings: Partial<SimpleFormatterSettings>)
 {
 	Object.assign(FormatterSettings, settings);
 	// positions
@@ -192,5 +220,5 @@ export async function SimpleRangeFormatter(document: TextDocument, range: Range,
 		wsClean: t => !FormatterSettings.indentOnly ? TextEdit.replace(rangeUtil.getTokenRange(t), ' ') : undefined,
 		wsAdd: t => !FormatterSettings.indentOnly ? TextEdit.insert(getPos(t.line + offLine - 1, t.col + t.value.length - 1), ' ') : undefined,
 	};
-	return await SimpleTextEditFormatter(document.getText(range), TextEditActions);
+	return SimpleTextEditFormatter(document.getText(range), TextEditActions);
 }

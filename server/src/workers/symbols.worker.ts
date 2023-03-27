@@ -12,15 +12,15 @@ import
 	provideParserDiagnostic,
 	provideTokenDiagnostic,
 } from '../mxsDiagnostics';
-import { parseSource, parserOptions } from '../mxsParser';
-import { ParserSymbols } from '../mxsOutline';
+import { parserOptions } from '../mxsParserBase';
+import { parseSource } from '../mxsParser';
 //-----------------------------------------------------------------------------------
 expose(
-	async function documentSymbols(source: string, range: Range, options?: parserOptions): Promise<ParserSymbols>
+	function documentSymbols(source: string, range: Range, options?: parserOptions)
 	{
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
 		let diagnostics: Diagnostic[] = [];
-		let results = await parseSource(source, options);
+		let results = parseSource(source, options);
 
 		if (results.result) {
 			SymbolInfCol = deriveSymbolsTree(results.result, range);

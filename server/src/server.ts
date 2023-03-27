@@ -229,7 +229,7 @@ documents.onDidChangeContent(
 connection.onDocumentFormatting(async params =>
 {
 	try {
-		return await mxsSimpleFormatter.SimpleDocumentFormatter(
+		return mxsSimpleFormatter.SimpleDocumentFormatter(
 			documents.get(params.textDocument.uri)!,
 			(await getDocumentSettings(params.textDocument.uri))?.formatter
 		);
@@ -271,27 +271,30 @@ connection.onDocumentSymbol((params, cancelation) =>
 		getDocumentSettings(params.textDocument.uri)
 			.then(result =>
 			{
+				if (!result.GoToSymbol) { resolve; }
 				options.recovery = result.parser.errorCheck;
 				options.attemps = result.parser.errorLimit;
 				threading = result.parser.multiThreading;
-				if (!result.GoToSymbol) { resolve; }
 			});
 
 		let document = documents.get(params.textDocument.uri)!;
+		let symbolsresult =
+			threading
+				? mxsDocumentSymbols.parseDocumentThreaded(document, connection, options)
+				: mxsDocumentSymbols.parseDocument(document, connection, options);
 
-		mxsDocumentSymbols.parseDocument(document, connection, threading, options)
-			.then(result =>
-			{
-				// connection.console.log('--> symbols sucess ');
-				//-----------------------------------
-				currentDocumentSymbols = result.symbols;
-				// currentTextDocument = document;
-				currentTextDocumentURI = params.textDocument.uri;
-				//-----------------------------------
-				// console.log(result.diagnostics);
-				diagnoseDocument(document, result.diagnostics);
-				resolve(result.symbols);
-			})
+		symbolsresult.then(result =>
+		{
+			// connection.console.log('--> symbols sucess ');
+			//-----------------------------------
+			currentDocumentSymbols = result.symbols;
+			// currentTextDocument = document;
+			currentTextDocumentURI = params.textDocument.uri;
+			//-----------------------------------
+			// console.log(result.diagnostics);
+			diagnoseDocument(document, result.diagnostics);
+			resolve(result.symbols);
+		})
 			.catch(error =>
 			{
 				connection.window.showInformationMessage(`MaxScript symbols provider unhandled error:\n${error?.message}`);
@@ -314,6 +317,10 @@ connection.onCompletion(async params =>
 });
 
 /* Definition provider */
+// method 1: regex match the file
+// method 2: search the parse tree for a match
+// method 2.1: implement Workspace capabilities
+
 connection.onDefinition((params, cancellation) =>
 {
 	return new Promise(resolve =>
@@ -326,15 +333,12 @@ connection.onDefinition((params, cancellation) =>
 			{
 				if (!result.GoToDefinition) { resolve; }
 			});
-		// method 1: regex match the file
-		// method 2: search the parse tree for a match
-		// method 2.1: implement Workspace capabilities
 		mxsDefinitions.getDocumentDefinitions(
 			documents.get(params.textDocument.uri)!,
 			params.position,
-			// currentTextDocument && params.textDocument.uri === currentTextDocument.uri ? currentDocumentSymbols : undefined,
-			currentTextDocumentURI === params.textDocument.uri ? currentDocumentSymbols : undefined,
-			/* mxsDocumentSymbols.msxParser.parsedCST */)
+			currentTextDocumentURI === params.textDocument.uri ? currentDocumentSymbols : undefined)
+			/*currentTextDocument && params.textDocument.uri === currentTextDocument.uri ? currentDocumentSymbols : undefined,
+			mxsDocumentSymbols.msxParser.parsedCST)*/
 			.then(
 				result => resolve(result),
 				() => resolve)
@@ -468,7 +472,7 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 				let reply = await replaceText.call(
 					connection,
 					doc,
-					settings.parser.multiThreading ? await mxsFormatter.FormatDataThreaded(doc.getText(), opts) : await mxsFormatter.FormatData(doc.getText(), opts)
+					settings.parser.multiThreading ? await mxsFormatter.FormatDataThreaded(doc.getText(), opts) : mxsFormatter.FormatData(doc.getText(), opts)
 				);
 				if (reply.applied) {
 					connection.window.showInformationMessage(

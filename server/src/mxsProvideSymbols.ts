@@ -1,14 +1,14 @@
 import
 {
 	Range,
-	// Position,
 	SymbolKind,
-	DocumentSymbol
+	DocumentSymbol,
 } from 'vscode-languageserver';
-//@ts-ignore
-import { traverse } from 'ast-monkey-traverse';
+
 import { Token } from 'moo';
 import { SymbolKindMatch } from './schema/mxsSymbolDef';
+//@ts-ignore
+import { traverse } from 'ast-monkey-traverse';
 //-----------------------------------------------------------------------------------
 /** Verify that the node is valid */
 const isNode = (node: any) => typeof node === 'object' && node != null;
@@ -16,7 +16,6 @@ const isNode = (node: any) => typeof node === 'object' && node != null;
  * Ranges produced by moo needs to be adjusted, since it starts at 1:1, and for vscode is 0:0
  * line: the line number of the beginning of the match, starting from 1.
  * col: the column where the match begins, starting from 1.
- * @param r Range
  */
 const rangeRemap = (r: Range): Range =>
 ({
@@ -28,9 +27,7 @@ const rangeRemap = (r: Range): Range =>
 		line: r.end.line - 1,
 		character: r.end.character - 1
 	}
-
 });
-
 /** Derive Range from token location */
 const tokenRange = (t: Token): Range =>
 ({
@@ -48,9 +45,9 @@ const tokenRange = (t: Token): Range =>
  * Derive a DocumentSymbol collection from the CSTree
  * Collects only node types in the filter.
  * Only constructs like functions, structs, declarations, etc have an ID property and will form part of the Outline tree
- * @param {any | any[]} nodes Abstract Syntax tree source
- * @param {Range} documentRange Document START and END ranges
- * @param {string} keyFilter ? Object with keys:[] to be collected.
+ * @param nodes Abstract Syntax tree source
+ * @param documentRange Document START and END ranges
+ * @param keyFilter ? Object with keys:[] to be collected.
  */
 export function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyFilter = 'id')
 {
@@ -119,7 +116,7 @@ export function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyF
 //-----------------------------------------------------------------------------------
 /**
  * Return errorSymbol from invalid tokens
- * @param {object} CST the CST
+ * @param CST the CST
  */
 export function collectTokens(CST: any, key: string = 'type', value?: string)
 {

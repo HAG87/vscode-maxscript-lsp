@@ -7,10 +7,11 @@ import {
 import { parseSource } from '../mxsParser';
 //-----------------------------------------------------------------------------------
 expose(
-	async function documentSymbols(source, range, options = { recovery: true, attemps: 10, memoryLimit: 0.9 }) {
+	function documentSymbols(source, range, options = { recovery: true, attemps: 10, memoryLimit: 0.9 }) {
 		let SymbolInfCol = [];
 		let diagnostics = [];
-		let results = await parseSource(source, options);
+		
+		let results = parseSource(source, options);
 
 		// Parser didnt provide results -- abort!
 		/* if (!results.result && !results.error) {

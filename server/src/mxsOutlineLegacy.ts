@@ -11,13 +11,12 @@ import { ParserSymbols } from './mxsOutline';
 //-----------------------------------------------------------------------------------
 let exp = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/ig;
 let escapeRegex = (str: string) => str.replace(exp, '\\$&');
-
 // skip comments
-let blockComments = (x: string): RegExp => new RegExp('\\/\\*[^\\*\\/]*' + x, 'i');
-let singleComments = (x: string): RegExp => new RegExp('--.*(' + x + ').*$', 'im');
-let strings = (x: string): RegExp => new RegExp('"([^"]|[\\"])*(' + x + ')([^"]|[\\"])*$"', 'im');
+let blockComments = (x: string) => new RegExp('\\/\\*[^\\*\\/]*' + x, 'i');
+let singleComments = (x: string) => new RegExp('--.*(' + x + ').*$', 'im');
+let strings = (x: string) => new RegExp('"([^"]|[\\"])*(' + x + ')([^"]|[\\"])*$"', 'im');
 
-export default async function getDocumentSymbolsLegacy(document: TextDocument, diagnostics: Diagnostic[] = []): Promise<ParserSymbols>
+export default function getDocumentSymbolsLegacy(document: TextDocument, diagnostics: Diagnostic[] = []): ParserSymbols
 {
 	let SymbolInfCol: SymbolInformation[] = [];
 	const docTxt = document.getText();

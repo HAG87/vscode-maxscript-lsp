@@ -97,19 +97,12 @@ function wordMatch(document: TextDocument, searchWord: string, position: Positio
  */
 function symbolMatch(document: TextDocument, documentSymbols: DocumentSymbol[], searchWord: string)
 {
-	let findSymbol = findDocumenSymbols(searchWord, documentSymbols);
-	if (findSymbol === undefined) { return; }
-	let results: LocationLink[] = [];
-	for (const sym of findSymbol) {
-		results.push(
-			LocationLink.create(
-				document.uri,
-				sym.range,
-				sym.selectionRange
-			)
-		);
-	}
-	return results.length ? results : undefined;
+	return findDocumenSymbols(searchWord, documentSymbols)!.map(
+		(sym) => LocationLink.create(
+			document.uri,
+			sym.range,
+			sym.selectionRange
+		));
 }
 
 /**
@@ -136,46 +129,51 @@ function cstMatch(document: TextDocument, CST: any | any[], searchWord: string)
  * @param parseCST 
  * @param documentSymbols
  */
-export function getDocumentDefinitions(
+export async function getDocumentDefinitions(
 	document: TextDocument,
 	position: Position,
 	documentSymbols?: DocumentSymbol[] | SymbolInformation[],
 	// parseCST?: any[],
-): Promise<Definition | DefinitionLink[] | undefined>
+)
 {
-	return new Promise((resolve, reject) =>
-	{
-		// try to avoid words inside inline comments
-		const word = getWordAtPosition(document, position, '--');
-		if (word) {
-			// use documentSymbols
-			if (documentSymbols) {
-				let _symbolMatch = symbolMatch(document, documentSymbols as DocumentSymbol[], word);
-				_symbolMatch ? resolve(_symbolMatch) : reject('No matches');
+	// try to avoid words inside inline comments
+	const word = getWordAtPosition(document, position, '--');
+	if (word) {
+		// use documentSymbols
+		if (documentSymbols) {
+			let _symbolMatch = symbolMatch(document, documentSymbols as DocumentSymbol[], word);
+			if (_symbolMatch && _symbolMatch.length) {
+				return _symbolMatch;
 			} else {
-				// fallback to regex match
-				let _wordMatch = wordMatch(document, word, position);
-				_wordMatch ? resolve(_wordMatch) : reject('No matches.');
+				throw new Error('No matches');
 			}
 		} else {
-			reject('No input word.');
-		}
-		// use the parse tree -- DISABLED
-		/*
-			console.log('DEFINITIONS: symbols un-available, using CST');
-			else if (parseCST) {
-				let _cstMatch = cstMatch(document, parseCST, word);
-				if (_cstMatch) {
-					resolve([_cstMatch]);
-					// return;
-				} else {
-					reject('No match');
-				}
+			// fallback to regex match
+			let _wordMatch = wordMatch(document, word, position);
+			if (_wordMatch) {
+				return _wordMatch;
 			} else {
-				// fallback to regex match
-				let _wordMatch = wordMatch(document, word);
-				_wordMatch ? resolve(_wordMatch) : reject('No matches.');
+				throw new Error('No matches');
 			}
-		*/
-	});
+		}
+	} else {
+		throw new Error('No input word.');
+	}
+	// use the parse tree -- DISABLED
+	/*
+		console.log('DEFINITIONS: symbols un-available, using CST');
+		else if (parseCST) {
+			let _cstMatch = cstMatch(document, parseCST, word);
+			if (_cstMatch) {
+				resolve([_cstMatch]);
+				// return;
+			} else {
+				reject('No match');
+			}
+		} else {
+			// fallback to regex match
+			let _wordMatch = wordMatch(document, word);
+			_wordMatch ? resolve(_wordMatch) : reject('No matches.');
+		}
+	*/
 }

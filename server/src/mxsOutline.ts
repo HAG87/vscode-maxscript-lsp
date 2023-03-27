@@ -4,9 +4,6 @@
 import { spawn, Thread, Worker } from "threads"
 import
 {
-	// CancellationToken,
-	// CancellationTokenSource,
-	// Range,
 	Diagnostic,
 	SymbolInformation,
 	DocumentSymbol,
@@ -15,7 +12,6 @@ import
 import { TextDocument, } from 'vscode-languageserver-textdocument';
 import
 {
-	
 	provideParserDiagnostic,
 	provideTokenDiagnostic,
 	provideParserErrorInformation
@@ -25,12 +21,13 @@ import
 	deriveSymbolsTree,
 	collectTokens
 } from './mxsProvideSymbols';
-import {
-	parserResult,
+import
+{
+	// parserResult,
 	ParserError,
-	parserOptions,
-	parseSource
-} from './mxsParser';
+	parserOptions
+} from './mxsParserBase';
+import { parseSource } from './mxsParser';
 import getDocumentSymbolsLegacy from './mxsOutlineLegacy';
 //--------------------------------------------------------------------------------
 export interface ParserSymbols
@@ -41,36 +38,31 @@ export interface ParserSymbols
 
 export class DocumentSymbolProvider
 {
-	private documentSymbolsFromCST(CST: any, document: TextDocument): DocumentSymbol[]
-	{
-		const loc = {
-			start: { line: 0, character: 0 },
-			end: document.positionAt(document.getText().length - 1)
-		};
-		return deriveSymbolsTree(CST, loc);
-	}
-
-	private async _parseTextDocument(document: TextDocument, options?: parserOptions): Promise<ParserSymbols>
+	private parseTextDocument(document: TextDocument, options?: parserOptions): ParserSymbols
 	{
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
 		let diagnostics: Diagnostic[] = [];
 		// feed the parser
-		let results: parserResult = await parseSource(document.getText(), options);
+		let results = parseSource(document.getText(), options);
 		//COLLECT SYMBOLDEFINITIONS
 		if (results!.result) {
-			SymbolInfCol = this.documentSymbolsFromCST(results.result, document);
+			const loc = {
+				start: { line: 0, character: 0 },
+				end: document.positionAt(document.getText().length - 1)
+			};
+			SymbolInfCol = deriveSymbolsTree(results.result, loc);
 			diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
 		}
 		// check for trivial errors
-		if (results!.error) {diagnostics.push(...provideParserDiagnostic(results.error));}
+		if (results!.error) { diagnostics.push(...provideParserDiagnostic(results.error)); }
 
 		return {
 			symbols: SymbolInfCol,
 			diagnostics: diagnostics
-		};	
+		};
 	}
 
-	private async _parseTextDocumentThreaded(document: TextDocument, options?: parserOptions): Promise<ParserSymbols>
+	private async parseTextDocumentThreaded(document: TextDocument, options?: parserOptions): Promise<ParserSymbols>
 	{
 		const documentSymbols = await spawn(new Worker('./workers/symbols.worker'));
 		try {
@@ -83,8 +75,6 @@ export class DocumentSymbolProvider
 				end: document.positionAt(source.length - 1)
 			};
 			return await documentSymbols(source, loc, options);
-		} catch (e) {
-			throw e;
 		} finally {
 			await Thread.terminate(documentSymbols);
 		}
@@ -94,24 +84,32 @@ export class DocumentSymbolProvider
 	async parseDocument(
 		document: TextDocument,
 		connection: Connection,
-		threading = true,
 		options: parserOptions = { recovery: true, attemps: 15, memoryLimit: 0.9 }
 	): Promise<ParserSymbols>
 	{
 		try {
-			let res = threading
-				? await this._parseTextDocumentThreaded(document, options)
-				: await this._parseTextDocument(document, options);
-				// console.log(res);
-			return res;
+			return this.parseTextDocument(document, options);
 		} catch (e: any) {
-			connection.window.showWarningMessage( `MaxScript: can't parse the code.\nCode minifier, beautifier, diagnostics and hierarchical symbols will be unavailable.\nReason: ${e.message}` );
+			connection.window.showWarningMessage(
+				`MaxScript: can't parse the code.\nCode minifier, beautifier, diagnostics and hierarchical symbols will be unavailable.\nReason: ${e.message}`
+			);
+			return getDocumentSymbolsLegacy(document, new Array(provideParserErrorInformation(<ParserError>e)));
+		}
+	}
+
+	async parseDocumentThreaded(
+		document: TextDocument,
+		connection: Connection,
+		options: parserOptions = { recovery: true, attemps: 15, memoryLimit: 0.9 }
+	): Promise<ParserSymbols>
+	{
+		try {
+			return await this.parseTextDocumentThreaded(document, options);
+		} catch (e: any) {
+			connection.window.showWarningMessage(`MaxScript: can't parse the code.\nCode minifier, beautifier, diagnostics and hierarchical symbols will be unavailable.\nReason: ${e.message}`);
 			// console.log(e.description);
 			return getDocumentSymbolsLegacy(document, new Array(provideParserErrorInformation(<ParserError>e)));
-		} /*finally {
-			console.log('legacy symbols');
-			return getDocumentSymbolsLegacy(document);
-		}*/
+		}
 	}
 }
 
