@@ -1,10 +1,10 @@
 import
-	{
-		CompletionItem,
-		CompletionItemKind,
-		Range,
-		Position
-	} from 'vscode-languageserver';
+{
+	CompletionItem,
+	CompletionItemKind,
+	Range,
+	Position
+} from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 //------------------------------------------------------------------------------------------
 import { maxCompletions } from './schema/mxsSchema';
@@ -31,23 +31,24 @@ export function provideCompletionItems(document: TextDocument, position: Positio
 
 	// if (!(util.isPositionInString(lineTillCurrentPosition))) { return []; }
 	const termMatch = dotPattern.exec(lineTillCurrentPosition);
+	// console.log(termMatch);
 	if (termMatch) {
 		// return properties, methods...
-		maxCompletions.forEach(item =>
-		{
-			if (item.label === termMatch![1]) {
-				switch (item.kind) {
-					case CompletionItemKind.Class:
-						return mxClassMembers?.[item.label];
-					case CompletionItemKind.Struct:
-						return mxStructsMembers?.[item.label];
-					case CompletionItemKind.Interface:
-						return mxInterfaceMembers?.[item.label];
-					default:
-						return;
-				}
+		// it must be a one-to-one relationship
+		const member = maxCompletions.find(item => item.label === termMatch[1]!);
+		if (member) {
+			switch (member.kind) {
+				case CompletionItemKind.Class:
+					return mxClassMembers?.[member.label];
+				case CompletionItemKind.Struct:
+					return mxStructsMembers?.[member.label];
+				case CompletionItemKind.Interface:
+					return mxInterfaceMembers?.[member.label];
+				default:
+					return [];
 			}
-		});
+		}
+		return [];
 	}
 	// return complete list of completions
 	return maxCompletions;
