@@ -20,13 +20,8 @@
 		"max script"
 	],
 	"engines": {
-		"vscode": "^1.45.0"
+		"vscode": "^1.75.0"
 	},
-	"activationEvents": [
-		"onLanguage:maxscript",
-		"onCommand:mxs.minify.file",
-		"onCommand:mxs.minify.files"
-	],
 	"main": "./client/out/extension.js",
 	"contributes": {
 		"languages": [
@@ -312,6 +307,7 @@
 		"@babel/types": "^7.16.8",
 		"@types/node": "^18.15.3",
 		"merge-options": "^3.0.4",
+		"rimraf": "^5.0.0",
 		"threads": "^1.7.0",
 		"threads-plugin": "^1.4.0",
 		"ts-loader": "^9.2.6",
@@ -323,7 +319,6 @@
 		"webpack-node-externals": "^3.0.0"
 	},
 	"dependencies": {
-		"rimraf": "^4.4.0",
 		"typescript-language-server": "^3.3.0"
 	}
 }
