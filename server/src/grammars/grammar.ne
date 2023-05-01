@@ -99,7 +99,7 @@
 @lexer mxLexer
 #===============================================================
 # ENTRY POINT
-Main -> junk:? _expr_seq:? junk:? {% d => d[1] %}
+Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 #---------------------------------------------------------------
 # Expressions main recursion
     # _EXPR -> expr (EOL expr):*    {% flatten %}

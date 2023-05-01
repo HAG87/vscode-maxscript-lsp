@@ -100,12 +100,12 @@ function id(x) { return x[0]; }
 var grammar = {
     Lexer: mxLexer,
     ParserRules: [
-    {"name": "Main$ebnf$1", "symbols": ["junk"], "postprocess": id},
-    {"name": "Main$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
+    {"name": "Main$ebnf$1", "symbols": []},
+    {"name": "Main$ebnf$1", "symbols": ["Main$ebnf$1", "junk"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
     {"name": "Main$ebnf$2", "symbols": ["_expr_seq"], "postprocess": id},
     {"name": "Main$ebnf$2", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "Main$ebnf$3", "symbols": ["junk"], "postprocess": id},
-    {"name": "Main$ebnf$3", "symbols": [], "postprocess": function(d) {return null;}},
+    {"name": "Main$ebnf$3", "symbols": []},
+    {"name": "Main$ebnf$3", "symbols": ["Main$ebnf$3", "junk"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
     {"name": "Main", "symbols": ["Main$ebnf$1", "Main$ebnf$2", "Main$ebnf$3"], "postprocess": d => d[1]},
     {"name": "expr", "symbols": ["MATH_EXPR"], "postprocess": id},
     {"name": "expr", "symbols": ["COMPARE_EXPR"], "postprocess": id},
