@@ -1081,7 +1081,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 
     call_args
         -> ( _:? unary_only_operand | _:? operand):+ {% flatten %}
-
+        # -> ( _:? unary_operand):+ {% flatten %}
     call_caller
         -> unary_operand {% id %}
         # -> VAR_NAME {% id %}
@@ -1252,6 +1252,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         | %kw_separator    {% id %}
         | %kw_submenu      {% id %}
         | %kw_time         {% id %}
+        | %kw_tool         {% id %}
         | %kw_set          {% id %}
 
     kw_override
@@ -1259,8 +1260,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         | %kw_parameters   {% id %}
         | %kw_rollout      {% id %}
         | %kw_plugin       {% id %}
-        | %kw_rcmenu       {% id %}
-        | %kw_tool         {% id %}
+        | %kw_rcmenu       {% id %}        
         | %kw_to           {% id %}
         | %kw_collect      {% id %}
         | %kw_return       {% id %}
