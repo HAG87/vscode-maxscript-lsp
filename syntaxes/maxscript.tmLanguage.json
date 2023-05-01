@@ -133,8 +133,8 @@
         },
         {
           "name": "documentation.plain.mxs",
-          "begin": "´´",
-          "end": "´´",
+          "begin": "``",
+          "end": "``",
           "patterns": [
             {
               "include": "#numeric"
@@ -246,7 +246,7 @@
           "match": "(?i)(?<![.$])\\b(about|coordsys|max|animate|from|undo|set)\\b"
         },
         {
-          "match": "(?:(&)(?:[_[:alnum:]]+))",
+          "match": "(?:(&)(?:[A-Za-z_][A-Za-z_0-9]*))",
           "captures": {
             "1": {
               "name": "keyword.operator.byref.mxs"
@@ -300,11 +300,11 @@
         },
         {
           "name": "constant.numeric.mxs",
-          "match": "(?<!\\.)\\b[+-]?\\d+[LP]?\\b"
+          "match": "(?i)(?<!\\.)\\b[+-]?\\d+[LP]?\\b"
         },
         {
           "name": "constant.numeric.mxs",
-          "match": "(?<!\\w|\\.)(?:\\d*\\.\\d+|\\d+\\.?\\d*)[msft](?:(?:\\d+|\\d*\\.\\d*)[msft])*"
+          "match": "(?i)(?<!\\w|\\.)(?:\\d*\\.\\d+|\\d+\\.?\\d*)[msft](?:(?:\\d+|\\d*\\.\\d*)[msft])*"
         },
         {
           "name": "constant.numeric.mxs",
@@ -580,27 +580,27 @@
         },
         {
           "name": "support.function.math.mxs",
-          "match": "(?xi)(?<![.$])\\b(?:abs|acos|asin|atan|atan2|ceil|close_enough|cos|cosh|degToRad|exp|floor|log|log10|logN|mod|pow|radToDeg|random|seed|sin|sinh|sqrt|tanh)\\b"
+          "match": "(?i)(?<![.$])\\b(?:abs|acos|asin|atan|atan2|ceil|close_enough|cos|cosh|degToRad|exp|floor|log|log10|logN|mod|pow|radToDeg|random|seed|sin|sinh|sqrt|tanh)\\b"
         },
         {
           "name": "support.function.vector.mxs",
-          "match": "(?xi)(?<![.$])\\b(?:arbAxis|cross|distance|dot|length|normalize|composite|noise3|noise4|turbulence|fractalNoise)\\b"
+          "match": "(?i)(?<![.$])\\b(?:arbAxis|cross|distance|dot|length|normalize|composite|noise3|noise4|turbulence|fractalNoise)\\b"
         },
         {
           "name": "support.function.geo.mxs",
-          "match": "(?xi)(?<![.$])\\b(?:conjugate|eulerToQuat|GetEulerMatAngleRatio|getEulerQuatAngleRatio|inverse|inverseHighPrecision|isIdentity|LnDif|matrixFromNormal|orthogonalize|preRotate|preRotateX|preRotateY|preRotateZ|preScale|preTranslate|qCompA|qorthog|quatArrayToEulerArray|quatToEuler|quatToEuler2|rotate|rotateX|rotateXMatrix|rotateY|rotateYMatrix|rotateYPRMatrix|rotateZ|rotateZMatrix|scale|scaleMatrix|slerp|squad|squadrev|transform|translate|transMatrix|xformMat|zero|Intersects|transpose|clear|setSize|contains|rectify|empty|isEmpty|move)\\b"
+          "match": "(?i)(?<![.$])\\b(?:conjugate|eulerToQuat|GetEulerMatAngleRatio|getEulerQuatAngleRatio|inverse|inverseHighPrecision|isIdentity|LnDif|matrixFromNormal|orthogonalize|preRotate|preRotateX|preRotateY|preRotateZ|preScale|preTranslate|qCompA|qorthog|quatArrayToEulerArray|quatToEuler|quatToEuler2|rotate|rotateX|rotateXMatrix|rotateY|rotateYMatrix|rotateYPRMatrix|rotateZ|rotateZMatrix|scale|scaleMatrix|slerp|squad|squadrev|transform|translate|transMatrix|xformMat|zero|Intersects|transpose|clear|setSize|contains|rectify|empty|isEmpty|move)\\b"
         },
         {
           "name": "support.function.array.mxs",
-          "match": "(?xi)(?<![.$])\\b(?:amax|amin|append|appendIfUnique|bsearch|deepCopy|deleteItem|findItem|insertItem|join|makeUniqueArray|qsort|sort)\\b"
+          "match": "(?i)(?<![.$])\\b(?:amax|amin|append|appendIfUnique|bsearch|deepCopy|deleteItem|findItem|insertItem|join|makeUniqueArray|qsort|sort)\\b"
         },
         {
           "name": "support.function.string.mxs",
-          "match": "(?xi)(?<![.$])\\b(?:filterString|findString|GetTextExtent|matchPattern|replace|replace_CRLF_with_LF|replace_LF_with_CRLF|stricmp|substituteString|substring|toLower|toUpper)\\b"
+          "match": "(?i)(?<![.$])\\b(?:filterString|findString|GetTextExtent|matchPattern|replace|replace_CRLF_with_LF|replace_LF_with_CRLF|stricmp|substituteString|substring|toLower|toUpper)\\b"
         },
         {
           "name": "support.function.generic.mxs",
-          "match": "(?xi)(?<![.$])\\b(?:copy|free|execute|delete|select|deselect|isDeleted|print|format)\\b"
+          "match": "(?i)(?<![.$])\\b(?:copy|free|execute|delete|select|deselect|isDeleted|print|format)\\b"
         }
       ]
     }

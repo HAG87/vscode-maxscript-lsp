@@ -351,18 +351,20 @@ connection.onDefinition((params, cancellation) =>
 });
 //------------------------------------------------------------------------------------------
 /*  Provide semantic tokens */
-// TODO: Fix tokens update
+
+// /*
 connection.languages.semanticTokens.on(params =>
 {
 	const document = documents.get(params.textDocument.uri);
 	return document !== undefined ? semanticTokensProvider.provideSemanticTokens(document) : { data: [] };
 });
-
+// TODO: Fix tokens update
 connection.languages.semanticTokens.onDelta(params =>
 {
 	const document = documents.get(params.textDocument.uri);
 	return document !== undefined ? semanticTokensProvider.provideDeltas(document, params.textDocument.uri) : { edits: [] };
 });
+// */
 //------------------------------------------------------------------------------------------
 /* Commands */
 interface MinifyDocParams

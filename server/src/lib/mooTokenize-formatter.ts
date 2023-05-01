@@ -32,16 +32,17 @@ export const mxsFormatterLexer = (keywords:keywordsMap = keywordsDB) => moo.comp
 	],
 	path: [
 		{ match: /\$(?:[A-Za-z0-9_*?/]|\.{3}|\\[\\/"'])+/ },
-		{ match: /\$'(?:[^'])*'/, lineBreaks: true },
+		{ match: /\$'(?:[^'])+'/, lineBreaks: true },
 		{ match: /\$/ }
 	],
-	//pathliteral: { match: /\$'(?:[^'])+'/, lineBreaks: true },
+
 	property: { match: /(?<=\.)[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/ },
 	identity: [
-		{ match: /'(?:[^'])*'/, lineBreaks: true},
-		{ match: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/},
+		{ match: /'(?:(?:[^']|[\r\n])+)'/, lineBreaks: true },
+		{ match: /::[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/ },
+		{ match: /[&][A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/ },
 		{
-			match: /[&]?[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
+			match: /[A-Za-z_\u00C0-\u00FF][A-Za-z0-9_\u00C0-\u00FF]*/,
 			type: caseInsensitiveKeywords(keywords)
 		}
 	],
