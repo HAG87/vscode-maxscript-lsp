@@ -100,11 +100,11 @@ function id(x) { return x[0]; }
 var grammar = {
     Lexer: mxLexer,
     ParserRules: [
-    {"name": "Main$ebnf$1", "symbols": ["__"], "postprocess": id},
+    {"name": "Main$ebnf$1", "symbols": ["junk"], "postprocess": id},
     {"name": "Main$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
     {"name": "Main$ebnf$2", "symbols": ["_expr_seq"], "postprocess": id},
     {"name": "Main$ebnf$2", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "Main$ebnf$3", "symbols": ["__"], "postprocess": id},
+    {"name": "Main$ebnf$3", "symbols": ["junk"], "postprocess": id},
     {"name": "Main$ebnf$3", "symbols": [], "postprocess": function(d) {return null;}},
     {"name": "Main", "symbols": ["Main$ebnf$1", "Main$ebnf$2", "Main$ebnf$3"], "postprocess": d => d[1]},
     {"name": "expr", "symbols": ["MATH_EXPR"], "postprocess": id},
