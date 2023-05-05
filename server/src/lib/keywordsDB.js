@@ -115,7 +115,7 @@ const keywordsDB = {
 
 const UIcontrols = [
 	'angle',
-	// 'bitmap',
+	'bitmap',
 	'button',
 	'checkbox',
 	'checkbutton',
