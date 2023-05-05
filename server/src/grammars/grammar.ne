@@ -1257,14 +1257,15 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 
     kw_override
         -> %kw_attributes  {% id %}
+        | %kw_collect      {% id %}
+        | %kw_context      {% id %}
+        | %kw_on           {% id %}
         | %kw_parameters   {% id %}
-        | %kw_rollout      {% id %}
         | %kw_plugin       {% id %}
         | %kw_rcmenu       {% id %}        
-        | %kw_to           {% id %}
-        | %kw_collect      {% id %}
         | %kw_return       {% id %}
-        | %kw_on           {% id %}
+        | %kw_rollout      {% id %}
+        | %kw_to           {% id %}
 #===============================================================
 # PATH NAME
     # THIS JUST CAPTURES ALL THE LEVEL PATH IN ONE TOKEN....
