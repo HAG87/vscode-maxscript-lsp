@@ -29,8 +29,7 @@ const mxLexer = moo.compile({
 	locale: /~[A-Za-z0-9_]+~/,
 
 	path: [
-		{ match: /\$(?:[A-Za-z0-9_*?/]|\.{3}|\\[\\/"'])+/ },
-		{ match: /\$'(?:[^'])+'/, lineBreaks: true },
+		{ match: /\$(?:(?:[A-Za-z0-9_*\\?]+|[.]{3}|'[^']+')[\\/]?)+/, lineBreaks: true },
 		{ match: /\$/ }
 	],
 
