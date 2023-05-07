@@ -20,9 +20,6 @@
           "include": "#comment"
         },
         {
-          "include": "#decl-block"
-        },
-        {
           "include": "#strings"
         },
         {
@@ -78,28 +75,16 @@
       "name": "punctuation.bitrange.mxs",
       "match": "\\.\\."
     },
-    "decl-block": {
-      "name": "meta.block.mxs",
-      "begin": "\\(",
-      "end": "\\)",
-      "beginCaptures": {
-        "0": {
-          "name": "punctuation.section.parens.mxs"
-        }
-      },
-      "endCaptures": {
-        "0": {
-          "name": "punctuation.section.parens.mxs"
-        }
-      },
-      "patterns": [
-        {
-          "include": "#statements"
-        }
-      ]
-    },
     "brackets": {
       "patterns": [
+        {
+          "name": "punctuation.section.parens.mxs",
+          "match": "\\("
+        },
+        {
+          "name": "punctuation.section.parens.mxs",
+          "match": "\\)"
+        },
         {
           "name": "punctuation.section.brackets.mxs",
           "match": "\\["
@@ -107,13 +92,21 @@
         {
           "name": "punctuation.section.brackets.mxs",
           "match": "\\]"
+        },
+        {
+          "name": "punctuation.section.braces.mxs",
+          "match": "\\{"
+        },
+        {
+          "name": "punctuation.section.braces.mxs",
+          "match": "\\}"
         }
       ]
     },
     "notes": {
       "patterns": [
         {
-          "match": "(@param)\\s+(\\w+)",
+          "match": "(@param)\\s+([A-Za-z_]\\w*)",
           "captures": {
             "1": {
               "name": "storage.type.class"
@@ -211,50 +204,6 @@
         }
       ]
     },
-    "keywords": {
-      "patterns": [
-        {
-          "name": "keyword.operator.relational.mxs",
-          "match": "<=|>=|<|>"
-        },
-        {
-          "name": "keyword.operator.comparison.mxs",
-          "match": "!=|=="
-        },
-        {
-          "name": "keyword.operator.assignment.mxs",
-          "match": "\\+=|\\*=|-=|\\/=|="
-        },
-        {
-          "name": "keyword.operator.assignment.mxs",
-          "match": "(?<!:):(?=[^:]|:{2}[^:])"
-        },
-        {
-          "name": "keyword.operator.arithmetic.mxs",
-          "match": "%|\\*|-|\\^|\\+"
-        },
-        {
-          "name": "keyword.operator.logical.mxs",
-          "match": "(?i)(?<![.$])\\b(and|or|as|not)\\b"
-        },
-        {
-          "name": "keyword.control.mxs",
-          "match": "(?i)(?<![.$])\\b(case|catch|collect|continue|do|else|exit|for|if|return|then|throw|try|when|where|while|with|dontcollect|of|at|by|in|to)\\b"
-        },
-        {
-          "name": "keyword.other.mxs",
-          "match": "(?i)(?<![.$])\\b(about|coordsys|max|animate|from|undo|set)\\b"
-        },
-        {
-          "match": "(?:(&)(?:[A-Za-z_][A-Za-z_0-9]*))",
-          "captures": {
-            "1": {
-              "name": "keyword.operator.byref.mxs"
-            }
-          }
-        }
-      ]
-    },
     "strings": {
       "patterns": [
         {
@@ -288,31 +237,67 @@
       "patterns": [
         {
           "name": "constant.numeric.mxs",
-          "match": "\\b\\d+\\.\\d+([EeDd][+-]?\\d+)?\\b"
+          "match": "(?<!\\.)\\b\\d+\\b"
         },
         {
           "name": "constant.numeric.mxs",
-          "match": "\\b(\\d+)(\\.)\\b"
+          "match": "([-]?)(\\d*?[.](?:\\d*(?:[eEdD][+-]?\\d+)?|[LlPp]))\\b"
         },
         {
           "name": "constant.numeric.mxs",
-          "match": "(?<!\\w)(\\.\\d+([EeDd][+-]?\\d+)?)"
+          "match": "\\b[-]?(?:(?:\\d+[.])?\\d+[MmSsFfTt])+\\b"
         },
         {
           "name": "constant.numeric.mxs",
-          "match": "(?i)(?<!\\.)\\b[+-]?\\d+[LP]?\\b"
-        },
-        {
-          "name": "constant.numeric.mxs",
-          "match": "(?i)(?<!\\w|\\.)(?:\\d*\\.\\d+|\\d+\\.?\\d*)[msft](?:(?:\\d+|\\d*\\.\\d*)[msft])*"
-        },
-        {
-          "name": "constant.numeric.mxs",
-          "match": "(?<!\\w)\\d+(?:\\:)\\d+(\\.\\d+)?(?!\\w)"
+          "match": "\\b(\\d+[:]\\d+[.]\\d+)\\b"
         },
         {
           "name": "constant.numeric.hex.mxs",
-          "match": "\\b(?<!\\$)0(x|X)[0-9a-fA-F]+\\b"
+          "match": "\\b(0[Xx][0-9a-fA-F]+)\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.operator.relational.mxs",
+          "match": "[<>]=?"
+        },
+        {
+          "name": "keyword.operator.comparison.mxs",
+          "match": "[!=]="
+        },
+        {
+          "name": "keyword.operator.assignment.mxs",
+          "match": "[/*+-]?="
+        },
+        {
+          "name": "keyword.operator.assignment.mxs",
+          "match": "(?<!:):(?=[^:]|:{2}[^:])"
+        },
+        {
+          "name": "keyword.operator.arithmetic.mxs",
+          "match": "[%+*^/-]"
+        },
+        {
+          "name": "keyword.operator.logical.mxs",
+          "match": "(?i)(?<![.$])\\b(and|or|as|not)\\b"
+        },
+        {
+          "name": "keyword.control.mxs",
+          "match": "(?i)(?<![.$])\\b(case|catch|collect|continue|do|else|exit|for|if|return|then|throw|try|when|where|while|with|dontcollect|of|at|by|in|to)\\b"
+        },
+        {
+          "name": "keyword.other.mxs",
+          "match": "(?i)(?<![.$])\\b(about|coordsys|max|animate|from|undo|set)\\b"
+        },
+        {
+          "match": "(&)(?:[A-Za-z_]\\w*)",
+          "captures": {
+            "1": {
+              "name": "keyword.operator.byref.mxs"
+            }
+          }
         }
       ]
     },
@@ -320,7 +305,7 @@
       "patterns": [
         {
           "name": "meta.struct.mxs",
-          "match": "(?i)(?:\\b(struct)\\b\\s+(\\w+))",
+          "match": "(?i)(?:\\b(struct)\\b\\s+([A-Za-z_]\\w*))",
           "captures": {
             "1": {
               "name": "storage.type.struct.mxs"
@@ -332,7 +317,7 @@
         },
         {
           "name": "meta.function.mxs",
-          "begin": "(?i)\\b((?:mapped\\s+)?(?:fn|function))\\s+(\\w+)",
+          "begin": "(?i)\\b((?:mapped\\s+)?(?:fn|function))\\s+([A-Za-z_]\\w*)",
           "end": "=",
           "beginCaptures": {
             "1": {
@@ -369,7 +354,7 @@
           },
           "patterns": [
             {
-              "match": "(?i)(?:\\s+(\\w+))?\\s+(\\w+)\\s+(?=do|return)",
+              "match": "(?i)(?:\\s+([A-Za-z_]\\w*))?\\s+([A-Za-z_]\\w*)\\s+(?=do|return)",
               "captures": {
                 "1": {
                   "name": "entity.other.event.mxs"
@@ -380,7 +365,7 @@
               }
             },
             {
-              "match": "(?i)\\s+(\\w+)\\s+(\\w+)\\s+(\\w+)(?:\\s+(\\w+))?\\s+(?=do|return)",
+              "match": "(?i)\\s+([A-Za-z_]\\w*)\\s+([A-Za-z_]\\w*)\\s+([A-Za-z_]\\w*)(?:\\s+([A-Za-z_]\\w*))?\\s+(?=do|return)",
               "captures": {
                 "1": {
                   "name": "entity.other.event.mxs"
@@ -400,7 +385,7 @@
         },
         {
           "name": "meta.entity",
-          "match": "(?i)\\b(attributes|macroscript|parameters|plugin|rcmenu|rollout|tool|utility)\\b\\s+(\\w+)\\b",
+          "match": "(?i)\\b(attributes|macroscript|parameters|plugin|rcmenu|rollout|tool|utility)\\b\\s+([A-Za-z_]\\w*)\\b",
           "captures": {
             "1": {
               "name": "storage.type.entity.mxs"
@@ -416,12 +401,11 @@
       "patterns": [
         {
           "name": "variable.property.mxs",
-          "match": "(?<=\\.)([A-Za-z_][A-Za-z_0-9]*)\\b"
+          "match": "(?<=\\.)([A-Za-z_]\\w*)\\b"
         },
         {
           "name": "variable.parameter.mxs",
-          "match": "\\b([A-Za-z_][A-Za-z_0-9]*)(?=\\s*:[^:])",
-          "comment": "Matches keyword assignment in function calls and definitions (e.g., fn add flag:#optional)"
+          "match": "\\b([A-Za-z_]\\w*)(?=\\s*:[^:])"
         },
         {
           "name": "variable.language.mxs",
@@ -429,14 +413,11 @@
         },
         {
           "name": "variable.other.mxs",
-          "match": "(:{2})(\\w+)\\b"
+          "match": "(:{2})([A-Za-z_]\\w*)\\b"
         },
         {
           "name": "variable.other.pathname.mxs",
-          "match": "\\$(?:(?:[A-Za-z0-9_*?\\/\\\\]|[.]{3})+|'((?:[^'\\n\\r])+)')?"
-        },
-        {
-          "name": "variable.identifier.quoted.mxs",
+          "match": "(\\$)((?:[A-Za-z0-9_*?\\\\]+|[\\/]|[.]{3}|'[^'\\n\\r]*')+)?",
           "begin": "'",
           "end": "'",
           "patterns": [
@@ -448,11 +429,11 @@
         },
         {
           "name": "variable.identifier.name.mxs",
-          "match": "(#)(\\w+)\\b"
+          "match": "(#)([A-Za-z_]\\w*)\\b"
         },
         {
           "name": "variable.identifier.name.quoted.mxs",
-          "match": "(#)(?:('[^']*')|(\\w+))\\b"
+          "match": "(#)('[^']+')"
         }
       ]
     },
@@ -560,7 +541,7 @@
       "patterns": [
         {
           "name": "entity.name.type.mxs",
-          "match": "(?<!\\.)(?:[A-Za-z_][A-Za-z_0-9]*)+(?=\\.)"
+          "match": "(?<!\\.)(?:[A-Za-z_]\\w*)+(?=\\.)"
         },
         {
           "name": "support.variable.objectset.mxs",
