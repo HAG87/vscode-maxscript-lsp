@@ -145,12 +145,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
                 body: d[1],
                 range: getLoc(d[0], d[2])
             })%}
-        | "(" __:? ")"
-            {% d => ({
-                type: 'EmptyParens',
-                body: [],
-                range: getLoc(d[0], d[2])
-            })%}
+        | empty_parens {% id %}
    
     _expr_seq
         -> expr (EOL expr):* {% flatten %}
@@ -1060,6 +1055,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
                 res.range = getLoc(d[0], res.args);
                 return res;
             } %}
+        | FN_NULL_CALL {% id %}
         | call_caller call_params
             {% d => ({
                 type:  'CallExpression',
@@ -1075,7 +1071,15 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         #        args:  null,
         #        range: getLoc(d[0], d[2])
         #    })%}
-
+    FN_NULL_CALL
+        -> call_caller _:? empty_parens
+            {% d => ({
+                type:  'CallExpression',
+                calle: d[0],
+                args:  d[2],
+                range: getLoc(d[0], d[2])
+            })%}
+    
     call_params
         -> (_:? parameter):+ {% flatten %}
 
@@ -1090,7 +1094,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 #---------------------------------------------------------------
 # PARAMETER CALL --- OK
     parameter
-        -> param_name __:? unary_operand
+        -> param_name __:? (unary_operand | FN_NULL_CALL) 
             {% d => ({
                 type: 'ParameterAssignment',
                 param: d[0],
@@ -1236,6 +1240,14 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 
     LBRACE ->      %lbrace __:?     {% id %}
     RBRACE -> __:? %rbrace          {% d => d[1] %}
+
+    empty_parens
+        -> "(" __:? ")"
+            {% d => ({
+                type: 'EmptyParens',
+                body: [],
+                range: getLoc(d[0], d[2])
+            })%}
 #===============================================================
 # VARNAME --- IDENTIFIERS --- OK
     # some keywords can be VAR_NAME too...

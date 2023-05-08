@@ -135,13 +135,7 @@ var grammar = {
             body: d[1],
             range: getLoc(d[0], d[2])
         })},
-    {"name": "expr_seq$ebnf$1", "symbols": ["__"], "postprocess": id},
-    {"name": "expr_seq$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "expr_seq", "symbols": [{"literal":"("}, "expr_seq$ebnf$1", {"literal":")"}], "postprocess":  d => ({
-            type: 'EmptyParens',
-            body: [],
-            range: getLoc(d[0], d[2])
-        })},
+    {"name": "expr_seq", "symbols": ["empty_parens"], "postprocess": id},
     {"name": "_expr_seq$ebnf$1", "symbols": []},
     {"name": "_expr_seq$ebnf$1$subexpression$1", "symbols": ["EOL", "expr"]},
     {"name": "_expr_seq$ebnf$1", "symbols": ["_expr_seq$ebnf$1", "_expr_seq$ebnf$1$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
@@ -1143,11 +1137,20 @@ var grammar = {
             res.range = getLoc(d[0], res.args);
             return res;
         } },
+    {"name": "FN_CALL", "symbols": ["FN_NULL_CALL"], "postprocess": id},
     {"name": "FN_CALL", "symbols": ["call_caller", "call_params"], "postprocess":  d => ({
             type:  'CallExpression',
             calle: d[0],
             args:  d[1],
             range: getLoc(d[0], d[1])
+        })},
+    {"name": "FN_NULL_CALL$ebnf$1", "symbols": ["_"], "postprocess": id},
+    {"name": "FN_NULL_CALL$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
+    {"name": "FN_NULL_CALL", "symbols": ["call_caller", "FN_NULL_CALL$ebnf$1", "empty_parens"], "postprocess":  d => ({
+            type:  'CallExpression',
+            calle: d[0],
+            args:  d[2],
+            range: getLoc(d[0], d[2])
         })},
     {"name": "call_params$ebnf$1$subexpression$1$ebnf$1", "symbols": ["_"], "postprocess": id},
     {"name": "call_params$ebnf$1$subexpression$1$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
@@ -1176,7 +1179,9 @@ var grammar = {
     {"name": "call_caller", "symbols": ["unary_operand"], "postprocess": id},
     {"name": "parameter$ebnf$1", "symbols": ["__"], "postprocess": id},
     {"name": "parameter$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "parameter", "symbols": ["param_name", "parameter$ebnf$1", "unary_operand"], "postprocess":  d => ({
+    {"name": "parameter$subexpression$1", "symbols": ["unary_operand"]},
+    {"name": "parameter$subexpression$1", "symbols": ["FN_NULL_CALL"]},
+    {"name": "parameter", "symbols": ["param_name", "parameter$ebnf$1", "parameter$subexpression$1"], "postprocess":  d => ({
             type: 'ParameterAssignment',
             param: d[0],
             value: d[2],
@@ -1311,6 +1316,13 @@ var grammar = {
     {"name": "RBRACE$ebnf$1", "symbols": ["__"], "postprocess": id},
     {"name": "RBRACE$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
     {"name": "RBRACE", "symbols": ["RBRACE$ebnf$1", (mxLexer.has("rbrace") ? {type: "rbrace"} : rbrace)], "postprocess": d => d[1]},
+    {"name": "empty_parens$ebnf$1", "symbols": ["__"], "postprocess": id},
+    {"name": "empty_parens$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
+    {"name": "empty_parens", "symbols": [{"literal":"("}, "empty_parens$ebnf$1", {"literal":")"}], "postprocess":  d => ({
+            type: 'EmptyParens',
+            body: [],
+            range: getLoc(d[0], d[2])
+        })},
     {"name": "VAR_NAME", "symbols": [(mxLexer.has("identity") ? {type: "identity"} : identity)], "postprocess": Identifier},
     {"name": "VAR_NAME", "symbols": ["kw_reserved"], "postprocess": Identifier},
     {"name": "kw_reserved", "symbols": [(mxLexer.has("kw_uicontrols") ? {type: "kw_uicontrols"} : kw_uicontrols)], "postprocess": id},
