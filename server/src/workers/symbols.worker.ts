@@ -20,15 +20,23 @@ expose(
 	{
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
 		let diagnostics: Diagnostic[] = [];
-		let results = parseSource(source, options);
-
-		if (results.result) {
-			SymbolInfCol = deriveSymbolsTree(results.result, range);
-			diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
+		try {
+			let results = parseSource(source, options);
+			if (results.result) {
+				SymbolInfCol = deriveSymbolsTree(results.result, range);
+				diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
+			}
+			if (results.error) { diagnostics.push(...provideParserDiagnostic(results.error)); }
+		} catch (err: any) {
+			if (err.token) {
+				diagnostics.push(...provideParserDiagnostic(err));
+			} else {
+				throw err;
+			}
+		} finally {
+			return {
+				symbols: SymbolInfCol,
+				diagnostics: diagnostics
+			};
 		}
-		if (results.error) { diagnostics.push(...provideParserDiagnostic(results.error)); }
-		return {
-			symbols: SymbolInfCol,
-			diagnostics: diagnostics
-		};
 	});

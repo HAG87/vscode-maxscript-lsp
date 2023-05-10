@@ -82,6 +82,7 @@ let generateParserError = (err: any) =>
 	newErr.name = 'ERR_FATAL';
 	newErr.recoverable = false;
 	newErr.token = err.token;
+	newErr.tokens = [err.token];
 	newErr.description = err.message;
 	return newErr;
 }

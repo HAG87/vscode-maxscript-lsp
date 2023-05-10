@@ -43,23 +43,31 @@ export class DocumentSymbolProvider
 		let SymbolInfCol: SymbolInformation[] | DocumentSymbol[] = [];
 		let diagnostics: Diagnostic[] = [];
 		// feed the parser
-		let results = parseSource(document.getText(), options);
-		//COLLECT SYMBOLDEFINITIONS
-		if (results!.result) {
-			const loc = {
-				start: { line: 0, character: 0 },
-				end: document.positionAt(document.getText().length - 1)
+		try {
+			let results = parseSource(document.getText(), options);
+			//COLLECT SYMBOLDEFINITIONS
+			if (results!.result) {
+				const loc = {
+					start: { line: 0, character: 0 },
+					end: document.positionAt(document.getText().length - 1)
+				};
+				SymbolInfCol = deriveSymbolsTree(results.result, loc);
+				diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
+			}
+			// check for trivial errors
+			if (results!.error) { diagnostics.push(...provideParserDiagnostic(results.error)); }
+		} catch (err: any) {
+			if (err.tokens) {
+				diagnostics.push(...provideParserDiagnostic(err));
+			} else {
+				throw err;
+			}
+		} finally {
+			return {
+				symbols: SymbolInfCol,
+				diagnostics: diagnostics
 			};
-			SymbolInfCol = deriveSymbolsTree(results.result, loc);
-			diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
 		}
-		// check for trivial errors
-		if (results!.error) { diagnostics.push(...provideParserDiagnostic(results.error)); }
-
-		return {
-			symbols: SymbolInfCol,
-			diagnostics: diagnostics
-		};
 	}
 
 	private async parseTextDocumentThreaded(document: TextDocument, options?: parserOptions): Promise<ParserSymbols>
