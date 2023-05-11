@@ -78,6 +78,7 @@ export const mxsSymbols: mxsSymbolMatch[] = [
 ];
 /**
  * Maps values from type > vcode kind enumeration
+ * Add token types here to include them in the result
  */
 export const SymbolKindMatch: Record<string, SymbolKind> = {
 	'EntityAttributes'      : SymbolKind.Object,

@@ -309,11 +309,15 @@ connection.onDocumentSymbol((params, cancelation) =>
 connection.onCompletion(async params =>
 {
 	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) { return; }
-
-	return mxsCompletion.provideCompletionItems(
+	// parser completions
+	// outliner completions
+	let SymbolDocumentsCompletion = currentDocumentSymbols ? mxsCompletion.provideSymbolCompletionItems(<DocumentSymbol[]>currentDocumentSymbols) : [];
+	// database completions
+	let DatabaseCompletion = mxsCompletion.provideCompletionItems(
 		documents.get(params.textDocument.uri)!,
 		params.position
 	);
+	return [...SymbolDocumentsCompletion, ...DatabaseCompletion];
 });
 
 /* Definition provider */
@@ -351,8 +355,6 @@ connection.onDefinition((params, cancellation) =>
 });
 //------------------------------------------------------------------------------------------
 /*  Provide semantic tokens */
-
-// /*
 connection.languages.semanticTokens.on(params =>
 {
 	const document = documents.get(params.textDocument.uri);
@@ -364,7 +366,7 @@ connection.languages.semanticTokens.onDelta(params =>
 	const document = documents.get(params.textDocument.uri);
 	return document !== undefined ? semanticTokensProvider.provideDeltas(document, params.textDocument.uri) : { edits: [] };
 });
-// */
+//------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------
 /* Commands */
 interface MinifyDocParams

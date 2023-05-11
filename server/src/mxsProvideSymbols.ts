@@ -11,7 +11,7 @@ import { SymbolKindMatch } from './schema/mxsSymbolDef';
 import { traverse } from 'ast-monkey-traverse';
 //-----------------------------------------------------------------------------------
 /** Verify that the node is valid */
-const isNode = (node: any) => typeof node === 'object' && node != null;
+const isNode = (node: any) => node != null && typeof node === 'object';
 /**
  * Ranges produced by moo needs to be adjusted, since it starts at 1:1, and for vscode is 0:0
  * line: the line number of the beginning of the match, starting from 1.
@@ -66,14 +66,16 @@ export function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyF
 		// if (!node) { return []; }
 		let _node: DocumentSymbol;
 
-		if (isNode(node) && keyFilter in node) {
-
-			// only constructs like functions, strutcts and so on have an ID property
+		if (isNode(node) && node.hasOwnProperty(keyFilter)) {
+			/*
+			if (isNode(node)) {
+				if (keyFilter in node) {
+			*/
+			// only constructs like functions, structs and so on have an ID property
 			// the node 'id' value is a moo token with the node identifier
 			const token: Token = node[keyFilter].value;
 			// if node doesnt have a location, infer it from the token AND adjust line and char difference !
-			const loc = <Range>rangeRemap(node.range || tokenRange(token));
-
+			const loc = rangeRemap(node.range || tokenRange(token));
 			_node = {
 				name: token.text,
 				detail: node.type || 'unknown',
@@ -83,6 +85,29 @@ export function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyF
 			};
 			// Push the node in the parent child collection
 			parent.children != null ? parent.children.push(_node) : parent.children = [_node];
+			/*
+			} else if ('value' in node && isNode(node.value)) {
+				const token: Token = node.value;
+				// if node doesnt have a location, infer it from the token AND adjust line and char difference !
+				if (token.hasOwnProperty('text') && token.text) {
+					const loc = rangeRemap(node.range || tokenRange(token));
+					_node = {
+						name: token.text,
+						detail: node.type || 'unknown',
+						kind: node.type != null ? (SymbolKindMatch[node.type] || SymbolKind.Method) : SymbolKind.Method,
+						range: loc,
+						selectionRange: loc
+					};
+					parent.children != null ? parent.children.push(_node) : parent.children = [_node];
+				}
+				else {
+					_node = parent;
+				}
+			} else {
+				// console.log(node);
+				_node = parent;
+			}
+			*/
 		} else {
 			_node = parent;
 		}
@@ -115,7 +140,7 @@ export function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyF
 }
 //-----------------------------------------------------------------------------------
 /**
- * Return errorSymbol from invalid tokens
+ * Collect all the tokens that contains the given key and value
  * @param CST the CST
  */
 export function collectTokens(CST: any, key: string = 'type', value?: string)
