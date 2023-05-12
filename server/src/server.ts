@@ -30,7 +30,7 @@ import { replaceText } from './lib/workspaceEdits';
 import { prefixFile } from './lib/utils';
 //------------------------------------------------------------------------------------------
 import * as mxsCompletion from './mxsCompletions';
-import { mxsDocumentSymbols } from './mxsOutline';
+import { DocumentSymbolProvider } from './mxsOutline';
 import * as mxsMinifier from './mxsMin';
 import * as mxsDefinitions from './mxsDefinitions';
 import * as mxsSimpleFormatter from './mxsSimpleFormatter';
@@ -52,6 +52,10 @@ let currentDocumentSymbols: DocumentSymbol[] | SymbolInformation[] = [];
 let currentTextDocumentURI: string | undefined;
 /** The semantic tokens provider */
 let semanticTokensProvider: mxsSemanticTokens;
+/**
+ * Initialized mxsDocumentSymbolProvider. Intended to be consumed by the SymbolProviders and be persistent for the current editor
+ */
+let mxsDocumentSymbols: DocumentSymbolProvider;
 //------------------------------------------------------------------------------------------
 /* Initialize the server */
 connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> | ResponseError<InitializeError> | InitializeResult =>
@@ -60,7 +64,14 @@ connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> |
 	Capabilities.initialize(params.capabilities);
 	// Initialize semanticToken provider
 	semanticTokensProvider = new mxsSemanticTokens(params.capabilities.textDocument!.semanticTokens!);
+	// Initialize the Symbols provider
+	mxsDocumentSymbols = new DocumentSymbolProvider(connection);
+	// Parser settings
+	mxsDocumentSymbols.options.recovery = globalSettings.parser.errorCheck;
+	mxsDocumentSymbols.options.attemps = globalSettings.parser.errorLimit;
+
 	/*
+	//TODO:
 	for (let folder of params.workspaceFolders) {
 		connection.console.log(`${folder.name} ${folder.uri}`);
 	}
@@ -68,6 +79,7 @@ connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> |
 		folder = params.workspaceFolders[0].uri;
 	}
 	*/
+
 	return new Promise((resolve, reject) =>
 	{
 		let result: InitializeResult = {
@@ -80,8 +92,8 @@ connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> |
 							triggerCharacters: ['.']
 						}
 						: undefined,
-				documentSymbolProvider: Capabilities.hasDocumentSymbolCapability,
-				definitionProvider: Capabilities.hasDefinitionCapability,
+				documentSymbolProvider:     Capabilities.hasDocumentSymbolCapability,
+				definitionProvider:         Capabilities.hasDefinitionCapability,
 				documentFormattingProvider: Capabilities.hasDocumentFormattingCapability,
 
 				// workspaceSymbolProvider: true,
@@ -132,6 +144,7 @@ connection.onInitialized(() =>
 	// Settings...
 	// getGlobalSettings()
 	/*
+	//TODO:
 	if (Capabilities.hasWorkspaceFolderCapability) {
 		connection.workspace.onDidChangeWorkspaceFolders(_event => {
 			connection.console.log('Workspace folder change event received.');
@@ -167,7 +180,7 @@ async function getGlobalSettings()
 		}
 	});
 }
-*/
+// */
 function getDocumentSettings(resource: string)
 {
 	if (!Capabilities.hasConfigurationCapability) {
@@ -187,7 +200,6 @@ function getDocumentSettings(resource: string)
 function diagnoseDocument(document: TextDocument, diagnose: Diagnostic[])
 {
 	if (!Capabilities.hasDiagnosticCapability && !globalSettings.Diagnostics) { return; }
-	// connection.console.log('We received a Diagnostic update event');
 	connection.sendDiagnostics({ uri: document.uri, diagnostics: diagnose });
 }
 //------------------------------------------------------------------------------------------
@@ -239,7 +251,7 @@ connection.onDocumentFormatting(async params =>
 	}
 });
 
-// Document Range formatter - WIP
+// TODO: Document Range formatter - WIP
 /*
 connection.onDocumentRangeFormatting(
 	async (_DocumentRangeFormattingParams: DocumentRangeFormattingParams) =>
@@ -265,23 +277,23 @@ connection.onDocumentSymbol((params, cancelation) =>
 		// cancellation request
 		cancelation.onCancellationRequested(/* async */() => resolve);
 		// settings
-		const options = { recovery: false, attemps: 10, memoryLimit: 0.9 };
 		let threading = false;
 
 		getDocumentSettings(params.textDocument.uri)
 			.then(result =>
 			{
 				if (!result.GoToSymbol) { resolve; }
-				options.recovery = result.parser.errorCheck;
-				options.attemps = result.parser.errorLimit;
+				mxsDocumentSymbols.options.recovery = result.parser.errorCheck;
+				mxsDocumentSymbols.options.attemps = result.parser.errorLimit;
 				threading = result.parser.multiThreading;
 			});
 
+			
 		let document = documents.get(params.textDocument.uri)!;
 		let symbolsresult =
 			threading
-				? mxsDocumentSymbols.parseDocumentThreaded(document, connection, options)
-				: mxsDocumentSymbols.parseDocument(document, connection, options);
+				? mxsDocumentSymbols.parseDocumentThreaded(document)
+				: mxsDocumentSymbols.parseDocument(document);
 
 		symbolsresult.then(result =>
 		{
@@ -310,6 +322,8 @@ connection.onCompletion(async params =>
 {
 	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) { return; }
 	// parser completions
+	// console.log(mxsDocumentSymbols.parseSucess());
+	let ParserCompletions = mxsDocumentSymbols.parseSucess() ? mxsCompletion.provideDocumentCompletionItems(mxsDocumentSymbols.getParseTree()) : [];
 	// outliner completions
 	let SymbolDocumentsCompletion = currentDocumentSymbols ? mxsCompletion.provideSymbolCompletionItems(<DocumentSymbol[]>currentDocumentSymbols) : [];
 	// database completions
@@ -317,7 +331,7 @@ connection.onCompletion(async params =>
 		documents.get(params.textDocument.uri)!,
 		params.position
 	);
-	return [...SymbolDocumentsCompletion, ...DatabaseCompletion];
+	return [...SymbolDocumentsCompletion, ...DatabaseCompletion, ...ParserCompletions];
 });
 
 /* Definition provider */
@@ -367,6 +381,8 @@ connection.languages.semanticTokens.onDelta(params =>
 	return document !== undefined ? semanticTokensProvider.provideDeltas(document, params.textDocument.uri) : { edits: [] };
 });
 //------------------------------------------------------------------------------------------
+/* Commands */
+// connection.onColorPresentation
 //------------------------------------------------------------------------------------------
 /* Commands */
 interface MinifyDocParams
