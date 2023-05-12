@@ -69,6 +69,7 @@ connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> |
 	// Initialize the symbols provider
 	mxsDocumentSymbols = new DocumentSymbolProvider();
 	/*
+	//TODO:
 	for (let folder of params.workspaceFolders) {
 		connection.console.log(`${folder.name} ${folder.uri}`);
 	}
@@ -76,6 +77,7 @@ connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> |
 		folder = params.workspaceFolders[0].uri;
 	}
 	*/
+
 	return new Promise((resolve, reject) =>
 	{
 		let result: InitializeResult = {
@@ -88,8 +90,8 @@ connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> |
 							triggerCharacters: ['.']
 						}
 						: undefined,
-				documentSymbolProvider: Capabilities.hasDocumentSymbolCapability,
-				definitionProvider: Capabilities.hasDefinitionCapability,
+				documentSymbolProvider:     Capabilities.hasDocumentSymbolCapability,
+				definitionProvider:         Capabilities.hasDefinitionCapability,
 				documentFormattingProvider: Capabilities.hasDocumentFormattingCapability,
 
 				// workspaceSymbolProvider: true,
@@ -140,6 +142,7 @@ connection.onInitialized(() =>
 	// Settings...
 	// getGlobalSettings()
 	/*
+	//TODO:
 	if (Capabilities.hasWorkspaceFolderCapability) {
 		connection.workspace.onDidChangeWorkspaceFolders(_event => {
 			connection.console.log('Workspace folder change event received.');
@@ -175,7 +178,7 @@ async function getGlobalSettings()
 		}
 	});
 }
-*/
+// */
 function getDocumentSettings(resource: string)
 {
 	if (!Capabilities.hasConfigurationCapability) {
@@ -195,7 +198,6 @@ function getDocumentSettings(resource: string)
 function diagnoseDocument(document: TextDocument, diagnose: Diagnostic[])
 {
 	if (!Capabilities.hasDiagnosticCapability && !globalSettings.Diagnostics) { return; }
-	// connection.console.log('We received a Diagnostic update event');
 	connection.sendDiagnostics({ uri: document.uri, diagnostics: diagnose });
 }
 //------------------------------------------------------------------------------------------
@@ -247,7 +249,7 @@ connection.onDocumentFormatting(async params =>
 	}
 });
 
-// Document Range formatter - WIP
+// TODO: Document Range formatter - WIP
 /*
 connection.onDocumentRangeFormatting(
 	async (_DocumentRangeFormattingParams: DocumentRangeFormattingParams) =>
@@ -280,6 +282,7 @@ connection.onDocumentSymbol((params, cancelation) =>
 				// threading = result.parser.multiThreading;
 			});
 
+			
 		let document = documents.get(params.textDocument.uri)!;
 		let symbolsresult =
 			threading
@@ -311,6 +314,8 @@ connection.onCompletion(async params =>
 {
 	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) { return; }
 	// parser completions
+	// console.log(mxsDocumentSymbols.parseSucess());
+	let ParserCompletions = mxsDocumentSymbols.parseSucess() ? mxsCompletion.provideDocumentCompletionItems(mxsDocumentSymbols.getParseTree()) : [];
 	// outliner completions
 	let SymbolDocumentsCompletion = currentDocumentSymbols ? mxsCompletion.provideSymbolCompletionItems(<DocumentSymbol[]>currentDocumentSymbols) : [];
 	// database completions
@@ -318,7 +323,7 @@ connection.onCompletion(async params =>
 		documents.get(params.textDocument.uri)!,
 		params.position
 	);
-	return [...SymbolDocumentsCompletion, ...DatabaseCompletion];
+	return [...SymbolDocumentsCompletion, ...DatabaseCompletion, ...ParserCompletions];
 });
 
 /* Definition provider */

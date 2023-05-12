@@ -1,7 +1,6 @@
 /**
  * Provide document symbols via parse tree.
  */
-import { spawn, Thread, Worker } from "threads"
 import
 {
 	Range,
@@ -28,6 +27,11 @@ import
 	ParserError,
 	parserOptions
 } from './mxsParserBase';
+import
+{
+	parseSource,
+	parseSourceThreaded
+} from './mxsParser';
 import { parseSource, parseSourceThreaded } from './mxsParser';
 import getDocumentSymbolsLegacy from './mxsOutlineLegacy';
 //--------------------------------------------------------------------------------
@@ -95,7 +99,10 @@ export class DocumentSymbolProvider
 		try {
 			return await documentSymbols(document.getText(), this.documentRange(document), options);
 		} finally {
-			await Thread.terminate(documentSymbols);
+			return {
+				symbols: SymbolInfCol,
+				diagnostics: diagnostics
+			};
 		}
 	}
 	/** MXS document parser */
