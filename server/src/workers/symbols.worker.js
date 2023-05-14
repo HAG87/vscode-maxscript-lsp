@@ -19,7 +19,7 @@ expose(
 			if (results.result) {
 				response.symbols = deriveSymbolsTree(results.result, range);
 				response.diagnostics = [...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error'))];
-				response.cst.concat(results.result);
+				// response.cst.concat(results.result);
 			}
 			if (results.error) {
 				response.diagnostics.push(...provideParserDiagnostic(results.error));
