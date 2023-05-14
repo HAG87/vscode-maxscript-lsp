@@ -323,7 +323,7 @@ connection.onCompletion(async params =>
 	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) { return; }
 	// parser completions
 	// console.log(mxsDocumentSymbols.parseSucess());
-	let ParserCompletions = mxsDocumentSymbols.parseSucess() ? mxsCompletion.provideDocumentCompletionItems(mxsDocumentSymbols.getParseTree()) : [];
+	// let ParserCompletions = mxsDocumentSymbols.parseSucess() ? mxsCompletion.provideDocumentCompletionItems(mxsDocumentSymbols.getParseTree()) : [];
 	// outliner completions
 	let SymbolDocumentsCompletion = currentDocumentSymbols ? mxsCompletion.provideSymbolCompletionItems(<DocumentSymbol[]>currentDocumentSymbols) : [];
 	// database completions
@@ -331,7 +331,8 @@ connection.onCompletion(async params =>
 		documents.get(params.textDocument.uri)!,
 		params.position
 	);
-	return [...SymbolDocumentsCompletion, ...DatabaseCompletion, ...ParserCompletions];
+	// return [...SymbolDocumentsCompletion, ...DatabaseCompletion, ...ParserCompletions];
+	return [...SymbolDocumentsCompletion, ...DatabaseCompletion];
 });
 
 /* Definition provider */
