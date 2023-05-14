@@ -11,24 +11,12 @@ function id(x) { return x[0]; }
     */
     const mxLexer = require('./mooTokenize.js');
     // Utilities
-    function getNested(obj, ...args) {
-        return args.reduce((obj, level) => obj && obj[level], obj)
-    }
-
-    function checkNested(obj, level,  ...rest) {
-        if (obj === undefined) return false
-        if (rest.length == 0 && obj.hasOwnProperty(level)) return true
-        return checkNested(obj[level], ...rest)
-    }
-
     //function flatten(x) { return x != null ? x.flat().filter(e => e != null) : []; }
-    const flatten = arr => arr != null ? arr.flat(2).filter(e => e != null) : [];
-
-    const collectSub = (arr, index) => arr != null ? arr.map(e => e[index]) : [];
-
-    const filterNull = arr => arr != null ? arr.filter(e => e != null) : [];
-
+    const flatten = (arr, depth = 2) => arr ? arr.flat(depth).filter(e => e != null) : [];
+    // Note: spread syntax here to merge serveral input arrays. this merging function reduces one level arrays.
     const merge = (...args) => args.reduce((acc, val) => acc.concat(val), []).filter(e => e != null);
+    // filter null values from an array
+    const filterNull = arr => arr ? arr.filter(e => e != null) : [];
 
     // Offset is not reilable, changed to line - character
     const getLoc = (start, end) => {
@@ -130,13 +118,12 @@ var grammar = {
     {"name": "expr", "symbols": ["MACROSCRIPT_DEF"], "postprocess": id},
     {"name": "expr", "symbols": ["PLUGIN_DEF"], "postprocess": id},
     {"name": "expr", "symbols": ["CHANGE_HANDLER"], "postprocess": id},
-    {"name": "expr_seq$ebnf$1", "symbols": ["_expr_seq"], "postprocess": id},
-    {"name": "expr_seq$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "expr_seq", "symbols": ["LPAREN", "expr_seq$ebnf$1", "RPAREN"], "postprocess":  d => ({
+    {"name": "expr_seq", "symbols": ["LPAREN", "_expr_seq", "RPAREN"], "postprocess":  d => ({
             type: 'BlockStatement',
             body: d[1],
             range: getLoc(d[0], d[2])
         })},
+    {"name": "expr_seq", "symbols": ["empty_parens"], "postprocess": id},
     {"name": "_expr_seq$ebnf$1", "symbols": []},
     {"name": "_expr_seq$ebnf$1$subexpression$1", "symbols": ["EOL", "expr"]},
     {"name": "_expr_seq$ebnf$1", "symbols": ["_expr_seq$ebnf$1", "_expr_seq$ebnf$1$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
@@ -1128,11 +1115,10 @@ var grammar = {
     {"name": "FN_CALL$ebnf$1", "symbols": ["call_params"], "postprocess": id},
     {"name": "FN_CALL$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
     {"name": "FN_CALL", "symbols": ["call_caller", "call_args", "FN_CALL$ebnf$1"], "postprocess":  d => {
-            let args = merge(d[1], d[2]);
             let res = {
                 type:  'CallExpression',
-                calle: d[0],
-                args:  args,
+                operand: d[0],
+                args:  merge(d[1], d[2]),
                 range: null
             };
             res.range = getLoc(d[0], res.args);
@@ -1140,7 +1126,7 @@ var grammar = {
         } },
     {"name": "FN_CALL", "symbols": ["call_caller", "call_params"], "postprocess":  d => ({
             type:  'CallExpression',
-            calle: d[0],
+            operand: d[0],
             args:  d[1],
             range: getLoc(d[0], d[1])
         })},
@@ -1155,11 +1141,11 @@ var grammar = {
     {"name": "call_params", "symbols": ["call_params$ebnf$1"], "postprocess": flatten},
     {"name": "call_args$ebnf$1$subexpression$1$ebnf$1", "symbols": ["_"], "postprocess": id},
     {"name": "call_args$ebnf$1$subexpression$1$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "call_args$ebnf$1$subexpression$1", "symbols": ["call_args$ebnf$1$subexpression$1$ebnf$1", "operand"]},
+    {"name": "call_args$ebnf$1$subexpression$1", "symbols": ["call_args$ebnf$1$subexpression$1$ebnf$1", "unary_operand"]},
     {"name": "call_args$ebnf$1", "symbols": ["call_args$ebnf$1$subexpression$1"]},
     {"name": "call_args$ebnf$1$subexpression$2$ebnf$1", "symbols": ["_"], "postprocess": id},
     {"name": "call_args$ebnf$1$subexpression$2$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "call_args$ebnf$1$subexpression$2", "symbols": ["call_args$ebnf$1$subexpression$2$ebnf$1", "operand"]},
+    {"name": "call_args$ebnf$1$subexpression$2", "symbols": ["call_args$ebnf$1$subexpression$2$ebnf$1", "unary_operand"]},
     {"name": "call_args$ebnf$1", "symbols": ["call_args$ebnf$1", "call_args$ebnf$1$subexpression$2"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
     {"name": "call_args", "symbols": ["call_args$ebnf$1"], "postprocess": flatten},
     {"name": "call_caller", "symbols": ["unary_operand"], "postprocess": id},
@@ -1294,6 +1280,11 @@ var grammar = {
     {"name": "RBRACE$ebnf$1", "symbols": ["__"], "postprocess": id},
     {"name": "RBRACE$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
     {"name": "RBRACE", "symbols": ["RBRACE$ebnf$1", (mxLexer.has("rbrace") ? {type: "rbrace"} : rbrace)], "postprocess": d => d[1]},
+    {"name": "empty_parens", "symbols": [{"literal":"("}, {"literal":")"}], "postprocess":  d => ({
+            type:  'EmptyParens',
+            body: [],
+            range: getLoc(d[0], d[1])
+        })},
     {"name": "VAR_NAME", "symbols": [(mxLexer.has("identity") ? {type: "identity"} : identity)], "postprocess": Identifier},
     {"name": "VAR_NAME", "symbols": ["kw_reserved"], "postprocess": Identifier},
     {"name": "kw_reserved", "symbols": [(mxLexer.has("kw_uicontrols") ? {type: "kw_uicontrols"} : kw_uicontrols)], "postprocess": id},

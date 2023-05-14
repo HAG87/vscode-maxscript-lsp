@@ -8,24 +8,12 @@
     */
     const mxLexer = require('./mooTokenize.js');
     // Utilities
-    function getNested(obj, ...args) {
-        return args.reduce((obj, level) => obj && obj[level], obj)
-    }
-
-    function checkNested(obj, level,  ...rest) {
-        if (obj === undefined) return false
-        if (rest.length == 0 && obj.hasOwnProperty(level)) return true
-        return checkNested(obj[level], ...rest)
-    }
-
     //function flatten(x) { return x != null ? x.flat().filter(e => e != null) : []; }
-    const flatten = arr => arr != null ? arr.flat(2).filter(e => e != null) : [];
-
-    const collectSub = (arr, index) => arr != null ? arr.map(e => e[index]) : [];
-
-    const filterNull = arr => arr != null ? arr.filter(e => e != null) : [];
-
+    const flatten = (arr, depth = 2) => arr ? arr.flat(depth).filter(e => e != null) : [];
+    // Note: spread syntax here to merge serveral input arrays. this merging function reduces one level arrays.
     const merge = (...args) => args.reduce((acc, val) => acc.concat(val), []).filter(e => e != null);
+    // filter null values from an array
+    const filterNull = arr => arr ? arr.filter(e => e != null) : [];
 
     // Offset is not reilable, changed to line - character
     const getLoc = (start, end) => {
@@ -139,13 +127,15 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 #---------------------------------------------------------------
 # EXPRESSIONS - RECURSION! IN FACCTOR
     expr_seq
-        -> LPAREN _expr_seq:? RPAREN
+        -> LPAREN _expr_seq RPAREN
+        # -> LPAREN _expr_seq RPAREN
             {% d => ({
                 type: 'BlockStatement',
                 body: d[1],
                 range: getLoc(d[0], d[2])
             })%}
-   
+        | empty_parens {% id %}
+
     _expr_seq
         -> expr (EOL expr):* {% flatten %}
         # -> _expr_seq EOL expr {% d => [].concat(d[0], d[2]) %}
@@ -1044,11 +1034,10 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
     FN_CALL
         -> call_caller call_args call_params:?
             {% d => {
-                let args = merge(d[1], d[2]);
                 let res = {
                     type:  'CallExpression',
-                    calle: d[0],
-                    args:  args,
+                    operand: d[0],
+                    args:  merge(d[1], d[2]),
                     range: null
                 };
                 res.range = getLoc(d[0], res.args);
@@ -1057,30 +1046,24 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         | call_caller call_params
             {% d => ({
                 type:  'CallExpression',
-                calle: d[0],
+                operand: d[0],
                 args:  d[1],
                 range: getLoc(d[0], d[1])
             })%}
-        # Disabled because it conflicts with empty expr_seq
-        #| call_caller LPAREN RPAREN
-        #    {% d => ({
-        #        type:  'CallExpression',
-        #        calle: d[0],
-        #        args:  null,
-        #        range: getLoc(d[0], d[2])
-        #    })%}
-    
-    call_params
-        -> (_:? parameter):+ {% flatten %}
+        # | call_caller _:? empty_parens
+        #     {% d => ({
+        #         type:  'CallExpression',
+        #         operand: d[0],
+        #         args:  d[2],
+        #         range: getLoc(d[0], d[2])
+        #     })%}
 
-    call_args
-        -> (_:? operand):+ {% flatten %}
-        # -> ( _:? unary_operand):+ {% flatten %}
-    call_caller
-        -> unary_operand {% id %}
-        # -> VAR_NAME {% id %}
-        # | property  {% id %}
-        # | index     {% id %}
+    call_params -> (_:? parameter):+ {% flatten %}
+    call_args -> (_:? unary_operand):+ {% flatten %}
+    call_caller -> unary_operand {% id %}
+
+#---------------------------------------------------------------
+
 #---------------------------------------------------------------
 # PARAMETER CALL --- OK
     parameter
@@ -1221,6 +1204,13 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 
     LBRACE ->      %lbrace __:?     {% id %}
     RBRACE -> __:? %rbrace          {% d => d[1] %}
+#---------------------------------------------------------------
+    empty_parens -> "(" ")"
+           {% d => ({
+               type:  'EmptyParens',
+               body: [],
+               range: getLoc(d[0], d[1])
+           })%}
 #===============================================================
 # VARNAME --- IDENTIFIERS --- OK
     # some keywords can be VAR_NAME too...
