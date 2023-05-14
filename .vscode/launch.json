@@ -8,7 +8,7 @@
 			"name": "Launch Client",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				// "--disable-extensions",
+				"--disable-extensions",
 				"--extensionDevelopmentPath=${workspaceFolder}"
 			],
 			"outFiles": ["${workspaceFolder}/client/out/**/*.js"],
@@ -23,6 +23,7 @@
 			"name": "Launch Client - production",
 			"runtimeExecutable": "${execPath}",
 			"args": [
+				"--disable-extensions",
 				"--extensionDevelopmentPath=${workspaceFolder}"
 			],
 			"outFiles": ["${workspaceFolder}/client/out/**/*.js"]
