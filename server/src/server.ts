@@ -30,7 +30,7 @@ import { replaceText } from './lib/workspaceEdits';
 import { prefixFile } from './lib/utils';
 //------------------------------------------------------------------------------------------
 import * as mxsCompletion from './mxsCompletions';
-import { mxsDocumentSymbols } from './mxsOutline';
+import { DocumentSymbolProvider } from './mxsOutline';
 import * as mxsMinifier from './mxsMin';
 import * as mxsDefinitions from './mxsDefinitions';
 import * as mxsSimpleFormatter from './mxsSimpleFormatter';
@@ -45,13 +45,19 @@ let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 /* Client Capabilities */
 let Capabilities = new mxsCapabilities();
 //------------------------------------------------------------------------------------------
-/**  Current documentSymbols: Store the current document Symbols for later use */
-let currentDocumentSymbols: DocumentSymbol[] | SymbolInformation[] = [];
-/**  Current document: Store the current document for later use */
-// let currentTextDocument: TextDocument;
-let currentTextDocumentURI: string | undefined;
 /** The semantic tokens provider */
 let semanticTokensProvider: mxsSemanticTokens;
+/**
+ * mxsDocumentSymbolProvider. Intended to be consumed by the SymbolProviders and be persistent for the current editor
+ */
+let mxsDocumentSymbols: DocumentSymbolProvider;
+//------------------------------------------------------------------------------------------
+/**  Current documentSymbols: Store the current document Symbols for later use */
+let currentDocumentSymbols: DocumentSymbol[] | SymbolInformation[] = [];
+/**  Current document: Store the current document URI for later use */
+let currentTextDocumentURI: string | undefined;
+/** Store current parse tree for later use */
+let currentDocumentParseTree: any | any[];
 //------------------------------------------------------------------------------------------
 /* Initialize the server */
 connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> | ResponseError<InitializeError> | InitializeResult =>
@@ -60,6 +66,8 @@ connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> |
 	Capabilities.initialize(params.capabilities);
 	// Initialize semanticToken provider
 	semanticTokensProvider = new mxsSemanticTokens(params.capabilities.textDocument!.semanticTokens!);
+	// Initialize the symbols provider
+	mxsDocumentSymbols = new DocumentSymbolProvider();
 	/*
 	for (let folder of params.workspaceFolders) {
 		connection.console.log(`${folder.name} ${folder.uri}`);
@@ -256,42 +264,35 @@ connection.onDocumentRangeFormatting(
 /* Provide DocumentSymbols and diagnostics  */
 connection.onDocumentSymbol((params, cancelation) =>
 {
-	/*
-	currentDocumentSymbols = await parseDocument(document, cancelation);
-	return currentDocumentSymbols;
-	*/
 	return new Promise(resolve =>
 	{
 		// cancellation request
 		cancelation.onCancellationRequested(/* async */() => resolve);
 		// settings
-		const options = { recovery: false, attemps: 10, memoryLimit: 0.9 };
 		let threading = false;
 
 		getDocumentSettings(params.textDocument.uri)
 			.then(result =>
 			{
 				if (!result.GoToSymbol) { resolve; }
-				options.recovery = result.parser.errorCheck;
-				options.attemps = result.parser.errorLimit;
-				threading = result.parser.multiThreading;
+				mxsDocumentSymbols.options.recovery = result.parser.errorCheck;
+				mxsDocumentSymbols.options.attemps = result.parser.errorLimit;
+				// threading = result.parser.multiThreading;
 			});
 
 		let document = documents.get(params.textDocument.uri)!;
 		let symbolsresult =
 			threading
-				? mxsDocumentSymbols.parseDocumentThreaded(document, connection, options)
-				: mxsDocumentSymbols.parseDocument(document, connection, options);
+				? mxsDocumentSymbols.parseDocumentThreaded(document, connection)
+				: mxsDocumentSymbols.parseDocument(document, connection);
 
 		symbolsresult.then((result: any) =>
 		{
-			// connection.console.log('--> symbols sucess ');
 			//-----------------------------------
 			currentDocumentSymbols = result.symbols;
-			// currentTextDocument = document;
+			// currentDocumentParseTree = result.cst;
 			currentTextDocumentURI = params.textDocument.uri;
 			//-----------------------------------
-			// console.log(result.diagnostics);
 			diagnoseDocument(document, result.diagnostics);
 			resolve(result.symbols);
 		})
@@ -341,8 +342,6 @@ connection.onDefinition((params, cancellation) =>
 			documents.get(params.textDocument.uri)!,
 			params.position,
 			currentTextDocumentURI === params.textDocument.uri ? currentDocumentSymbols : undefined)
-			/*currentTextDocument && params.textDocument.uri === currentTextDocument.uri ? currentDocumentSymbols : undefined,
-			mxsDocumentSymbols.msxParser.parsedCST)*/
 			.then(
 				result => resolve(result),
 				() => resolve)
@@ -366,7 +365,6 @@ connection.languages.semanticTokens.onDelta(params =>
 	const document = documents.get(params.textDocument.uri);
 	return document !== undefined ? semanticTokensProvider.provideDeltas(document, params.textDocument.uri) : { edits: [] };
 });
-//------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------
 /* Commands */
 interface MinifyDocParams
@@ -442,7 +440,6 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 	}
 	return null;
 });
-
 /* Prettyfier */
 connection.onRequest(PrettifyDocRequest.type, async params =>
 {

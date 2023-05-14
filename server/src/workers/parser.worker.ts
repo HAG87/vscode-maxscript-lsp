@@ -1,8 +1,15 @@
-import {Parser} from 'nearley';
 import { expose } from 'threads/worker';
-import * as mxsParserBase from '../mxsParserBase';
+import { parse, declareParser, parserOptions, parserResult, parseWithErrors } from '../mxsParserBase';
 
-expose({
-	parse(src: string, parserInstance:Parser) { return mxsParserBase.parse(src, parserInstance) },
-	parseWithErrors(src:string, parserInstance:Parser, options: mxsParserBase.parserOptions) { return mxsParserBase.parseWithErrors(src, parserInstance, options) }
+expose(function parseSource(source: string, options: parserOptions): parserResult
+{
+	try {
+		return parse(source, declareParser());
+	} catch (err: any) {
+		if (options.recovery) {
+			return parseWithErrors(source, declareParser(), options);
+		} else {
+			throw err;
+		}
+	}
 });

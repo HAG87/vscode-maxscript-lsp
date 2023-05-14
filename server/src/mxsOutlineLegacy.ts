@@ -49,6 +49,7 @@ export default function getDocumentSymbolsLegacy(document: TextDocument, diagnos
 
 	return {
 		symbols: SymbolInfCol.length ? SymbolInfCol : [],
-		diagnostics: diagnostics
+		diagnostics: diagnostics,
+		cst:[]
 	};
 }

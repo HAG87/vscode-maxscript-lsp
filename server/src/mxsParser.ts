@@ -1,11 +1,12 @@
 import { spawn, Thread, Worker } from 'threads';
-import {
-	parserOptions,
-	parserResult,
-	parse,
-	parseWithErrors,
-	declareParser,
-}from './mxsParserBase';
+import
+	{
+		parserOptions,
+		parserResult,
+		parse,
+		parseWithErrors,
+		declareParser,
+	} from './mxsParserBase';
 
 //-----------------------------------------------------------------------------------
 /**
@@ -28,15 +29,9 @@ export function parseSource(source: string, options = new parserOptions()): pars
 
 export async function parseSourceThreaded(source: string, options = new parserOptions()): Promise<parserResult>
 {
-	let parserWorker = await spawn( new Worker('./workers/parser.worker'));
+	let parserWorker = await spawn(new Worker('./workers/parser.worker'));
 	try {
-		return await parserWorker.parse(source, declareParser());
-	} catch (err) {
-		if (options.recovery) {
-			return await parserWorker.parseWithErrors(source, declareParser(), options);
-		} else {
-			throw err;
-		}
+		return await parserWorker.parseSource(source, options);
 	} finally {
 		await Thread.terminate(parserWorker);
 	}

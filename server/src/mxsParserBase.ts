@@ -19,7 +19,7 @@ export class parserOptions
 }
 export interface parserResult
 {
-	result?: any
+	result?: any | any[]
 	error?: ParserError
 }
 /**
@@ -218,7 +218,7 @@ export function parseWithErrors(source: string, parserInstance: nearley.Parser, 
 {
 	let src = TokenizeStream(source);
 	let state = parserInstance.save();
-	let errorState: any;
+	// let errorState: any;
 
 	let badTokens: moo.Token[] = [];
 	// let errorReport: any[] = [];

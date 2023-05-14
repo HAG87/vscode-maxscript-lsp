@@ -7,20 +7,31 @@ import {
 import { parseSource } from '../mxsParser';
 //-----------------------------------------------------------------------------------
 expose(
-	function documentSymbols(source, range, options = { recovery: true, attemps: 10, memoryLimit: 0.9 }) {
-		let SymbolInfCol = [];
-		let diagnostics = [];
-		
-		let results = parseSource(source, options);
-
-		// Parser didnt provide results -- abort!
-		/* if (!results.result && !results.error) {
-			throw new Error('Parser failed to provide results');
-		} */
-		
-		if (results.result) {
-			SymbolInfCol = deriveSymbolsTree(results.result, range);
-			diagnostics.push(...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error')));
+	function documentSymbols(source, range, options = { recovery: true, attemps: 10, memoryLimit: 0.9 })
+	{
+		let response = {
+			symbols: [],
+			diagnostics: [],
+			cst: []
+		};
+		try {
+			let results = parseSource(source, options);
+			if (results.result) {
+				response.symbols = deriveSymbolsTree(results.result, range);
+				response.diagnostics = [...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error'))];
+				response.cst.concat(results.result);
+			}
+			if (results.error) {
+				response.diagnostics.push(...provideParserDiagnostic(results.error));
+			}
+		} catch (err) {
+			if (err.token) {
+				response.diagnostics = [...provideParserDiagnostic(err)];
+			} else {
+				throw err;
+			}
+		} finally {
+			return response;
 		}
 		if (results.error) {
 			diagnostics.push(...provideParserDiagnostic(results.error));

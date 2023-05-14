@@ -1,7 +1,15 @@
 import { expose } from 'threads/worker';
-import * as mxsParserBase from '../mxsParserBase';
+import { parse, declareParser, parseWithErrors } from '../mxsParserBase';
 
-expose({
-	parse(src, parserInstance) { return mxsParserBase.parse(src, parserInstance) },
-	parseWithErrors(src, parserInstance) { return mxsParserBase.parseWithErrors(src, parserInstance) }
+expose(function parseSource(source, options)
+{
+	try {
+		return parse(source, declareParser());
+	} catch (err) {
+		if (options.recovery) {
+			return parseWithErrors(source, declareParser(), options);
+		} else {
+			throw err;
+		}
+	}
 });
