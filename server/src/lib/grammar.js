@@ -1136,7 +1136,7 @@ var grammar = {
             let args = merge(d[1], d[2]);
             let res = {
                 type:  'CallExpression',
-                calle: d[0],
+                operand: d[0],
                 args:  args,
                 range: null
             };
@@ -1145,7 +1145,7 @@ var grammar = {
         } },
     {"name": "FN_CALL", "symbols": ["call_caller", "call_params"], "postprocess":  d => ({
             type:  'CallExpression',
-            calle: d[0],
+            operand: d[0],
             args:  d[1],
             range: getLoc(d[0], d[1])
         })},
