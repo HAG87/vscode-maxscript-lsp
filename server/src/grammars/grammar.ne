@@ -8,12 +8,11 @@
     */
     const mxLexer = require('./mooTokenize.js');
     // Utilities
-    //function flatten(x) { return x != null ? x.flat().filter(e => e != null) : []; }
-    const flatten = (arr, depth = 2) => arr ? arr.flat(depth).filter(e => e != null) : [];
+    const flatten = (arr, depth = 2) => arr != null ? arr.flat(depth).filter(e => e != null) : [];
     // Note: spread syntax here to merge serveral input arrays. this merging function reduces one level arrays.
     const merge = (...args) => args.reduce((acc, val) => acc.concat(val), []).filter(e => e != null);
     // filter null values from an array
-    const filterNull = arr => arr ? arr.filter(e => e != null) : [];
+    const filterNull = arr => arr != null ? arr.filter(e => e != null) : [];
 
     // Offset is not reilable, changed to line - character
     const getLoc = (start, end) => {
@@ -115,7 +114,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         | FUNCTION_DEF    {% id %}
         | FN_RETURN       {% id %}
         | CONTEXT_EXPR    {% id %}
-        | rollout_def     {% id %}
+        | ROLLOUT_DEF     {% id %}
         | TOOL_DEF        {% id %}
         | RCMENU_DEF      {% id %}
         | MACROSCRIPT_DEF {% id %}
@@ -128,14 +127,30 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 # EXPRESSIONS - RECURSION! IN FACCTOR
     expr_seq
         -> LPAREN _expr_seq RPAREN
-        # -> LPAREN _expr_seq RPAREN
             {% d => ({
                 type: 'BlockStatement',
                 body: d[1],
                 range: getLoc(d[0], d[2])
             })%}
-        | empty_parens {% id %}
-
+        | "(" __:? ")"
+            {% d => ({
+                type: 'EmptyParens',
+                body: [],
+                range: getLoc(d[0], d[2])
+            })%}
+        # | ( "(" __ ")" | empty_parens )
+        #     {% d => ({
+        #         type: 'BlockStatement',
+        #         body: null,
+        #         range: getLoc(d[0], d[2])
+        #     })%}
+        # | empty_parens
+        #     {% d => ({
+        #         type: 'BlockStatement',
+        #         body: [],
+        #         range: getLoc(d[0])
+        #     })%}
+   
     _expr_seq
         -> expr (EOL expr):* {% flatten %}
         # -> _expr_seq EOL expr {% d => [].concat(d[0], d[2]) %}
@@ -147,7 +162,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
     RCMENU_DEF
         -> (%kw_rcmenu __ ) VAR_NAME __:?
             LPAREN
-                rcmenu_clauses:?
+                rcmenu_clauses
             RPAREN
         {% d => ({
             type: 'EntityRcmenu',
@@ -174,7 +189,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
     rcmenu_submenu
         -> (%kw_submenu __:?) STRING ( __:? parameter):* __:?
             LPAREN
-                rcmenu_clauses:?
+                rcmenu_clauses
             RPAREN
             {% d => ({
                 type:   'EntityRcmenu_submenu',
@@ -232,7 +247,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         -> VARIABLE_DECL {% id %}
         | event_handler  {% id %}
         | PARAM_DEF      {% id %}
-        | rollout_def    {% id %}
+        | ROLLOUT_DEF    {% id %}
 #---------------------------------------------------------------
 # PLUGIN DEFINITION --- OK
     PLUGIN_DEF
@@ -257,14 +272,14 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         | FUNCTION_DEF    {% id %}
         | STRUCT_DEF      {% id %}
         | TOOL_DEF        {% id %}
-        | rollout_def     {% id %}
+        | ROLLOUT_DEF     {% id %}
         | event_handler   {% id %}
         | PARAM_DEF       {% id %}
     #---------------------------------------------------------------
     PARAM_DEF
         -> (%kw_parameters __ ) VAR_NAME ( __:? parameter):* __:?
             LPAREN
-                param_clauses:?
+                param_clauses
             RPAREN
             {% d => ({
                 type:   'EntityPlugin_params',
@@ -319,8 +334,8 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         | event_handler  {% id %}
 #---------------------------------------------------------------
 # ROLLOUT / UTILITY DEFINITION --- OK
-       # -> (uistatement_def __ ) VAR_NAME __:? unary_operand ( __:? parameter):* __:? expr_seq
-        rollout_def
+    # -> (uistatement_def __ ) VAR_NAME __:? unary_operand ( __:? parameter):* __:? expr_seq
+    ROLLOUT_DEF
         -> (uistatement_def __ ) VAR_NAME __:? operand ( __:? parameter):* __:?
             LPAREN
                 rollout_clauses
@@ -336,14 +351,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
     #---------------------------------------------------------------
     uistatement_def -> %kw_rollout {% id %} | %kw_utility {% id %}
     # rollout_clauses
-    #    -> LPAREN _rollout_clause RPAREN {% d => d[1] %}
-    #     | "(" __:? ")" {% d => null %}
-
     rollout_clauses -> rollout_clause (EOL rollout_clause):* {% flatten %}
-
-    # rollout_clauses
-    #     -> rollout_clauses EOL rollout_clause {% d => [].concat(d[0], d[2]) %}
-    #     | rollout_clause
     
     rollout_clause
         -> VARIABLE_DECL {% id %}
@@ -353,7 +361,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         | rollout_item   {% id %}
         | event_handler  {% id %}
         | TOOL_DEF       {% id %}
-        | rollout_def    {% id %}
+        | ROLLOUT_DEF    {% id %}
     #---------------------------------------------------------------
     item_group
         -> %kw_group __:? STRING __:?
@@ -1059,15 +1067,12 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         #     })%}
 
     call_params -> (_:? parameter):+ {% flatten %}
-    call_args -> (_:? unary_operand):+ {% flatten %}
+    call_args -> (_:? unary_only_operand | _:? operand):+ {% flatten %}
     call_caller -> unary_operand {% id %}
-
-#---------------------------------------------------------------
-
 #---------------------------------------------------------------
 # PARAMETER CALL --- OK
     parameter
-        -> param_name __:? unary_operand 
+        -> param_name __:? unary_operand
             {% d => ({
                 type: 'ParameterAssignment',
                 param: d[0],
@@ -1103,6 +1108,15 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         })%}
 #---------------------------------------------------------------
 # OPERANDS --- OK
+    unary_only_operand 
+        -> "-" operand
+            {% d => ({
+                type: 'UnaryExpression',
+                operator: d[0],
+                right:    d[1],
+                range: getLoc(d[0], d[1])
+            }) %}
+
     unary_operand 
         # -> "-" __:? expr
         -> "-" __:? unary_operand
@@ -1134,7 +1148,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         | point4     {% id %}
         | point3     {% id %}
         | point2     {% id %}
-        | %amp {% d => ({type: 'Keyword', value: d[0], range: getLoc(d[0]) })%}
+        | %questionmark {% d => ({type: 'Keyword', value: d[0], range: getLoc(d[0]) })%}
         # BLOCKSTATEMENT
         | expr_seq   {% id %}
         | %error     {% id %}
@@ -1172,8 +1186,14 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
             {% d => ({
                 type:     'ObjectArray',
                 elements: d[2] != null ? d[2] : [],
-                range:      getLoc(d[0][0], d[3])
+                range:    getLoc(d[0][0], d[3])
             }) %}
+        # | (%sharp __:?) empty_parens
+        #     {% d => ({
+        #         type:     'ObjectArray',
+        #         elements: [],
+        #         range:    getLoc(d[0][0], d[1])
+        #     }) %}
 
     array_expr -> expr ( LIST_SEP expr ):*  {% flatten %}
 #---------------------------------------------------------------
@@ -1205,12 +1225,12 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
     LBRACE ->      %lbrace __:?     {% id %}
     RBRACE -> __:? %rbrace          {% d => d[1] %}
 #---------------------------------------------------------------
-    empty_parens -> "(" ")"
-           {% d => ({
-               type:  'EmptyParens',
-               body: [],
-               range: getLoc(d[0], d[1])
-           })%}
+# empty_parens -> %emptyparens
+#             {% d => ({
+#                 type: 'EmptyParens',
+#                 body: [],
+#                 range: getLoc(d[0], d[1])
+#             })%}
 #===============================================================
 # VARNAME --- IDENTIFIERS --- OK
     # some keywords can be VAR_NAME too...
