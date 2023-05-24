@@ -336,7 +336,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 # ROLLOUT / UTILITY DEFINITION --- OK
     # -> (uistatement_def __ ) VAR_NAME __:? unary_operand ( __:? parameter):* __:? expr_seq
     ROLLOUT_DEF
-        -> (uistatement_def __ ) VAR_NAME __:? operand ( __:? parameter):* __:?
+        -> (uistatement_def __ ) VAR_NAME __:? unary_operand ( __:? parameter):* __:?
             LPAREN
                 rollout_clauses
             RPAREN
@@ -381,7 +381,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         # | null
     #---------------------------------------------------------------
     rollout_item
-        -> %kw_uicontrols __ VAR_NAME ( __:? operand):? ( __:? parameter):*
+        -> %kw_uicontrols __ VAR_NAME ( __:? unary_operand):? ( __:? parameter):*
             {% d => {
              let res = {
                     type:   'EntityRolloutControl',
@@ -494,7 +494,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 # when <attribute> <objects> change[s] [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr>
 # when <objects> deleted               [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr> 
     CHANGE_HANDLER
-        -> %kw_when __ (VAR_NAME | kw_override):? __ operand __ VAR_NAME __ (parameter __:?):* operand:? __:? %kw_do __:? expr
+        -> %kw_when __ (VAR_NAME | kw_override):? __ unary_operand __ VAR_NAME __ (parameter __:?):* unary_operand:? __:? %kw_do __:? expr
             {% d=> ({
                 type:  'WhenStatement',
                 args:  merge(...d.slice(2,9)),
@@ -1067,7 +1067,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         #     })%}
 
     call_params -> (_:? parameter):+ {% flatten %}
-    call_args -> (_:? unary_only_operand | _:? operand):+ {% flatten %}
+    call_args -> (_:? unary_operand):+ {% flatten %}
     call_caller -> unary_operand {% id %}
 #---------------------------------------------------------------
 # PARAMETER CALL --- OK
@@ -1088,50 +1088,63 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
                 range: getLoc(d[0], d[1])
             }) %}
 #---------------------------------------------------------------
+unary_operand
+    -> "-" __:? operand
+        {% d => ({
+            type: 'UnaryExpression',
+            operator: d[0],
+            right:    d[2],
+            range: getLoc(d[0], d[2])
+        }) %}
+    | operand {% id %} 
+operand -> property {% id %}
+#---------------------------------------------------------------
 # ACCESSOR - PROPERTY --- OK
     property
-        -> operand %delimiter (VAR_NAME | VOID | kw_override)
+        -> property %delimiter (VAR_NAME | VOID | kw_override)
             {% d => ({
                 type:     'AccessorProperty',
                 operand:  d[0],
                 property: d[2][0],
                 range:    getLoc(d[0], d[2])
             })%}
+        | index {% id %}
 #---------------------------------------------------------------
 # ACCESSOR - INDEX --- OK
-    index -> operand __:? LBRACKET expr RBRACKET
+    index -> index __:? LBRACKET expr RBRACKET
         {% d => ({
             type:    'AccessorIndex',
             operand: d[0],
             index:   d[3],
             range:   getLoc(d[2], d[4])
         })%}
+    | factor {% id %}
 #---------------------------------------------------------------
 # OPERANDS --- OK
-    unary_only_operand 
-        -> "-" operand
-            {% d => ({
-                type: 'UnaryExpression',
-                operator: d[0],
-                right:    d[1],
-                range: getLoc(d[0], d[1])
-            }) %}
+    # unary_only_operand 
+    #     -> "-" operand
+    #         {% d => ({
+    #             type: 'UnaryExpression',
+    #             operator: d[0],
+    #             right:    d[1],
+    #             range: getLoc(d[0], d[1])
+    #         }) %}
 
-    unary_operand 
-        # -> "-" __:? expr
-        -> "-" __:? unary_operand
-            {% d => ({
-                type: 'UnaryExpression',
-                operator: d[0],
-                right:    d[2],
-                range: getLoc(d[0], d[2])
-            }) %}
-        | operand {% id %}
+    # unary_operand 
+    #     # -> "-" __:? expr
+    #     -> "-" __:? unary_operand
+    #         {% d => ({
+    #             type: 'UnaryExpression',
+    #             operator: d[0],
+    #             right:    d[2],
+    #             range: getLoc(d[0], d[2])
+    #         }) %}
+    #     | operand {% id %}
 
-    operand
-        -> factor     {% id %}
-        | property    {% id %}
-        | index       {% id %}
+    # operand
+    #     -> factor     {% id %}
+    #     | property    {% id %}
+    #     | index       {% id %}
 #---------------------------------------------------------------
 # FACTORS --- OK
    factor
