@@ -30,25 +30,20 @@ expose(
 			//COLLECT SYMBOLDEFINITIONS
 			if (results!.result) {
 				response.symbols = deriveSymbolsTree(results.result, range);
-				response.diagnostics = [...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error'))];
-				// response.cst = [...results.result];
+				response.diagnostics = provideTokenDiagnostic(collectTokens(results.result, 'type', 'error'));
+				// response.cst = results.result;
 			}
 			// check for trivial errors
 			if (results!.error) {
 				response.diagnostics.push(...provideParserDiagnostic(results.error));
 			}
+			return response;
 		} catch (err: any) {
 			if (err.tokens) {
-				response.diagnostics = [...provideParserDiagnostic(err)];
+				response.diagnostics = provideParserDiagnostic(err);
+				return response;
 			} else {
 				throw err;
 			}
-		} finally {
-			return response;
 		}
-		if (results.error) { diagnostics.push(...provideParserDiagnostic(results.error)); }
-		return {
-			symbols: SymbolInfCol,
-			diagnostics: diagnostics
-		};
 	});

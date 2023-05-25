@@ -18,27 +18,20 @@ expose(
 			let results = parseSource(source, options);
 			if (results.result) {
 				response.symbols = deriveSymbolsTree(results.result, range);
-				response.diagnostics = [...provideTokenDiagnostic(collectTokens(results.result, 'type', 'error'))];
-				// response.cst.concat(results.result);
+				response.diagnostics = provideTokenDiagnostic(collectTokens(results.result, 'type', 'error'));
+				// response.cst = results.result;
 			}
 			if (results.error) {
 				response.diagnostics.push(...provideParserDiagnostic(results.error));
 			}
+			return response;
 		} catch (err) {
 			if (err.token) {
-				response.diagnostics = [...provideParserDiagnostic(err)];
+				response.diagnostics = provideParserDiagnostic(err);
+				return response;
 			} else {
 				throw err;
 			}
-		} finally {
-			return response;
 		}
-		if (results.error) {
-			diagnostics.push(...provideParserDiagnostic(results.error));
-		}
-		return {
-			symbols: SymbolInfCol,
-			diagnostics: diagnostics
-		};
 	}
 );

@@ -1,6 +1,7 @@
 /**
  * Provide document symbols via parse tree.
  */
+import { spawn, Thread, Worker } from 'threads';
 import
 {
 	Range,
@@ -23,16 +24,15 @@ import
 } from './mxsProvideSymbols';
 import
 {
-	parserResult,
+	// parserResult,
 	ParserError,
 	parserOptions
 } from './mxsParserBase';
 import
 {
 	parseSource,
-	parseSourceThreaded
+	// parseSourceThreaded
 } from './mxsParser';
-import { parseSource, parseSourceThreaded } from './mxsParser';
 import getDocumentSymbolsLegacy from './mxsOutlineLegacy';
 //--------------------------------------------------------------------------------
 export interface ParserSymbols
@@ -74,24 +74,17 @@ export class DocumentSymbolProvider
 			}
 			// check for trivial errors
 			if (results!.error) {
-				response.diagnostics.concat(provideParserDiagnostic(results.error));
+				response.diagnostics.push(...provideParserDiagnostic(results.error));
 			}
+			return response;
 		} catch (err: any) {
 			if (err.tokens) {
 				response.diagnostics = provideParserDiagnostic(err);
+				return response
 			} else {
 				throw err;
 			}
-		} finally {
-			return response;
 		}
-		// check for trivial errors
-		if (results!.error) { diagnostics.push(...provideParserDiagnostic(results.error)); }
-
-		return {
-			symbols: SymbolInfCol,
-			diagnostics: diagnostics
-		};
 	}
 	private async parseTextDocumentThreaded(document: TextDocument, options?: parserOptions): Promise<ParserSymbols>
 	{
@@ -99,10 +92,7 @@ export class DocumentSymbolProvider
 		try {
 			return await documentSymbols(document.getText(), this.documentRange(document), options);
 		} finally {
-			return {
-				symbols: SymbolInfCol,
-				diagnostics: diagnostics
-			};
+			await Thread.terminate(documentSymbols);
 		}
 	}
 	/** MXS document parser */
