@@ -17,7 +17,8 @@ import
 	ResponseError,
 	InitializeError,
 	SemanticTokensRegistrationOptions,
-	SemanticTokensRegistrationType
+	SemanticTokensRegistrationType,
+	CompletionItem
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as Path from 'path';
@@ -31,11 +32,12 @@ import { prefixFile } from './lib/utils';
 //------------------------------------------------------------------------------------------
 import * as mxsCompletion from './mxsCompletions';
 import { DocumentSymbolProvider } from './mxsOutline';
-import * as mxsMinifier from './mxsMin';
 import * as mxsDefinitions from './mxsDefinitions';
-import * as mxsSimpleFormatter from './mxsSimpleFormatter';
-import * as mxsFormatter from './mxsFormatter';
 import { mxsSemanticTokens } from './mxsSemantics';
+import * as mxsMinifier from './mxsMin';
+import * as mxsFormatter from './mxsFormatter';
+import * as mxsSimpleFormatter from './mxsSimpleFormatter';
+// import {reflowOptions} from './lib/mxsReflow';
 //------------------------------------------------------------------------------------------
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -47,17 +49,20 @@ let Capabilities = new mxsCapabilities();
 //------------------------------------------------------------------------------------------
 /** The semantic tokens provider */
 let semanticTokensProvider: mxsSemanticTokens;
-/**
- * mxsDocumentSymbolProvider. Intended to be consumed by the SymbolProviders and be persistent for the current editor
- */
+/** mxsDocumentSymbolProvider. Intended to be consumed by the SymbolProviders and be persistent for the current editor */
 let mxsDocumentSymbols: DocumentSymbolProvider;
 //------------------------------------------------------------------------------------------
 /**  Current documentSymbols: Store the current document Symbols for later use */
-let currentDocumentSymbols: DocumentSymbol[] | SymbolInformation[] = [];
-/**  Current document: Store the current document URI for later use */
-let currentTextDocumentURI: string | undefined;
+let currentDocumentSymbols: Map<string, DocumentSymbol[] | SymbolInformation[]> = new Map();
 /** Store current parse tree for later use */
-let currentDocumentParseTree: any | any[];
+let currentDocumentParseTree: Map<string, any | any[]> = new Map();
+let cachedCompletionItems: Map<string, CompletionItem[]> = new Map();
+//------------------------------------------------------------------------------------------
+/* Settings */
+// let globalSettings: MaxScriptSettings = { ...defaultSettings };
+let globalSettings: MaxScriptSettings = defaultSettings;
+// Cache the settings of all open documents
+let documentSettings: Map<string, Thenable<MaxScriptSettings>> = new Map();
 //------------------------------------------------------------------------------------------
 /* Initialize the server */
 connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> | ResponseError<InitializeError> | InitializeResult =>
@@ -120,7 +125,7 @@ connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> |
 		setTimeout(() => { resolve(result); }, 50);
 	});
 });
-
+//------------------------------------------------------------------------------------------
 connection.onInitialized(() =>
 {
 	if (Capabilities.hasConfigurationCapability) {
@@ -151,32 +156,13 @@ connection.onInitialized(() =>
 	*/
 });
 //------------------------------------------------------------------------------------------
-/* Settings */
-// let globalSettings: MaxScriptSettings = { ...defaultSettings };
-let globalSettings: MaxScriptSettings = defaultSettings;
-// Cache the settings of all open documents
-let documentSettings: Map<string, Thenable<MaxScriptSettings>> = new Map();
 /*
 async function getGlobalSettings()
 {
-	type KeysOfType<T, U> = { [k in keyof T]-?: T[k] extends U ? k : never }[keyof T];
-
 	let src = await connection.workspace.getConfiguration({
 		section: 'MaxScript'
 	}) as MaxScriptSettings;
-
-	Object.keys(globalSettings).forEach(key =>
-	{
-		let K = key as KeysOfType<MaxScriptSettings, boolean>
-		// hasOwnProperty(src, key)
-		if (src[K]) {
-			if (typeof src[K] === 'object') {
-				Object.assign(globalSettings[K], src[K]);
-			} else {
-				globalSettings[K] =  src[K];
-			}
-		}
-	});
+	Object.assign(globalSettings, src);
 }
 // */
 function getDocumentSettings(resource: string)
@@ -195,10 +181,13 @@ function getDocumentSettings(resource: string)
 	return result;
 }
 //------------------------------------------------------------------------------------------
-function diagnoseDocument(document: TextDocument, diagnose: Diagnostic[])
+function diagnoseDocument(uri: string, diagnose: Diagnostic[])
 {
 	if (!Capabilities.hasDiagnosticCapability && !globalSettings.Diagnostics) { return; }
-	connection.sendDiagnostics({ uri: document.uri, diagnostics: diagnose });
+	connection.sendDiagnostics({
+		uri: uri,
+		diagnostics: diagnose
+	});
 }
 //------------------------------------------------------------------------------------------
 connection.onDidChangeConfiguration(change =>
@@ -217,14 +206,17 @@ connection.onDidChangeConfiguration(change =>
 		await getDocumentSettings(textDocument.uri)
 	});
 });
-
+//------------------------------------------------------------------------------------------
 documents.onDidClose(change =>
 {
 	// Only keep settings for open documents
 	documentSettings.delete(change.document.uri);
-	currentTextDocumentURI = undefined;
+	// clear values
+	currentDocumentSymbols.delete(change.document.uri);
+	currentDocumentParseTree.delete(change.document.uri);
+	cachedCompletionItems.delete(change.document.uri);
 	// Remove diagnostics for closed document 
-	diagnoseDocument(change.document, []);
+	diagnoseDocument(change.document.uri, []);
 });
 
 /*
@@ -234,6 +226,10 @@ documents.onDidChangeContent(
 		diagnoseDocument(change.document, []);
 	});
 */
+//------------------------------------------------------------------------------------------
+// connection.onDidCloseTextDocument
+// connection.onDidChangeTextDocument
+// connection.onDidOpenTextDocument
 //------------------------------------------------------------------------------------------
 /* Document formatter */
 connection.onDocumentFormatting(async params =>
@@ -251,28 +247,28 @@ connection.onDocumentFormatting(async params =>
 
 // TODO: Document Range formatter - WIP
 /*
-connection.onDocumentRangeFormatting(
-	async (_DocumentRangeFormattingParams: DocumentRangeFormattingParams) =>
-	{
-		if (!Capabilities.hasDocumentFormattingCapability) { return; }
-		let document = documents.get(_DocumentRangeFormattingParams.textDocument.uri)!;
-		return await mxsSimpleRangeFormatter(
-			document,
-			_DocumentRangeFormattingParams.range
-		));
-	});
+connection.onDocumentRangeFormatting(async params =>
+{
+	if (!Capabilities.hasDocumentFormattingCapability) { return; }
+
+	let document = documents.get(params.textDocument.uri)!;
+	return await mxsSimpleRangeFormatter(
+		document,
+		params.range
+	));
+});
 // */
 //------------------------------------------------------------------------------------------
 /* Provide DocumentSymbols and diagnostics  */
-connection.onDocumentSymbol((params, cancelation) =>
+connection.onDocumentSymbol((params, token) =>
 {
+	// cancellation request
+	token.onCancellationRequested(_ => { });
+	// settings
+	let threading = false;
+
 	return new Promise(resolve =>
 	{
-		// cancellation request
-		cancelation.onCancellationRequested(/* async */() => resolve);
-		// settings
-		let threading = false;
-
 		getDocumentSettings(params.textDocument.uri)
 			.then(result =>
 			{
@@ -281,8 +277,6 @@ connection.onDocumentSymbol((params, cancelation) =>
 				mxsDocumentSymbols.options.attemps = result.parser.errorLimit;
 				// threading = result.parser.multiThreading;
 			});
-
-			
 		let document = documents.get(params.textDocument.uri)!;
 		let symbolsresult =
 			threading
@@ -291,52 +285,70 @@ connection.onDocumentSymbol((params, cancelation) =>
 
 		symbolsresult.then((result: any) =>
 		{
+			// currentDocumentSymbols.set(params.textDocument.uri, result.symbols);
+			// currentDocumentParseTree.set(params.textDocument.uri, result.cst);
 			//-----------------------------------
-			currentDocumentSymbols = result.symbols;
-			// currentDocumentParseTree = result.cst;
-			currentTextDocumentURI = params.textDocument.uri;
+			// Provide diagnostics
+			diagnoseDocument(params.textDocument.uri, result.diagnostics);
 			//-----------------------------------
-			diagnoseDocument(document, result.diagnostics);
 			resolve(result.symbols);
 		})
 			.catch((error: any) =>
 			{
 				connection.window.showInformationMessage(`MaxScript symbols provider unhandled error:\n${error?.message}`);
-				diagnoseDocument(document, []);
+				diagnoseDocument(params.textDocument.uri, []);
 				resolve;
 			});
 	});
 
 });
-
+//------------------------------------------------------------------------------------------
 /* Completion Items */
-connection.onCompletion(async params =>
+connection.onCompletion(async (params, token) =>
 {
-	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) { return; }
-	// parser completions
-	let ParserCompletions = currentDocumentParseTree ? mxsCompletion.provideDocumentCompletionItems(currentDocumentParseTree) : [];
-	// outliner completions
-	let SymbolDocumentsCompletion = currentDocumentSymbols ? mxsCompletion.provideSymbolCompletionItems(<DocumentSymbol[]>currentDocumentSymbols) : [];
-	// database completions
-	let DatabaseCompletion = mxsCompletion.provideCompletionItems(
-		documents.get(params.textDocument.uri)!,
-		params.position
-	);
-	// return [...SymbolDocumentsCompletion, ...DatabaseCompletion, ...ParserCompletions];
-	return [...SymbolDocumentsCompletion, ...DatabaseCompletion];
-});
+	// token request
+	token.onCancellationRequested(_ => { });
+	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) {return [];}
+	let CompletionSettings = (await getDocumentSettings(params.textDocument.uri)).CompletionSettings;
+	
+	let ProvideCompletions = [];
 
+	// document symbols completion
+	if (currentDocumentSymbols) {
+		ProvideCompletions.push(
+			...mxsCompletion.provideSymbolCompletionItems(<DocumentSymbol[]>currentDocumentSymbols.get(params.textDocument.uri))
+			);
+		}
+	/*
+	// document parse tree completion
+	if (currentDocumentParseTree) {
+		ProvideCompletions.push(
+			...mxsCompletion.provideDocumentCompletionItems(currentDocumentParseTree)
+			);
+		}
+	// */
+	// database completions
+	// if (CompletionSettings.dataBaseCompletion) {
+		ProvideCompletions.push(
+			...mxsCompletion.provideCompletionItems(
+				documents.get(params.textDocument.uri)!,
+				params.position
+			));
+	// }
+	return ProvideCompletions;
+});
+//------------------------------------------------------------------------------------------
 /* Definition provider */
 // method 1: regex match the file
 // method 2: search the parse tree for a match
 // method 2.1: implement Workspace capabilities
-
-connection.onDefinition((params, cancellation) =>
+connection.onDefinition((params, token) =>
 {
+	// token request
+	token.onCancellationRequested(_ => {});
+
 	return new Promise(resolve =>
 	{
-		// cancellation request
-		cancellation.onCancellationRequested(/* async */() => resolve);
 		// settings
 		getDocumentSettings(params.textDocument.uri)
 			.then(result =>
@@ -346,13 +358,11 @@ connection.onDefinition((params, cancellation) =>
 		mxsDefinitions.getDocumentDefinitions(
 			documents.get(params.textDocument.uri)!,
 			params.position,
-			currentTextDocumentURI === params.textDocument.uri ? currentDocumentSymbols : undefined)
-			.then(
-				result => resolve(result),
-				() => resolve)
-			.catch(error =>
+			currentDocumentSymbols.get(params.textDocument.uri))
+			.then(resolve)
+			.catch(err =>
 			{
-				connection.console.log('MaxScript Definitions unhandled error: ' + error);
+				connection.console.log('MaxScript Definitions unhandled error: ' + err.message);
 				resolve;
 			})
 	});

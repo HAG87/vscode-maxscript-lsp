@@ -37,7 +37,7 @@ export function FormatData(data: unknown[] | string, settings?: Partial<reflowOp
 /** format code -- threaded
  * @data Parser tree or code text
  */
-export async function FormatDataThreaded(data: unknown[] | string, settings?: Partial<reflowOptions>)
+export async function FormatDataThreaded(data: unknown[] | string, settings?: Partial<reflowOptions>): Promise<string>
 {
 	let formatDataThreaded = await spawn(new Worker('./workers/formatter.worker'));
 	try {

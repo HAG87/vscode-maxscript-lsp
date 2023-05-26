@@ -4,7 +4,12 @@ export interface MaxScriptSettings
 	GoToSymbol: boolean;
 	GoToDefinition: boolean;
 	Diagnostics: boolean;
-	Completions: boolean;
+	Completions: boolean
+	CompletionSettings: {
+		dataBaseCompletion: boolean,
+		symbolsCompletion: boolean,
+		parserCompletion: boolean
+	};
 	MinifyFilePrefix: string;
 	formatter: {
 		indentOnly: boolean,
@@ -43,6 +48,11 @@ export const defaultSettings: MaxScriptSettings = {
 	GoToDefinition: true,
 	Diagnostics: true,
 	Completions: true,
+	CompletionSettings: {
+		dataBaseCompletion: true,
+		symbolsCompletion: true,
+		parserCompletion: true
+	},
 	MinifyFilePrefix: 'min_',
 	formatter: {
 		indentOnly: true,
