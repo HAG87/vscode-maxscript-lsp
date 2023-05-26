@@ -404,110 +404,101 @@ namespace PrettifyDocRequest
 connection.onRequest(MinifyDocRequest.type, async params =>
 {
 	let settings = await getDocumentSettings(params.uri[0]);
+	switch (params.command) {
+		case 'mxs.minify':
+			params.uri.forEach(async (uri) =>
+			{
+				let path = URI.parse(uri).fsPath;
+				let newPath = prefixFile(path, settings.MinifyFilePrefix);
 
-	if (params.command === 'mxs.minify'/*  || params.command === 'mxs.minify.file' */) {
-		for (let i = 0; i < params.uri.length; i++) {
-			let doc = documents.get(params.uri[i]);
-			let path = URI.parse(params.uri[i]).fsPath;
-			// let path = Path.normalize(params.uri[i]);
-			let newPath = prefixFile(path, settings.MinifyFilePrefix);
-			if (!doc) {
-				connection.window.showWarningMessage(
-					`MaxScript minify: Failed at ${Path.basename(path)}. Reason: Can't read the file`
-				);
-				continue;
-			}
-			try {
-				if (settings.parser.multiThreading) {
-					await mxsMinifier.MinifyDocThreaded(doc.getText(), newPath);
-				} else {
-					await mxsMinifier.MinifyDoc(doc.getText(), newPath);
+				let doc = documents.get(uri)!.getText();
+				if (!doc) {
+					connection.window.showWarningMessage(
+						`MaxScript minify: Failed at ${Path.basename(path)}. Reason: Can't read the file`
+					);
+					return;
 				}
-				connection.window.showInformationMessage(
-					`MaxScript minify: Document saved as ${Path.basename(newPath)}`
-				);
-			} catch (err: any) {
-				connection.window.showErrorMessage(
-					`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${err.message}`
-				);
-			}
-		}
-	} else {
-		for (let i = 0; i < params.uri.length; i++) {
-			let path = URI.parse(params.uri[i]).fsPath;
-			// let path = Path.normalize(params.uri[i]);
-			let newPath = prefixFile(path, settings.MinifyFilePrefix);
-			try {
-				if (settings.parser.multiThreading) {
-					await mxsMinifier.MinifyFileThreaded(path, newPath);
-				} else {
-					await mxsMinifier.MinifyFile(path, newPath);
+				try {
+					settings.parser.multiThreading
+						? await mxsMinifier.MinifyDocThreaded(doc, newPath)
+						: await mxsMinifier.MinifyDoc(doc, newPath);
+
+					connection.window.showInformationMessage(
+						`MaxScript minify: Document saved as ${Path.basename(newPath)}`
+					);
+				} catch (e: any) {
+					connection.window.showErrorMessage(
+						`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${e.message}`
+					);
 				}
-				connection.window.showInformationMessage(
-					`MaxScript minify: Document saved as ${Path.basename(newPath)}`
-				);
-			} catch (err: any) {
-				connection.window.showErrorMessage(
-					`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${err.message}`
-				);
-			}
-		}
+			});
+			break;
+		case 'mxs.minify.file':
+			params.uri.forEach(async (uri) =>
+			{
+				let path = URI.parse(uri).fsPath;
+				let newPath = prefixFile(path, settings.MinifyFilePrefix);
+
+				try {
+					settings.parser.multiThreading
+						? await mxsMinifier.MinifyFileThreaded(path, newPath)
+						: await mxsMinifier.MinifyFile(path, newPath);
+
+					connection.window.showInformationMessage(
+						`MaxScript minify: Document saved as ${Path.basename(newPath)}`
+					);
+				} catch (e: any) {
+					connection.window.showErrorMessage(
+						`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${e.message}`
+					);
+				}
+			});
+			return [];
 	}
-	return null;
 });
 /* Prettyfier */
 connection.onRequest(PrettifyDocRequest.type, async params =>
 {
 	let settings = await getDocumentSettings(params.uri[0]);
-	let opts = {
-		elements: {
-			useLineBreaks: settings.prettifier.list?.useLineBreaks || true
-		},
-		statements: {
-			optionalWhitespace: settings.prettifier.statements?.optionalWhitespace || false
-		},
-		// TODO: expression.useWhiteSpace...
-		codeblock: {
-			newlineAtParens: settings.prettifier.codeblock?.newlineAtParens || true,
-			newlineAllways: settings.prettifier.codeblock?.newlineAllways || true,
-			spaced: settings.prettifier.codeblock?.spaced || true
+
+	// let opts: Partial<reflowOptions> = {};
+	// Object.assign(opts, settings.prettifier);
+
+	if (params.command !== 'mxs.prettify') { return []; }
+	params.uri.forEach(async (uri) =>
+	{
+		let path = URI.parse(uri).fsPath;
+		let doc = documents.get(uri);
+		if (!doc) {
+			connection.window.showWarningMessage(
+				`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: Can't read the file`
+			);
+			return;
 		}
-	};
-	if (params.command === 'mxs.prettify') {
-		for (let i = 0; i < params.uri.length; i++) {
-			let doc = documents.get(params.uri[i]);
-			let path = URI.parse(params.uri[i]).fsPath;
-			// let path = params.uri[i];
-			if (!doc) {
+		try {
+			let formattedData =
+				settings.parser.multiThreading
+				? await mxsFormatter.FormatDataThreaded(doc.getText(), settings.prettifier)
+				: mxsFormatter.FormatData(doc.getText(), settings.prettifier);
+
+			let reply = await replaceText.call(connection, doc, formattedData)
+			if (reply.applied) {
+				connection.window.showInformationMessage(
+					`MaxScript prettifier sucess: ${Path.basename(path)}`
+				);
+			}
+			if (reply.failedChange) {
 				connection.window.showWarningMessage(
-					`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: Can't read the file`
+					`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: ${reply.failureReason}`
 				);
-				continue;
 			}
-			try {
-				let reply = await replaceText.call(
-					connection,
-					doc,
-					settings.parser.multiThreading ? await mxsFormatter.FormatDataThreaded(doc.getText(), opts) : mxsFormatter.FormatData(doc.getText(), opts)
-				);
-				if (reply.applied) {
-					connection.window.showInformationMessage(
-						`MaxScript prettifier sucess: ${Path.basename(path)}`
-					);
-				} else {
-					connection.window.showWarningMessage(
-						`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: ${reply.failureReason}`
-					);
-				}
-			} catch (err: any) {
-				connection.window.showErrorMessage(
-					`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: ${err.message}`
-				);
-				// throw err;
-			}
+		} catch (e: any) {
+			connection.window.showErrorMessage(
+				`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: ${e.message}`
+			);
 		}
-	}
-	return null;
+	});
+	return [];
 });
 //------------------------------------------------------------------------------------------
 // Make the text document manager listen on the connection
