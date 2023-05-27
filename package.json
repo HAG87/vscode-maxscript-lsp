@@ -196,6 +196,24 @@
 					"default": true,
 					"description": "Enable suggest completions"
 				},
+				"MaxScript.CompletionSettings.dataBaseCompletion": {
+					"scope": "resource",
+					"type": "boolean",
+					"default": true,
+					"description": "Enable completions from language reference"
+				},
+				"MaxScript.CompletionSettings.symbolsCompletion": {
+					"scope": "resource",
+					"type": "boolean",
+					"default": true,
+					"description": "Enable completions from document symbols. This includes declared objects such as functions MacroScripts, Rollouts and so on."
+				},
+				"MaxScript.CompletionSettings.parserCompletion": {
+					"scope": "resource",
+					"type": "boolean",
+					"default": true,
+					"description": "Enable completions from document parse tree. This includes all the identifiers found in the code."
+				},
 				"MaxScript.formatter.indentOnly": {
 					"scope": "resource",
 					"type": "boolean",
@@ -208,31 +226,31 @@
 					"default": "min_",
 					"description": "Prefix for code minify output"
 				},
-				"MaxSript.prettifier.codeblock.newlineAtParens": {
+				"MaxScript.prettifier.codeblock.newlineAtParens": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Insert a line break after an opening paren and before a closing paren."
 				},
-				"MaxSript.prettifier.codeblock.newlineAllways": {
+				"MaxScript.prettifier.codeblock.newlineAllways": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Insert line breaks between a statement members"
 				},
-				"MaxSript.prettifier.codeblock.spaced": {
+				"MaxScript.prettifier.codeblock.spaced": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Insert whitespace between expressions"
 				},
-				"MaxSript.prettifier.list.useLineBreaks": {
+				"MaxScript.prettifier.elements.useLineBreaks": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Insert line breaks in array-like objects"
 				},
-				"MaxSript.prettifier.statements.optionalWhitespace": {
+				"MaxScript.prettifier.statements.optionalWhitespace": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": false,
@@ -262,7 +280,7 @@
 					"default": 10,
 					"description": "Max number of problems to be checked. Set it to a lower value to increase perfomance."
 				},
-				"maxScript.parser.multiThreading": {
+				"MaxScript.parser.multiThreading": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
