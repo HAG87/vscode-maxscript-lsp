@@ -82,7 +82,7 @@ export interface LogicalExpression
 }
 export interface CallExpression
 {
-	calle: any
+	operand: any
 	args: any | any[]
 }
 export interface Parameter

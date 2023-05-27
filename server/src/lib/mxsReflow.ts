@@ -608,7 +608,7 @@ let conversionRules = {
 	CallExpression(node: nodetype.CallExpression)
 	{
 		let res = new Statement(
-			node.calle,
+			node.operand,
 			...toArray(node.args)
 		);
 		res.addLinebreaks = false;
