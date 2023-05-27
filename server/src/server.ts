@@ -302,9 +302,15 @@ connection.onDocumentSymbol((params, token) =>
 		{
 			currentDocumentSymbols.set(params.textDocument.uri, result.symbols);
 			// currentDocumentParseTree.set(params.textDocument.uri, result.cst);
-
+			// offload Document completions from the onCompletion Event
+			let res = mxsCompletion.provideDocumentCompletionItems(result.cst);
+			// /*
+			currentDocumentParseTree.set(
+				params.textDocument.uri,
+				res
+			);
+			// */
 			// console.log(currentDocumentParseTree.get(params.textDocument.uri));
-			// console.log(result.cst);
 			//-----------------------------------
 			// Provide diagnostics
 			diagnoseDocument(params.textDocument.uri, result.diagnostics);
@@ -334,6 +340,7 @@ connection.onCompletion(async (params, token) =>
 	let ProvideCompletions = [];
 
 	// document symbols completion
+	// /*
 	if (CompletionSettings.symbolsCompletion) {
 		if (currentDocumentSymbols.has(params.textDocument.uri)) {
 			ProvideCompletions.push(
@@ -341,18 +348,17 @@ connection.onCompletion(async (params, token) =>
 			);
 		}
 	}
+	// */
 	// /*
 	// document parse tree completion
 	if (CompletionSettings.parserCompletion) {
 		if (currentDocumentParseTree.has(params.textDocument.uri)) {
-			// let parserCompletions = mxsCompletion.provideDocumentCompletionItems(currentDocumentParseTree.get(params.textDocument.uri));
-			// console.log(parserCompletions);
-
 			/*
 			ProvideCompletions.push(
 				...mxsCompletion.provideDocumentCompletionItems(currentDocumentParseTree.get(params.textDocument.uri))
 			);
 			// */
+			ProvideCompletions.push(...currentDocumentParseTree.get(params.textDocument.uri));
 		}
 	}
 	// */
