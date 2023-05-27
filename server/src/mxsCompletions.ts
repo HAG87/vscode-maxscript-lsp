@@ -1,3 +1,4 @@
+import { spawn, Thread, Worker } from 'threads';
 import
 {
 	// SymbolKind,
@@ -19,7 +20,7 @@ import { traverse } from 'ast-monkey-traverse';
 // trigger completion for method call
 const dotPattern = /([A-Za-z_][A-Za-z0-9_]+)[.]$/mi;
 
-enum SymbolKindNames
+export enum SymbolKindNames
 {
 	File          = 1,
 	Module        = 2,
@@ -49,7 +50,7 @@ enum SymbolKindNames
 	TypeParameter = 26,
 }
 
-const KindConversion = {
+export const KindConversion = {
 	18: 21, // Array
 	17: 12, // Boolean
 	5:  7,  // Class
@@ -105,10 +106,19 @@ export function provideSymbolCompletionItems(SymbolsTree: DocumentSymbol[]): Com
 	// console.log(Items);
 	return Items;
 }
-
+export async function provideDocumentCompletionItemsThreaded(CTS: any): Promise<CompletionItem[]>
+{
+	let completionsWorker = await spawn(new Worker('./workers/completions.worker'));
+	try {
+		return await completionsWorker(CTS);
+	} finally {
+		await Thread.terminate(completionsWorker);
+	}
+}
 export function provideDocumentCompletionItems(CTS: any): CompletionItem[]
 {
 	let Items: CompletionItem[] = [];
+	
 	traverse(CTS, (key: string, val: string | null, innerObj: { parent: any, parentKey: any }) =>
 	{
 		// if currently an object is traversed, you get both "key" and "val"
@@ -125,7 +135,7 @@ export function provideDocumentCompletionItems(CTS: any): CompletionItem[]
 			if ((val === 'Identifier' && innerObj.parentKey !== 'id') && innerObj.parent.hasOwnProperty('value')) {
 				if (innerObj.parent.value.hasOwnProperty('text')) {
 					// console.log(innerObj);
-					// console.log(innerObj.parent);
+					// console.log(innerObj.parent.value.text);
 					// push the path to array in the outer scope
 					Items.push(
 						{
@@ -134,6 +144,7 @@ export function provideDocumentCompletionItems(CTS: any): CompletionItem[]
 							detail: 'Identifier' + ' defined in the current document.'
 						}
 					);
+					// console.log(Items);
 				}
 			}
 		}
@@ -141,6 +152,8 @@ export function provideDocumentCompletionItems(CTS: any): CompletionItem[]
 	});
 	let uniqueObjArray = [...new Map(Items.map((item) => [item['label'], item])).values()];
 	// console.log(uniqueObjArray);
+	
+	// return [];
 	return uniqueObjArray;
 }
 
