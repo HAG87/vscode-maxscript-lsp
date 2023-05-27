@@ -1,13 +1,27 @@
 {
   "extends": "../tsconfig.base.json",
-  "compilerOptions": {    
-    // "target": "ES2020",
-    "allowJs": true,
-    "baseUrl": ".",
+  "compilerOptions": {
     "outDir": "./out",
     "rootDir": "./src",
+    "target": "ES2019",
+		"lib"   : ["ES6", "ES2019"],
+    "allowJs": true,
+    "baseUrl": ".",
     "paths": {
-      "*": ["./src/typings"]
+      "*": ["./src/typings"],
+      "ast-compare": ["node_modules/ast-compare/dist/ast-compare.esm.js"],
+      "ast-contains-only-empty-space": [
+        "node_modules/ast-contains-only-empty-space/dist/ast-contains-only-empty-space.esm.js"
+      ],
+      "node_modules/ast-get-object": [
+        "node_modules/ast-get-object/dist/ast-get-object.esm.js"
+      ],
+      "ast-get-values-by-key": [
+        "node_modules/ast-get-values-by-key/dist/ast-get-values-by-key.esm.js"
+      ],
+      "node_modules/ast-monkey-traverse": [
+        "node_modules/ast-monkey-traverse/dist/ast-monkey-traverse.esm.js"
+      ]
     }
   },
   "include": ["src"],
