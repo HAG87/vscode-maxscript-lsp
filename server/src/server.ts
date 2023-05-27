@@ -64,6 +64,27 @@ let globalSettings: MaxScriptSettings = defaultSettings;
 // Cache the settings of all open documents
 let documentSettings: Map<string, Thenable<MaxScriptSettings>> = new Map();
 //------------------------------------------------------------------------------------------
+function diagnoseDocument(uri: string, diagnose: Diagnostic[])
+{
+	if (!Capabilities.hasDiagnosticCapability && !globalSettings.Diagnostics) { return; }
+	connection.sendDiagnostics({
+		uri: uri,
+		diagnostics: diagnose
+	});
+}
+/*
+function shallowComparison(obj1: any, obj2: any): boolean
+{
+	return Object.keys(obj1).length === Object.keys(obj2).length &&
+		(Object.keys(obj1) as (keyof typeof obj1)[]).every((key) =>
+		{
+			return (
+				Object.prototype.hasOwnProperty.call(obj2, key) && obj1[key] === obj2[key]
+			);
+		});
+}
+*/
+//------------------------------------------------------------------------------------------
 /* Initialize the server */
 connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> | ResponseError<InitializeError> | InitializeResult =>
 {
@@ -146,6 +167,7 @@ connection.onInitialized(() =>
 	}
 	// Settings...
 	// getGlobalSettings()
+	
 	/*
 	//TODO:
 	if (Capabilities.hasWorkspaceFolderCapability) {
@@ -165,9 +187,9 @@ async function getGlobalSettings()
 	Object.assign(globalSettings, src);
 }
 // */
-function getWorkspaceSettings(resource: string): Thenable<MaxScriptSettings>
+function getWorkspaceSettings(resource: string)
 {
-	let result = connection.workspace.getConfiguration({
+	let result:Thenable<MaxScriptSettings> = connection.workspace.getConfiguration({
 		scopeUri: resource,
 		section: 'MaxScript'
 	});
@@ -176,22 +198,13 @@ function getWorkspaceSettings(resource: string): Thenable<MaxScriptSettings>
 	// return Promise.resolve(result);
 	return result;
 }
-function getDocumentSettings(resource: string): Thenable<MaxScriptSettings>
+function getDocumentSettings(resource: string)
 {
 	if (!Capabilities.hasConfigurationCapability) {
 		return Promise.resolve(globalSettings);
 	}
 	// return Promise.resolve( documentSettings.get(resource) ?? getWorkspaceSettings(resource) );
 	return (documentSettings.get(resource) ?? getWorkspaceSettings(resource));
-}
-//------------------------------------------------------------------------------------------
-function diagnoseDocument(uri: string, diagnose: Diagnostic[])
-{
-	if (!Capabilities.hasDiagnosticCapability && !globalSettings.Diagnostics) { return; }
-	connection.sendDiagnostics({
-		uri: uri,
-		diagnostics: diagnose
-	});
 }
 //------------------------------------------------------------------------------------------
 connection.onDidChangeConfiguration(change =>
@@ -288,7 +301,7 @@ connection.onDocumentSymbol((params, token) =>
 		symbolsresult.then((result: ParserSymbols) =>
 		{
 			currentDocumentSymbols.set(params.textDocument.uri, result.symbols);
-			currentDocumentParseTree.set(params.textDocument.uri, result.cst);
+			// currentDocumentParseTree.set(params.textDocument.uri, result.cst);
 
 			// console.log(currentDocumentParseTree.get(params.textDocument.uri));
 			// console.log(result.cst);
@@ -316,8 +329,10 @@ connection.onCompletion(async (params, token) =>
 
 	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) {return [];}
 
-	let CompletionSettings = (await getDocumentSettings(params.textDocument.uri)).CompletionSettings;
-	
+	let CompletionSettings = (await getDocumentSettings(params.textDocument.uri));
+	// console.log(defaultSettings);
+	// console.log(CompletionSettings);
+
 	let ProvideCompletions = [];
 
 	// document symbols completion
