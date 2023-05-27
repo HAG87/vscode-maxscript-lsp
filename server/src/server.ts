@@ -31,7 +31,7 @@ import { replaceText } from './lib/workspaceEdits';
 import { prefixFile } from './lib/utils';
 //------------------------------------------------------------------------------------------
 import * as mxsCompletion from './mxsCompletions';
-import { DocumentSymbolProvider } from './mxsOutline';
+import { DocumentSymbolProvider, ParserSymbols } from './mxsOutline';
 import * as mxsDefinitions from './mxsDefinitions';
 import { mxsSemanticTokens } from './mxsSemantics';
 import * as mxsMinifier from './mxsMin';
@@ -55,7 +55,7 @@ let mxsDocumentSymbols: DocumentSymbolProvider;
 /**  Current documentSymbols: Store the current document Symbols for later use */
 let currentDocumentSymbols: Map<string, DocumentSymbol[] | SymbolInformation[]> = new Map();
 /** Store current parse tree for later use */
-let currentDocumentParseTree: Map<string, any | any[]> = new Map();
+let currentDocumentParseTree: Map<string, any[] | any> = new Map();
 let cachedCompletionItems: Map<string, CompletionItem[]> = new Map();
 //------------------------------------------------------------------------------------------
 /* Settings */
@@ -165,20 +165,24 @@ async function getGlobalSettings()
 	Object.assign(globalSettings, src);
 }
 // */
-function getDocumentSettings(resource: string)
+function getWorkspaceSettings(resource: string): Thenable<MaxScriptSettings>
+{
+	let result = connection.workspace.getConfiguration({
+		scopeUri: resource,
+		section: 'MaxScript'
+	});
+	// set document settings from workspace settings
+	documentSettings.set(resource, result);
+	// return Promise.resolve(result);
+	return result;
+}
+function getDocumentSettings(resource: string): Thenable<MaxScriptSettings>
 {
 	if (!Capabilities.hasConfigurationCapability) {
 		return Promise.resolve(globalSettings);
 	}
-	let result = documentSettings.get(resource);
-	if (!result) {
-		result = connection.workspace.getConfiguration({
-			scopeUri: resource,
-			section: 'MaxScript'
-		});
-		documentSettings.set(resource, result);
-	}
-	return result;
+	// return Promise.resolve( documentSettings.get(resource) ?? getWorkspaceSettings(resource) );
+	return (documentSettings.get(resource) ?? getWorkspaceSettings(resource));
 }
 //------------------------------------------------------------------------------------------
 function diagnoseDocument(uri: string, diagnose: Diagnostic[])
@@ -196,9 +200,7 @@ connection.onDidChangeConfiguration(change =>
 		// Reset all cached document settings
 		documentSettings.clear();
 	} else {
-		globalSettings = <MaxScriptSettings>(
-			(change.settings.languageServerMaxScript || defaultSettings)
-		);
+		globalSettings = (change.settings.languageServerMaxScript || defaultSettings);
 	}
 	// Revalidate all open text documents
 	documents.all().forEach(async (textDocument: TextDocument) =>
@@ -283,10 +285,13 @@ connection.onDocumentSymbol((params, token) =>
 				? mxsDocumentSymbols.parseDocumentThreaded(document, connection)
 				: mxsDocumentSymbols.parseDocument(document, connection);
 
-		symbolsresult.then((result: any) =>
+		symbolsresult.then((result: ParserSymbols) =>
 		{
-			// currentDocumentSymbols.set(params.textDocument.uri, result.symbols);
-			// currentDocumentParseTree.set(params.textDocument.uri, result.cst);
+			currentDocumentSymbols.set(params.textDocument.uri, result.symbols);
+			currentDocumentParseTree.set(params.textDocument.uri, result.cst);
+
+			// console.log(currentDocumentParseTree.get(params.textDocument.uri));
+			// console.log(result.cst);
 			//-----------------------------------
 			// Provide diagnostics
 			diagnoseDocument(params.textDocument.uri, result.diagnostics);
@@ -308,24 +313,31 @@ connection.onCompletion(async (params, token) =>
 {
 	// token request
 	token.onCancellationRequested(_ => { });
+
 	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) {return [];}
+
 	let CompletionSettings = (await getDocumentSettings(params.textDocument.uri)).CompletionSettings;
 	
 	let ProvideCompletions = [];
 
 	// document symbols completion
-	if (currentDocumentSymbols) {
+	if (currentDocumentSymbols.has(params.textDocument.uri)) {
 		ProvideCompletions.push(
 			...mxsCompletion.provideSymbolCompletionItems(<DocumentSymbol[]>currentDocumentSymbols.get(params.textDocument.uri))
-			);
-		}
-	/*
+		);
+	}
+	// /*
 	// document parse tree completion
-	if (currentDocumentParseTree) {
+	if (currentDocumentParseTree.has(params.textDocument.uri)) {
+		// let parserCompletions = mxsCompletion.provideDocumentCompletionItems(currentDocumentParseTree.get(params.textDocument.uri));
+		// console.log(parserCompletions);
+
+		/*
 		ProvideCompletions.push(
-			...mxsCompletion.provideDocumentCompletionItems(currentDocumentParseTree)
-			);
-		}
+			...mxsCompletion.provideDocumentCompletionItems(currentDocumentParseTree.get(params.textDocument.uri))
+		);
+		// */
+	}
 	// */
 	// database completions
 	// if (CompletionSettings.dataBaseCompletion) {
@@ -355,6 +367,7 @@ connection.onDefinition((params, token) =>
 			{
 				if (!result.GoToDefinition) { resolve; }
 			});
+		// get document definitions
 		mxsDefinitions.getDocumentDefinitions(
 			documents.get(params.textDocument.uri)!,
 			params.position,

@@ -31,7 +31,7 @@ expose(
 			if (results!.result) {
 				response.symbols = deriveSymbolsTree(results.result, range);
 				response.diagnostics = provideTokenDiagnostic(collectTokens(results.result, 'type', 'error'));
-				// response.cst = results.result;
+				response.cst = results.result;
 			}
 			// check for trivial errors
 			if (results!.error) {

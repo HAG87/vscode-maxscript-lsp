@@ -70,7 +70,7 @@ export class DocumentSymbolProvider
 			if (results!.result) {
 				response.symbols = deriveSymbolsTree(results.result, this.documentRange(document));
 				response.diagnostics = provideTokenDiagnostic(collectTokens(results.result, 'type', 'error'));
-				// response.cst = results.result;
+				response.cst = results.result;
 			}
 			// check for trivial errors
 			if (results!.error) {
