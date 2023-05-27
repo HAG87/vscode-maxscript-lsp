@@ -329,39 +329,41 @@ connection.onCompletion(async (params, token) =>
 
 	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) {return [];}
 
-	let CompletionSettings = (await getDocumentSettings(params.textDocument.uri));
-	// console.log(defaultSettings);
-	// console.log(CompletionSettings);
+	let CompletionSettings = (await getDocumentSettings(params.textDocument.uri)).CompletionSettings ?? defaultSettings.CompletionSettings;
 
 	let ProvideCompletions = [];
 
 	// document symbols completion
-	if (currentDocumentSymbols.has(params.textDocument.uri)) {
-		ProvideCompletions.push(
-			...mxsCompletion.provideSymbolCompletionItems(<DocumentSymbol[]>currentDocumentSymbols.get(params.textDocument.uri))
-		);
+	if (CompletionSettings.symbolsCompletion) {
+		if (currentDocumentSymbols.has(params.textDocument.uri)) {
+			ProvideCompletions.push(
+				...mxsCompletion.provideSymbolCompletionItems(<DocumentSymbol[]>currentDocumentSymbols.get(params.textDocument.uri))
+			);
+		}
 	}
 	// /*
 	// document parse tree completion
-	if (currentDocumentParseTree.has(params.textDocument.uri)) {
-		// let parserCompletions = mxsCompletion.provideDocumentCompletionItems(currentDocumentParseTree.get(params.textDocument.uri));
-		// console.log(parserCompletions);
+	if (CompletionSettings.parserCompletion) {
+		if (currentDocumentParseTree.has(params.textDocument.uri)) {
+			// let parserCompletions = mxsCompletion.provideDocumentCompletionItems(currentDocumentParseTree.get(params.textDocument.uri));
+			// console.log(parserCompletions);
 
-		/*
-		ProvideCompletions.push(
-			...mxsCompletion.provideDocumentCompletionItems(currentDocumentParseTree.get(params.textDocument.uri))
-		);
-		// */
+			/*
+			ProvideCompletions.push(
+				...mxsCompletion.provideDocumentCompletionItems(currentDocumentParseTree.get(params.textDocument.uri))
+			);
+			// */
+		}
 	}
 	// */
 	// database completions
-	// if (CompletionSettings.dataBaseCompletion) {
+	if (CompletionSettings.dataBaseCompletion) {
 		ProvideCompletions.push(
 			...mxsCompletion.provideCompletionItems(
 				documents.get(params.textDocument.uri)!,
 				params.position
 			));
-	// }
+	}
 	return ProvideCompletions;
 });
 //------------------------------------------------------------------------------------------
@@ -431,7 +433,7 @@ namespace PrettifyDocRequest
 /* Minifier */
 connection.onRequest(MinifyDocRequest.type, async params =>
 {
-	let settings = await getDocumentSettings(params.uri[0]);
+	let settings = await getDocumentSettings(params.uri[0]) ?? defaultSettings;
 	switch (params.command) {
 		case 'mxs.minify':
 			params.uri.forEach(async (uri) =>
@@ -487,7 +489,7 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 /* Prettyfier */
 connection.onRequest(PrettifyDocRequest.type, async params =>
 {
-	let settings = await getDocumentSettings(params.uri[0]);
+	let settings = await getDocumentSettings(params.uri[0]) ?? defaultSettings;
 
 	// let opts: Partial<reflowOptions> = {};
 	// Object.assign(opts, settings.prettifier);
