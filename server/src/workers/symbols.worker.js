@@ -12,14 +12,14 @@ expose(
 		let response = {
 			symbols: [],
 			diagnostics: [],
-			cst: []
+			cst: ''
 		};
 		try {
 			let results = parseSource(source, options);
 			if (results.result) {
 				response.symbols = deriveSymbolsTree(results.result, range);
 				response.diagnostics = provideTokenDiagnostic(collectTokens(results.result, 'type', 'error'));
-				response.cst = results.result;
+				response.cst = JSON.stringify(results.result);
 			}
 			if (results.error) {
 				response.diagnostics.push(...provideParserDiagnostic(results.error));

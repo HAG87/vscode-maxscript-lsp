@@ -104,21 +104,13 @@ export function provideSymbolCompletionItems(SymbolsTree: DocumentSymbol[]): Com
 		return current;
 	});
 	// console.log(Items);
-	return Items;
+	let uniqueObjArray = [...new Map(Items.map((item) => [item['label'], item])).values()];
+	return uniqueObjArray;
 }
-export async function provideDocumentCompletionItemsThreaded(CTS: any): Promise<CompletionItem[]>
+
+export async function provideDocumentCompletionItems(CTS: any): Promise<CompletionItem[]>
 {
-	let completionsWorker = await spawn(new Worker('./workers/completions.worker'));
-	try {
-		return await completionsWorker(CTS);
-	} finally {
-		await Thread.terminate(completionsWorker);
-	}
-}
-export function provideDocumentCompletionItems(CTS: any): CompletionItem[]
-{
-	let Items: CompletionItem[] = [];
-	
+	let Items: CompletionItem[] = [];	
 	traverse(CTS, (key: string, val: string | null, innerObj: { parent: any, parentKey: any }) =>
 	{
 		// if currently an object is traversed, you get both "key" and "val"
@@ -157,6 +149,15 @@ export function provideDocumentCompletionItems(CTS: any): CompletionItem[]
 	return uniqueObjArray;
 }
 
+export async function provideDocumentCompletionItemsThreaded(CTS: any): Promise<CompletionItem[]>
+{
+	let provideDocumentCompletionItems = await spawn(new Worker('./workers/completions.worker'));
+	try {
+		return await provideDocumentCompletionItems(CTS);
+	} finally {
+		await Thread.terminate(provideDocumentCompletionItems);
+	}
+}
 /**
  * Retrieve the completion items, search for descendant completion items.
  * @param document

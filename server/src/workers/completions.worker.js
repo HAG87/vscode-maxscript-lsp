@@ -1,12 +1,12 @@
 import { expose } from "threads/worker"
 import { traverse } from 'ast-monkey-traverse';
-import { KindConversion, SymbolKindNames } from '../mxsCompletions';
+// import { KindConversion, SymbolKindNames } from '../mxsCompletions';
 //------------------------------------------------------------------------------------------
 expose(
-	function provideSymbolCompletionItems(SymbolsTree)
+	function provideDocumentCompletionItems(CTS)
 	{
-		const Items = [];
-		traverse(SymbolsTree, (key, val, innerObj) =>
+		let Items = [];	
+		traverse(CTS, (key, val, innerObj) =>
 		{
 			// if currently an object is traversed, you get both "key" and "val"
 			// if it's array, only "key" is present, "val" is undefined
@@ -16,17 +16,24 @@ expose(
 				// it's object (not array)
 				val !== null &&
 				// and has the key we need
-				key === 'name'
+				key === 'type'
 			) {
-				// push the path to array in the outer scope
-				Items.push({
-					label: val,
-					kind: (KindConversion[innerObj.parent.kind] ?? 1),
-					detail: SymbolKindNames[innerObj.parent.kind] + ' defined in the current document.'
-				});
+				// console.log(innerObj.parent);
+				if ((val === 'Identifier' && innerObj.parentKey !== 'id') && innerObj.parent.hasOwnProperty('value')) {
+					if (innerObj.parent.value.hasOwnProperty('text')) {
+						// push the path to array in the outer scope
+						Items.push(
+							{
+								label: innerObj.parent.value.text,
+								kind: CompletionItemKind.Variable,
+								detail: 'Identifier' + ' defined in the current document.'
+							}
+						);
+					}
+				}
 			}
 			return current;
 		});
-		// console.log(Items);
-		return Items;
+		let uniqueObjArray = [...new Map(Items.map((item) => [item['label'], item])).values()];
+		return uniqueObjArray;
 	});
