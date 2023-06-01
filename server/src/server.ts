@@ -303,20 +303,20 @@ connection.onDocumentSymbol((params, token) =>
 			currentDocumentSymbols.set(params.textDocument.uri, result.symbols);
 			// currentDocumentParseTree.set(params.textDocument.uri, result.cst);
 			// offload Document completions from the onCompletion Event
-			let completionItemsCache =
-				threading
-					? mxsCompletion.provideDocumentCompletionItemsThreaded(result.cst)
-					: mxsCompletion.provideDocumentCompletionItems(result.cst);
-			// /*
-			completionItemsCache.then((result: CompletionItem[]) =>
-			{
-				currentDocumentParseTree.set(
-					params.textDocument.uri,
-					result
-				);
-			});
-			// */
-			// console.log(currentDocumentParseTree.get(params.textDocument.uri));
+			if (result.cst) {
+				let completionItemsCache =
+					threading
+						? mxsCompletion.provideDocumentCompletionItemsThreaded(JSON.parse(result.cst))
+						: mxsCompletion.provideDocumentCompletionItems(JSON.parse(result.cst));
+						
+				completionItemsCache.then((result: CompletionItem[]) =>
+				{
+					currentDocumentParseTree.set(
+						params.textDocument.uri,
+						result
+					);
+				});
+			}
 			//-----------------------------------
 			// Provide diagnostics
 			diagnoseDocument(params.textDocument.uri, result.diagnostics);

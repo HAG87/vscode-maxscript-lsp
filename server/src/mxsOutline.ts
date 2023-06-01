@@ -39,7 +39,7 @@ export interface ParserSymbols
 {
 	symbols: SymbolInformation[] | DocumentSymbol[]
 	diagnostics: Diagnostic[]
-	cst: any[]
+	cst?: string
 }
 
 export class DocumentSymbolProvider
@@ -61,7 +61,7 @@ export class DocumentSymbolProvider
 		let response: ParserSymbols = {
 			symbols: [],
 			diagnostics: [],
-			cst: []
+			cst: ''
 		};
 		try {
 			// feed the parser
@@ -70,7 +70,7 @@ export class DocumentSymbolProvider
 			if (results!.result) {
 				response.symbols = deriveSymbolsTree(results.result, this.documentRange(document));
 				response.diagnostics = provideTokenDiagnostic(collectTokens(results.result, 'type', 'error'));
-				response.cst = results.result;
+				response.cst = JSON.stringify(results.result);
 			}
 			// check for trivial errors
 			if (results!.error) {

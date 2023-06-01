@@ -22,7 +22,7 @@ expose(
 		let response: ParserSymbols = {
 			symbols: [],
 			diagnostics: [],
-			cst: [] // NOTE: parser completions will not be available!, I can't figure out why is not syncing results...
+			cst: '' // NOTE: parser completions will not be available!, I can't figure out why is not syncing results...
 		};
 		try {
 			// feed the parser
@@ -31,7 +31,8 @@ expose(
 			if (results!.result) {
 				response.symbols = deriveSymbolsTree(results.result, range);
 				response.diagnostics = provideTokenDiagnostic(collectTokens(results.result, 'type', 'error'));
-				response.cst = results.result;
+				// response.cst = structuredClone(results.result);
+				response.cst = JSON.stringify(results.result);
 			}
 			// check for trivial errors
 			if (results!.error) {
