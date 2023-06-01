@@ -242,79 +242,94 @@ export function parseWithErrors(source: string, parserInstance: nearley.Parser, 
 						if (!err.token) { throw (err); }
 						// collect bad tokens
 						badTokens.push(err.token);
+						
 						// /*
 						// Problem: the token feed breaks the parser. Beed a propper way to backtrack and catch errors
-						let tokenAlternatives = uniqueArray(PossibleTokens(parserInstance)!);
+						let tokenAlternatives = uniqueArray(PossibleTokens(parserInstance)!);						
+						// errorReport.push({token:src[next], alternatives: this.PossibleTokens(mxsParser) });
+						// copy error token
+						let specimen = {...err.token};
+
 						let nextToken = 0;
 						function parserErrorIterator(err: any)
 						{
 							return {
-								next: function ()
+								next: function()
 								{
 									if (nextToken < tokenAlternatives.length) {
 										// emmit the possible next token ...
 										let currentTokentAlt = tokenAlternatives[nextToken++];
-										let tokenType = currentTokentAlt.type || currentTokentAlt.literal;
-										// let altToken = {...err.token, ...tokenAlternatives[nextToken++]};
-										let altToken = emmitTokenValue(err.token.value.length)[tokenType as keyof typeof emmitTokenValue];
-										// console.log(altToken);
+										if (currentTokentAlt.type) {
+											let altTokenValue: string = emmitTokenValue(err.token.value.length)[currentTokentAlt.type as keyof typeof emmitTokenValue];
+											let altToken = {
+												text:  altTokenValue,
+												value: altTokenValue,
+												type:  currentTokentAlt.type,
+											};
+											Object.assign(specimen, altToken);
+										} else { specimen = {...currentTokentAlt}; }
+
+
+										// assign alternative
+										/*
+										// replace the faulty token with a filler value
+										let filler = replaceWithWS(specimen.text);
+										let altToken: moo.Token =
+										{
+											text: filler,
+											value: filler,
+											type: 'ws'
+										});
+										*/
+										
 										try {
-											// restore parser state?
-											parserInstance.restore(state);
+											// backtrack: restore parser state
+											// parserInstance.restore(state);
 											// attemp to parse token
-											parserInstance.feed(altToken);
+											parserInstance.feed(specimen);
 											//pass
-											return { done: true };
+											return { done: true, value: specimen };
 										} catch (err) {
-											//this is not working
-											console.log(err);
-											// restore parser state?
+											//this is not working, try next token
+											// nextToken++;
+											// backtrack: restore parser state
 											parserInstance.restore(state);
+											return { done: false };
 										}
 									} else {
-										return { done: false };
+										// no viable results
+										return { done: true, value: null };
 									}
 								}
 							};
 						}
+
 						let it = parserErrorIterator(err);
-						while (!it.next()?.done || nextToken >= tokenAlternatives.length - 1) { }
-						// advance the parser one token
-						if (it.next()?.done) { next++ }
-						//*/
-						/*
-						// Set max errors limit
-						if (options.attemps > 0 && attemp++ >= options.attemps) { return { done: true }; }					
-						// create a report of possible fixes *DISABLED TOO RESOURCES INTENSIVE*
-						// errorReport.push({token:src[next], alternatives: this.PossibleTokens(mxsParser) });
-						// replace the faulty token with a filler value
-						if (src[next]) {
-							let filler = replaceWithWS(err.token.text);
-							Object.assign(src[next],
-								{
-									text: filler,
-									value: filler,
-									type: 'ws'
-								});
-						}
-						// backtrack
-						parserInstance.restore(state);
-						//*/
+						let result = it.next();
+						while (!result.done) { result = it.next(); }
+						if (result.done && result.value) {
+							// advance the parser one token
+							next++
+							return { value: null, done:false };
+						} else {
+							// no valid token alternatives, abort parsing
+							return { value: null, done:true };
+						 }
 					}
 				} else {
+					// parser finished
 					return { value: parserInstance.results, done: true };
 				}
 			}
 		};
 	}
-
-	let it = parserIterator(src);
 	//Iterator
-	while (!it.next()?.done) { }
-	let res = it.next()?.value;
+	let it = parserIterator(src);
+	let result = it.next();
+	while (!result.done) { result = it.next(); }
 
 	return {
-		result: res,
-		error: res ? reportSuccess(badTokens) : reportFailure(badTokens)
+		result: result.value,
+		error: result.value ? reportSuccess(badTokens) : reportFailure(badTokens)
 	};
 }

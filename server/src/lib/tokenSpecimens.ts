@@ -22,11 +22,15 @@ const rx = (rule:string):string => {
 	return lit.build();
 };
 
-export const emmitTokenValue = (r:number) => ({
+type tokenValue = {
+    [index: string]: string;
+} 
+export const emmitTokenValue = (r:number):tokenValue => ({
 	comment_SL      : rx(`[-]{2}[A-Za-z0-9_]{${r >= 3 ? r-2 : 0}}`),
 	comment_BLK     : rx(`\\/\\*[a-z]{${r >= 5 ? r-4 : 0}}\\*\\/`),
 	string          : rx(`"(?:[A-Za-z0-9_]{${r >= 3 ? r-2 : 0}})"`),
 	ws              : rx(`[ \t]{${r}}`),
+	error              : rx(`[ \t]{${r}}`),
 	newline         : rx(`[;\r\n]{${r}}`),
 	locale          : rx(`~[A-Za-z0-9_]{${r >= 2 ? r-2 : 0}}~`),
 	path            : rx(`\\$[A-Za-z0-9_]{${r > 1 ? r-1 : 0}}`),
@@ -64,7 +68,7 @@ export const emmitTokenValue = (r:number) => ({
 	kw_defaultAction: 'defaultaction',
 	kw_do           : 'do',
 	kw_else         : 'else',
-	kw_exit         : '    ',
+	kw_exit         : 'exit',
 	kw_for          : 'for',
 	kw_from         : 'from',
 	kw_function     : rand(['function', 'fn']),
