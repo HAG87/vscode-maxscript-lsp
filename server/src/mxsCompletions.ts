@@ -116,7 +116,7 @@ export async function provideDocumentCompletionItemsThreaded(CTS: any): Promise<
 		await Thread.terminate(completionsWorker);
 	}
 }
-export function provideDocumentCompletionItems(CTS: any): CompletionItem[]
+export async function provideDocumentCompletionItems(CTS: any): Promise<CompletionItem[]>
 {
 	let Items: CompletionItem[] = [];
 	

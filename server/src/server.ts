@@ -303,12 +303,18 @@ connection.onDocumentSymbol((params, token) =>
 			currentDocumentSymbols.set(params.textDocument.uri, result.symbols);
 			// currentDocumentParseTree.set(params.textDocument.uri, result.cst);
 			// offload Document completions from the onCompletion Event
-			let res = mxsCompletion.provideDocumentCompletionItems(result.cst);
+			let completionItemsCache =
+				threading
+					? mxsCompletion.provideDocumentCompletionItemsThreaded(result.cst)
+					: mxsCompletion.provideDocumentCompletionItems(result.cst);
 			// /*
-			currentDocumentParseTree.set(
-				params.textDocument.uri,
-				res
-			);
+			completionItemsCache.then((result: CompletionItem[]) =>
+			{
+				currentDocumentParseTree.set(
+					params.textDocument.uri,
+					result
+				);
+			});
 			// */
 			// console.log(currentDocumentParseTree.get(params.textDocument.uri));
 			//-----------------------------------
@@ -334,7 +340,8 @@ connection.onCompletion(async (params, token) =>
 	token.onCancellationRequested(_ => { });
 
 	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) {return [];}
-
+	
+	// settings
 	let CompletionSettings = (await getDocumentSettings(params.textDocument.uri)).CompletionSettings ?? defaultSettings.CompletionSettings;
 
 	let ProvideCompletions = [];
