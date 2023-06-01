@@ -1237,7 +1237,7 @@ var grammar = {
     {"name": "factor", "symbols": ["point4"], "postprocess": id},
     {"name": "factor", "symbols": ["point3"], "postprocess": id},
     {"name": "factor", "symbols": ["point2"], "postprocess": id},
-    {"name": "factor", "symbols": [(mxLexer.has("amp") ? {type: "amp"} : amp)], "postprocess": d => ({type: 'Keyword', value: d[0], range: getLoc(d[0]) })},
+    {"name": "factor", "symbols": [(mxLexer.has("questionmark") ? {type: "questionmark"} : questionmark)], "postprocess": d => ({type: 'Keyword', value: d[0], range: getLoc(d[0]) })},
     {"name": "factor", "symbols": ["expr_seq"], "postprocess": id},
     {"name": "factor", "symbols": [(mxLexer.has("error") ? {type: "error"} : error)], "postprocess": id},
     {"name": "point4", "symbols": ["LBRACKET", "expr", "LIST_SEP", "expr", "LIST_SEP", "expr", "LIST_SEP", "expr", "RBRACKET"], "postprocess":  d => ({

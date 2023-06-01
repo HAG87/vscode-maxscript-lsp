@@ -1166,7 +1166,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         | point4     {% id %}
         | point3     {% id %}
         | point2     {% id %}
-        | %amp {% d => ({type: 'Keyword', value: d[0], range: getLoc(d[0]) })%}
+        | %questionmark {% d => ({type: 'Keyword', value: d[0], range: getLoc(d[0]) })%}
         # BLOCKSTATEMENT
         | expr_seq   {% id %}
         | %error     {% id %}
