@@ -290,7 +290,7 @@ connection.onDocumentSymbol((params, token) =>
 				if (!result.GoToSymbol) { resolve; }
 				mxsDocumentSymbols.options.recovery = result.parser.errorCheck;
 				mxsDocumentSymbols.options.attemps = result.parser.errorLimit;
-				// threading = result.parser.multiThreading;
+				threading = result.parser.multiThreading;
 			});
 		let document = documents.get(params.textDocument.uri)!;
 		let symbolsresult =
