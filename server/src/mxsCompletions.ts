@@ -104,7 +104,8 @@ export function provideSymbolCompletionItems(SymbolsTree: DocumentSymbol[]): Com
 		return current;
 	});
 	// console.log(Items);
-	return Items;
+	let uniqueObjArray = [...new Map(Items.map((item) => [item['label'], item])).values()];
+	return uniqueObjArray;
 }
 export async function provideDocumentCompletionItemsThreaded(CTS: any): Promise<CompletionItem[]>
 {
