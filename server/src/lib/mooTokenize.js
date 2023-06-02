@@ -83,10 +83,10 @@ const mxLexer = moo.compile({
 
 	// DELIMITERS
 	bitrange: '..',
-	delimiter: '.',
-	sep: ',',
+	dot: '.',
+	comma: ',',
 	// statement: ';',
-	param: ':',
+	colon: ':',
 
 	// [\$?`] COMPLETE WITH UNWANTED CHARS HERE THAT CAN BREAK THE TOKENIZER
 	error: [

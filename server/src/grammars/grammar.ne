@@ -335,9 +335,9 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         | event_handler  {% id %}
 #---------------------------------------------------------------
 # ROLLOUT / UTILITY DEFINITION --- OK
-       # -> (uistatement_def __ ) VAR_NAME __:? unary_operand ( __:? parameter):* __:? expr_seq
+       # -> (uistatement_def __ ) VAR_NAME __:? OP ( __:? parameter):* __:? expr_seq
         rollout_def
-        -> (uistatement_def __ ) VAR_NAME __:? operand ( __:? parameter):* __:?
+        -> (uistatement_def __ ) VAR_NAME __:? _OP ( __:? parameter):* __:?
             LPAREN
                 rollout_clauses
             RPAREN
@@ -389,7 +389,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         # | null
     #---------------------------------------------------------------
     rollout_item
-        -> %kw_uicontrols __ VAR_NAME ( __:? operand):? ( __:? parameter):*
+        -> %kw_uicontrols __ VAR_NAME ( __:? _OP):? ( __:? parameter):*
             {% d => {
              let res = {
                     type:   'EntityRolloutControl',
@@ -419,7 +419,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
             })%}
 
     macro_script_param
-        -> param_name __:? ( unary_operand | RESOURCE )
+        -> param_name __:? ( OP | RESOURCE )
             {% d => ({
                 type: 'ParameterAssignment',
                 param: d[0],
@@ -450,7 +450,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
                 range: getLoc(d[0][0], d[5])
             })%}
 
-    struct_members -> struct_member ( LIST_SEP struct_member ):* {% flatten %}
+    struct_members -> struct_member ( COMMA struct_member ):* {% flatten %}
 
     struct_member
         -> decl          {% id %}
@@ -502,7 +502,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 # when <attribute> <objects> change[s] [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr>
 # when <objects> deleted               [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr> 
     CHANGE_HANDLER
-        -> %kw_when __ (VAR_NAME | kw_override):? __ operand __ VAR_NAME __ (parameter __:?):* operand:? __:? %kw_do __:? expr
+        -> %kw_when __ (VAR_NAME | kw_override):? __ _OP __ VAR_NAME __ (parameter __:?):* _OP:? __:? %kw_do __:? expr
             {% d=> ({
                 type:  'WhenStatement',
                 args:  merge(...d.slice(2,9)),
@@ -585,7 +585,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 # CONTEXT EXPRESSION --- OK
     #---------------------------------------------------------------
     CONTEXT_EXPR ->
-        context ( LIST_SEP context ):* __:? expr
+        context ( COMMA context ):* __:? expr
             {% d => ({
                 type:    'ContextStatement',
                 context: merge(d[0], flatten(d[1])),
@@ -611,7 +611,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
     # [ with ]       defaultAction <action>
 
     context
-        -> ((%kw_set | %kw_at) __):? (%kw_level | %kw_time) __:? unary_operand
+        -> ((%kw_set | %kw_at) __):? (%kw_level | %kw_time) __:? OP
             {% d => ({
                 type:    'ContextExpression',
                 prefix :  (d[0] != null ? d[0][0][0] : null),
@@ -619,7 +619,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
                 args:    d[4],
                 range:   getLoc(d[0] != null ? d[0][0][0] : d[1][0], d[3])
             })%}
-        | (%kw_set __ ):? %kw_in __:? unary_operand
+        | (%kw_set __ ):? %kw_in __:? OP
             {% d => ({
                 type:    'ContextExpression',
                 prefix : (d[0] != null ? d[0][0] : null),
@@ -627,7 +627,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
                 args:    d[3],
                 range:   getLoc(d[0] != null ? d[0][0] : d[1], d[3])
             })%}
-        | ((%kw_set | %kw_in) __ ):? %kw_coordsys __:? (%kw_local | unary_operand)
+        | ((%kw_set | %kw_in) __ ):? %kw_coordsys __:? (%kw_local | OP)
             {% d => ({
                 type: 'ContextExpression',
                 prefix : (d[0] != null ? d[0][0][0] : null),
@@ -635,7 +635,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
                 args:    d[3][0],
                 range:   getLoc(d[0] != null ? d[0][0][0] : d[1], d[3][0])
             })%}
-        | (%kw_set __ ):? %kw_about __:? (%kw_coordsys | unary_operand)
+        | (%kw_set __ ):? %kw_about __:? (%kw_coordsys | OP)
             {% d => ({
                 type: 'ContextExpression',
                 prefix : (d[0] != null ? d[0][0] : null),
@@ -737,14 +737,14 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
             
     # for <var_name> [, <index_name>[, <filtered_index_name>]] ( in | = )<sequence> ( do | collect ) <expr>
     for_index ->
-        VAR_NAME _:? LIST_SEP __:? VAR_NAME _:? LIST_SEP __:? VAR_NAME
+        VAR_NAME _:? COMMA __:? VAR_NAME _:? COMMA __:? VAR_NAME
             {% d=> ({
                 type: 'ForLoopIndex',
                 variable: d[0],
                 index_name: d[4],
                 filtered_index_name: d[8]
             })%}
-        | VAR_NAME _:? LIST_SEP __:? VAR_NAME
+        | VAR_NAME _:? COMMA __:? VAR_NAME
             {% d=> ({
                 type: 'ForLoopIndex',
                 variable: d[0],
@@ -850,8 +850,8 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         | %kw_global {% d => ({modifier:null, scope: d[0], range:getLoc(d[0])}) %}
         | %kw_persistent __ %kw_global {% d => ({modifier: d[0], scope: d[2], range:getLoc(d[0], d[2])}) %}
 
-    decl_list -> decl (LIST_SEP decl):*  {% flatten %}
-    # decl_list -> decl  | decl_list LIST_SEP decl  {% flatten %}
+    decl_list -> decl (COMMA decl):*  {% flatten %}
+    # decl_list -> decl  | decl_list COMMA decl  {% flatten %}
     
     decl
         -> VAR_NAME  {% id %}
@@ -983,9 +983,9 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
             # | uny {% id %}
             | math_operand {% id %}
 
-        # FN_CALL | operand | unary_operand | passthrough math expression
+        # FN_CALL | operand | OP | passthrough math expression
         math_operand
-            -> unary_operand   {% id %}
+            -> OP   {% id %}
             | FN_CALL          {% id %}
 #---------------------------------------------------------------
 # LOGIC EXPRESSION --- OK
@@ -1017,7 +1017,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         }) %}
 
     logical_operand
-        -> unary_operand {% id %}
+        -> OP {% id %}
         | COMPARE_EXPR {% id %}
         | FN_CALL   {% id %}
 #---------------------------------------------------------------
@@ -1042,7 +1042,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 
     compare_operand
         -> MATH_EXPR {% id %}
-        # -> unary_operand {% id %}
+        # -> OP {% id %}
         # | MATH_EXPR {% id %}
         # | FN_CALL {% id %}
 #---------------------------------------------------------------
@@ -1080,17 +1080,17 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         -> (_:? parameter):+ {% flatten %}
 
     call_args
-        -> ( _:? unary_only_operand | _:? operand):+ {% flatten %}
-        # -> ( _:? unary_operand):+ {% flatten %}
+        -> ( _:? UN_OP | _:? _OP):+ {% flatten %}
+        # -> ( _:? OP):+ {% flatten %}
     call_caller
-        -> unary_operand {% id %}
+        -> OP {% id %}
         # -> VAR_NAME {% id %}
         # | property  {% id %}
         # | index     {% id %}
 #---------------------------------------------------------------
 # PARAMETER CALL --- OK
     parameter
-        -> param_name __:? unary_operand
+        -> param_name __:? OP
             {% d => ({
                 type: 'ParameterAssignment',
                 param: d[0],
@@ -1099,7 +1099,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
             }) %}
 
     param_name
-        -> (VAR_NAME | kw_override) ":"
+        -> (VAR_NAME | kw_override) %colon
             {% d => ({
                 type:'Parameter',
                 value: d[0][0],
@@ -1108,7 +1108,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 #---------------------------------------------------------------
 # ACCESSOR - PROPERTY --- OK
     property
-        -> operand %delimiter (VAR_NAME | VOID | kw_override)
+        -> _OP %dot (VAR_NAME | VOID | kw_override)
             {% d => ({
                 type:     'AccessorProperty',
                 operand:  d[0],
@@ -1117,7 +1117,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
             })%}
 #---------------------------------------------------------------
 # ACCESSOR - INDEX --- OK
-    index -> operand __:? LBRACKET expr RBRACKET
+    index -> _OP __:? LBRACKET expr RBRACKET
         {% d => ({
             type:    'AccessorIndex',
             operand: d[0],
@@ -1126,8 +1126,8 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         })%}
 #---------------------------------------------------------------
 # OPERANDS --- OK
-    unary_only_operand 
-        -> "-" operand
+    UN_OP 
+        -> "-" _OP
             {% d => ({
                 type: 'UnaryExpression',
                 operator: d[0],
@@ -1135,18 +1135,16 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
                 range: getLoc(d[0], d[1])
             }) %}
 
-    unary_operand 
-        # -> "-" __:? expr
-        -> "-" __:? unary_operand
+    OP -> "-" __:? OP
             {% d => ({
                 type: 'UnaryExpression',
                 operator: d[0],
                 right:    d[2],
                 range: getLoc(d[0], d[2])
             }) %}
-        | operand {% id %}
+        | _OP {% id %}
 
-    operand
+    _OP
         -> factor     {% id %}
         | property    {% id %}
         | index       {% id %}
@@ -1175,7 +1173,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 #===============================================================
 # POINTS --- OK
     point4
-        -> LBRACKET expr LIST_SEP expr LIST_SEP expr LIST_SEP expr RBRACKET
+        -> LBRACKET expr COMMA expr COMMA expr COMMA expr RBRACKET
             {% d => ({
                 type: 'ObjectPoint4',
                 elements: [].concat(d[1], d[3], d[5], d[7]),
@@ -1183,7 +1181,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
             }) %}
 
     point3
-        -> LBRACKET expr LIST_SEP expr LIST_SEP expr RBRACKET
+        -> LBRACKET expr COMMA expr COMMA expr RBRACKET
             {% d => ({
                 type: 'ObjectPoint3',
                 elements: [].concat(d[1], d[3], d[5]),
@@ -1191,7 +1189,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
             }) %}
  
     point2
-        -> LBRACKET expr LIST_SEP expr RBRACKET
+        -> LBRACKET expr COMMA expr RBRACKET
             {% d => ({
                 type: 'ObjectPoint2',
                 elements: [].concat(d[1], d[3]),
@@ -1207,7 +1205,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
                 range:      getLoc(d[0][0], d[3])
             }) %}
 
-    array_expr -> expr ( LIST_SEP expr ):*  {% flatten %}
+    array_expr -> expr ( COMMA expr ):*  {% flatten %}
 #---------------------------------------------------------------
 # BITARRAY --- OK
     bitarray
@@ -1218,7 +1216,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
             range:    getLoc(d[0][0], d[3])
         }) %}
 
-    bitarray_expr -> bitarray_item ( LIST_SEP bitarray_item ):*  {% flatten %}
+    bitarray_expr -> bitarray_item ( COMMA bitarray_item ):*  {% flatten %}
 
     # TODO: Fix groups
     bitarray_item
@@ -1226,7 +1224,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         | expr {% id %}
 #===============================================================
 # UTILITIES
-    LIST_SEP -> _:? %sep __:? {% d => null %}
+    COMMA -> _:? %comma __:? {% d => null %}
     #PARENS
     LPAREN ->       %lparen __:?    {% id %}
     RPAREN ->  __:? %rparen         {% d => d[1] %}
