@@ -1332,6 +1332,7 @@ var grammar = {
     {"name": "kw_override", "symbols": [(mxLexer.has("kw_return") ? {type: "kw_return"} : kw_return)], "postprocess": id},
     {"name": "kw_override", "symbols": [(mxLexer.has("kw_rollout") ? {type: "kw_rollout"} : kw_rollout)], "postprocess": id},
     {"name": "kw_override", "symbols": [(mxLexer.has("kw_to") ? {type: "kw_to"} : kw_to)], "postprocess": id},
+    {"name": "kw_override", "symbols": [(mxLexer.has("kw_and") ? {type: "kw_and"} : kw_and)], "postprocess": id},
     {"name": "PATH_NAME", "symbols": [(mxLexer.has("path") ? {type: "path"} : path)], "postprocess": Identifier},
     {"name": "TIME", "symbols": [(mxLexer.has("time") ? {type: "time"} : time)], "postprocess": Literal},
     {"name": "BOOL", "symbols": [(mxLexer.has("kw_bool") ? {type: "kw_bool"} : kw_bool)], "postprocess": Literal},

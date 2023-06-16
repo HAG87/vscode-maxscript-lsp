@@ -1264,6 +1264,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         | %kw_return       {% id %}
         | %kw_rollout      {% id %}
         | %kw_to           {% id %}
+        | %kw_and           {% id %}
 #===============================================================
 # PATH NAME
     # THIS JUST CAPTURES ALL THE LEVEL PATH IN ONE TOKEN....
