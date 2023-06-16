@@ -79,7 +79,7 @@ export const KindConversion = {
 	13: 6,  // Variable
 }
 
-export function provideSymbolCompletionItems(SymbolsTree: DocumentSymbol[]): CompletionItem[]
+export function provideDefinitionCompletionItems(SymbolsTree: DocumentSymbol[]): CompletionItem[]
 {
 	const Items: CompletionItem[] = [];
 	traverse(SymbolsTree, (key: string, val: string | null, innerObj: { parent: DocumentSymbol }) =>
@@ -108,7 +108,7 @@ export function provideSymbolCompletionItems(SymbolsTree: DocumentSymbol[]): Com
 	return uniqueObjArray;
 }
 
-export async function provideDocumentCompletionItems(CTS: any): Promise<CompletionItem[]>
+export async function provideCodeCompletionItems(CTS: any): Promise<CompletionItem[]>
 {
 	let Items: CompletionItem[] = [];	
 	traverse(CTS, (key: string, val: string | null, innerObj: { parent: any, parentKey: any }) =>
@@ -149,7 +149,7 @@ export async function provideDocumentCompletionItems(CTS: any): Promise<Completi
 	return uniqueObjArray;
 }
 
-export async function provideDocumentCompletionItemsThreaded(CTS: any): Promise<CompletionItem[]>
+export async function provideCodeCompletionItemsThreaded(CTS: any): Promise<CompletionItem[]>
 {
 	let provideDocumentCompletionItems = await spawn(new Worker('./workers/completions.worker'));
 	try {

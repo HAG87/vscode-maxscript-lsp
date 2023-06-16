@@ -3,7 +3,7 @@ import { traverse } from 'ast-monkey-traverse';
 // import { KindConversion, SymbolKindNames } from '../mxsCompletions';
 //------------------------------------------------------------------------------------------
 expose(
-	function provideDocumentCompletionItems(CTS)
+	function provideCodeCompletionItems(CTS)
 	{
 		let Items = [];	
 		traverse(CTS, (key, val, innerObj) =>

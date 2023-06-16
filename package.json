@@ -190,25 +190,19 @@
 					"default": true,
 					"description": "Enable Document diagnostics"
 				},
-				"MaxScript.Completions": {
-					"scope": "resource",
-					"type": "boolean",
-					"default": true,
-					"description": "Enable suggest completions"
-				},
-				"MaxScript.CompletionSettings.dataBaseCompletion": {
+				"MaxScript.Completions.dataBaseCompletion": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Enable completions from language reference"
 				},
-				"MaxScript.CompletionSettings.symbolsCompletion": {
+				"MaxScript.Completions.Definitions": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Enable completions from document symbols. This includes declared objects such as functions MacroScripts, Rollouts and so on."
 				},
-				"MaxScript.CompletionSettings.parserCompletion": {
+				"MaxScript.Completions.Identifiers": {
 					"scope": "resource",
 					"type": "boolean",
 					"default": true,

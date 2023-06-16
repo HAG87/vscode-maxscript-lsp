@@ -306,8 +306,8 @@ connection.onDocumentSymbol((params, token) =>
 			if (result.cst) {
 				let completionItemsCache =
 					threading
-						? mxsCompletion.provideDocumentCompletionItemsThreaded(JSON.parse(result.cst))
-						: mxsCompletion.provideDocumentCompletionItems(JSON.parse(result.cst));
+						? mxsCompletion.provideCodeCompletionItemsThreaded(JSON.parse(result.cst))
+						: mxsCompletion.provideCodeCompletionItems(JSON.parse(result.cst));
 						
 				completionItemsCache.then((result: CompletionItem[]) =>
 				{
@@ -342,23 +342,23 @@ connection.onCompletion(async (params, token) =>
 	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) {return [];}
 	
 	// settings
-	let CompletionSettings = (await getDocumentSettings(params.textDocument.uri)).CompletionSettings ?? defaultSettings.CompletionSettings;
+	let Completions = (await getDocumentSettings(params.textDocument.uri)).Completions ?? defaultSettings.Completions;
 
 	let ProvideCompletions = [];
 
 	// document symbols completion
 	// /*
-	if (CompletionSettings.symbolsCompletion) {
+	if (Completions.Definitions) {
 		if (currentDocumentSymbols.has(params.textDocument.uri)) {
 			ProvideCompletions.push(
-				...mxsCompletion.provideSymbolCompletionItems(<DocumentSymbol[]>currentDocumentSymbols.get(params.textDocument.uri))
+				...mxsCompletion.provideDefinitionCompletionItems(<DocumentSymbol[]>currentDocumentSymbols.get(params.textDocument.uri))
 			);
 		}
 	}
 	// */
 	// /*
 	// document parse tree completion
-	if (CompletionSettings.parserCompletion) {
+	if (Completions.Identifiers) {
 		if (currentDocumentParseTree.has(params.textDocument.uri)) {
 			/*
 			ProvideCompletions.push(
@@ -370,7 +370,7 @@ connection.onCompletion(async (params, token) =>
 	}
 	// */
 	// database completions
-	if (CompletionSettings.dataBaseCompletion) {
+	if (Completions.dataBaseCompletion) {
 		ProvideCompletions.push(
 			...mxsCompletion.provideCompletionItems(
 				documents.get(params.textDocument.uri)!,

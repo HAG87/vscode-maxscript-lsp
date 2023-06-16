@@ -9,7 +9,7 @@ import
 // import { KindConversion, SymbolKindNames } from '../mxsCompletions';
 //------------------------------------------------------------------------------------------
 expose(
-	function provideDocumentCompletionItems(CTS: DocumentSymbol[]): CompletionItem[]
+	function provideCodeCompletionItems(CTS: DocumentSymbol[]): CompletionItem[]
 	{
 		let Items: CompletionItem[] = [];	
 		traverse(CTS, (key: string, val: string | null, innerObj: { parent: any, parentKey: any }) =>

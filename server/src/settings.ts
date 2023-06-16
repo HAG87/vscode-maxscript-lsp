@@ -4,11 +4,10 @@ export interface MaxScriptSettings
 	GoToSymbol: boolean;
 	GoToDefinition: boolean;
 	Diagnostics: boolean;
-	Completions: boolean
-	CompletionSettings: {
+	Completions: {
 		dataBaseCompletion: boolean,
-		symbolsCompletion: boolean,
-		parserCompletion: boolean
+		Definitions: boolean,
+		Identifiers: boolean
 	};
 	MinifyFilePrefix: string;
 	formatter: {
@@ -47,11 +46,10 @@ export const defaultSettings: MaxScriptSettings = {
 	GoToSymbol: true,
 	GoToDefinition: true,
 	Diagnostics: true,
-	Completions: true,
-	CompletionSettings: {
+	Completions: {
 		dataBaseCompletion: true,
-		symbolsCompletion: true,
-		parserCompletion: true
+		Definitions: true,
+		Identifiers: true
 	},
 	MinifyFilePrefix: 'min_',
 	formatter: {
