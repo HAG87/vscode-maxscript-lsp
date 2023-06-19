@@ -42,6 +42,8 @@ export async function FormatDataThreaded(data: unknown[] | string, settings?: Pa
 	let formatDataThreaded = await spawn(new Worker('./workers/formatter.worker'));
 	try {
 		return await formatDataThreaded(data, settings);
+	} catch (err) {
+		throw err;
 	} finally {
 		await Thread.terminate(formatDataThreaded);
 	}

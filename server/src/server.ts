@@ -462,9 +462,11 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 					return;
 				}
 				try {
+					// console.log(settings.parser.multiThreading);
 					settings.parser.multiThreading
 						? await mxsMinifier.MinifyDocThreaded(doc, newPath)
 						: await mxsMinifier.MinifyDoc(doc, newPath);
+						// await mxsMinifier.MinifyDoc(doc, newPath);
 
 					connection.window.showInformationMessage(
 						`MaxScript minify: Document saved as ${Path.basename(newPath)}`
@@ -486,6 +488,7 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 					settings.parser.multiThreading
 						? await mxsMinifier.MinifyFileThreaded(path, newPath)
 						: await mxsMinifier.MinifyFile(path, newPath);
+						// await mxsMinifier.MinifyFile(path, newPath);
 
 					connection.window.showInformationMessage(
 						`MaxScript minify: Document saved as ${Path.basename(newPath)}`

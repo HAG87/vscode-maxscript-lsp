@@ -11,8 +11,9 @@ expose(
 		}
 		if (typeof data === 'string') {
 			let results = parseSource(data);
-			if (results.result!) {
-				throw new Error('Parser worker failed.');
+			// console.log(results);
+			if (results.result === undefined || results.result === null) {
+				throw new Error(`Failed to parse the code. Reason: ${results.error!.message || 'Unexpected error'}`);
 			}
 			return mxsReflow(results.result);
 		} else {
