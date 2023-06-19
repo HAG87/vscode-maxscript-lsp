@@ -5,7 +5,7 @@
 	"icon": "mxs.png",
 	"author": "Atelier Bump",
 	"license": "MIT",
-	"version": "1.29.4",
+	"version": "1.29.5",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/HAG87/vscode-maxscript-lsp"
