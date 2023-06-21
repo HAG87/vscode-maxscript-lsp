@@ -46,7 +46,7 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 							// configure TypeScript loader:
 							compilerOptions: {
 								module: 'esnext'
-							// 'allowJs': false,
+								// 'allowJs': false,
 							},
 							projectReferences: true,
 							// transpileOnly: false,
@@ -70,6 +70,7 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 		},
 		output: {
 			filename: '[name].js',
+			// @ts-ignore
 			path: path.join(extConfig.context, 'out'),
 			libraryTarget: 'commonjs',
 			// chunkFilename: '[name].js',
