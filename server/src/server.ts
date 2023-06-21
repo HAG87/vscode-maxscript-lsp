@@ -34,7 +34,7 @@ import * as mxsCompletion from './mxsCompletions';
 import { DocumentSymbolProvider, ParserSymbols } from './mxsOutline';
 import * as mxsDefinitions from './mxsDefinitions';
 import { mxsSemanticTokens } from './mxsSemantics';
-import * as mxsMinifier from './mxsMin';
+import { minifyOptions } from './mxsMin';
 import * as mxsFormatter from './mxsFormatter';
 import * as mxsSimpleFormatter from './mxsSimpleFormatter';
 // import {reflowOptions} from './lib/mxsReflow';
