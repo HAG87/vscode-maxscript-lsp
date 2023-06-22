@@ -29,10 +29,10 @@ export function parseSource(source: string, options = new parserOptions()): pars
 
 export async function parseSourceThreaded(source: string, options = new parserOptions()): Promise<parserResult>
 {
-	let parserWorker = await spawn(new Worker('./workers/parser.worker'));
+	let parseSource = await spawn(new Worker('./workers/parser.worker'));
 	try {
-		return await parserWorker.parseSource(source, options);
+		return JSON.parse(await parseSource(source, options));
 	} finally {
-		await Thread.terminate(parserWorker);
+		await Thread.terminate(parseSource);
 	}
 }

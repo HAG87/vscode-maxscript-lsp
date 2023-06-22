@@ -1,13 +1,13 @@
 import { expose } from 'threads/worker';
 import { parse, declareParser, parserOptions, parserResult, parseWithErrors } from '../mxsParserBase';
 
-expose(function parseSource(source: string, options: parserOptions): parserResult
+expose(function parseSource(source: string, options: parserOptions)
 {
 	try {
-		return parse(source, declareParser());
+		return JSON.stringify(parse(source, declareParser()));
 	} catch (err: any) {
 		if (options.recovery) {
-			return parseWithErrors(source, declareParser(), options);
+			return JSON.stringify(parseWithErrors(source, declareParser(), options));
 		} else {
 			throw err;
 		}
