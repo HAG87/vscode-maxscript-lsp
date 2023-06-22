@@ -22,7 +22,6 @@
 		"nearley": "^2.20.1",
 		"object-path": "^0.11.8",
 		"reregexp": "^1.6.0",
-		"threads": "^1.7.0",
 		"vscode-languageserver": "^8.1.0",
 		"vscode-languageserver-textdocument": "^1.0.3",
 		"vscode-uri": "^3.0.3"
