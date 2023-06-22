@@ -463,10 +463,10 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 				}
 				try {
 					// console.log(settings.parser.multiThreading);
-					// settings.parser.multiThreading
-					// 	? await mxsFormatter.FormatDocThreaded(doc, newPath, minifyOptions)
-					// 	: await mxsFormatter.FormatDoc(doc, newPath, minifyOptions);
-						await mxsFormatter.FormatDoc(doc, newPath, minifyOptions);
+					settings.parser.multiThreading
+						? await mxsFormatter.FormatDocThreaded(doc, newPath, minifyOptions)
+						: await mxsFormatter.FormatDoc(doc, newPath, minifyOptions);
+						// await mxsFormatter.FormatDoc(doc, newPath, minifyOptions);
 
 					connection.window.showInformationMessage(
 						`MaxScript minify: Document saved as ${Path.basename(newPath)}`
@@ -485,10 +485,10 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 				let newPath = prefixFile(path, settings.MinifyFilePrefix);
 
 				try {
-					// settings.parser.multiThreading
-					// 	? await mxsFormatter.FormatFileThreaded(path, newPath, minifyOptions)
-					// 	: await mxsFormatter.FormatFile(path, newPath, minifyOptions);
-						await mxsFormatter.FormatFile(path, newPath, minifyOptions);
+					settings.parser.multiThreading
+						? await mxsFormatter.FormatFileThreaded(path, newPath, minifyOptions)
+						: await mxsFormatter.FormatFile(path, newPath, minifyOptions);
+						// await mxsFormatter.FormatFile(path, newPath, minifyOptions);
 
 					connection.window.showInformationMessage(
 						`MaxScript minify: Document saved as ${Path.basename(newPath)}`
@@ -524,10 +524,10 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 		try {
 			// console.log(settings.parser.multiThreading);
 			let formattedData =
-				// settings.parser.multiThreading
-				// ? await mxsFormatter.FormatDataThreaded(doc.getText(), settings.prettifier)
-				// : mxsFormatter.FormatData(doc.getText(), settings.prettifier);
-				mxsFormatter.FormatData(doc.getText(), settings.prettifier);
+				settings.parser.multiThreading
+				? await mxsFormatter.FormatDataThreaded(doc.getText(), settings.prettifier)
+				: mxsFormatter.FormatData(doc.getText(), settings.prettifier);
+				// mxsFormatter.FormatData(doc.getText(), settings.prettifier);
 
 			let reply = await replaceText.call(connection, doc, formattedData)
 			if (reply.applied) {
