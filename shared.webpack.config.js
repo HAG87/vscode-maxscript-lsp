@@ -49,19 +49,10 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 								// 'allowJs': false,
 							},
 							projectReferences: true,
-							// transpileOnly: false,
 							// onlyCompileBundledFiles: true,
 						}
 					// }]
 				},
-				/* {
-					test: /worker\.[tj]s$/,
-					loader: 'threads-webpack-plugin',
-					options: {
-						//Webpack child bundler options
-						target: 'node'
-					}
-				}*/
 			]
 		},
 		externals:
