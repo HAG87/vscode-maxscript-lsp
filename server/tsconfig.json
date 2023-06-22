@@ -3,9 +3,8 @@
   "compilerOptions": {
     "outDir": "./out",
     "rootDir": "./src",
-    "target": "ES2019",
-		"lib"   : ["ES6", "ES2019"],
     "allowJs": true,
+    "checkJs": false,
     "baseUrl": ".",
     "paths": {
       "*": ["./src/typings"],
