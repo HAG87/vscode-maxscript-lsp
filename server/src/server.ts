@@ -444,65 +444,75 @@ namespace PrettifyDocRequest
 	export const type = new RequestType<PrettifyDocParams, string[] | null, void>('MaxScript/prettify');
 }
 /* Minifier */
+async function minifyDocuments(uris: string[], prefix: string, formatter: Function, settings: any)
+{
+	let uri: string, path: string, newPath: string, doc: string;
+	for (let i= 0 ; i < uris.length ; i++) {
+		uri     = uris[i];
+		path    = URI.parse(uri).fsPath;
+		newPath = prefixFile(path, prefix);
+		doc     = documents.get(uri)!.getText();
+		if (!doc) {
+			connection.window.showWarningMessage(
+				`MaxScript minify: Failed at ${Path.basename(path)}. Reason: Can't read the file`
+			);
+			continue;
+		}
+		try {
+			await formatter(doc, newPath, settings);
+
+			connection.window.showInformationMessage(
+				`MaxScript minify: Document saved as ${Path.basename(newPath)}`
+			);
+		} catch (e: any) {
+			connection.window.showErrorMessage(
+				`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${e.message}`
+			);
+		}
+	}
+}
+async function minifyFiles(uris: string[], prefix: string, formatter: Function, settings: any)
+{
+	let uri: string, path: string, newPath: string;
+	for (let i= 0 ; i < uris.length ; i++) {
+		uri     = uris[i];
+		path    = URI.parse(uri).fsPath;
+		newPath = prefixFile(path, prefix);
+
+		try {
+			await formatter(uri, newPath, settings);
+
+			connection.window.showInformationMessage(
+				`MaxScript minify: Document saved as ${Path.basename(newPath)}`
+			);
+		} catch (e: any) {
+			connection.window.showErrorMessage(
+				`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${e.message}`
+			);
+		}
+	}
+}
 connection.onRequest(MinifyDocRequest.type, async params =>
 {
 	let settings = await getDocumentSettings(params.uri[0]) ?? defaultSettings;
 	switch (params.command) {
 		case 'mxs.minify':
-			params.uri.forEach(async (uri) =>
-			{
-				let path = URI.parse(uri).fsPath;
-				let newPath = prefixFile(path, settings.MinifyFilePrefix);
-
-				let doc = documents.get(uri)!.getText();
-				if (!doc) {
-					connection.window.showWarningMessage(
-						`MaxScript minify: Failed at ${Path.basename(path)}. Reason: Can't read the file`
-					);
-					return;
-				}
-				try {
-					// console.log(settings.parser.multiThreading);
-					settings.parser.multiThreading
-						? await mxsFormatter.FormatDocThreaded(doc, newPath, minifyOptions)
-						: await mxsFormatter.FormatDoc(doc, newPath, minifyOptions);
-						// await mxsFormatter.FormatDoc(doc, newPath, minifyOptions);
-
-					connection.window.showInformationMessage(
-						`MaxScript minify: Document saved as ${Path.basename(newPath)}`
-					);
-				} catch (e: any) {
-					connection.window.showErrorMessage(
-						`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${e.message}`
-					);
-				}
-			});
+			// settings.parser.multiThreading
+			// ? minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatDocThreaded, minifyOptions);
+			// : minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatDoc, minifyOptions);
+			await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatDoc, minifyOptions);
+			
 			break;
 		case 'mxs.minify.file':
-			params.uri.forEach(async (uri) =>
-			{
-				let path = URI.parse(uri).fsPath;
-				let newPath = prefixFile(path, settings.MinifyFilePrefix);
-
-				try {
-					settings.parser.multiThreading
-						? await mxsFormatter.FormatFileThreaded(path, newPath, minifyOptions)
-						: await mxsFormatter.FormatFile(path, newPath, minifyOptions);
-						// await mxsFormatter.FormatFile(path, newPath, minifyOptions);
-
-					connection.window.showInformationMessage(
-						`MaxScript minify: Document saved as ${Path.basename(newPath)}`
-					);
-				} catch (e: any) {
-					connection.window.showErrorMessage(
-						`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${e.message}`
-					);
-				}
-			});
-			return [];
+			// settings.parser.multiThreading
+			// ? await mxsFormatter.FormatFileThreaded(path, newPath, minifyOptions)
+			// : await mxsFormatter.FormatFile(path, newPath, minifyOptions);
+			await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatFile, minifyOptions);
 	}
+	return [];
 });
 /* Prettyfier */
+
 connection.onRequest(PrettifyDocRequest.type, async params =>
 {
 	let settings = await getDocumentSettings(params.uri[0]) ?? defaultSettings;
@@ -522,12 +532,11 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 			return;
 		}
 		try {
-			// console.log(settings.parser.multiThreading);
 			let formattedData =
-				settings.parser.multiThreading
-				? await mxsFormatter.FormatDataThreaded(doc.getText(), settings.prettifier)
-				: mxsFormatter.FormatData(doc.getText(), settings.prettifier);
-				// mxsFormatter.FormatData(doc.getText(), settings.prettifier);
+				// settings.parser.multiThreading
+				// ? await mxsFormatter.FormatDataThreaded(doc.getText(), settings.prettifier)
+				// : mxsFormatter.FormatData(doc.getText(), settings.prettifier);
+				mxsFormatter.FormatData(doc.getText(), settings.prettifier);
 
 			let reply = await replaceText.call(connection, doc, formattedData)
 			if (reply.applied) {

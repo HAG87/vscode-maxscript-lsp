@@ -278,6 +278,7 @@
 					"scope": "resource",
 					"type": "boolean",
 					"default": false,
+					"readOnly": true,
 					"description": "Enable multithreading. This feature can be unstable. Disable it if you encounter too many crashes using the extension."
 				},
 				"MaxScript.help.provider": {
