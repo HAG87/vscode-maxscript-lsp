@@ -27,7 +27,7 @@ export function FormatData(data: unknown[] | string, settings?: Partial<reflowOp
 		if (results.result!) {
 			return mxsReflow(results.result);
 		} else {
-			throw new Error('Parser returned no results.');
+			throw new Error(`Failed to parse the code. Reason: ${results.error!.message || 'Unexpected error'}`);
 		}
 	} else {
 		// this will fail if the cst is not plain...
@@ -41,7 +41,9 @@ export async function FormatDataThreaded(data: unknown[] | string, settings?: Pa
 {
 	let formatDataThreaded = await spawn(new Worker('./workers/reflow.worker'));
 	try {
+		// let parsings = await parseSourceThreaded(data, {recovery: false});
 		return await formatDataThreaded(data, settings);
+		// return "";
 	} catch (err) {
 		throw err;
 	} finally {
