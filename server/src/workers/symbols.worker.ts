@@ -5,10 +5,10 @@ import
 	// DocumentSymbol,
 	Range
 } from 'vscode-languageserver';
-// import { expose } from "threads/worker"
-import { expose } from "comlink"
-import nodeEndpoint from 'comlink/dist/umd/node-adapter';
-import { parentPort } from "worker_threads";
+import { expose } from "threads/worker"
+// import { expose } from "comlink"
+// import nodeEndpoint from 'comlink/dist/umd/node-adapter';
+// import { parentPort } from "worker_threads";
 
 import { deriveSymbolsTree, collectTokens } from '../mxsProvideSymbols';
 import
@@ -51,6 +51,8 @@ import { ParserSymbols } from '../mxsOutline';
 			}
 		}
 	}
-	const api = {documentSymbols};
-	export type symbolsWorker = typeof api;
-	expose(api, nodeEndpoint(parentPort!));
+	// const api = {documentSymbols};
+	// export type symbolsWorker = typeof api;
+	export type symbolsWorker = typeof documentSymbols;
+	// expose(api, nodeEndpoint(parentPort!));
+	expose(documentSymbols);

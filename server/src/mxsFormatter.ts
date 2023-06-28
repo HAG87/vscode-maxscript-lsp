@@ -1,5 +1,4 @@
-import { spawn, Thread, Worker } from 'threads';
-import * as fs from 'fs';
+import { readFile, writeFile } from 'fs/promises';
 //--------------------------------------------------------------------------------
 import { parseSource } from './mxsParser';
 import { mxsReflow, options, reflowOptions } from './lib/mxsReflow';
@@ -34,27 +33,11 @@ export function FormatData(data: unknown[] | string, settings?: Partial<reflowOp
 		return mxsReflow(data);
 	}
 }
-/** format code -- threaded
- * @data Parser tree or code text
- */
-export async function FormatDataThreaded(data: unknown[] | string, settings?: Partial<reflowOptions>): Promise<string>
-{
-	let formatDataThreaded = await spawn(new Worker('./workers/reflow.worker'));
-	try {
-		// let parsings = await parseSourceThreaded(data, {recovery: false});
-		return await formatDataThreaded(data, settings);
-		// return "";
-	} catch (err) {
-		throw err;
-	} finally {
-		await Thread.terminate(formatDataThreaded);
-	}
-}
 //--------------------------------------------------------------------------------
-/** Format and save document -- threaded */
+/** Format and save document */
 export async function FormatDoc(data: unknown[] | string, dest: string, settings?: Partial<reflowOptions>)
 {
-	await fs.promises.writeFile(
+	await writeFile(
 		dest,
 		FormatData(data, settings)
 	);
@@ -62,24 +45,8 @@ export async function FormatDoc(data: unknown[] | string, dest: string, settings
 /** Read, format and save document */
 export async function FormatFile(src: string, dest: string, settings?: Partial<reflowOptions>)
 {
-	await fs.promises.writeFile(
+	await writeFile(
 		dest,
-		FormatData((await fs.promises.readFile(src)).toString(), settings)
-	);
-}
-/** Format and save document */
-export async function FormatDocThreaded(data: unknown[] | string, dest: string, settings?: Partial<reflowOptions>)
-{
-	await fs.promises.writeFile(
-		dest,
-		await FormatDataThreaded(data, settings)
-	);
-}
-/** Read, format and save document -- threaded*/
-export async function FormatFileThreaded(src: string, dest: string, settings?: Partial<reflowOptions>)
-{
-	await fs.promises.writeFile(
-		dest,
-		await FormatDataThreaded((await fs.promises.readFile(src)).toString(), settings)
+		FormatData((await readFile(src)).toString(), settings)
 	);
 }

@@ -61,7 +61,7 @@ interface IParsedToken
 	tokenModifiers: number;
 }
 
-export class mxsSemanticTokens
+export class SemanticTokensProvider
 {
 	legend: SemanticTokensLegend | undefined;
 	tokenTypes: Map<string, number> = new Map();

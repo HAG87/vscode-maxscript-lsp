@@ -1,7 +1,5 @@
-import { spawn, Thread, Worker } from 'threads';
 import
 {
-	// SymbolKind,
 	CompletionItem,
 	CompletionItemKind,
 	DocumentSymbol,
@@ -79,7 +77,7 @@ export const KindConversion = {
 	13: 6,  // Variable
 }
 
-export function provideDefinitionCompletionItems(SymbolsTree: DocumentSymbol[]): CompletionItem[]
+export function DefinitionCompletionItems(SymbolsTree: DocumentSymbol[]): CompletionItem[]
 {
 	const Items: CompletionItem[] = [];
 	traverse(SymbolsTree, (key: string, val: string | null, innerObj: { parent: DocumentSymbol }) =>
@@ -108,7 +106,7 @@ export function provideDefinitionCompletionItems(SymbolsTree: DocumentSymbol[]):
 	return uniqueObjArray;
 }
 
-export async function provideCodeCompletionItems(CTS: any): Promise<CompletionItem[]>
+export async function CodeCompletionItems(CTS: any): Promise<CompletionItem[]>
 {
 	let Items: CompletionItem[] = [];	
 	traverse(CTS, (key: string, val: string | null, innerObj: { parent: any, parentKey: any }) =>
@@ -149,21 +147,12 @@ export async function provideCodeCompletionItems(CTS: any): Promise<CompletionIt
 	return uniqueObjArray;
 }
 
-export async function provideCodeCompletionItemsThreaded(CTS: any): Promise<CompletionItem[]>
-{
-	let provideDocumentCompletionItems = await spawn(new Worker('./workers/completions.worker'));
-	try {
-		return await provideDocumentCompletionItems(CTS);
-	} finally {
-		await Thread.terminate(provideDocumentCompletionItems);
-	}
-}
 /**
  * Retrieve the completion items, search for descendant completion items.
  * @param document
  * @param position
  */
-export function provideCompletionItems(document: TextDocument, position: Position): CompletionItem[]
+export function CompletionItems(document: TextDocument, position: Position): CompletionItem[]
 {
 	const lineTillCurrentPosition = document.getText(
 		Range.create(

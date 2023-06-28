@@ -1,11 +1,6 @@
 /**
  * Provide document symbols via parse tree.
  */
-// import { spawn, Thread, Worker } from 'threads';
-import { wrap } from 'comlink';
-import nodeEndpoint, { NodeEndpoint } from 'comlink/dist/umd/node-adapter';
-import {symbolsWorker} from './workers/symbols.worker';
-
 import
 {
 	Range,
@@ -28,14 +23,12 @@ import
 } from './mxsProvideSymbols';
 import
 {
-	// parserResult,
 	ParserError,
 	parserOptions
 } from './mxsParserBase';
 import
 {
 	parseSource,
-	// parseSourceThreaded
 } from './mxsParser';
 import getDocumentSymbolsLegacy from './mxsOutlineLegacy';
 //--------------------------------------------------------------------------------
@@ -49,11 +42,11 @@ export interface ParserSymbols
 export class DocumentSymbolProvider
 {
 	options: parserOptions = { recovery: true, attemps: 15, memoryLimit: 0.9 }
-	private errorMessage(message: string)
+	protected errorMessage(message: string)
 	{
 		return `MaxScript: can't parse the code.\nCode minifier, beautifier, diagnostics and hierarchical symbols will be unavailable.\nReason: ${message}`;
 	}
-	private documentRange(document: TextDocument): Range
+	protected documentRange(document: TextDocument): Range
 	{
 		return {
 			start: document.positionAt(0),
@@ -90,37 +83,17 @@ export class DocumentSymbolProvider
 			}
 		}
 	}
-	private async parseTextDocumentThreaded(document: TextDocument, options?: parserOptions): Promise<ParserSymbols>
-	{
-		/*
-		let documentSymbols = await spawn(new Worker('./workers/symbols.worker'));
-		try {
-			return await documentSymbols(document.getText(), this.documentRange(document), options);
-		} finally {
-			await Thread.terminate(documentSymbols);
-		}*/
-		const worker = new Worker('./workers/symbols.worker');
-		const api = wrap<symbolsWorker>(nodeEndpoint(<unknown>worker as NodeEndpoint));
-		return await api.documentSymbols(document.getText(), this.documentRange(document), options);
-	}
 	/** MXS document parser */
 	async parseDocument(document: TextDocument, connection: Connection): Promise<ParserSymbols>
 	{
-		try {
-			return this.parseTextDocument(document, this.options);
-		} catch (e: any) {
-			connection.window.showWarningMessage(this.errorMessage(e.message));
-			return getDocumentSymbolsLegacy(document, new Array(provideParserErrorInformation(<ParserError>e)));
-		}
-	}
-	/** MXS document parser - Threaded version */
-	async parseDocumentThreaded(document: TextDocument, connection: Connection): Promise<ParserSymbols>
-	{
-		try {
-			return await this.parseTextDocumentThreaded(document, this.options);
-		} catch (e: any) {
-			connection.window.showWarningMessage(this.errorMessage(e.message));
-			return getDocumentSymbolsLegacy(document, new Array(provideParserErrorInformation(<ParserError>e)));
-		}
+		return new Promise((resolve) =>
+		{
+			try {
+				resolve(this.parseTextDocument(document, this.options));
+			} catch (e: any) {
+				connection.window.showWarningMessage(this.errorMessage(e.message));
+				resolve(getDocumentSymbolsLegacy(document, new Array(provideParserErrorInformation(<ParserError>e))));
+			}
+		});
 	}
 }

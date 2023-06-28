@@ -33,11 +33,16 @@ import { prefixFile } from './lib/utils';
 import * as mxsCompletion from './mxsCompletions';
 import { DocumentSymbolProvider, ParserSymbols } from './mxsOutline';
 import * as mxsDefinitions from './mxsDefinitions';
-import { mxsSemanticTokens } from './mxsSemantics';
-import { minifyOptions } from './mxsMin';
+import { SemanticTokensProvider } from './mxsSemantics';
+import * as mxsMinify from './mxsMin';
 import * as mxsFormatter from './mxsFormatter';
 import * as mxsSimpleFormatter from './mxsSimpleFormatter';
-// import {reflowOptions} from './lib/mxsReflow';
+
+// import { DocumentSymbolProviderThreaded } from './mxsOutlineThreaded';
+// import * as mxsCompletionThreaded from './mxsCompletionsThreaded';
+// import * as mxsMinifyThreaded from './mxsMinThreaded';
+// import * as mxsFormatterThreaded from './mxsFormatterThreaded';
+
 //------------------------------------------------------------------------------------------
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -48,7 +53,7 @@ let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 let Capabilities = new mxsCapabilities();
 //------------------------------------------------------------------------------------------
 /** The semantic tokens provider */
-let semanticTokensProvider: mxsSemanticTokens;
+let mxsSemanticTokens: SemanticTokensProvider;
 /** mxsDocumentSymbolProvider. Intended to be consumed by the SymbolProviders and be persistent for the current editor */
 let mxsDocumentSymbols: DocumentSymbolProvider;
 //------------------------------------------------------------------------------------------
@@ -91,9 +96,9 @@ connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> |
 	progress.begin('Initializing MaxScript Server');
 	Capabilities.initialize(params.capabilities);
 	// Initialize semanticToken provider
-	semanticTokensProvider = new mxsSemanticTokens(params.capabilities.textDocument!.semanticTokens!);
+	mxsSemanticTokens = new SemanticTokensProvider(params.capabilities.textDocument!.semanticTokens!);
 	// Initialize the symbols provider
-	mxsDocumentSymbols = new DocumentSymbolProvider();
+
 	/*
 	//TODO:
 	for (let folder of params.workspaceFolders) {
@@ -116,8 +121,8 @@ connection.onInitialize((params, cancel, progress): Thenable<InitializeResult> |
 							triggerCharacters: ['.']
 						}
 						: undefined,
-				documentSymbolProvider:     Capabilities.hasDocumentSymbolCapability,
-				definitionProvider:         Capabilities.hasDefinitionCapability,
+				documentSymbolProvider: Capabilities.hasDocumentSymbolCapability,
+				definitionProvider: Capabilities.hasDefinitionCapability,
 				documentFormattingProvider: Capabilities.hasDocumentFormattingCapability,
 
 				// workspaceSymbolProvider: true,
@@ -157,7 +162,7 @@ connection.onInitialized(() =>
 	if (Capabilities.hasDocumentSemanticTokensCapability) {
 		const registrationOptions: SemanticTokensRegistrationOptions = {
 			documentSelector: null,
-			legend: semanticTokensProvider.legend!,
+			legend: mxsSemanticTokens.legend!,
 			range: false,
 			full: {
 				delta: true
@@ -167,7 +172,7 @@ connection.onInitialized(() =>
 	}
 	// Settings...
 	// getGlobalSettings()
-	
+
 	/*
 	//TODO:
 	if (Capabilities.hasWorkspaceFolderCapability) {
@@ -189,7 +194,7 @@ async function getGlobalSettings()
 // */
 function getWorkspaceSettings(resource: string)
 {
-	let result:Thenable<MaxScriptSettings> = connection.workspace.getConfiguration({
+	let result: Thenable<MaxScriptSettings> = connection.workspace.getConfiguration({
 		scopeUri: resource,
 		section: 'MaxScript'
 	});
@@ -280,36 +285,47 @@ connection.onDocumentSymbol((params, token) =>
 	// cancellation request
 	token.onCancellationRequested(_ => { });
 	// settings
-	let threading = false;
+	// let threading = false;
 
 	return new Promise(resolve =>
 	{
+
 		getDocumentSettings(params.textDocument.uri)
 			.then(result =>
 			{
 				if (!result.GoToSymbol) { resolve; }
+				// threading = result.parser.multiThreading;
+			});
+
+		// mxsDocumentSymbols = !threading ? new DocumentSymbolProvider() : new DocumentSymbolProviderThreaded() ;
+		// mxsDocumentSymbols = new DocumentSymbolProviderThreaded();
+		//----------------------------------------------
+		mxsDocumentSymbols = new DocumentSymbolProvider();
+		//----------------------------------------------
+		getDocumentSettings(params.textDocument.uri)
+			.then(result =>
+			{
 				mxsDocumentSymbols.options.recovery = result.parser.errorCheck;
 				mxsDocumentSymbols.options.attemps = result.parser.errorLimit;
-				threading = result.parser.multiThreading;
 			});
-		let document = documents.get(params.textDocument.uri)!;
-		let symbolsresult =
-			threading
-				? mxsDocumentSymbols.parseDocumentThreaded(document, connection)
-				: mxsDocumentSymbols.parseDocument(document, connection);
 
-		symbolsresult.then((result: ParserSymbols) =>
+		let document = documents.get(params.textDocument.uri)!;
+
+		mxsDocumentSymbols.parseDocument(document, connection).then((result: ParserSymbols) =>
 		{
 			currentDocumentSymbols.set(params.textDocument.uri, result.symbols);
 			// currentDocumentParseTree.set(params.textDocument.uri, result.cst);
 			// offload Document completions from the onCompletion Event
 			if (result.cst) {
+				/*
 				let completionItemsCache =
 					threading
-						? mxsCompletion.provideCodeCompletionItemsThreaded(JSON.parse(result.cst))
+						? mxsCompletionThreaded.provideCodeCompletionItems(JSON.parse(result.cst))
 						: mxsCompletion.provideCodeCompletionItems(JSON.parse(result.cst));
 						
 				completionItemsCache.then((result: CompletionItem[]) =>
+				*/
+				mxsCompletion.CodeCompletionItems(JSON.parse(result.cst)).then((result: CompletionItem[]) =>
 				{
 					currentDocumentParseTree.set(
 						params.textDocument.uri,
@@ -339,40 +355,32 @@ connection.onCompletion(async (params, token) =>
 	// token request
 	token.onCancellationRequested(_ => { });
 
-	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) {return [];}
-	
+	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) { return []; }
+
 	// settings
 	let Completions = (await getDocumentSettings(params.textDocument.uri)).Completions ?? defaultSettings.Completions;
 
 	let ProvideCompletions = [];
 
 	// document symbols completion
-	// /*
 	if (Completions.Definitions) {
 		if (currentDocumentSymbols.has(params.textDocument.uri)) {
 			ProvideCompletions.push(
-				...mxsCompletion.provideDefinitionCompletionItems(<DocumentSymbol[]>currentDocumentSymbols.get(params.textDocument.uri))
+				...mxsCompletion.DefinitionCompletionItems(<DocumentSymbol[]>currentDocumentSymbols.get(params.textDocument.uri))
 			);
 		}
 	}
-	// */
-	// /*
 	// document parse tree completion
 	if (Completions.Identifiers) {
 		if (currentDocumentParseTree.has(params.textDocument.uri)) {
-			/*
-			ProvideCompletions.push(
-				...mxsCompletion.provideDocumentCompletionItems(currentDocumentParseTree.get(params.textDocument.uri))
-			);
-			// */
+			// ProvideCompletions.push( ...mxsCompletion.provideDocumentCompletionItems(currentDocumentParseTree.get(params.textDocument.uri)) );
 			ProvideCompletions.push(...currentDocumentParseTree.get(params.textDocument.uri));
 		}
 	}
-	// */
 	// database completions
 	if (Completions.dataBaseCompletion) {
 		ProvideCompletions.push(
-			...mxsCompletion.provideCompletionItems(
+			...mxsCompletion.CompletionItems(
 				documents.get(params.textDocument.uri)!,
 				params.position
 			));
@@ -387,7 +395,7 @@ connection.onCompletion(async (params, token) =>
 connection.onDefinition((params, token) =>
 {
 	// token request
-	token.onCancellationRequested(_ => {});
+	token.onCancellationRequested(_ => { });
 
 	return new Promise(resolve =>
 	{
@@ -415,13 +423,13 @@ connection.onDefinition((params, token) =>
 connection.languages.semanticTokens.on(params =>
 {
 	const document = documents.get(params.textDocument.uri);
-	return document !== undefined ? semanticTokensProvider.provideSemanticTokens(document) : { data: [] };
+	return document !== undefined ? mxsSemanticTokens.provideSemanticTokens(document) : { data: [] };
 });
 // TODO: Fix tokens update
 connection.languages.semanticTokens.onDelta(params =>
 {
 	const document = documents.get(params.textDocument.uri);
-	return document !== undefined ? semanticTokensProvider.provideDeltas(document, params.textDocument.uri) : { edits: [] };
+	return document !== undefined ? mxsSemanticTokens.provideDeltas(document, params.textDocument.uri) : { edits: [] };
 });
 //------------------------------------------------------------------------------------------
 /* Commands */
@@ -447,11 +455,11 @@ namespace PrettifyDocRequest
 async function minifyDocuments(uris: string[], prefix: string, formatter: Function, settings: any)
 {
 	let uri: string, path: string, newPath: string, doc: string;
-	for (let i= 0 ; i < uris.length ; i++) {
-		uri     = uris[i];
-		path    = URI.parse(uri).fsPath;
+	for (let i = 0; i < uris.length; i++) {
+		uri = uris[i];
+		path = URI.parse(uri).fsPath;
 		newPath = prefixFile(path, prefix);
-		doc     = documents.get(uri)!.getText();
+		doc = documents.get(uri)!.getText();
 		if (!doc) {
 			connection.window.showWarningMessage(
 				`MaxScript minify: Failed at ${Path.basename(path)}. Reason: Can't read the file`
@@ -474,9 +482,9 @@ async function minifyDocuments(uris: string[], prefix: string, formatter: Functi
 async function minifyFiles(uris: string[], prefix: string, formatter: Function, settings: any)
 {
 	let uri: string, path: string, newPath: string;
-	for (let i= 0 ; i < uris.length ; i++) {
-		uri     = uris[i];
-		path    = URI.parse(uri).fsPath;
+	for (let i = 0; i < uris.length; i++) {
+		uri = uris[i];
+		path = URI.parse(uri).fsPath;
 		newPath = prefixFile(path, prefix);
 
 		try {
@@ -497,17 +505,21 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 	let settings = await getDocumentSettings(params.uri[0]) ?? defaultSettings;
 	switch (params.command) {
 		case 'mxs.minify':
-			// settings.parser.multiThreading
-			// ? minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatDocThreaded, minifyOptions);
-			// : minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatDoc, minifyOptions);
-			await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatDoc, minifyOptions);
-			
+			/*
+			settings.parser.multiThreading
+			? await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsMinifyThreaded.FormatDoc, mxsMinify.minifyOptions);
+			: await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsMinify.FormatDoc, mxsMinify.minifyOptions);
+			*/
+			await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatDoc, mxsMinify.minifyOptions);
+
 			break;
 		case 'mxs.minify.file':
-			// settings.parser.multiThreading
-			// ? await mxsFormatter.FormatFileThreaded(path, newPath, minifyOptions)
-			// : await mxsFormatter.FormatFile(path, newPath, minifyOptions);
-			await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatFile, minifyOptions);
+			/*
+			settings.parser.multiThreading
+			? await mxsMinifyThreaded.FormatFile(path, newPath, mxsMinify.minifyOptions)
+			: await mxsMinify.FormatFile(path, newPath, mxsMinify.minifyOptions);
+			*/
+			await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatFile, mxsMinify.minifyOptions);
 	}
 	return [];
 });

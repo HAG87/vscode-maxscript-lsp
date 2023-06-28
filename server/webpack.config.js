@@ -5,7 +5,7 @@
 //@ts-check
 const withDefaults = require('../shared.webpack.config');
 const path = require('path');
-const ThreadsPlugin = require('threads-plugin');
+// const ThreadsPlugin = require('threads-plugin');
 
 module.exports = withDefaults({
 	context: path.resolve(__dirname),
@@ -16,9 +16,11 @@ module.exports = withDefaults({
 		filename: '[name].js',
 		path: path.resolve(__dirname, 'out')
 	},
+	/*
 	plugins: [
 		new ThreadsPlugin()
-	]/* ,
+	]*/
+	/* ,
 	module: {
 		rules:[{
 			options: {
@@ -28,5 +30,6 @@ module.exports = withDefaults({
 				projectReferences: true,
 			}
 		}]
-	} */
+	}
+	//*/
 });
