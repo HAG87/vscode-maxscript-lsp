@@ -59,7 +59,7 @@ export const defaultSettings: MaxScriptSettings = {
 	},
 	parser: {
 		errorCheck: true,
-		multiThreading: false,
+		multiThreading: true,
 		errorLimit: 10
 	},
 	prettifier: {

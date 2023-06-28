@@ -2,13 +2,15 @@ import { spawn, Thread, Worker } from 'threads';
 import { readFile, writeFile } from 'fs/promises';
 //--------------------------------------------------------------------------------
 import { reflowOptions } from './lib/mxsReflow';
+//@ts-ignore
+import workerURL from "threads-plugin/dist/loader?name=reflow.worker!./workers/reflow.worker.ts"
 //--------------------------------------------------------------------------------
 /** format code -- threaded
  * @data Parser tree or code text
  */
 export async function FormatData(data: unknown[] | string, settings?: Partial<reflowOptions>): Promise<string>
 {
-	let worker = await spawn(new Worker('./workers/reflow.worker'));
+	let worker = await spawn(new Worker(`./${workerURL}`));
 	try {
 		// let parsings = await parseSourceThreaded(data, {recovery: false});
 		return await worker(data, settings);

@@ -27,6 +27,9 @@ import
 
 import getDocumentSymbolsLegacy from './mxsOutlineLegacy';
 import {ParserSymbols, DocumentSymbolProvider} from './mxsOutline';
+
+//@ts-ignore
+import workerURL from "threads-plugin/dist/loader?name=symbols.worker!./workers/symbols.worker.ts"
 //--------------------------------------------------------------------------------
 
 
@@ -35,7 +38,7 @@ export class DocumentSymbolProviderThreaded extends DocumentSymbolProvider
 	private async parseTextDocumentThreaded(document: TextDocument, options?: parserOptions): Promise<ParserSymbols>
 	{
 		// /*
-		let worker = await spawn<symbolsWorker>(new Worker('./workers/symbols.worker'));
+		let worker = await spawn<symbolsWorker>(new Worker(`./${workerURL}`));
 		try {
 			return await worker(document.getText(), this.documentRange(document), options);
 		} finally {

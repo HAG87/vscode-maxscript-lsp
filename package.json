@@ -277,8 +277,8 @@
 				"MaxScript.parser.multiThreading": {
 					"scope": "resource",
 					"type": "boolean",
-					"default": false,
-					"readOnly": true,
+					"default": true,
+					"readOnly": false,
 					"description": "Enable multithreading. This feature can be unstable. Disable it if you encounter too many crashes using the extension."
 				},
 				"MaxScript.help.provider": {
@@ -328,7 +328,7 @@
 		"ts-node": "^10.4.0",
 		"tsconfig-paths-webpack-plugin": "^4.0.1",
 		"typescript": "^5.0.2",
-		"webpack": "^5.67.0",
+		"webpack": "^5.88.0",
 		"webpack-cli": "^5.0.1",
 		"webpack-node-externals": "^3.0.0"
 	},

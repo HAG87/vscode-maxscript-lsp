@@ -7,7 +7,8 @@ import
 		parseWithErrors,
 		declareParser,
 	} from './mxsParserBase';
-
+//@ts-ignore
+import workerURL from "threads-plugin/dist/loader?name=parser.worker!./workers/parser.worker.ts"
 //-----------------------------------------------------------------------------------
 /**
  * Parse MaxScript code
@@ -29,7 +30,7 @@ export function parseSource(source: string, options = new parserOptions()): pars
 
 export async function parseSourceThreaded(source: string, options = new parserOptions()): Promise<parserResult>
 {
-	let parseSource = await spawn(new Worker('./workers/parser.worker'));
+	let parseSource = await spawn(new Worker(`./${workerURL}`));
 	try {
 		return JSON.parse(await parseSource(source, options));
 	} finally {

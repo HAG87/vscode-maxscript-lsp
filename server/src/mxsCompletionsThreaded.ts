@@ -1,9 +1,13 @@
 import { spawn, Thread, Worker } from 'threads';
 import { CompletionItem } from 'vscode-languageserver';
+//https://github.com/andywer/threads-plugin/issues/37
+//https://github.com/andywer/threads-plugin/issues/34
+//@ts-ignore
+import workerURL from "threads-plugin/dist/loader?name=completions.worker!./workers/completions.worker.ts"
 //------------------------------------------------------------------------------------------
-export async function provideCodeCompletionItems(CTS: any): Promise<CompletionItem[]>
+export async function CodeCompletionItems(CTS: any): Promise<CompletionItem[]>
 {
-	let worker = await spawn(new Worker('./workers/completions.worker'));
+	let worker = await spawn(new Worker(`./${workerURL}`));
 	try {
 		return await worker(CTS);
 	} finally {

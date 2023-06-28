@@ -38,10 +38,10 @@ import * as mxsMinify from './mxsMin';
 import * as mxsFormatter from './mxsFormatter';
 import * as mxsSimpleFormatter from './mxsSimpleFormatter';
 
-// import { DocumentSymbolProviderThreaded } from './mxsOutlineThreaded';
-// import * as mxsCompletionThreaded from './mxsCompletionsThreaded';
-// import * as mxsMinifyThreaded from './mxsMinThreaded';
-// import * as mxsFormatterThreaded from './mxsFormatterThreaded';
+import { DocumentSymbolProviderThreaded } from './mxsOutlineThreaded';
+import * as mxsCompletionThreaded from './mxsCompletionsThreaded';
+import * as mxsMinifyThreaded from './mxsMinThreaded';
+import * as mxsFormatterThreaded from './mxsFormatterThreaded';
 
 //------------------------------------------------------------------------------------------
 // Create a connection for the server. The connection uses Node's IPC as a transport.
@@ -285,7 +285,7 @@ connection.onDocumentSymbol((params, token) =>
 	// cancellation request
 	token.onCancellationRequested(_ => { });
 	// settings
-	// let threading = false;
+	let threading = false;
 
 	return new Promise(resolve =>
 	{
@@ -294,13 +294,13 @@ connection.onDocumentSymbol((params, token) =>
 			.then(result =>
 			{
 				if (!result.GoToSymbol) { resolve; }
-				// threading = result.parser.multiThreading;
+				threading = result.parser.multiThreading;
 			});
 
 		// mxsDocumentSymbols = !threading ? new DocumentSymbolProvider() : new DocumentSymbolProviderThreaded() ;
-		// mxsDocumentSymbols = new DocumentSymbolProviderThreaded();
+		mxsDocumentSymbols = new DocumentSymbolProviderThreaded();
 		//----------------------------------------------
-		mxsDocumentSymbols = new DocumentSymbolProvider();
+		// mxsDocumentSymbols = new DocumentSymbolProvider();
 		//----------------------------------------------
 		getDocumentSettings(params.textDocument.uri)
 			.then(result =>
@@ -317,15 +317,15 @@ connection.onDocumentSymbol((params, token) =>
 			// currentDocumentParseTree.set(params.textDocument.uri, result.cst);
 			// offload Document completions from the onCompletion Event
 			if (result.cst) {
-				/*
+				// /*
 				let completionItemsCache =
 					threading
-						? mxsCompletionThreaded.provideCodeCompletionItems(JSON.parse(result.cst))
-						: mxsCompletion.provideCodeCompletionItems(JSON.parse(result.cst));
+						? mxsCompletionThreaded.CodeCompletionItems(JSON.parse(result.cst))
+						: mxsCompletion.CodeCompletionItems(JSON.parse(result.cst));
 						
 				completionItemsCache.then((result: CompletionItem[]) =>
-				*/
-				mxsCompletion.CodeCompletionItems(JSON.parse(result.cst)).then((result: CompletionItem[]) =>
+				// */
+				// mxsCompletion.CodeCompletionItems(JSON.parse(result.cst)).then((result: CompletionItem[]) =>
 				{
 					currentDocumentParseTree.set(
 						params.textDocument.uri,
@@ -505,21 +505,21 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 	let settings = await getDocumentSettings(params.uri[0]) ?? defaultSettings;
 	switch (params.command) {
 		case 'mxs.minify':
-			/*
+			// /*
 			settings.parser.multiThreading
-			? await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsMinifyThreaded.FormatDoc, mxsMinify.minifyOptions);
-			: await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsMinify.FormatDoc, mxsMinify.minifyOptions);
-			*/
-			await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatDoc, mxsMinify.minifyOptions);
+			? await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsMinifyThreaded.MinifyDoc, mxsMinify.minifyOptions)
+			: await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsMinify.MinifyDoc, mxsMinify.minifyOptions);
+			// */
+			// await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsMinifyThreaded.MinifyDoc, mxsMinify.minifyOptions);
 
 			break;
 		case 'mxs.minify.file':
-			/*
+			// /*
 			settings.parser.multiThreading
-			? await mxsMinifyThreaded.FormatFile(path, newPath, mxsMinify.minifyOptions)
-			: await mxsMinify.FormatFile(path, newPath, mxsMinify.minifyOptions);
-			*/
-			await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatFile, mxsMinify.minifyOptions);
+			? await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsMinifyThreaded.MinifyFile, mxsMinify.minifyOptions)
+			: await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsMinify.MinifyFile, mxsMinify.minifyOptions);
+			// */
+			// await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatFile, mxsMinify.minifyOptions);
 	}
 	return [];
 });
@@ -545,10 +545,10 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 		}
 		try {
 			let formattedData =
-				// settings.parser.multiThreading
-				// ? await mxsFormatter.FormatDataThreaded(doc.getText(), settings.prettifier)
-				// : mxsFormatter.FormatData(doc.getText(), settings.prettifier);
-				mxsFormatter.FormatData(doc.getText(), settings.prettifier);
+				settings.parser.multiThreading
+				? await mxsFormatterThreaded.FormatData(doc.getText(), settings.prettifier)
+				: mxsFormatter.FormatData(doc.getText(), settings.prettifier);
+				// mxsFormatter.FormatData(doc.getText(), settings.prettifier);
 
 			let reply = await replaceText.call(connection, doc, formattedData)
 			if (reply.applied) {
