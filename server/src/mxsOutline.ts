@@ -1,7 +1,11 @@
 /**
  * Provide document symbols via parse tree.
  */
-import { spawn, Thread, Worker } from 'threads';
+// import { spawn, Thread, Worker } from 'threads';
+import { wrap } from 'comlink';
+import nodeEndpoint, { NodeEndpoint } from 'comlink/dist/umd/node-adapter';
+import {symbolsWorker} from './workers/symbols.worker';
+
 import
 {
 	Range,
@@ -88,12 +92,16 @@ export class DocumentSymbolProvider
 	}
 	private async parseTextDocumentThreaded(document: TextDocument, options?: parserOptions): Promise<ParserSymbols>
 	{
+		/*
 		let documentSymbols = await spawn(new Worker('./workers/symbols.worker'));
 		try {
 			return await documentSymbols(document.getText(), this.documentRange(document), options);
 		} finally {
 			await Thread.terminate(documentSymbols);
-		}
+		}*/
+		const worker = new Worker('./workers/symbols.worker');
+		const api = wrap<symbolsWorker>(nodeEndpoint(<unknown>worker as NodeEndpoint));
+		return await api.documentSymbols(document.getText(), this.documentRange(document), options);
 	}
 	/** MXS document parser */
 	async parseDocument(document: TextDocument, connection: Connection): Promise<ParserSymbols>

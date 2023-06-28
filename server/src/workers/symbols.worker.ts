@@ -1,11 +1,15 @@
 import
 {
-	Diagnostic,
-	SymbolInformation,
-	DocumentSymbol,
+	// Diagnostic,
+	// SymbolInformation,
+	// DocumentSymbol,
 	Range
 } from 'vscode-languageserver';
-import { expose } from "threads/worker"
+// import { expose } from "threads/worker"
+import { expose } from "comlink"
+import nodeEndpoint from 'comlink/dist/umd/node-adapter';
+import { parentPort } from "worker_threads";
+
 import { deriveSymbolsTree, collectTokens } from '../mxsProvideSymbols';
 import
 {
@@ -16,7 +20,6 @@ import { parserOptions } from '../mxsParserBase';
 import { parseSource } from '../mxsParser';
 import { ParserSymbols } from '../mxsOutline';
 //-----------------------------------------------------------------------------------
-expose(
 	function documentSymbols(source: string, range: Range, options?: parserOptions)
 	{
 		let response: ParserSymbols = {
@@ -47,4 +50,7 @@ expose(
 				throw err;
 			}
 		}
-	});
+	}
+	const api = {documentSymbols};
+	export type symbolsWorker = typeof api;
+	expose(api, nodeEndpoint(parentPort!));

@@ -319,6 +319,7 @@
 	"devDependencies": {
 		"@babel/types": "^7.16.8",
 		"@types/node": "^18.15.3",
+		"comlink": "^4.4.1",
 		"merge-options": "^3.0.4",
 		"rimraf": "^5.0.0",
 		"threads": "^1.7.0",
