@@ -1,5 +1,4 @@
-import { Token } from 'moo';
-
+// import { Token } from 'moo';
 const ReRegExp = require('reregexp').default;
 /*
 export{}
@@ -14,7 +13,6 @@ if (!Array.prototype.random) {
   }
 }
 */
-
 const rand = (arr: string[]) => arr[Math.floor((Math.random()*arr.length))];
 
 const rx = (rule:string):string => {
