@@ -1,6 +1,7 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    // "module": "ESNext",
     "outDir": "./out",
     "rootDir": "./src",
     "allowJs": true,

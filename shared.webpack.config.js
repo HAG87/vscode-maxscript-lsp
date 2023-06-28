@@ -8,10 +8,12 @@
 
 const path = require('path');
 const mergeOptions = require('merge-options');
-const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
-// const ThreadsPlugin = require('threads-plugin');
+// const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
+// const HtmlWebpackPlugin = require("html-webpack-plugin");
 
-module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
+/**@type function(WebpackConfig): WebpackConfig*/
+module.exports = function withDefaults(/**@type WebpackConfig*/extConfig)
+{
 	/** @type WebpackConfig */
 	let defaultConfig = {
 		mode: 'none', // this leaves the source code as close as possible to the original (when packaging we set this to 'production')
@@ -24,50 +26,43 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 			mainFields: ['module', 'main'],
 			extensions: ['.ts', '.tsx', '.js', '.jsx'],
 			modules: ['node_modules', path.resolve(__dirname)],
+			/*
 			plugins: [
 				//@ts-expect-error
 				new TsconfigPathsPlugin({
 					extensions: ['.ts', '.tsx', '.js', '.jsx'],
 					mainFields: ['module', 'main'],
 				})
-			]
+			]*/
 		},
-/* 		plugins: [
-			new ThreadsPlugin()
-		], */
+		// plugins: [ new HtmlWebpackPlugin() ],
 		module: {
 			rules: [
 				{
-					test: /\.tsx?$/,
+					test: /\.ts$/,
 					exclude: /node_modules/,
-					// use: [{
-						loader: 'ts-loader',
-						options: {
-							// configure TypeScript loader:
-							compilerOptions: {
-								module: 'esnext'
-								// 'allowJs': false,
-							},
-							projectReferences: true,
-							// onlyCompileBundledFiles: true,
-						}
-					// }]
+					loader: 'ts-loader',
+					options: {
+						compilerOptions: {
+							module: 'es6'
+						},
+						projectReferences: true,
+					}
 				},
 			]
 		},
 		externals:
 		{
-			'vscode': 'commonjs vscode' // ignored because it doesn't exist
+			'vscode': 'commonjs vscode'
 		},
 		output: {
 			filename: '[name].js',
 			// @ts-ignore
 			path: path.join(extConfig.context, 'out'),
-			libraryTarget: 'commonjs',
-			// chunkFilename: '[name].js',
+			libraryTarget: 'commonjs2',
+			// chunkFilename: '[name].js'
 		},
 		devtool: 'source-map'
 	};
-	// @ts-ignore
 	return mergeOptions(defaultConfig, extConfig);
 };
