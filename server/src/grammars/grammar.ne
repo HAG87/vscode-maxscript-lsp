@@ -1209,7 +1209,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 #---------------------------------------------------------------
 # BITARRAY --- OK
     bitarray
-    -> (%sharp __:?) LBRACE bitarray_expr RBRACE
+    -> (%sharp __:?) LBRACE bitarray_expr:? RBRACE
         {% d => ({
             type:     'ObjectBitArray',
             elements: d[2] != null ? d[2] : [],

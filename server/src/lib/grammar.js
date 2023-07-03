@@ -1272,7 +1272,9 @@ var grammar = {
     {"name": "bitarray$subexpression$1$ebnf$1", "symbols": ["__"], "postprocess": id},
     {"name": "bitarray$subexpression$1$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
     {"name": "bitarray$subexpression$1", "symbols": [(mxLexer.has("sharp") ? {type: "sharp"} : sharp), "bitarray$subexpression$1$ebnf$1"]},
-    {"name": "bitarray", "symbols": ["bitarray$subexpression$1", "LBRACE", "bitarray_expr", "RBRACE"], "postprocess":  d => ({
+    {"name": "bitarray$ebnf$1", "symbols": ["bitarray_expr"], "postprocess": id},
+    {"name": "bitarray$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
+    {"name": "bitarray", "symbols": ["bitarray$subexpression$1", "LBRACE", "bitarray$ebnf$1", "RBRACE"], "postprocess":  d => ({
             type:     'ObjectBitArray',
             elements: d[2] != null ? d[2] : [],
             range:    getLoc(d[0][0], d[3])
