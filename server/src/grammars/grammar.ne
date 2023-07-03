@@ -99,7 +99,7 @@
 @lexer mxLexer
 #===============================================================
 # ENTRY POINT
-Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
+Main -> anyws:* _expr_seq:? anyws:* {% d => d[1] %}
 #---------------------------------------------------------------
 # Expressions main recursion
     # _EXPR -> expr (EOL expr):*    {% flatten %}
@@ -1209,7 +1209,7 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 #---------------------------------------------------------------
 # BITARRAY --- OK
     bitarray
-    -> (%sharp __:?) LBRACE bitarray_expr RBRACE
+    -> (%sharp __:?) LBRACE bitarray_expr:? RBRACE
         {% d => ({
             type:     'ObjectBitArray',
             elements: d[2] != null ? d[2] : [],
@@ -1224,21 +1224,21 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
         | expr {% id %}
 #===============================================================
 # UTILITIES
-    COMMA -> _:? %comma __:? {% d => null %}
+    COMMA -> _:? %comma anyws:* {% d => null %}
     #PARENS
-    LPAREN ->       %lparen __:?    {% id %}
-    RPAREN ->  __:? %rparen         {% d => d[1] %}
+    LPAREN ->          %lparen anyws:* {% id %}
+    RPAREN ->  anyws:* %rparen         {% d => d[1] %}
 
-    LBRACKET ->      %lbracket __:? {% id %}
-    RBRACKET -> __:? %rbracket      {% d => d[1] %}
+    LBRACKET ->       %lbracket wsl:* {% id %}
+    RBRACKET -> wsl:* %rbracket       {% d => d[1] %}
 
-    LBRACE ->      %lbrace __:?     {% id %}
-    RBRACE -> __:? %rbrace          {% d => d[1] %}
+    LBRACE ->       %lbrace wsl:*     {% id %}
+    RBRACE -> wsl:* %rbrace           {% d => d[1] %}
 #===============================================================
 # VARNAME --- IDENTIFIERS --- OK
     # some keywords can be VAR_NAME too...
     VAR_NAME
-        -> %identity      {% Identifier %}
+        -> %identity     {% Identifier %}
         | kw_reserved    {% Identifier %}
 
 # CONTEXTUAL KEYWORDS...can be used as identifiers outside the context...
@@ -1292,16 +1292,16 @@ Main -> junk:* _expr_seq:? junk:* {% d => d[1] %}
 # WHITESPACE AND NEW LINES
     # comments are skipped in the parse tree!
     # MANDATORY EOL
-    EOL -> junk:* %newline _:? {% d => null %}    
+    EOL -> anyws:* %newline _:? {% d => null %}    
     # WHITESPACE | one or more whitespace
     _ -> ws:+ {% d => null %}
     # WHITESPACE NL | one or more whitespace with NL
-    __ -> wsl junk:* {% d => null %}
+    __ -> wsl anyws:* {% d => null %}
 
     ws -> %ws | %comment_BLK
     wsl ->  %ws | %newline | %comment_BLK
 
-    junk
+    anyws
         -> %ws
         | %newline
         | %comment_BLK
