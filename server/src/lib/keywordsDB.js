@@ -182,7 +182,7 @@ const keywordsTypeDB = {
 	'kw_else'         : 'else',
 	'kw_exit'         : 'exit',
 	'kw_for'          : 'for',
-	'kw_from'         : 'from',
+	// 'kw_from'         : 'from',
 	'kw_function'     : ['function', 'fn'],
 	'kw_global'       : 'global',
 	'kw_group'        : 'group',
