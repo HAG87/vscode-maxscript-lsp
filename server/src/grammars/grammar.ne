@@ -1080,7 +1080,7 @@ Main -> anyws:* _expr_seq:? anyws:* {% d => d[1] %}
         -> (_:? parameter):+ {% flatten %}
 
     call_args
-        -> ( _:? UN_OP | _:? _OP):+ {% flatten %}
+        -> ( _ UN_OP | _:? _OP):+ {% flatten %}
         # -> ( _:? OP):+ {% flatten %}
     call_caller
         -> OP {% id %}
