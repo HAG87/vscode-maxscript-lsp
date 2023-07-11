@@ -29,7 +29,7 @@ import getDocumentSymbolsLegacy from './mxsOutlineLegacy';
 import {ParserSymbols, DocumentSymbolProvider} from './mxsOutline';
 
 //@ts-ignore
-import workerURL from "threads-plugin/dist/loader?name=symbols.worker!./workers/symbols.worker.ts"
+// import workerURL from 'threads-plugin/dist/loader?name=symbols.worker!./workers/symbols.worker.ts';
 //--------------------------------------------------------------------------------
 
 
@@ -38,6 +38,12 @@ export class DocumentSymbolProviderThreaded extends DocumentSymbolProvider
 	private async parseTextDocumentThreaded(document: TextDocument, options?: parserOptions): Promise<ParserSymbols>
 	{
 		// /*
+		let workerURL
+		try {
+			workerURL = require('threads-plugin/dist/loader?name=symbols.worker!./workers/symbols.worker.ts');			
+		} catch {
+			workerURL = 'workers/symbols.worker';
+		}
 		let worker = await spawn<symbolsWorker>(new Worker(`./${workerURL}`));
 		try {
 			return await worker(document.getText(), this.documentRange(document), options);
@@ -83,7 +89,7 @@ export class DocumentSymbolProviderThreaded extends DocumentSymbolProvider
 	/** MXS document parser - Threaded version */
 	async parseDocument(document: TextDocument, connection: Connection): Promise<ParserSymbols>
 	{
-		console.log('Threaded!');
+		// console.log('Threaded!');
 		try {
 			return await this.parseTextDocumentThreaded(document, this.options);
 		} catch (e: any) {

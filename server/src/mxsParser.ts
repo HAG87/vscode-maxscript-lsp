@@ -8,7 +8,7 @@ import
 		declareParser,
 	} from './mxsParserBase';
 //@ts-ignore
-import workerURL from "threads-plugin/dist/loader?name=parser.worker!./workers/parser.worker.ts"
+// import workerURL from 'threads-plugin/dist/loader?name=parser.worker!./workers/parser.worker.ts'
 //-----------------------------------------------------------------------------------
 /**
  * Parse MaxScript code
@@ -30,10 +30,16 @@ export function parseSource(source: string, options = new parserOptions()): pars
 
 export async function parseSourceThreaded(source: string, options = new parserOptions()): Promise<parserResult>
 {
-	let parseSource = await spawn(new Worker(`./${workerURL}`));
+	let workerURL
 	try {
-		return JSON.parse(await parseSource(source, options));
+		workerURL = require('threads-plugin/dist/loader?name=parser.worker!./workers/parser.worker.ts');			
+	} catch {
+		workerURL = 'parser/symbols.worker';
+	}
+	let worker = await spawn(new Worker(`./${workerURL}`));
+	try {
+		return JSON.parse(await worker(source, options));
 	} finally {
-		await Thread.terminate(parseSource);
+		await Thread.terminate(worker);
 	}
 }
