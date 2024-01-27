@@ -791,12 +791,12 @@ Main -> anyws:* _expr_seq:? anyws:* {% d => d[1] %}
         })%}
 #---------------------------------------------------------------
 # WHILE LOOP --- OK
-    WHILE_LOOP -> (%kw_while _:?) expr (_:? %kw_do __:?) expr
+    WHILE_LOOP -> %kw_while __:? expr __:? %kw_do __:? expr
         {% d => ({
             type:  'WhileStatement',
-            test:  d[1],
-            body:  d[3],
-            range: getLoc(d[0][0], d[3])
+            test:  d[2],
+            body:  d[6],
+            range: getLoc(d[0], d[6])
         })%}
 #---------------------------------------------------------------
 # IF EXPRESSION --- OK
