@@ -499,15 +499,22 @@ Main -> anyws:* _expr_seq:? anyws:* {% d => d[1] %}
             }) %}
 #---------------------------------------------------------------
 # CHANGE HANDLER -- WHEN CONSTRUCTOR -- OK
-# when <attribute> <objects> change[s] [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr>
-# when <objects> deleted               [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr> 
     CHANGE_HANDLER
-        -> %kw_when __ (VAR_NAME | kw_override):? __ _OP __ VAR_NAME __ (parameter __:?):* _OP:? __:? %kw_do __:? expr
+        # when               <attribute>           <objects>  change[s]  [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr>
+        -> %kw_when __ (VAR_NAME | kw_override) __:? _OP __ VAR_NAME __ (parameter __:?):* _OP:? __:? %kw_do __:? expr
             {% d=> ({
                 type:  'WhenStatement',
                 args:  merge(...d.slice(2,9)),
                 body:  d[13],
                 range: getLoc(d[0], d[13])
+            })%}
+        #  when       <objects>  deleted  [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr> 
+        | %kw_when __:? _OP __:? VAR_NAME __ (parameter __:?):* _OP:? __:? %kw_do __:? expr
+            {% d=> ({
+                type:  'WhenStatement',
+                args:  merge(...d.slice(2,7)),
+                body:  d[11],
+                range: getLoc(d[0], d[11])
             })%}
 #---------------------------------------------------------------
 # FUNCTION DEFINITION --- OK
