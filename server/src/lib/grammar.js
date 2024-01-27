@@ -909,19 +909,17 @@ var grammar = {
             test:  d[6],
             range: getLoc(d[0], d[6])
         })},
-    {"name": "WHILE_LOOP$subexpression$1$ebnf$1", "symbols": ["_"], "postprocess": id},
-    {"name": "WHILE_LOOP$subexpression$1$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "WHILE_LOOP$subexpression$1", "symbols": [(mxLexer.has("kw_while") ? {type: "kw_while"} : kw_while), "WHILE_LOOP$subexpression$1$ebnf$1"]},
-    {"name": "WHILE_LOOP$subexpression$2$ebnf$1", "symbols": ["_"], "postprocess": id},
-    {"name": "WHILE_LOOP$subexpression$2$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "WHILE_LOOP$subexpression$2$ebnf$2", "symbols": ["__"], "postprocess": id},
-    {"name": "WHILE_LOOP$subexpression$2$ebnf$2", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "WHILE_LOOP$subexpression$2", "symbols": ["WHILE_LOOP$subexpression$2$ebnf$1", (mxLexer.has("kw_do") ? {type: "kw_do"} : kw_do), "WHILE_LOOP$subexpression$2$ebnf$2"]},
-    {"name": "WHILE_LOOP", "symbols": ["WHILE_LOOP$subexpression$1", "expr", "WHILE_LOOP$subexpression$2", "expr"], "postprocess":  d => ({
+    {"name": "WHILE_LOOP$ebnf$1", "symbols": ["__"], "postprocess": id},
+    {"name": "WHILE_LOOP$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
+    {"name": "WHILE_LOOP$ebnf$2", "symbols": ["__"], "postprocess": id},
+    {"name": "WHILE_LOOP$ebnf$2", "symbols": [], "postprocess": function(d) {return null;}},
+    {"name": "WHILE_LOOP$ebnf$3", "symbols": ["__"], "postprocess": id},
+    {"name": "WHILE_LOOP$ebnf$3", "symbols": [], "postprocess": function(d) {return null;}},
+    {"name": "WHILE_LOOP", "symbols": [(mxLexer.has("kw_while") ? {type: "kw_while"} : kw_while), "WHILE_LOOP$ebnf$1", "expr", "WHILE_LOOP$ebnf$2", (mxLexer.has("kw_do") ? {type: "kw_do"} : kw_do), "WHILE_LOOP$ebnf$3", "expr"], "postprocess":  d => ({
             type:  'WhileStatement',
-            test:  d[1],
-            body:  d[3],
-            range: getLoc(d[0][0], d[3])
+            test:  d[2],
+            body:  d[6],
+            range: getLoc(d[0], d[6])
         })},
     {"name": "IF_EXPR$subexpression$1$ebnf$1", "symbols": ["__"], "postprocess": id},
     {"name": "IF_EXPR$subexpression$1$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
