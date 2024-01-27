@@ -1,4 +1,5 @@
 import { readFile, writeFile } from 'fs/promises';
+import { PathLike } from 'fs';
 //--------------------------------------------------------------------------------
 import { parseSource } from './mxsParser';
 import { mxsReflow, options, reflowOptions } from './lib/mxsReflow';
@@ -35,7 +36,7 @@ export function FormatData(data: unknown[] | string, settings?: Partial<reflowOp
 }
 //--------------------------------------------------------------------------------
 /** Format and save document */
-export async function FormatDoc(data: unknown[] | string, dest: string, settings?: Partial<reflowOptions>)
+export async function FormatDoc(data: unknown[] | string, dest: PathLike, settings?: Partial<reflowOptions>)
 {
 	await writeFile(
 		dest,
@@ -43,7 +44,7 @@ export async function FormatDoc(data: unknown[] | string, dest: string, settings
 	);
 }
 /** Read, format and save document */
-export async function FormatFile(src: string, dest: string, settings?: Partial<reflowOptions>)
+export async function FormatFile(src: PathLike, dest: PathLike, settings?: Partial<reflowOptions>)
 {
 	await writeFile(
 		dest,

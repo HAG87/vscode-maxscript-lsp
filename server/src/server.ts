@@ -42,6 +42,7 @@ import { DocumentSymbolProviderThreaded } from './mxsOutlineThreaded';
 import * as mxsCompletionThreaded from './mxsCompletionsThreaded';
 import * as mxsMinifyThreaded from './mxsMinThreaded';
 import * as mxsFormatterThreaded from './mxsFormatterThreaded';
+import { PathLike } from 'fs';
 
 //------------------------------------------------------------------------------------------
 // Create a connection for the server. The connection uses Node's IPC as a transport.
@@ -454,12 +455,13 @@ namespace PrettifyDocRequest
 /* Minifier */
 async function minifyDocuments(uris: string[], prefix: string, formatter: Function, settings: any)
 {
-	let uri: string, path: string, newPath: string, doc: string;
+	let uri: string, path: string, newPath: PathLike, doc: string;
 	for (let i = 0; i < uris.length; i++) {
 		uri = uris[i];
 		path = URI.parse(uri).fsPath;
 		newPath = prefixFile(path, prefix);
 		doc = documents.get(uri)!.getText();
+		//console.log(doc);
 		if (!doc) {
 			connection.window.showWarningMessage(
 				`MaxScript minify: Failed at ${Path.basename(path)}. Reason: Can't read the file`
@@ -479,6 +481,7 @@ async function minifyDocuments(uris: string[], prefix: string, formatter: Functi
 		}
 	}
 }
+// /*
 async function minifyFiles(uris: string[], prefix: string, formatter: Function, settings: any)
 {
 	let uri: string, path: string, newPath: string;
@@ -488,7 +491,7 @@ async function minifyFiles(uris: string[], prefix: string, formatter: Function, 
 		newPath = prefixFile(path, prefix);
 
 		try {
-			await formatter(uri, newPath, settings);
+			await formatter(path, newPath, settings);
 
 			connection.window.showInformationMessage(
 				`MaxScript minify: Document saved as ${Path.basename(newPath)}`
@@ -500,6 +503,7 @@ async function minifyFiles(uris: string[], prefix: string, formatter: Function, 
 		}
 	}
 }
+// */
 connection.onRequest(MinifyDocRequest.type, async params =>
 {
 	let settings = await getDocumentSettings(params.uri[0]) ?? defaultSettings;
@@ -516,8 +520,8 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 		case 'mxs.minify.file':
 			// /*
 			settings.parser.multiThreading
-			? await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsMinifyThreaded.MinifyFile, mxsMinify.minifyOptions)
-			: await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsMinify.MinifyFile, mxsMinify.minifyOptions);
+			? await minifyFiles(params.uri, settings.MinifyFilePrefix, mxsMinifyThreaded.MinifyFile, mxsMinify.minifyOptions)
+			: await minifyFiles(params.uri, settings.MinifyFilePrefix, mxsMinify.MinifyFile, mxsMinify.minifyOptions);
 			// */
 			// await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatFile, mxsMinify.minifyOptions);
 	}

@@ -2,6 +2,7 @@ import { spawn, Thread, Worker } from 'threads';
 import { readFile, writeFile } from 'fs/promises';
 //--------------------------------------------------------------------------------
 import { reflowOptions } from './lib/mxsReflow';
+import { PathLike } from 'fs';
 //@ts-ignore
 // import workerURL from 'threads-plugin/dist/loader?name=reflow.worker!./workers/reflow.worker.ts';
 //--------------------------------------------------------------------------------
@@ -29,7 +30,7 @@ export async function FormatData(data: unknown[] | string, settings?: Partial<re
 }
 //--------------------------------------------------------------------------------
 /** Format and save document */
-export async function FormatDoc(data: unknown[] | string, dest: string, settings?: Partial<reflowOptions>)
+export async function FormatDoc(data: unknown[] | string, dest: PathLike, settings?: Partial<reflowOptions>)
 {
 	await writeFile(
 		dest,
@@ -37,7 +38,7 @@ export async function FormatDoc(data: unknown[] | string, dest: string, settings
 	);
 }
 /** Read, format and save document -- threaded*/
-export async function FormatFile(src: string, dest: string, settings?: Partial<reflowOptions>)
+export async function FormatFile(src: PathLike, dest: PathLike, settings?: Partial<reflowOptions>)
 {
 	await writeFile(
 		dest,
