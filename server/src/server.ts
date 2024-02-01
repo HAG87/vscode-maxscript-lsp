@@ -361,33 +361,35 @@ connection.onCompletion(async (params, token) =>
 	// settings
 	let Completions = (await getDocumentSettings(params.textDocument.uri)).Completions ?? defaultSettings.Completions;
 
-	let ProvideCompletions = [];
+	let CompletionItems = new Set<CompletionItem>();
 
+	// database completions
+	if (Completions.dataBaseCompletion) {
+		mxsCompletion.CompletionItems(
+			documents.get(params.textDocument.uri)!,
+			params.position
+		).forEach((item) => CompletionItems.add(item));
+	}
+	
 	// document symbols completion
 	if (Completions.Definitions) {
-		if (currentDocumentSymbols.has(params.textDocument.uri)) {
-			ProvideCompletions.push(
-				...mxsCompletion.DefinitionCompletionItems(<DocumentSymbol[]>currentDocumentSymbols.get(params.textDocument.uri))
-			);
-		}
+		mxsCompletion.InDocumentCompletionItems(<DocumentSymbol[]>currentDocumentSymbols.get(params.textDocument.uri))
+		.forEach((item) => CompletionItems.add(item));
 	}
 	// document parse tree completion
 	if (Completions.Identifiers) {
 		if (currentDocumentParseTree.has(params.textDocument.uri)) {
-			// ProvideCompletions.push( ...mxsCompletion.provideDocumentCompletionItems(currentDocumentParseTree.get(params.textDocument.uri)) );
-			ProvideCompletions.push(...currentDocumentParseTree.get(params.textDocument.uri));
+			[...currentDocumentParseTree.get(params.textDocument.uri)]
+			.forEach((item :CompletionItem) => CompletionItems.add(item));
 		}
 	}
-	// database completions
-	if (Completions.dataBaseCompletion) {
-		ProvideCompletions.push(
-			...mxsCompletion.CompletionItems(
-				documents.get(params.textDocument.uri)!,
-				params.position
-			));
-	}
-	return ProvideCompletions;
+
+	const arr = Array.from(CompletionItems).filter((obj, pos, arr) => {
+		return arr.map(mapObj => mapObj["label"]).indexOf(obj["label"]) === pos
+	})
+	return arr;
 });
+
 //------------------------------------------------------------------------------------------
 /* Definition provider */
 // method 1: regex match the file

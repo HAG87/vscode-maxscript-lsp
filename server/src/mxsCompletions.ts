@@ -77,7 +77,7 @@ export const KindConversion = {
 	13: 6,  // Variable
 }
 
-export function DefinitionCompletionItems(SymbolsTree: DocumentSymbol[]): CompletionItem[]
+export function InDocumentCompletionItems(SymbolsTree: DocumentSymbol[]): CompletionItem[]
 {
 	const Items: CompletionItem[] = [];
 	traverse(SymbolsTree, (key: string, val: string | null, innerObj: { parent: DocumentSymbol }) =>
