@@ -277,14 +277,13 @@
 				"MaxScript.parser.multiThreading": {
 					"scope": "resource",
 					"type": "boolean",
-					"default": true,
-					"readOnly": false,
+					"default": false,
 					"description": "Enable multithreading. This feature can be unstable. Disable it if you encounter too many crashes using the extension."
 				},
 				"MaxScript.help.provider": {
 					"scope": "resource",
 					"type": "string",
-					"default": "https://help.autodesk.com/view/MAXDEV/2022/ENU/",
+					"default": "https://help.autodesk.com/view/MAXDEV/2024/ENU/",
 					"description": "MaxScript help source"
 				},
 				"MaxScript.trace.server": {
