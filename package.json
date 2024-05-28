@@ -139,7 +139,7 @@
 			"editor/context": [
 				{
 					"command": "mxs.help",
-					"when": "editorHasSelection && editorTextFocus && resourceLangId == maxscript",
+					"when": "editorTextFocus && resourceLangId == maxscript",
 					"group": "navigation@1"
 				}
 			],

@@ -93,14 +93,21 @@ export function activate(context: ExtensionContext)
 		commands.registerTextEditorCommand('mxs.help',
 			async (editor) =>
 			{
+				let word =
+					editor.document.getText(editor.selection);
+
+				if (word === null || word.match(/^\s*$/) !== null) {
+					word = editor.document.getText(editor.document.getWordRangeAtPosition(editor.selection.active));
+				}
+
 				let uri = Uri.parse(encodeURI(
-					`${workspace.getConfiguration('maxscript').get('Help.Provider', 'https://help.autodesk.com/view/MAXDEV/2022/ENU/')}?query=${editor.document.getText(editor.selection)!}`
+					`${workspace.getConfiguration('MaxScript').get('help.provider')}?query=${word!}`
 				));
 				await commands.executeCommand('vscode.open', uri);
 			}),
 		// minify commands
 		commands.registerCommand('mxs.minify.files',
-			async args =>
+			async () =>
 			{
 				window.showOpenDialog({
 					canSelectMany: true,
