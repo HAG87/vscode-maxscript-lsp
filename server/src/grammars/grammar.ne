@@ -450,7 +450,7 @@ Main -> anyws:* _expr_seq:? anyws:* {% d => d[1] %}
                 range: getLoc(d[0][0], d[5])
             })%}
 
-    struct_members -> struct_member ( COMMA struct_member ):* {% flatten %}
+    struct_members -> struct_member ( EOL_COMMA struct_member ):* {% flatten %}
 
     struct_member
         -> decl          {% id %}
@@ -499,6 +499,8 @@ Main -> anyws:* _expr_seq:? anyws:* {% d => d[1] %}
             }) %}
 #---------------------------------------------------------------
 # CHANGE HANDLER -- WHEN CONSTRUCTOR -- OK
+# when <attribute> <objects> change[s] [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr>
+# when <objects> deleted               [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr> 
     CHANGE_HANDLER
         # when               <attribute>           <objects>  change[s]  [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr>
         -> %kw_when __ (VAR_NAME | kw_override) __:? _OP __ VAR_NAME __ (parameter __:?):* _OP:? __:? %kw_do __:? expr
@@ -1212,7 +1214,7 @@ Main -> anyws:* _expr_seq:? anyws:* {% d => d[1] %}
                 range:      getLoc(d[0][0], d[3])
             }) %}
 
-    array_expr -> expr ( COMMA expr ):*  {% flatten %}
+    array_expr -> expr ( EOL_COMMA expr ):*  {% flatten %}
 #---------------------------------------------------------------
 # BITARRAY --- OK
     bitarray
@@ -1223,7 +1225,7 @@ Main -> anyws:* _expr_seq:? anyws:* {% d => d[1] %}
             range:    getLoc(d[0][0], d[3])
         }) %}
 
-    bitarray_expr -> bitarray_item ( COMMA bitarray_item ):*  {% flatten %}
+    bitarray_expr -> bitarray_item ( EOL_COMMA bitarray_item ):*  {% flatten %}
 
     # TODO: Fix groups
     bitarray_item
@@ -1232,6 +1234,7 @@ Main -> anyws:* _expr_seq:? anyws:* {% d => d[1] %}
 #===============================================================
 # UTILITIES
     COMMA -> _:? %comma anyws:* {% d => null %}
+    EOL_COMMA -> __:? %comma __:? {% d => null %}
     #PARENS
     LPAREN ->          %lparen anyws:* {% id %}
     RPAREN ->  anyws:* %rparen         {% d => d[1] %}
@@ -1271,7 +1274,7 @@ Main -> anyws:* _expr_seq:? anyws:* {% d => d[1] %}
         | %kw_return       {% id %}
         | %kw_rollout      {% id %}
         | %kw_to           {% id %}
-        | %kw_and           {% id %}
+        # | %kw_and          {% id %}
 #===============================================================
 # PATH NAME
     # THIS JUST CAPTURES ALL THE LEVEL PATH IN ONE TOKEN....
