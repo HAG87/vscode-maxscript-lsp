@@ -1207,6 +1207,7 @@ var grammar = {
     {"name": "property$subexpression$1", "symbols": ["VAR_NAME"]},
     {"name": "property$subexpression$1", "symbols": ["VOID"]},
     {"name": "property$subexpression$1", "symbols": ["kw_override"]},
+    {"name": "property$subexpression$1", "symbols": [(mxLexer.has("kw_compare") ? {type: "kw_compare"} : kw_compare)]},
     {"name": "property", "symbols": ["_OP", (mxLexer.has("dot") ? {type: "dot"} : dot), "property$subexpression$1"], "postprocess":  d => ({
             type:     'AccessorProperty',
             operand:  d[0],

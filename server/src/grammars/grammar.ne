@@ -1115,7 +1115,7 @@ Main -> anyws:* _expr_seq:? anyws:* {% d => d[1] %}
 #---------------------------------------------------------------
 # ACCESSOR - PROPERTY --- OK
     property
-        -> _OP %dot (VAR_NAME | VOID | kw_override)
+        -> _OP %dot (VAR_NAME | VOID | kw_override | %kw_compare)
             {% d => ({
                 type:     'AccessorProperty',
                 operand:  d[0],
