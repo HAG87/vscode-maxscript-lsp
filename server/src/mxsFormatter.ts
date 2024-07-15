@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'fs/promises';
 import { PathLike } from 'fs';
 //--------------------------------------------------------------------------------
 import { parseSource } from './mxsParser';
-import { mxsReflow, options, reflowOptions } from './lib/mxsReflow';
+import { mxsReflow, options, reflowOptions } from './backend/mxsReflow';
 //--------------------------------------------------------------------------------
 function setOptions(settings?: Partial<reflowOptions>)
 {

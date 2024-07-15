@@ -1,7 +1,7 @@
 import { spawn, Thread, Worker } from 'threads';
 import { readFile, writeFile } from 'fs/promises';
 //--------------------------------------------------------------------------------
-import { reflowOptions } from './lib/mxsReflow';
+import { reflowOptions } from './backend/mxsReflow';
 import { PathLike } from 'fs';
 //@ts-ignore
 // import workerURL from 'threads-plugin/dist/loader?name=reflow.worker!./workers/reflow.worker.ts';

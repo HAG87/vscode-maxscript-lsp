@@ -64,5 +64,6 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig)
 		},
 		devtool: 'source-map'
 	};
+	// @ts-ignore
 	return mergeOptions(defaultConfig, extConfig);
 };

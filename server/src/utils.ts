@@ -7,7 +7,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import * as fs from 'fs';
 import * as Path from 'path';
-import { LspDocuments } from './document';
+import { LspDocuments } from './backend/document';
 import { URI } from 'vscode-uri';
 //--------------------------------------------------------------------------------
 /**

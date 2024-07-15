@@ -27,8 +27,8 @@ import { URI } from 'vscode-uri';
 import { MaxScriptSettings, defaultSettings } from './settings';
 import { mxsCapabilities } from './capabilities';
 //------------------------------------------------------------------------------------------
-import { replaceText } from './lib/workspaceEdits';
-import { prefixFile } from './lib/utils';
+import { replaceText } from './workspaceEdits';
+import { prefixFile } from './utils';
 //------------------------------------------------------------------------------------------
 import * as mxsCompletion from './mxsCompletions';
 import { DocumentSymbolProvider, ParserSymbols } from './mxsOutline';

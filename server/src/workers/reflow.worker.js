@@ -1,6 +1,6 @@
 import { expose } from 'threads/worker';
 import { parseSource } from '../mxsParser';
-import { mxsReflow, options } from '../lib/mxsReflow';
+import { mxsReflow, options } from '../backend/mxsReflow';
 //-----------------------------------------------------------------------------------
 expose(
 	function formatData(data, settings)

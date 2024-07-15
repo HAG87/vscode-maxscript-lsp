@@ -36,6 +36,6 @@
 		"vscode-languageserver-types": "^3.16.0"
 	},
 	"scripts": {
-		"nearley": "nearleyc ./src/grammars/grammar.ne -o ./src/lib/grammar.js"
+		"nearley": "nearleyc ./src/grammars/grammar.ne -o ./src/backend/grammar.js"
 	}
 }

@@ -8,7 +8,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 //-------------------------------------------------------------------------------------------------------------
 import moo from 'moo';
 import maxAPI from './schema/mxsAPI';
-import { mxsFormatterLexer } from './lib/mooTokenize-formatter';
+import { mxsFormatterLexer } from './backend/mooTokenize-formatter';
 //-------------------------------------------------------------------------------------------------------------
 // This is a simplified ruleset of the parser tokenizer
 let lexer = mxsFormatterLexer(maxAPI);
