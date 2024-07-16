@@ -5,27 +5,16 @@ import
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import * as fs from 'fs';
 import * as Path from 'path';
+import { statSync } from 'fs';
 import { LspDocuments } from './backend/document';
 import { URI } from 'vscode-uri';
-//--------------------------------------------------------------------------------
-/**
- * Test if number is Odd
- * @param x number to test
- */
-export const isOdd = (x: number) => !!(x & 1);
-/**
- * Test if number is Even
- * @param x number to test
- */
-export const isEven = (x: number) => !(x & 1);
 //--------------------------------------------------------------------------------
 /**
  * Check if a file exists in source.
  * @param filePath File path
  */
-export const fileExists = (filePath: string) => fs.statSync(filePath).isFile(); // (await fs.promises.stat(path)).isFile();
+export const fileExists = (filePath: string) => statSync(filePath).isFile(); // (await fs.promises.stat(path)).isFile();
 /**
  * Prefix a filename providing the full file path
  * @param path Original path
@@ -37,7 +26,7 @@ export const prefixFile = (path: string, prefix: string) => Path.join(path, '..'
  * Check for balanced pairs of char in string
  * @param src
  */
-export function balancedChars(src: string, char = '\"')
+export function balancedPairs(src: string, char = '\"')
 {
 	const expr = new RegExp(`[^\\]${char}`, 'g');
 	let doubleQuotesCnt = (expr.exec(src) ?? []).length;
@@ -53,18 +42,6 @@ export function precWord(src: string)
 	const pattern = /(\w+)\.$/g;
 	let wordmatches = pattern.exec(src);
 	return wordmatches?.[wordmatches.length - 1];
-}
-/**
- * Trim a substring from a source string
- * @param src source string
- * @param substr string to remove
- * @returns returns a new string
- */
-export function trimString(src: string, substr: string)
-{
-	const start = src.indexOf(substr);
-	const end = start + substr.length;
-	return src.substring(0, start - 1) + src.substring(end);
 }
 /**
  * Get word in TextDocument Position

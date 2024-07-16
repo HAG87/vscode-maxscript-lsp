@@ -1,6 +1,7 @@
 import nearley from 'nearley';
 import { Token } from 'moo';
 import { emmitTokenValue } from './backend/tokenSpecimens';
+import { TokenizeStream } from './backend/TokenizeStream';
 
 const grammar = require('./backend/grammar');
 const mxsTokenizer = require('./backend/mooTokenize');
@@ -85,32 +86,6 @@ let generateParserError = (err: any) =>
 	newErr.tokens = [err.token];
 	newErr.description = err.message;
 	return newErr;
-}
-//-----------------------------------------------------------------------------------
-/**
- * Tokenize mxs string
- * @param source Data to tokenize
- * @param filter keywords to exclude in tokens
- */
-export function TokenizeStream(source: string, filter?: string[], Tokenizer = mxsTokenizer): moo.Token[]
-{
-	if (filter instanceof Array) {
-		Tokenizer.next = (next => () =>
-		{
-			let tok;
-			// IGNORING COMMENTS....
-			while ((tok = next.call(Tokenizer)) && (filter.includes)) /* empty statement */ { }
-			return tok;
-		})(Tokenizer.next);
-	}
-	// feed the tokenizer
-	Tokenizer.reset(source);
-	let token: moo.Token | undefined;
-	let toks: moo.Token[] = [];
-	while ((token = Tokenizer.next())) {
-		toks.push(token);
-	}
-	return toks;
 }
 //-----------------------------------------------------------------------------------
 export function declareParser()
@@ -217,7 +192,7 @@ export function parse(source: string, parserInstance: nearley.Parser): parserRes
  */
 export function parseWithErrors(source: string, parserInstance: nearley.Parser, options: parserOptions): parserResult
 {
-	let src = TokenizeStream(source);
+	let src = TokenizeStream(mxsTokenizer, source);
 	let state = parserInstance.save();
 	// let errorState: any;
 
