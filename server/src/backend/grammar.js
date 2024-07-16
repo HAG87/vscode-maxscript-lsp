@@ -1370,7 +1370,7 @@ var grammar = {
     {"name": "by_Ref", "symbols": [(mxLexer.has("amp") ? {type: "amp"} : amp), "by_Ref$subexpression$1"], "postprocess":  d => ({
             type: 'refIdentifier',
             operator: d[0],
-            value: d[0],
+            value: d[1][0],
             range:getLoc(d[0], d[1][0])
         })},
     {"name": "VAR_NAME", "symbols": [(mxLexer.has("identity") ? {type: "identity"} : identity)], "postprocess": Identifier},

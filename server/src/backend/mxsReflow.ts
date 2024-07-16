@@ -416,23 +416,25 @@ function wrapInParens(node, key) {
  * Token transformations
  */
 let tokensValue = {
+	amp(node: moo.Token) { return node.text; },
+	assign(node: moo.Token) { return node.value; },
+	comparison(node: moo.Token) { return node.value; },
 	global_typed(node: moo.Token) { return node.text; },
 	hex(node: moo.Token) { return node.text; },
 	identity(node: moo.Token) { return node.text; },
+	keyword(node: moo.Token) { return node.text; },
 	locale(node: moo.Token) { return node.text; },
+	math(node: moo.Token) { return node.value; },
 	name(node: moo.Token) { return node.text; },
 	number(node: moo.Token) { return node.text; },
+	params(node: moo.Token) { return node.value; },
 	path(node: moo.Token) { return node.text; },
+	property(node: moo.Token) { return node.value; },
 	string(node: moo.Token) { return node.text; },
 	time(node: moo.Token) { return node.text; },
-	property(node: moo.Token) { return node.value; },
-	params(node: moo.Token) { return node.value; },
-	math(node: moo.Token) { return node.value; },
-	assign(node: moo.Token) { return node.value; },
-	comparison(node: moo.Token) { return node.value; },
-	keyword(node: moo.Token) { return node.text; },
 
 	kw_about(node: moo.Token) { return node.text; },
+	kw_animate(node: moo.Token) { return node.text; },
 	kw_as(node: moo.Token) { return node.text; },
 	kw_at(node: moo.Token) { return node.text; },
 	kw_attributes(node: moo.Token) { return node.text; },
@@ -504,9 +506,7 @@ let conversionRules = {
 	EmptyParens() { return '()'; },
 	Parameter(node: moo.Token) { return new Expr(node.value, ':'); },
 	BitRange(node: any) { return new Expr(node.start, '..', node.end); },
-	refIdentifier(node: any) {
-		return new Expr(node. operator, node.value)
-	},
+	refIdentifier(node: any) { return new Expr(node.operator, node.value); },
 	//-------------------------------------------------------------------------------------------
 	// DECLARATION
 	Declaration(node: nodetype.Declaration)
