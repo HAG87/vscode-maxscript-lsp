@@ -62,6 +62,7 @@ export const emmitTokenValue = (r:number):tokenValue => ({
 	kw_collect      : 'collect',
 	kw_compare      : rand(['and', 'or']),
 	kw_context      : rand([ 'animate', 'dontrepeatmessages', 'macrorecorderemitterenabled', 'mxscallstackcaptureenabled', 'printallelements', 'quiet', 'redraw' ]),
+	kw_animate      : 'animate',
 	kw_coordsys     : 'coordsys',
 	kw_defaultAction: 'defaultaction',
 	kw_do           : 'do',

@@ -283,3 +283,8 @@ export interface BitRange
 	start: any
 	end: any
 }
+export interface refIdentifier
+{
+	operator: any
+	value: any
+}

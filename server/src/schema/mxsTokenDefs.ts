@@ -17,6 +17,7 @@ export const tokenDefinitions: Record<string, string> = {
 	'kw_bool':        'Boolean value <false|off>',
 	'kw_case':        '<case> keyword',
 	'kw_context':     'Context statement',
+	'kw_animate':     'Context statement',
 	'kw_coordsys':    '<coordsys> keyword',
 	'kw_do':          '<do> keyword',
 	'kw_exit':        '<exit> keyword',

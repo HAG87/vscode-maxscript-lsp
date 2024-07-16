@@ -23,6 +23,12 @@ export interface parserResult
 	result?: any | any[]
 	error?: ParserError
 }
+interface Dictionary<T> { [key: string]: T }
+
+type ErrorDetail = {
+	token?: Token;
+	expected: Dictionary<string>[];
+};
 /**
  * ParserError extends js Error
  */
@@ -42,14 +48,8 @@ export class ParserError extends Error
 	details?: ErrorDetail[];
 }
 
-interface Dictionary<T> { [key: string]: T }
-
-type ErrorDetail = {
-	token?: Token;
-	expected: Dictionary<string>[];
-};
 //-----------------------------------------------------------------------------------
-let reportSuccess = (toks: Token[]) =>
+const reportSuccess = (toks: Token[]) =>
 {
 	let newErr = new ParserError('Parser failed. Partial parsing has been recovered.');
 	newErr.name = 'ERR_RECOVER';
@@ -58,7 +58,7 @@ let reportSuccess = (toks: Token[]) =>
 	// newErr.details = errorReport;
 	return newErr;
 };
-let reportFailure = (toks: Token[]) =>
+const reportFailure = (toks: Token[]) =>
 {
 	let newErr = new ParserError('Parser failed. Unrecoverable errors.');
 	newErr.name = 'ERR_FATAL';
@@ -67,15 +67,17 @@ let reportFailure = (toks: Token[]) =>
 	// newErr.details = errorReport;
 	return newErr;
 };
-let formatErrorMessage = (token: Token) =>
+const formatErrorMessage = (token: Token) =>
 {
 	let syntaxError =
 		`Syntax error at line: ${token.line} column: ${token.col}`;
 	let tokenDisplay =
-		'Unexpected ' + (token.type ? token.type.toUpperCase() + " token: " : "") + JSON.stringify(token.value !== undefined ? token.value : token);
+		`Unexpected ${token.type ? token.type.toUpperCase() : ''} token: ${JSON.stringify(token.value !== undefined ? token.value : token)}`;
+
 	return syntaxError.concat('\n', tokenDisplay);
 };
-let generateParserError = (err: any) =>
+
+const generateParserError = (err: any) =>
 {
 	let newErr = new ParserError("");
 	newErr = Object.assign(newErr, err)
@@ -217,19 +219,19 @@ export function parseWithErrors(source: string, parserInstance: nearley.Parser, 
 						if (!err.token) { throw (err); }
 						// collect bad tokens
 						badTokens.push(err.token);
-						
+
 						// /*
 						// Problem: the token feed breaks the parser. Beed a propper way to backtrack and catch errors
-						let tokenAlternatives = uniqueArray(PossibleTokens(parserInstance)!);						
+						let tokenAlternatives = uniqueArray(PossibleTokens(parserInstance)!);
 						// errorReport.push({token:src[next], alternatives: this.PossibleTokens(mxsParser) });
 						// copy error token
-						let specimen = {...err.token};
+						let specimen = { ...err.token };
 
 						let nextToken = 0;
 						function parserErrorIterator(err: any)
 						{
 							return {
-								next: function()
+								next: function ()
 								{
 									if (nextToken < tokenAlternatives.length) {
 										// emmit the possible next token ...
@@ -237,12 +239,12 @@ export function parseWithErrors(source: string, parserInstance: nearley.Parser, 
 										if (currentTokentAlt.type) {
 											let altTokenValue: string = emmitTokenValue(err.token.value.length)[currentTokentAlt.type as keyof typeof emmitTokenValue];
 											let altToken = {
-												text:  altTokenValue,
+												text: altTokenValue,
 												value: altTokenValue,
-												type:  currentTokentAlt.type,
+												type: currentTokentAlt.type,
 											};
 											Object.assign(specimen, altToken);
-										} else { specimen = {...currentTokentAlt}; }
+										} else { specimen = { ...currentTokentAlt }; }
 
 
 										// assign alternative
@@ -256,7 +258,7 @@ export function parseWithErrors(source: string, parserInstance: nearley.Parser, 
 											type: 'ws'
 										});
 										*/
-										
+
 										try {
 											// backtrack: restore parser state
 											// parserInstance.restore(state);
@@ -285,11 +287,11 @@ export function parseWithErrors(source: string, parserInstance: nearley.Parser, 
 						if (result.done && result.value) {
 							// advance the parser one token
 							next++
-							return { value: null, done:false };
+							return { value: null, done: false };
 						} else {
 							// no valid token alternatives, abort parsing
-							return { value: null, done:true };
-						 }
+							return { value: null, done: true };
+						}
 					}
 				} else {
 					// parser finished

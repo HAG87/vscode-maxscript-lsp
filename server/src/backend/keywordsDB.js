@@ -143,7 +143,6 @@ const UIcontrols = [
 	'timer'
 ];
 const kwContext = [
-	'animate',
 	'dontrepeatmessages',
 	'macrorecorderemitterenabled',
 	'mxscallstackcaptureenabled',
@@ -176,6 +175,7 @@ const keywordsTypeDB = {
 	'kw_collect'      : 'collect',
 	'kw_compare'      : ['and', 'or'],
 	'kw_context'      : kwContext,
+	'kw_animate'      :	'animate',
 	'kw_coordsys'     : 'coordsys',
 	'kw_defaultAction': 'defaultaction',
 	'kw_do'           : 'do',

@@ -42,7 +42,7 @@ const mxLexer = moo.compile({
 	identity: [
 		{ match: /'(?:(?:[^']|[\r\n])+)'/u, lineBreaks: true },
 		{ match: /::[_\p{L}][0-9_\p{L}]*/u },
-		{ match: /[&][_\p{L}][0-9_\p{L}]*/u },
+		// { match: /[&][_\p{L}][0-9_\p{L}]*/u },
 		{
 			match: /[_\p{L}][0-9_\p{L}]*/u,
 			type: caseInsensitiveKeywords(keywordsTypeDB)
@@ -50,8 +50,8 @@ const mxLexer = moo.compile({
 	],
 
 	sharp: /#/u,
+	amp: /&/u,
 	questionmark: /\?/u,
-
 	// PARENS, BRACKETS, BRACES
 	lparen:   /\(/u,
 	rparen:   /\)/u,
