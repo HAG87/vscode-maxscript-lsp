@@ -507,6 +507,7 @@ let conversionRules = {
 	Parameter(node: moo.Token) { return new Expr(node.value, ':'); },
 	BitRange(node: any) { return new Expr(node.start, '..', node.end); },
 	refIdentifier(node: any) { return new Expr(node.operator, node.value); },
+	deRefIdentifier(node: any) { return new Expr(node.operator, node.value); },
 	//-------------------------------------------------------------------------------------------
 	// DECLARATION
 	Declaration(node: nodetype.Declaration)

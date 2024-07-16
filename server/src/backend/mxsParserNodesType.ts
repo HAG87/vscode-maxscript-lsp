@@ -288,3 +288,8 @@ export interface refIdentifier
 	operator: any
 	value: any
 }
+export interface deRefIdentifier
+{
+	operator: any
+	value: any
+}

@@ -1059,6 +1059,7 @@ var grammar = {
     {"name": "destination", "symbols": ["by_Ref"], "postprocess": id},
     {"name": "destination", "symbols": ["property"], "postprocess": id},
     {"name": "destination", "symbols": ["index"], "postprocess": id},
+    {"name": "destination", "symbols": ["de_ref"], "postprocess": id},
     {"name": "LOGICAL_EXPR$ebnf$1", "symbols": ["_"], "postprocess": id},
     {"name": "LOGICAL_EXPR$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
     {"name": "LOGICAL_EXPR$ebnf$2", "symbols": ["__"], "postprocess": id},
@@ -1180,6 +1181,15 @@ var grammar = {
         }) },
     {"name": "unary", "symbols": ["OPERAND"], "postprocess": id},
     {"name": "unary", "symbols": ["FN_CALL"], "postprocess": id},
+    {"name": "unary", "symbols": ["de_ref"], "postprocess": id},
+    {"name": "de_ref$ebnf$1", "symbols": ["_"], "postprocess": id},
+    {"name": "de_ref$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
+    {"name": "de_ref", "symbols": [{"literal":"*"}, "de_ref$ebnf$1", "OPERAND"], "postprocess":  d => ({
+            type: 'deRefIdentifier',
+            operator: d[0],
+            value:    d[2],
+            range: getLoc(d[0], d[2])
+        }) },
     {"name": "FN_CALL$ebnf$1", "symbols": ["call_params"], "postprocess": id},
     {"name": "FN_CALL$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
     {"name": "FN_CALL", "symbols": ["call_caller", "call_args", "FN_CALL$ebnf$1"], "postprocess":  d => {
@@ -1257,7 +1267,7 @@ var grammar = {
     {"name": "property$subexpression$2", "symbols": [(mxLexer.has("kw_compare") ? {type: "kw_compare"} : kw_compare)]},
     {"name": "property", "symbols": ["OPERAND", "property$subexpression$1", "property$subexpression$2"], "postprocess":  d => ({
             type:     'AccessorProperty',
-            operand:  d[0],
+            operand:  d[0][0],
             property: d[2][0],
             range:    getLoc(d[0], d[2])
         })},
@@ -1267,7 +1277,7 @@ var grammar = {
             type:    'AccessorIndex',
             operand: d[0],
             index:   d[3],
-            range:   getLoc(d[2], d[4])
+            range:   getLoc(d[0], d[4])
         })},
     {"name": "factor", "symbols": ["STRING"], "postprocess": id},
     {"name": "factor", "symbols": ["NUMBER"], "postprocess": id},
