@@ -1165,9 +1165,9 @@ Main -> anyws:* _expr_seq:? anyws:* {% d => d[1] %}
     #     | OPERAND {% id %}
 
     OPERAND
-        -> property    {% id %}
-        | index       {% id %}
-        | factor     {% id %}
+        -> property {% id %}
+        | index     {% id %}
+        | factor    {% id %}
 
 #---------------------------------------------------------------
 # ACCESSOR - PROPERTY --- OK
@@ -1175,9 +1175,9 @@ Main -> anyws:* _expr_seq:? anyws:* {% d => d[1] %}
         -> OPERAND ( __:? %dot __:? ) (VAR_NAME | VOID | kw_override | %kw_compare)
             {% d => ({
                 type:     'AccessorProperty',
-                operand:  d[0][0],
+                operand:  d[0],
                 property: d[2][0],
-                range:    getLoc(d[0], d[2])
+                range:    getLoc(d[0], d[2][0])
             })%}
 #---------------------------------------------------------------
 # ACCESSOR - INDEX --- OK

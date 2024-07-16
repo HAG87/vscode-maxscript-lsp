@@ -1267,9 +1267,9 @@ var grammar = {
     {"name": "property$subexpression$2", "symbols": [(mxLexer.has("kw_compare") ? {type: "kw_compare"} : kw_compare)]},
     {"name": "property", "symbols": ["OPERAND", "property$subexpression$1", "property$subexpression$2"], "postprocess":  d => ({
             type:     'AccessorProperty',
-            operand:  d[0][0],
+            operand:  d[0],
             property: d[2][0],
-            range:    getLoc(d[0], d[2])
+            range:    getLoc(d[0], d[2][0])
         })},
     {"name": "index$ebnf$1", "symbols": ["__"], "postprocess": id},
     {"name": "index$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
