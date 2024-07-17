@@ -4,8 +4,9 @@ import
 	FormatDoc,
 	FormatFile,
 } from './mxsFormatter';
+import { reflowOptions } from './backend/mxsReflow';
 //--------------------------------------------------------------------------------
-export const minifyOptions = {
+export const minifyOptions: Partial<reflowOptions> = {
 	indent: '',
 	linebreak: ';',
 	spacer: '',

@@ -7,8 +7,8 @@ import
 //--------------------------------------------------------------------------------
 import {Token} from 'moo';
 import { tokenDefinitions } from './schema/mxsTokenDefs';
-import { rangeUtil } from './backend/astUtils';
-import { ParserError } from './mxsParserBase';
+import { rangeUtil } from './astUtils';
+import { ParserError } from './backend/mxsParserBase';
 //--------------------------------------------------------------------------------
 interface Dictionary<T> { [key: string]: T }
 //--------------------------------------------------------------------------------

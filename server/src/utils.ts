@@ -7,7 +7,6 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import * as Path from 'path';
 import { statSync } from 'fs';
-import { LspDocuments } from './backend/document';
 import { URI } from 'vscode-uri';
 //--------------------------------------------------------------------------------
 /**
@@ -111,15 +110,4 @@ export function uriToPath(stringUri: string)
 		return;
 	}
 	return uri.fsPath;
-}
-/**
- * Return URI object from string path
- * @param filepath 
- * @param documents 
- */
-export function pathToUri(filepath: string, documents?: LspDocuments)
-{
-	let fileUri = URI.file(filepath);
-	let document = documents && documents.get(fileUri.fsPath);
-	return document ? document.uri : fileUri.toString();
 }

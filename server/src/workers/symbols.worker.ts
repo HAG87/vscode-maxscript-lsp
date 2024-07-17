@@ -16,7 +16,7 @@ import
 	provideParserDiagnostic,
 	provideTokenDiagnostic,
 } from '../mxsDiagnostics';
-import { parserOptions } from '../mxsParserBase';
+import { parserOptions } from '../backend/mxsParserBase';
 import { parseSource } from '../mxsParser';
 import { ParserSymbols } from '../mxsOutline';
 //-----------------------------------------------------------------------------------

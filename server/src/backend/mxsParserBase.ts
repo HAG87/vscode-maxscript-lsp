@@ -1,12 +1,12 @@
 import nearley from 'nearley';
 import { Token } from 'moo';
-import { emmitTokenValue } from './backend/tokenSpecimens';
-import { TokenizeStream } from './backend/TokenizeStream';
+import { emmitTokenValue } from './tokenSpecimens';
+import { TokenizeStream } from './TokenizeStream';
 
-const grammar = require('./backend/grammar');
-const mxsTokenizer = require('./backend/mooTokenize');
-// import grammar from './backend/grammar';
-// import mxLexer from './backend/mooTokenize.js';
+const grammar = require('./grammar');
+const mxsTokenizer = require('./mooTokenize');
+// import grammar from './grammar';
+// import mxLexer from './mooTokenize.js';
 //-----------------------------------------------------------------------------------
 // const replaceWithWS = (str: string) => [...str].reduce((acc, next) => (acc + ' '), '');
 // const uniqueArray = (x:any[]) => [...new Set(x.map(item => item.type || item.literal))];

@@ -25,7 +25,7 @@ import
 {
 	ParserError,
 	parserOptions
-} from './mxsParserBase';
+} from './backend/mxsParserBase';
 import
 {
 	parseSource,

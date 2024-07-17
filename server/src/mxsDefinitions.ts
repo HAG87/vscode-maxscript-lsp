@@ -12,7 +12,7 @@ import
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 //------------------------------------------------------------------------------------------
-import { getFromCST, rangeUtil } from './backend/astUtils';
+import { getFromCST, rangeUtil } from './astUtils';
 import { keywordsDB } from './backend/keywordsDB';
 import { getWordAtPosition } from './utils';
 //------------------------------------------------------------------------------------------

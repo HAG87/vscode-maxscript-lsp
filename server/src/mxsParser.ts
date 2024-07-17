@@ -6,7 +6,7 @@ import
 		parse,
 		parseWithErrors,
 		declareParser,
-	} from './mxsParserBase';
+	} from './backend/mxsParserBase';
 //@ts-ignore
 // import workerURL from 'threads-plugin/dist/loader?name=parser.worker!./workers/parser.worker.ts'
 //-----------------------------------------------------------------------------------

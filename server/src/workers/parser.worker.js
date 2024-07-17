@@ -1,5 +1,5 @@
 import { expose } from 'threads/worker';
-import { parse, declareParser, parseWithErrors } from '../mxsParserBase';
+import { parse, declareParser, parseWithErrors } from '../backend/mxsParserBase';
 
 expose(function parseSource(source, options)
 {

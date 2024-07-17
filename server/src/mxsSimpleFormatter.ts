@@ -12,7 +12,7 @@ import
 import moo from 'moo';
 import { TokenizeStream } from './backend/TokenizeStream';
 import { mxsFormatterLexer } from './backend/mooTokenize-formatter';
-import { rangeUtil } from './backend/astUtils';
+import { rangeUtil } from './astUtils';
 // note: keywords could be used to indent, at start or end of line. this will require a per-line aproach... split the documents in lines, and feed the tokenizer one line at the time.
 //-----------------------------------------------------------------------------------
 enum filterCurrenEnum {

@@ -13,7 +13,6 @@ import
 	SymbolInformation,
 	TextDocuments,
 	TextDocumentSyncKind,
-	RequestType,
 	ResponseError,
 	InitializeError,
 	SemanticTokensRegistrationOptions,
@@ -43,6 +42,7 @@ import * as mxsCompletionThreaded from './mxsCompletionsThreaded';
 import * as mxsMinifyThreaded from './mxsMinThreaded';
 import * as mxsFormatterThreaded from './mxsFormatterThreaded';
 import { PathLike } from 'fs';
+import { MinifyDocRequest, PrettifyDocRequest } from './mxsCommands';
 
 //------------------------------------------------------------------------------------------
 // Create a connection for the server. The connection uses Node's IPC as a transport.
@@ -436,42 +436,26 @@ connection.languages.semanticTokens.onDelta(params =>
 });
 //------------------------------------------------------------------------------------------
 /* Commands */
-interface MinifyDocParams
-{
-	command: string
-	uri: string[];
-}
-namespace MinifyDocRequest
-{
-	export const type = new RequestType<MinifyDocParams, string[] | null, void>('MaxScript/minify');
-}
-interface PrettifyDocParams
-{
-	command: string
-	uri: string[]
-}
-namespace PrettifyDocRequest
-{
-	export const type = new RequestType<PrettifyDocParams, string[] | null, void>('MaxScript/prettify');
-}
 /* Minifier */
 async function minifyDocuments(uris: string[], prefix: string, formatter: Function, settings: any)
 {
-	let uri: string, path: string, newPath: PathLike, doc: string;
+	let path: string,
+		newPath: PathLike,
+		document: string;
+	
 	for (let i = 0; i < uris.length; i++) {
-		uri = uris[i];
-		path = URI.parse(uri).fsPath;
+		path = URI.parse(uris[i]).fsPath;
 		newPath = prefixFile(path, prefix);
-		doc = documents.get(uri)!.getText();
+		document = documents.get(uris[i])!.getText();
 		//console.log(doc);
-		if (!doc) {
+		if (!document) {
 			connection.window.showWarningMessage(
 				`MaxScript minify: Failed at ${Path.basename(path)}. Reason: Can't read the file`
 			);
 			continue;
 		}
 		try {
-			await formatter(doc, newPath, settings);
+			await formatter(document, newPath, settings);
 
 			connection.window.showInformationMessage(
 				`MaxScript minify: Document saved as ${Path.basename(newPath)}`
@@ -486,10 +470,11 @@ async function minifyDocuments(uris: string[], prefix: string, formatter: Functi
 // /*
 async function minifyFiles(uris: string[], prefix: string, formatter: Function, settings: any)
 {
-	let uri: string, path: string, newPath: string;
+	let path: string,
+	newPath: string;
+
 	for (let i = 0; i < uris.length; i++) {
-		uri = uris[i];
-		path = URI.parse(uri).fsPath;
+		path = URI.parse(uris[i]).fsPath;
 		newPath = prefixFile(path, prefix);
 
 		try {
