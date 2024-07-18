@@ -1,20 +1,33 @@
-import { CancellationToken, Location, Position, ProviderResult, ReferenceContext, ReferenceProvider, TextDocument } from "vscode";
+import { CancellationToken, Position, ProviderResult, RenameProvider, TextDocument, WorkspaceEdit } from "vscode";
 import { mxsBackend } from "./backend/Backend";
 
-export class mxsReferenceProvider implements ReferenceProvider
+export class mxsRenameProvider implements RenameProvider
 {
     public constructor(private backend: mxsBackend) { }
-    
-    provideReferences(document: TextDocument, position: Position, context: ReferenceContext, token: CancellationToken): ProviderResult<Location[]>
+
+    public provideRenameEdits(document: TextDocument, position: Position,
+        newName: string, token: CancellationToken): ProviderResult<WorkspaceEdit>
     {
-        throw new Error("Method not implemented.");
+        return new Promise((resolve) =>
+        {
+            // document.uri
+            // get symbol at position
+            const result = new WorkspaceEdit();
+            // get symbol occurrences
+            // const range = new Range();
+            // result.replace(uri, range, newName),
+            //...
+            resolve(result);
+            // resolve(undefined):
+            // reject()
+        });
         /*
         return new Promise((resolve) => {
             const info = this.backend.symbolInfoAtPosition(document.fileName, position.character, position.line + 1,
                 false);
 
-            const result: Location[] = [];
             if (info) {
+                const result = new WorkspaceEdit();
                 const occurrences = this.backend.getSymbolOccurrences(document.fileName, info.name);
                 for (const symbol of occurrences) {
                     if (symbol.definition) {
@@ -24,13 +37,14 @@ export class mxsReferenceProvider implements ReferenceProvider
                             symbol.definition.range.end.row - 1,
                             symbol.definition.range.start.column + info.name.length,
                         );
-                        const location = new Location(Uri.file(symbol.source), range);
-                        result.push(location);
+                        result.replace(Uri.file(symbol.source), range, newName);
                     }
                 }
-
                 resolve(result);
+            } else {
+                resolve(undefined);
             }
+
         });
         */
     }
