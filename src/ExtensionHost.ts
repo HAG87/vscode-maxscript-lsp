@@ -1,7 +1,8 @@
-import { ExtensionContext, languages, TextDocument, TextDocumentChangeEvent, workspace } from 'vscode';
+import { ExtensionContext, languages, TextDocument, TextDocumentChangeEvent, window, workspace } from 'vscode';
 import { mxsBackend } from './backend/Backend.js';
 import { Utilities } from './utils.js';
 import { mxsSymbolProvider } from './SymbolProvider.js';
+import { diagnosticAdapter } from './Diagnostics.js';
 
 export class ExtensionHost
 {
@@ -18,12 +19,33 @@ export class ExtensionHost
         // start backend
         this.backend = new mxsBackend();
 
+        // process active open document, if any.
+        // /*
+        const editor = window.activeTextEditor;
+        if (editor && Utilities.isLanguageFile(editor.document)) {
+            const document = editor.document;
+            this.backend.loadDocument(document.uri, document.getText());
+
+            // this.regenerateBackgroundData(document);
+            this.diagnosticCollection.set(
+                document.uri,
+                diagnosticAdapter(this.backend.getDiagnostics(document.uri))
+            );
+        }
+        // */
         //register eventHandlers
         this.registerEventHandlers(ctx);
         // register providers
         // this.registerProviders(ctx);
         // register commands
         // this.registerCommands(ctx);
+
+        // Load interpreter + cache data for each open document, if there's any.
+        /*
+        for (const document of workspace.textDocuments) {
+            this.processDiagnostic(document);
+        }
+        */
     }
 
     //register eventHandlers
@@ -34,7 +56,12 @@ export class ExtensionHost
             {
                 if (Utilities.isLanguageFile(document)) {
                     this.backend.loadDocument(document.uri, document.getText());
+
                     // this.regenerateBackgroundData(document);
+                    this.diagnosticCollection.set(
+                        document.uri,
+                        diagnosticAdapter(this.backend.getDiagnostics(document.uri))
+                    );
                 }
             }),
             workspace.onDidCloseTextDocument((document: TextDocument) =>
@@ -42,12 +69,12 @@ export class ExtensionHost
                 if (Utilities.isLanguageFile(document)) {
                     this.backend.unloadDocument(document.uri);
                     // clear diagnostics for the document
-                    // this.diagnosticCollection.set(document.uri, []);
+                    this.diagnosticCollection.set(document.uri, []);
                 }
             }),
             workspace.onDidChangeTextDocument((event: TextDocumentChangeEvent) =>
             {
-                /*
+                // /*
                 // check for content changes
                 if (event.contentChanges.length > 0 && Utilities.isLanguageFile(event.document)) {
                     this.backend.setText(event.document.uri, event.document.getText());
@@ -63,6 +90,11 @@ export class ExtensionHost
                         this.backend.reparse(event.document.uri);
 
                         // this.processDiagnostic(event.document);
+                        this.diagnosticCollection.set(
+                            event.document.uri,
+                            diagnosticAdapter(this.backend.getDiagnostics(event.document.uri))
+                        );
+
                         // this.codeLensProvider.refresh();
                     }, 300));
                 }
@@ -100,7 +132,7 @@ export class ExtensionHost
                 }
             })
             */
-        //    languages.onDidChangeDiagnostics(() => workspace
+            //    languages.onDidChangeDiagnostics(() => workspace
         );
     }
     // register providers
