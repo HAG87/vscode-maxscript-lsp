@@ -6,7 +6,7 @@ import
         TextDocument, TextEdit,
         ProviderResult, Range,
     } from "vscode";
-import { mxsBackend } from "./backend/Backend";
+import { mxsBackend } from "./backend/Backend.js";
 
 export class mxsFormattingProvider implements DocumentFormattingEditProvider
 {

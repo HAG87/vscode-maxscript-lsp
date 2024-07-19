@@ -1,5 +1,5 @@
 import { ExtensionContext } from "vscode";
-import { ExtensionHost } from "./ExtensionHost";
+import { ExtensionHost } from "./ExtensionHost.js";
 
 let extensionHost: ExtensionHost;
 

@@ -1,5 +1,5 @@
 import { CancellationToken, CompletionContext, CompletionItem, CompletionItemProvider, CompletionList, Position, ProviderResult, TextDocument } from "vscode";
-import { mxsBackend } from "./backend/Backend";
+import { mxsBackend } from "./backend/Backend.js";
 
 export class mxsCompletionItems implements CompletionItemProvider
 {

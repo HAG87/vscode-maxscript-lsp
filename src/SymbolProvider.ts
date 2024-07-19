@@ -1,5 +1,5 @@
 import { CancellationToken, DocumentSymbol, DocumentSymbolProvider, ProviderResult, SymbolInformation, TextDocument } from "vscode";
-import { mxsBackend } from "./backend/Backend";
+import { mxsBackend } from "./backend/Backend.js";
 
 export class mxsSymbolProvider implements DocumentSymbolProvider
 {

@@ -1,5 +1,5 @@
 import { CancellationToken, CodeLens, CodeLensProvider, Event, ProviderResult, TextDocument } from "vscode";
-import { mxsBackend } from "./backend/Backend";
+import { mxsBackend } from "./backend/Backend.js";
 
 export class mxsCodeLensProvider implements CodeLensProvider
 {

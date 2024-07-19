@@ -1,5 +1,5 @@
 import { TextDocument } from "vscode";
-import { ExtensionHost } from "./ExtensionHost";
+import { ExtensionHost } from "./ExtensionHost.js";
 
 export class Utilities {
     public static isLanguageFile(document?: TextDocument | undefined): boolean {

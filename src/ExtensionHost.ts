@@ -1,7 +1,7 @@
 import { ExtensionContext, languages, TextDocument, TextDocumentChangeEvent, workspace } from 'vscode';
-import { mxsBackend } from './backend/Backend';
-import { Utilities } from './utils';
-import { mxsSymbolProvider } from './SymbolProvider';
+import { mxsBackend } from './backend/Backend.js';
+import { Utilities } from './utils.js';
+import { mxsSymbolProvider } from './SymbolProvider.js';
 
 export class ExtensionHost
 {

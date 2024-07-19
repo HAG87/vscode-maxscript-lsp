@@ -1,5 +1,5 @@
 import { DocumentSymbol, SymbolInformation, Uri } from 'vscode';
-import { SourceContext } from './SourceContext';
+import { SourceContext } from './SourceContext.js';
 
 export interface IContextEntry
 {

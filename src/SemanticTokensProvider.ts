@@ -1,5 +1,5 @@
 import { CancellationToken, DocumentRangeSemanticTokensProvider, DocumentSemanticTokensProvider, Event, ProviderResult, Range, SemanticTokens, SemanticTokensEdits, TextDocument } from "vscode";
-import { mxsBackend } from "./backend/Backend";
+import { mxsBackend } from "./backend/Backend.js";
 /**
  * Always takes a full document as input.
  */

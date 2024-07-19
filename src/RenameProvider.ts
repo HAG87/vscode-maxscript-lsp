@@ -1,5 +1,5 @@
 import { CancellationToken, Position, ProviderResult, RenameProvider, TextDocument, WorkspaceEdit } from "vscode";
-import { mxsBackend } from "./backend/Backend";
+import { mxsBackend } from "./backend/Backend.js";
 
 export class mxsRenameProvider implements RenameProvider
 {

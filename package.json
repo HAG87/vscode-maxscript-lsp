@@ -1,22 +1,37 @@
 {
-  "name": "maxscript-language",
-  "displayName": "MaxScript language",
-  "description": "MaxScript language support",
-  "version": "0.0.1",
-  "engines": {
-    "vscode": "^1.91.0"
+  "name": "language-maxscript",
+  "displayName": "Language MaxScript",
+  "description": "Autodesk 3ds Max MaxScript language support",
+  "icon": "mxs.png",
+  "author": "Atelier Bump",
+  "license": "MIT",
+  "version": "2.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HAG87/vscode-maxscript-lsp"
   },
+  "homepage": "https://github.com/HAG87/vscode-maxscript-lsp",
+  "publisher": "atelierbump",
   "categories": [
     "Programming Languages"
   ],
-  "main": "./dist/extension.js",
+  "keywords": [
+    "MaxScript",
+    "max script"
+  ],
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "main": "./out/extension.cjs",
+  "type": "module",
   "contributes": {
     "languages": [
       {
         "id": "maxscript",
         "aliases": [
           "MaxScript",
-          "maxscript"
+          "maxscript",
+          "mxs"
         ],
         "extensions": [
           ".ms",
@@ -33,17 +48,205 @@
       }
     ]
   },
+  "semanticTokenScopes": [
+    {
+      "language": "maxscript",
+      "scopes": {
+        "class": [
+          "support.class.mxs"
+        ],
+        "classclass.defaultLibrary": [
+          "support.class.mxs"
+        ],
+        "function.defaultLibrary": [
+          "support.function.mxs"
+        ],
+        "interface": [
+          "support.type.interface.mxs"
+        ],
+        "namespace": [
+          "support.superclass.mxs"
+        ],
+        "struct": [
+          "storage.type.struct.mxs"
+        ],
+        "type.defaultLibrary": [
+          "support.type.primitive.mxs"
+        ],
+        "type": [
+          "support.type.primitive.mxs"
+        ],
+        "variable": [
+          "support.variable.system.mxs"
+        ],
+        "variable.other.readwrite": [
+          "support.variable.system.mxs"
+        ],
+        "enum": [
+          "support.variable.objectset.mxs"
+        ],
+        "enumMember": [
+          "support.constant.mxs"
+        ]
+      }
+    }
+  ],
+  "commands": [
+    {
+      "command": "mxs.help",
+      "title": "Code reference...",
+      "category": "MaxScript"
+    },
+    {
+      "command": "mxs.minify",
+      "title": "Minify open document",
+      "category": "MaxScript",
+      "icon": "$(package)"
+    },
+    {
+      "command": "mxs.minify.file",
+      "title": "Minify file",
+      "category": "MaxScript"
+    },
+    {
+      "command": "mxs.minify.files",
+      "title": "Minify files...",
+      "category": "MaxScript"
+    },
+    {
+      "command": "mxs.prettify",
+      "title": "Prettify document",
+      "category": "MaxScript",
+      "icon": "$(pencil)"
+    }
+  ],
+  "menus": {
+    "editor/title": [
+      {
+        "command": "mxs.minify",
+        "when": "editorLangId  == maxscript && resourceExtname == .ms || resourceExtname == .mcr"
+      },
+      {
+        "command": "mxs.prettify",
+        "when": "editorLangId  == maxscript && resourceExtname == .ms || resourceExtname == .mcr"
+      }
+    ],
+    "explorer/context": [
+      {
+        "command": "mxs.minify.file",
+        "when": "resourceExtname == .ms || resourceExtname == .mcr",
+        "group": "1_modification@1"
+      }
+    ],
+    "editor/context": [
+      {
+        "command": "mxs.help",
+        "when": "editorTextFocus && resourceLangId == maxscript",
+        "group": "navigation@1"
+      }
+    ],
+    "commandPalette": [
+      {
+        "command": "mxs.minify",
+        "when": "editorLangId  == maxscript  && resourceExtname == .ms || resourceExtname == .mcr"
+      },
+      {
+        "command": "mxs.minify.files"
+      },
+      {
+        "command": "mxs.prettify",
+        "when": "editorLangId  == maxscript  && resourceExtname == .ms || resourceExtname == .mcr"
+      }
+    ]
+  },
+  "configuration": {
+    "type": "object",
+    "title": "MaxScript",
+    "properties": {
+      "MaxScript.formatter.indentOnly": {
+        "scope": "resource",
+        "type": "boolean",
+        "default": false,
+        "description": "Indent code lines only, disable formatting for all other matters"
+      },
+      "MaxScript.MinifyFilePrefix": {
+        "scope": "resource",
+        "type": "string",
+        "default": "min_",
+        "description": "Prefix for code minify output"
+      },
+      "MaxScript.prettifier.codeblock.newlineAtParens": {
+        "scope": "resource",
+        "type": "boolean",
+        "default": true,
+        "description": "Insert a line break after an opening paren and before a closing paren."
+      },
+      "MaxScript.prettifier.codeblock.newlineAllways": {
+        "scope": "resource",
+        "type": "boolean",
+        "default": true,
+        "description": "Insert line breaks between a statement members"
+      },
+      "MaxScript.prettifier.codeblock.spaced": {
+        "scope": "resource",
+        "type": "boolean",
+        "default": true,
+        "description": "Insert whitespace between expressions"
+      },
+      "MaxScript.prettifier.elements.useLineBreaks": {
+        "scope": "resource",
+        "type": "boolean",
+        "default": true,
+        "description": "Insert line breaks in array-like objects"
+      },
+      "MaxScript.prettifier.statements.optionalWhitespace": {
+        "scope": "resource",
+        "type": "boolean",
+        "default": false,
+        "description": "Ommit whitespace when is unnecessary"
+      },
+      "MaxScript.prettifier.filePrefix": {
+        "scope": "resource",
+        "type": "string",
+        "default": "pretty_",
+        "description": "Prefix for code prettifier output"
+      },
+      "MaxScript.parser.multiThreading": {
+        "scope": "resource",
+        "type": "boolean",
+        "default": false,
+        "description": "Enable multithreading. This feature can be unstable. Disable it if you encounter too many crashes using the extension."
+      },
+      "MaxScript.help.provider": {
+        "scope": "resource",
+        "type": "string",
+        "default": "https://help.autodesk.com/view/MAXDEV/2024/ENU/",
+        "description": "MaxScript help source"
+      }
+    }
+  },
+  "snippets": [
+    {
+      "language": "maxscript",
+      "path": "./snippets/maxscript.json"
+    }
+  ],
+  "configurationDefaults": {
+    "[maxscript]": {
+      "editor.semanticHighlighting.enabled": true
+    }
+  },
   "scripts": {
     "vscode:prepublish": "npm run package",
-    "compile": "webpack",
-    "watch": "webpack --watch",
-    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile": "npm run compile-tests && esbuild ./src/extension.ts --bundle --outfile=out/extension.cjs --external:vscode --format=cjs --platform=node",
+    "watch": "tsc -p . -w --outDir out",
+    "package": "vsce package",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "vscode-test",
-    "clean": "rimraf ./dist"
+    "generate": "antlr4ng -Dlanguage=TypeScript -visitor -Xexact-output-dir src/parser/grammars/mxsLexer.g4 src/parser/grammars/mxsParser.g4 -o src/parser"
   },
   "devDependencies": {
     "@types/moo": "^0.5.9",
@@ -51,15 +254,15 @@
     "@types/vscode": "^1.91.0",
     "@typescript-eslint/eslint-plugin": "^7.14.1",
     "@typescript-eslint/parser": "^7.11.0",
+    "antlr4ng-cli": "^2.0.0",
+    "esbuild": "^0.23.0",
     "eslint": "^8.57.0",
-    "rimraf": "^6.0.1",
-    "ts-loader": "^9.5.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.3",
-    "webpack": "^5.93.0",
-    "webpack-cli": "^5.1.4"
+    "typescript": "^5.5.3"
   },
   "dependencies": {
+    "antlr4-c3": "^3.4.1",
+    "antlr4ng": "^3.0.4",
     "moo": "^0.5.2"
   }
 }
