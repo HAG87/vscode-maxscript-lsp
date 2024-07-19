@@ -238,12 +238,15 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
-    "compile": "npm run compile-tests && esbuild ./src/extension.ts --bundle --outfile=out/extension.cjs --external:vscode --format=cjs --platform=node",
-    "watch": "tsc -p . -w --outDir out",
-    "package": "vsce package",
+    "compile": "npm run check-types && npm run lint && node esbuild.cjs",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.cjs --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.cjs --production",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
     "lint": "eslint src --ext ts",
     "test": "vscode-test",
     "generate": "antlr4ng -Dlanguage=TypeScript -visitor -Xexact-output-dir src/parser/grammars/mxsLexer.g4 src/parser/grammars/mxsParser.g4 -o src/parser"
@@ -257,6 +260,7 @@
     "antlr4ng-cli": "^2.0.0",
     "esbuild": "^0.23.0",
     "eslint": "^8.57.0",
+    "npm-run-all": "^4.1.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.3"
   },
