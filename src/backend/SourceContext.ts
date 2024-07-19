@@ -1,97 +1,131 @@
 import { DocumentSymbol, Uri, workspace } from "vscode";
-
+import { mxsLexer } from "../parser/mxsLexer.js";
+import { BailErrorStrategy, CharStream, CommonTokenStream, DefaultErrorStrategy, ParseCancellationException, PredictionMode } from "antlr4ng";
+import { mxsParser, ProgramContext } from "../parser/mxsParser.js";
+import { ContextLexerErrorListener } from "./ContextLexerErrorListener.js";
+import { ContextErrorListener } from "./ContextErrorListener.js";
+import * as fs from "fs";
 // One context for each valid document
-export class SourceContext {
-    sourceUri: Uri;
+export class SourceContext
+{
+    // context source uri pointing at the document
+    public sourceUri: Uri;
+
     // symbols for the current document
     // document uri?
     // symbolTable: string;
     // semantic tokens... so on
     // could be useful to store te token stream...
 
-    private tree: undefined;
+    // hold diagnostics for the context
+    // public diagnostics: IDiagnosticEntry[] = [];
+    // Contexts referencing us.
+    private references: SourceContext[] = [];
 
-    public constructor(uri: Uri, /*settings*/) {
+    // Parsing infrastructure.
+    private tokenStream: CommonTokenStream;
+    private lexer: mxsLexer;
+    private parser: mxsParser;
+    // error listeners
+    private errorListener: ContextErrorListener = new ContextErrorListener(/* this.diagnostics */);
+    private lexerErrorListener: ContextLexerErrorListener = new ContextLexerErrorListener(/* this.diagnostics */);
+
+    // The root context from the last parse run.
+    private tree: ProgramContext | undefined;
+
+    public constructor(uri: Uri, /*settings*/)
+    {
         this.sourceUri = uri;
+        // initialize simbol table
+        // initialize static symbol table
+
         // initialize lexer instance with empty string
+        this.lexer = new mxsLexer(CharStream.fromString(''));
+        // this.lexer.removeErrorListeners();
+        // this.lexer.addErrorListener(this.lexerErrorListener);
+        this.tokenStream = new CommonTokenStream(this.lexer);
         // initialize parer instance
+        this.parser = new mxsParser(this.tokenStream);
+        this.parser.buildParseTrees = true;
+        this.parser.removeErrorListeners();
+        // this.parser.addErrorListener(this.errorListener);
     }
 
-    public getDocumentText(): Promise<string> {
-        return new Promise((resolve) =>{
-            workspace.openTextDocument(this.sourceUri).then((document) => {
-                resolve(document.getText());
-            })
-        });
+    public getDocumentText(): string
+    {
+        return fs.readFileSync(this.sourceUri.fsPath, "utf8");
     }
 
-    public setText(source?: string): void {
+    public setText(source?: string): void
+    {
         if (source) {
-            // this.lexer.inputStream = CharStream.fromString(source);
+            // console.log(source);
+            this.lexer.inputStream = CharStream.fromString(source);
+            // console.log(this.lexer.text)
             //...
-            return;
+        } else {
+            // console.log(this.getDocumentText());
+            this.lexer.inputStream = CharStream.fromString(this.getDocumentText());
         }
-        this.getDocumentText().then((source) =>
-        {
-             // this.lexer.inputStream = CharStream.fromString(source);
-             //...
-        });
     }
 
-    public parse(): void {
+    public parse(): void
+    {
+        // console.log(this.lexer.text);
+
         this.tree = undefined;
-        /*
+        // /*
         // Rewind the input stream for a new parse run.
         this.lexer.reset();
+       
         this.tokenStream.setTokenSource(this.lexer);
 
         this.parser.reset();
         this.parser.errorHandler = new BailErrorStrategy();
         this.parser.interpreter.predictionMode = PredictionMode.SLL;
 
-        this.tree = undefined;
 
-       
-        this.info.imports.length = 0;
+        // this.info.imports.length = 0;
 
-        this.grammarLexerData = undefined;
-        this.grammarLexerRuleMap.clear();
-        this.grammarParserData = undefined;
-        this.grammarLexerRuleMap.clear();
+        // this.semanticAnalysisDone = false;
+        // this.diagnostics.length = 0;
 
-        this.semanticAnalysisDone = false;
-        this.diagnostics.length = 0;
-
-        this.symbolTable.clear();
-        this.symbolTable.addDependencies(SourceContext.globalSymbols);
+        // this.symbolTable.clear();
+        // this.symbolTable.addDependencies(SourceContext.globalSymbols);
 
         try {
-            this.tree = this.parser.grammarSpec();
+            this.tree = this.parser.program();
         } catch (e) {
             if (e instanceof ParseCancellationException) {
+                // console.log(e);
+
                 this.lexer.reset();
                 this.tokenStream.setTokenSource(this.lexer);
                 this.parser.reset();
                 this.parser.errorHandler = new DefaultErrorStrategy();
                 this.parser.interpreter.predictionMode = PredictionMode.LL;
-                this.tree = this.parser.grammarSpec();
+                this.tree = this.parser.program();
             } else {
                 throw e;
             }
         }
+        console.log(this.tree);
+        // load symbols!
 
+        // this.symbolTable.tree = this.tree;
 
+        // carefully copy this!
 
-        this.symbolTable.tree = this.tree;
-        const listener = new DetailsListener(this.symbolTable, this.info.imports);
-        ParseTreeWalker.DEFAULT.walk(listener, this.tree);
+        // const listener = new DetailsListener(this.symbolTable, this.info.imports);
+        // ParseTreeWalker.DEFAULT.walk(listener, this.tree);
 
-        this.info.unreferencedRules = this.symbolTable.getUnreferencedSymbols();
+        // this.info.unreferencedRules = this.symbolTable.getUnreferencedSymbols();
 
-        return this.info.imports;
-        */
-
+        // return this.info.imports;
+        // */
     }
+    // ------------------------------------------------- semantic analysis
+    // integrate here the methods for semantic tokens...
     /*
     private runSemanticAnalysisIfNeeded() {
         if (!this.semanticAnalysisDone && this.tree) {
@@ -103,20 +137,6 @@ export class SourceContext {
         }
     }
     */
-
-    public getReferenceCount() {
-        /*
-        this.runSemanticAnalysisIfNeeded();
-
-        let result = this.symbolTable.getReferenceCount(symbol);
-
-        for (const reference of this.references) {
-            result += reference.getReferenceCount(symbol);
-        }
-
-        return result;
-        */
-    }
     /*
     public addAsReferenceTo(context: SourceContext): void {
         // Check for mutual inclusion. References are organized like a mesh.
@@ -136,44 +156,229 @@ export class SourceContext {
         context.references.push(this);
         this.symbolTable.addDependencies(context.symbolTable);
     }
-    */
-    public removeDependency(context: SourceContext): void {
-        /*
-        const index = context.references.indexOf(this);
-        if (index > -1) {
-            context.references.splice(index, 1);
-        }
-        this.symbolTable.removeDependency(context.symbolTable);
-        */
-    }
+    
+    public getReferenceCount(symbol: string): number {
+        this.runSemanticAnalysisIfNeeded();
 
-    // SYMBOLS
-    public async getAllSymbols() {
-        /*
-                // The symbol table returns symbols of itself and those it depends on (if recursive is true).
-        const result = await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
+        let result = this.symbolTable.getReferenceCount(symbol);
 
-        // Add also symbols from contexts referencing us, this time not recursive
-        // as we have added our content already.
         for (const reference of this.references) {
-            const symbols = await reference.symbolTable.getAllSymbols(BaseSymbol, true);
-            symbols.forEach((value) => {
-                result.push(value);
-            });
+            result += reference.getReferenceCount(symbol);
         }
 
         return result;
-        */
     }
-    public getSymbolInfo() {}
-    public resolveSymbol() {}
+    */
+   // ------------------------------------------------- SYMBOLS
 
-    public listTopLevelSymbols(): DocumentSymbol[] | undefined
+    public static getKindFromSymbol(/* symbol: BaseSymbol */)   //: SymbolKind
     {
+        /*if (symbol.name === "tokenVocab") {
+            return SymbolKind.TokenVocab;
+        }
+
+        return this.symbolToKindMap.get(symbol.constructor as typeof BaseSymbol) || SymbolKind.Unknown;
+        */
+   }
+    /**
+     * @param ctx The context to get info for.
+     * @param keepQuotes A flag indicating if quotes should be kept if there are any around the context's text.
+     *
+     * @returns The definition info for the given rule context.
+    */
+    /*
+    public static definitionForContext(ctx: ParseTree | undefined, keepQuotes: boolean): IDefinition | undefined {
+            if (!ctx) {
+                return undefined;
+            }
+    
+            const result: IDefinition = {
+                text: "",
+                range: {
+                    start: { column: 0, row: 0 },
+                    end: { column: 0, row: 0 },
+                },
+            };
+    
+            if (ctx instanceof ParserRuleContext) {
+                let start = ctx.start!.start;
+                let stop = ctx.stop!.stop;
+    
+                result.range.start.column = ctx.start!.column;
+                result.range.start.row = ctx.start!.line;
+                result.range.end.column = ctx.stop!.column;
+                result.range.end.row = ctx.stop!.line;
+    
+                // For mode definitions we only need the init line, not all the lexer rules following it.
+                if (ctx.ruleIndex === ANTLRv4Parser.RULE_modeSpec) {
+                    const modeSpec = ctx as ModeSpecContext;
+                    stop = modeSpec.SEMI().symbol.stop;
+                    result.range.end.column = modeSpec.SEMI().symbol.column;
+                    result.range.end.row = modeSpec.SEMI().symbol.line;
+                } else if (ctx.ruleIndex === ANTLRv4Parser.RULE_grammarSpec) {
+                    // Similar for entire grammars. We only need the introducer line here.
+                    const grammarDecl = (ctx as GrammarSpecContext).grammarDecl();
+                    stop = grammarDecl.SEMI().symbol.stop;
+                    result.range.end.column = grammarDecl.SEMI().symbol.column;
+                    result.range.end.row = grammarDecl.SEMI().symbol.line;
+    
+                    start = grammarDecl.grammarType().start!.start;
+                    result.range.start.column = grammarDecl.grammarType().start!.column;
+                    result.range.start.row = grammarDecl.grammarType().start!.line;
+                }
+    
+                const inputStream = ctx.start?.tokenSource?.inputStream;
+                if (inputStream) {
+                    try {
+                        result.text = inputStream.getTextFromRange(start, stop);
+                    } catch (e) {
+                        // The method getText uses an unreliable JS String API which can throw on larger texts.
+                        // In this case we cannot return the text of the given context.
+                        // A context with such a large size is probably an error case anyway (unfinished multi line comment
+                        // or unfinished action).
+                    }
+                }
+            } else if (ctx instanceof TerminalNode) {
+                result.text = ctx.getText();
+    
+                result.range.start.column = ctx.symbol.column;
+                result.range.start.row = ctx.symbol.line;
+                result.range.end.column = ctx.symbol.column + result.text.length;
+                result.range.end.row = ctx.symbol.line;
+            }
+    
+            if (keepQuotes || result.text.length < 2) {
+                return result;
+            }
+    
+            const quoteChar = result.text[0];
+            if ((quoteChar === '"' || quoteChar === "`" || quoteChar === "'")
+                && quoteChar === result.text[result.text.length - 1]) {
+                result.text = result.text.substring(1, result.text.length - 1);
+            }
+    
+            return result;
+        }
+    */
+   /*
+    public symbolAtPosition(column: number, row: number, limitToChildren: boolean): ISymbolInfo | undefined {
+        if (!this.tree) {
+            return undefined;
+        }
+
+        const terminal = BackendUtils.parseTreeFromPosition(this.tree, column, row);
+        if (!terminal || !(terminal instanceof TerminalNode)) {
+            return undefined;
+        }
+
+        // If limitToChildren is set we only want to show info for symbols in specific contexts.
+        // These are contexts which are used as subrules in rule definitions.
+        if (!limitToChildren) {
+            return this.getSymbolInfo(terminal.getText());
+        }
+
+        let parent = (terminal.parent as ParserRuleContext);
+        if (parent.ruleIndex === ANTLRv4Parser.RULE_identifier) {
+            parent = (parent.parent as ParserRuleContext);
+        }
+
+        switch (parent.ruleIndex) {
+            case ANTLRv4Parser.RULE_ruleref:
+            case ANTLRv4Parser.RULE_terminalDef: {
+                let symbol = this.symbolTable.symbolContainingContext(terminal);
+                if (symbol) {
+                    // This is only the reference to a symbol. See if that symbol exists actually.
+                    symbol = this.resolveSymbol(symbol.name);
+                    if (symbol) {
+                        return this.getSymbolInfo(symbol);
+                    }
+                }
+
+                break;
+            }
+
+            case ANTLRv4Parser.RULE_actionBlock:
+            case ANTLRv4Parser.RULE_ruleAction:
+            case ANTLRv4Parser.RULE_lexerCommandExpr:
+            case ANTLRv4Parser.RULE_optionValue:
+            case ANTLRv4Parser.RULE_delegateGrammar:
+            case ANTLRv4Parser.RULE_modeSpec:
+            case ANTLRv4Parser.RULE_setElement: {
+                const symbol = this.symbolTable.symbolContainingContext(terminal);
+                if (symbol) {
+                    return this.getSymbolInfo(symbol);
+                }
+
+                break;
+            }
+
+            case ANTLRv4Parser.RULE_lexerCommand:
+            case ANTLRv4Parser.RULE_lexerCommandName: {
+                const symbol = this.symbolTable.symbolContainingContext(terminal);
+                if (symbol) {
+                    return this.getSymbolInfo(symbol);
+                }
+
+                break;
+            }
+
+            default: {
+                break;
+            }
+        }
+
         return undefined;
     }
+    */
+    /**
+     * Returns the symbol at the given position or one of its outer scopes.
+     *
+     * @param column The position within a source line.
+     * @param row The source line index.
+     * @param ruleScope If true find the enclosing rule (if any) and return it's range, instead of the directly
+     *                  enclosing scope.
+     *
+     * @returns The symbol at the given position (if there's any).
+    */
+    /*
+    public enclosingSymbolAtPosition(column: number, row: number, ruleScope: boolean): ISymbolInfo | undefined {
+        if (!this.tree) {
+            return undefined;
+        }
 
-    public symbolInfoAtPosition(line:number, character: number, limitToChildren = true): DocumentSymbol[] | undefined
+        let context = BackendUtils.parseTreeFromPosition(this.tree, column, row);
+        if (!context) {
+            return undefined;
+        }
+
+        if (context instanceof TerminalNode) {
+            context = context.parent;
+        }
+
+        if (ruleScope) {
+            let run = context;
+            while (run
+                && !(run instanceof ParserRuleSpecContext)
+                && !(run instanceof OptionsSpecContext)
+                && !(run instanceof LexerRuleSpecContext)) {
+                run = run.parent;
+            }
+            if (run) {
+                context = run;
+            }
+        }
+
+        if (context) {
+            const symbol = this.symbolTable.symbolWithContextSync(context);
+            if (symbol) {
+                return this.symbolTable.getSymbolInfo(symbol);
+            }
+        }
+
+        return undefined;
+    }
+    */
+    public symbolInfoAtPosition(line: number, character: number, limitToChildren = true): DocumentSymbol[] | undefined
     {
         /*
         if (!this.tree) {
@@ -246,44 +451,38 @@ export class SourceContext {
         //...
         return undefined;
     }
-    /*
-    public enclosingSymbolAtPosition(column: number, row: number, ruleScope: boolean): ISymbolInfo | undefined {
-        if (!this.tree) {
-            return undefined;
-        }
-
-        let context = BackendUtils.parseTreeFromPosition(this.tree, column, row);
-        if (!context) {
-            return undefined;
-        }
-
-        if (context instanceof TerminalNode) {
-            context = context.parent;
-        }
-
-        if (ruleScope) {
-            let run = context;
-            while (run
-                && !(run instanceof ParserRuleSpecContext)
-                && !(run instanceof OptionsSpecContext)
-                && !(run instanceof LexerRuleSpecContext)) {
-                run = run.parent;
-            }
-            if (run) {
-                context = run;
-            }
-        }
-
-        if (context) {
-            const symbol = this.symbolTable.symbolWithContextSync(context);
-            if (symbol) {
-                return this.symbolTable.getSymbolInfo(symbol);
-            }
-        }
-
+    public listTopLevelSymbols(): DocumentSymbol[] | undefined
+    {
         return undefined;
     }
-    */
+    
+    public async getAllSymbols()
+    {
+        /*
+        // The symbol table returns symbols of itself and those it depends on (if recursive is true).
+        const result = await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
+
+        // Add also symbols from contexts referencing us, this time not recursive
+        // as we have added our content already.
+        for (const reference of this.references) {
+            const symbols = await reference.symbolTable.getAllSymbols(BaseSymbol, true);
+            symbols.forEach((value) => {
+                result.push(value);
+            });
+        }
+
+        return result;
+        */
+    }
+    public getSymbolInfo(symbol: string)
+    {
+        
+    }
+    public resolveSymbol(symbol: string)
+    {
+        
+    }
+    
     // code completions
     /*
         public async getCodeCompletionCandidates(column: number, row: number): Promise<ISymbolInfo[]> {
@@ -617,20 +816,37 @@ export class SourceContext {
     }
     */
     // diagnostics
-    public getDiagnostics() {
+    public getDiagnostics()
+    {
         /*
         : IDiagnosticEntry[] {
         this.runSemanticAnalysisIfNeeded();
         return this.diagnostics;
         */
     }
-    // semantic analysis
+
+    public get hasErrors(): boolean
+    {
+        /*
+         for (const diagnostic of this.diagnostics) {
+            if (diagnostic.type === DiagnosticType.Error) {
+                return true;
+            }
+        }
+        */
+        return false;
+    }
+
+    
     // references
+    
     // dependencies
+
     // format
-    public formatCode() {}
-    public formatCodeRange() {}    
+    public formatCode() { }
+    public formatCodeRange() { }
+    // prettify
     // minify
-    public minifyCode() {}
+    public minifyCode() { }
     //...
 }

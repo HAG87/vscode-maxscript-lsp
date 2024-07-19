@@ -13,14 +13,26 @@ export class mxsBackend
 {
     // hold the contexts
     private sourceContexts: Map<string, IContextEntry> = new Map<string, IContextEntry>();
-    // Contexts referencing us.
-    private references: SourceContext[] = [];
+    
+    public constructor() { }
+    
+    // get the context
+    public getContext(uri: Uri, source?: string | undefined): SourceContext
+    {
+        const cxtEntry = this.sourceContexts.get(uri.toString());
+        if (!cxtEntry) {
+            return this.loadDocument(uri, source);
+        }
+        return cxtEntry.context;
+    }
+
     /**
      * Parse the current source set for the document
      * @param contextEntry 
      */
-    private parseContext(contextEntry: IContextEntry): void
+    private parseContent(contextEntry: IContextEntry): void
     {
+        contextEntry.context.parse();
         /*
             const oldDependencies = contextEntry.dependencies;
             contextEntry.dependencies = [];
@@ -41,6 +53,19 @@ export class mxsBackend
             }
         */
     }
+
+    /**
+     * Triggers a reparse. document must have been loaded before
+     * @param uri The document uri
+     */
+    public reparse(uri: Uri): void
+    {
+        const ctxEntry = this.sourceContexts.get(uri.toString());
+        if (ctxEntry) {
+            this.parseContent(ctxEntry);
+        }
+    }
+
     /**
      * Call this to refresh the internal input stream as a preparation to a reparse call
      * or for code completion
@@ -55,21 +80,16 @@ export class mxsBackend
             ctxEntry.context.setText(source);
         }
     }
+
     /**
-     * Triggers a reparse. document must have been loaded before
-     * @param uri The document uri
+     * Add sourceContext
+     * @param uri the document uri
+     * @param source the document text
+     * @returns 
      */
-    public reparse(uri: Uri): void
-    {
-        const ctxEntry = this.sourceContexts.get(uri.toString());
-        if (ctxEntry) {
-            this.parseContext(ctxEntry);
-        }
-    }
-    // add sourceContext
     public loadDocument(uri: Uri, source?: string): SourceContext
     {
-        console.log('Add context!');
+        // console.log('Add context!');
         let ctxEntry = this.sourceContexts.get(uri.toString());
         if (!ctxEntry) {
             // new context
@@ -83,15 +103,20 @@ export class mxsBackend
             this.sourceContexts.set(uri.toString(), ctxEntry);
             // set ctx text
             ctx.setText(source);
+            
             // do an initial parse run
-            this.parseContext(ctxEntry);
+            this.parseContent(ctxEntry);
         }
         // count this as a referency
         ctxEntry!.refCount++;
         return ctxEntry.context;
     }
 
-    // remove SourceContext
+    /**
+     * Remove SourceContext
+     * @param uri 
+     * @param referencing 
+     */
     public unloadDocument(uri: Uri, referencing?: IContextEntry): void
     {
         console.log('Remove context!');
@@ -114,22 +139,99 @@ export class mxsBackend
     }
 
     // get symbols -- for mxsDefinitionProvider
-    public listTopLevelSymbols(uri: Uri)
+    public symbolInfoAtPosition(uri: Uri,
+        line: number,
+        character: number,
+        limitToChildren = true)
     {
-        return undefined;
+        // return this.getContext(uri).symbolAtPosition(line,character,limitToChildren);
     }
-    public symbolInfoAtPosition(uri: Uri, line: number, character: number, limitToChildren = true): DocumentSymbol[] | undefined
+
+    public infoForSymbol(uri: Uri, symbol: string)
     {
-        //...
-        return undefined;
+        return this.getContext(uri).getSymbolInfo(symbol);
     }
+
+    public enclosingSymbolAtPosition(uri: Uri,
+        line: number,
+        character: number,
+        ruleScope = false)
+    {
+        // return this.getContext(uri).enclosingSymbolAtPosition(line, character, ruleScope);
+    }
+
+    /**
+     * Returns a list of top level symbols from a file (and optionally its dependencies).
+     *
+     * @param fileName The grammar file name.
+     * @param full If true, includes symbols from all dependencies as well.
+     * @returns A list of symbol info entries.
+     */
+    public listTopLevelSymbols(uri: Uri, full?: boolean)
+    {
+        return this.getContext(uri).listTopLevelSymbols();
+    }
+
+    /**
+     * Determines source file and position of all occurrences of the given symbol. The search includes
+     * also all referencing and referenced contexts.
+     *
+     * @param fileName The grammar file name.
+     * @param symbolName The name of the symbol to check.
+     * @returns A list of symbol info entries, each describing one occurrence.
+     */
     public getSymbolOcurrences(uri: Uri, symbolName: string)
     {
+        /*
+        onst context = this.getContext(fileName);
+        const result = context.symbolTable.getSymbolOccurrences(symbolName, false);
+
+        // Sort result by kind. This way rule definitions appear before rule references and are re-parsed first.
+        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => {
+            return lhs.kind - rhs.kind;
+        });
+        */
         return undefined;
     }
+
     // code completion
     public getCodeCompletionCandidates(uri: Uri, line: number, character: number)
     {
-        return undefined;
+        // return this.getContext(uri).getCodeCompletionCandidates(line, character);
     }
+
+    // diagnostics
+    public getDiagnostics(uri: Uri)
+    {
+        return this.getContext(uri).getDiagnostics();
+    }
+
+    public hasErrors(uri: Uri): boolean
+    {
+        return this.getContext(uri).hasErrors;
+    }
+
+    // references
+    /**
+     * Count how many times a symbol has been referenced. The given file must contain the definition of this symbol.
+     *
+     * @param fileName The grammar file name.
+     * @param symbol The symbol for which to determine the reference count.
+     * @returns The reference count.
+     */
+    public countReferences(uri: Uri, symbol: string)
+    {
+        // return this.getContext(uri).getReferenceCount(symbol);
+    }
+    // formatting
+    /*
+        public formatGrammar(fileName: string, options: IFormattingOptions, start: number,
+        stop: number): [string, number, number] {
+        const context = this.getContext(fileName);
+
+        return context.formatGrammar(options, start, stop);
+    }
+        // prettify
+        // minify
+    */
 }

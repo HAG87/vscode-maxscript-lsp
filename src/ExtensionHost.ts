@@ -21,9 +21,9 @@ export class ExtensionHost
         //register eventHandlers
         this.registerEventHandlers(ctx);
         // register providers
-        this.registerProviders(ctx);
+        // this.registerProviders(ctx);
         // register commands
-        this.registerCommands(ctx);
+        // this.registerCommands(ctx);
     }
 
     //register eventHandlers
@@ -33,7 +33,7 @@ export class ExtensionHost
             workspace.onDidOpenTextDocument((document: TextDocument) =>
             {
                 if (Utilities.isLanguageFile(document)) {
-                    this.backend.loadDocument(document.uri);
+                    this.backend.loadDocument(document.uri, document.getText());
                     // this.regenerateBackgroundData(document);
                 }
             }),
@@ -47,6 +47,7 @@ export class ExtensionHost
             }),
             workspace.onDidChangeTextDocument((event: TextDocumentChangeEvent) =>
             {
+                /*
                 // check for content changes
                 if (event.contentChanges.length > 0 && Utilities.isLanguageFile(event.document)) {
                     this.backend.setText(event.document.uri, event.document.getText());
@@ -65,6 +66,7 @@ export class ExtensionHost
                         // this.codeLensProvider.refresh();
                     }, 300));
                 }
+                // */
             }),
             workspace.onDidSaveTextDocument((document: TextDocument) =>
             {

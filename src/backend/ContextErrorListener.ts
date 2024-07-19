@@ -1,0 +1,32 @@
+import { BaseErrorListener } from "antlr4ng";
+
+export class ContextErrorListener extends BaseErrorListener {
+    public constructor(/* private errorList: IDiagnosticEntry[] */) {
+        super();
+    }
+
+    /*
+    public override syntaxError<S extends Token, T extends ATNSimulator>(recognizer: Recognizer<T>,
+        offendingSymbol: S | null, line: number, column: number, msg: string, _e: RecognitionException | null): void {
+        const error: IDiagnosticEntry = {
+            type: DiagnosticType.Error,
+            message: msg,
+            range: {
+                start: {
+                    column,
+                    row: line,
+                },
+                end: {
+                    column: column + 1,
+                    row: line,
+                },
+            },
+        };
+
+        if (offendingSymbol) {
+            error.range.end.column = column + offendingSymbol.stop - offendingSymbol.start + 1;
+        }
+        this.errorList.push(error);
+    }
+    */
+}
