@@ -174,6 +174,7 @@ RolloutControl
 	| C O L O R P I C K E R
 	| C O M B O B O X
 	| C U R V E C O N T R O L
+	| D O T N E T C O N T R O L
 	| D R O P D O W N L I S T
 	| E D I T T E X T
 	| G R O U P B O X
