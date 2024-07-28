@@ -1,5 +1,6 @@
 import { DocumentSymbol, SymbolInformation, Uri } from 'vscode';
 import { SourceContext } from './SourceContext.js';
+import { ISymbolInfo } from '../types.js';
 
 export interface IContextEntry
 {
@@ -119,7 +120,7 @@ export class mxsBackend
      */
     public unloadDocument(uri: Uri, referencing?: IContextEntry): void
     {
-        console.log('Remove context!');
+        // console.log('Remove context!');
         const id = uri.toString();
         const ctxEntry = this.sourceContexts.get(id);
         if (ctxEntry) {
@@ -167,9 +168,9 @@ export class mxsBackend
      * @param full If true, includes symbols from all dependencies as well.
      * @returns A list of symbol info entries.
      */
-    public listTopLevelSymbols(uri: Uri, full?: boolean)
+    public listTopLevelSymbols(uri: Uri, fullList: boolean): ISymbolInfo[]
     {
-        return this.getContext(uri).listTopLevelSymbols();
+        return this.getContext(uri).listTopLevelSymbols(!fullList);
     }
 
     /**
