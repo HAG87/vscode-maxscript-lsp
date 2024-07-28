@@ -1,32 +1,75 @@
-import { CancellationToken, DocumentSymbol, DocumentSymbolProvider, ProviderResult, SymbolInformation, TextDocument } from "vscode";
+import { CancellationToken, DocumentSymbol, DocumentSymbolProvider, ProviderResult, SymbolInformation, TextDocument, SymbolKind, Location } from "vscode";
 import { mxsBackend } from "./backend/Backend.js";
+import { Utilities } from "./utils.js";
+import { ISymbolInfo } from "./types.js";
+import { symbolDescriptionFromEnum, translateSymbolKind } from "./Symbol.js";
 
 export class mxsSymbolProvider implements DocumentSymbolProvider
 {
     public constructor(private backend: mxsBackend) { }
-    provideDocumentSymbols(document: TextDocument, token: CancellationToken): 
+    
+    private collectAllChildren(symbol: ISymbolInfo): DocumentSymbol
+    {
+        function dfs(currentSymbol: ISymbolInfo): DocumentSymbol    
+        {
+            // if (!currentSymbol.definition) {
+            //     return;
+            // }
+
+            const range = Utilities.lexicalRangeToRange(currentSymbol.definition!.range);
+
+            const info = new DocumentSymbol(
+                currentSymbol.name,
+                symbolDescriptionFromEnum(currentSymbol.kind),
+                translateSymbolKind(currentSymbol.kind),
+                range,
+                range // TODO: SelectionRange
+            );
+
+            if (currentSymbol.children?.length) {
+                info.children = currentSymbol.children
+
+                    .filter(child => 'name' in child && 'definition' in child)
+                    .map(child => dfs(child))
+            }
+            return info;
+        }
+        return dfs(symbol);
+    }
+    
+    provideDocumentSymbols(document: TextDocument, token: CancellationToken):
         ProviderResult<SymbolInformation[] | DocumentSymbol[]>
     {
-        throw new Error("Method not implemented.");
-        /*
-        return new Promise((resolve) => {
-            const symbols = this.backend.listTopLevelSymbols(document.fileName, false);
-            
-            const symbolsList = [];
-            
+        return new Promise((resolve) =>
+        {
+            const symbols = this.backend.listTopLevelSymbols(document.uri, false);
+            const symbolsList: DocumentSymbol[] = [];
+
+            // console.log('PROVIDE SYMBOLS');
+
             for (const symbol of symbols) {
-                if (!symbol.definition) {
+                if (!symbol.definition || !symbol.name) {
                     continue;
                 }
+                let result: DocumentSymbol;
 
-                const startRow = symbol.definition.range.start.row > 0 ? symbol.definition.range.start.row - 1 : 0;
-                const endRow = symbol.definition.range.end.row > 0 ? symbol.definition.range.end.row - 1 : 0;
-                const range = new Range(startRow, symbol.definition.range.start.column, endRow,
-                    symbol.definition.range.end.column);
-                const location = new Location(Uri.file(symbol.source), range);
-
-                let description = symbolDescriptionFromEnum(symbol.kind);
-                const kind = translateSymbolKind(symbol.kind);
+                if (symbol.children?.length) {
+                    // childrens
+                    result = this.collectAllChildren(symbol);
+                } else {
+                    // range
+                    const range = Utilities.lexicalRangeToRange(symbol.definition.range);
+                    // const location = new Location( document.uri, range );
+                    result = new DocumentSymbol(
+                        symbol.name,
+                        symbolDescriptionFromEnum(symbol.kind),
+                        translateSymbolKind(symbol.kind),
+                        range,
+                        range // TODO: selectionRange
+                    );
+                }
+                symbolsList.push(result);
+                /*
                 const totalTextLength = symbol.name.length + description.length + 1;
                 if (symbol.kind === SymbolKind.LexerMode && totalTextLength < 80) {
                     // Add a marker to show parts which belong to a particular lexer mode.
@@ -35,13 +78,9 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
                     const markerWidth = 80 - totalTextLength;
                     description += " " + "-".repeat(markerWidth);
                 }
-                const info = new SymbolInformation(symbol.name, kind, description, location);
-                symbolsList.push(info);
+                */
             }
-
             resolve(symbolsList);
         });
-        */
     }
-
 }
