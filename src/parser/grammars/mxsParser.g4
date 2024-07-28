@@ -25,136 +25,99 @@ options {
 program: NL* expr (NL+ expr)* NL* EOF
 	;
 
-/*
- expr
- : simple_expr
- | var_decl
- | assignment_expr
- | assignmentOp_expr
- | while_loop
- | do_loop
- | for_loop
- | loop_exit
- | if_statement
- | case_expr
- | struct_def
- | try_expr 
- | fn_def
- | fn_return
- | context_expr
- | attributes_def
- | when_construct
- | utility_def
- | rollout_def
- | tool_def
- | rcmenu_def
- | macroscript_def
- | plugin_def
- ;
- */
 // /*
-expr: non_if_expr | if_statement
+expr: nonIfExpression | ifExpression
 	;
 
-non_if_expr
-	: simple_expr
-	| var_decl
-	| assignment_expr
-	| assignmentOp_expr
-	| while_loop
-	| do_loop
-	| for_loop
-	| loop_exit
-	| case_expr
-	| struct_def
-	| try_expr
-	| fn_def
-	| fn_return
-	| context_expr
-	| attributes_def
-	| when_expr
-	| utility_def
-	| rollout_def
-	| tool_def
-	| rcmenu_def
-	| macroscript_def
-	| plugin_def
+nonIfExpression
+	: simpleExpression
+	| variableDeclaration
+	| assignmentExpression
+	| assignmentOpExpression
+	| whileLoopExpression
+	| doLoopExpression
+	| forLoopExpression
+	| loopExitStatement
+	| caseExpression
+	| structDefinition
+	| tryExpression
+	| fnDefinition
+	| fnReturnStatement
+	| contextExpression
+	| attributesDefinition
+	| whenStatement
+	| utilityDefinition
+	| rolloutDefinition
+	| toolDefinition
+	| rcmenuDefinition
+	| macroscriptDefinition
+	| pluginDefinition
 	;
 
 // */
 
 //-------------------------------------- MACROSCRIPT_DEF
-macroscript_def
-	: MACROSCRIPT NL* var_name ( NL* param_name NL* (operand | RESOURCE) )* NL*
+macroscriptDefinition
+	: MACROSCRIPT NL* identifier ( NL* param_name NL* (operand | RESOURCE) )* NL*
     lp
         (macroscript_clause (NL* macroscript_clause)*)?
     rp
 	;
 
-macroscript_clause: expr | event_handler
+macroscript_clause: expr | eventHandlerClause
 	;
 
 //-------------------------------------- UTILITY_DEF
-utility_def
-	: UTILITY NL* var_name NL* operand (NL* param)* NL*
+utilityDefinition
+	: UTILITY NL* identifier NL* operand (NL* param)* NL*
     lp
         ( rollout_clause (NL* rollout_clause)* )?
     rp
 	;
 
 //-------------------------------------- ROLLOUT_DEF
-rollout_def
-	: ROLLOUT NL* var_name NL* operand (NL* param)* NL*
+rolloutDefinition
+	: ROLLOUT NL* identifier NL* operand (NL* param)* NL*
     lp
         ( rollout_clause (NL* rollout_clause)* )?
     rp
 	;
 
 rollout_clause
-	: var_decl
-	| rollout_control
-	| rollout_group
-	| fn_def
-	| struct_def
-	| event_handler
-	| tool_def
-	| rollout_def
+	: variableDeclaration
+	| rolloutControl
+	| rolloutGroup
+	| fnDefinition
+	| structDefinition
+	| eventHandlerClause
+	| toolDefinition
+	| rolloutDefinition
 	;
 
-rollout_group
+rolloutGroup
 	: GROUP NL* STRING? NL*
     lp
-        ( rollout_control (NL* rollout_control)* )?
+        ( rolloutControl (NL* rolloutControl)* )?
     rp
 	;
 
-rollout_control: RolloutControl (NL* operand)+ (NL* param)*
+rolloutControl: RolloutControl (NL* operand)+ (NL* param)*
 	;
 
 //-------------------------------------- TOOL_DEF
-tool_def
-	: TOOL NL* var_name (NL* param)* NL*
+toolDefinition
+	: TOOL NL* identifier (NL* param)* NL*
     lp
         tool_clause (NL* tool_clause)+
     rp
 	;
 
-tool_clause: var_decl | fn_def | struct_def | event_handler
+tool_clause: variableDeclaration | fnDefinition | structDefinition | eventHandlerClause
 	;
 
 //-------------------------------------- RCMENU_DEF
-rcmenu_def
-	: RCMENU NL* var_name NL* lp (rc_clause (NL* rc_clause)*)? rp
-	;
-
-rc_clause
-	: var_decl
-	| fn_def
-	| struct_def
-	| event_handler
-	| rc_submenu
-	| rc_menuitem
-	| rc_separator
+rcmenuDefinition
+	: RCMENU NL* identifier NL* lp (rc_clause (NL* rc_clause)*)? rp
 	;
 
 rc_submenu
@@ -164,28 +127,36 @@ rc_submenu
     rp
 	;
 
-rc_separator: SEPARATOR NL* var_name (NL* param)*
+rc_clause
+	: variableDeclaration
+	| fnDefinition
+	| structDefinition
+	| eventHandlerClause
+	| rc_submenu
+	| rcmenuControl
 	;
 
-rc_menuitem: MENUITEM (NL* operand)+ (NL* param)*
+rcmenuControl
+	: MENUITEM (NL* operand)+ (NL* param)*
+	| SEPARATOR NL* identifier (NL* param)*
 	;
 
 //-------------------------------------- PLUGIN_DEF
-plugin_def
-	: PLUGIN NL* var_name NL* var_name (NL* param)* NL*
+pluginDefinition
+	: PLUGIN NL* identifier NL* identifier (NL* param)* NL*
     lp
         plugin_clause (NL* plugin_clause)*
     rp
 	;
 
 plugin_clause
-	: var_decl
-	| fn_def
-	| struct_def
-	| tool_def
-	| rollout_def
-	| event_handler
-	| param_def
+	: variableDeclaration
+	| fnDefinition
+	| structDefinition
+	| toolDefinition
+	| rolloutDefinition
+	| eventHandlerClause
+	| paramsDefinition
 	;
 
 //-------------------------------------- CHANGE_HANDLER when <attribute> <objects> change[s] [
@@ -193,11 +164,11 @@ plugin_clause
 // deleted [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr>
 // objects var_name | PATH | array
 
-when_expr: when_predicate NL* DO NL* expr
+whenStatement: when_predicate NL* DO NL* expr
 	;
 
 when_predicate
-	: WHEN NL* (var_name NL*)? (var_name | PATH | expr_seq | array) NL* (CHANGE | DELETED)  NL*  (NL* param)* (NL* operand)?
+	: WHEN NL* (identifier NL*)? (identifier | PATH | expr_seq | array) NL* (CHANGE | DELETED)  NL*  (NL* param)* (NL* operand)?
 	;
 
 //-------------------------------------- CONTEXT_EXPR
@@ -245,7 +216,7 @@ when_predicate
  undo
  */
 
-context_expr: ctx_cascading | ctx_set
+contextExpression: ctx_cascading | ctx_set
 	;
 
 ctx_cascading: ctx_predicate (comma ctx_predicate)* NL* expr
@@ -255,7 +226,7 @@ ctx_set
 	: SET (ANIMATE | TIME | IN | LEVEL) NL* operand
 	| SET COORDSYS NL* (LOCAL | operand)
 	| SET ABOUT NL* (COORDSYS | operand)
-	| SET UNDO NL* (STRING | param | var_name)? NL* simple_expr
+	| SET UNDO NL* (STRING | param | identifier)? NL* simpleExpression
 	;
 
 ctx_predicate
@@ -263,66 +234,66 @@ ctx_predicate
 	| IN NL* operand
 	| ABOUT NL* (COORDSYS | operand)
 	| IN? NL* COORDSYS NL* (LOCAL | operand)
-	| WITH? NL* UNDO NL* (STRING | param | var_name)? NL* simple_expr
+	| WITH? NL* UNDO NL* (STRING | param | identifier)? NL* simpleExpression
 	| WITH? NL* DEFAULTACTION NL* NAME
-	| WITH? NL* ctx_keyword NL* simple_expr
+	| WITH? NL* ctx_keyword NL* simpleExpression
 	;
 
 ctx_keyword
-	: ANIMATE
+	: ( ANIMATE
 	| DONTREPEATMESSAGES
 	| MACRORECORDEREMITERENABLED
 	| MXSCALLSTACKCAPTUREENABLED
 	| PRINTALLELEMENTS
 	| QUIET
-	| REDRAW
+	| REDRAW )
 	;
 
 //-------------------------------------- PARAMETER DEF
-param_def
-	: PARAMETERS NL* var_name (NL* param)* NL*
+paramsDefinition
+	: PARAMETERS NL* identifier (NL* param)* NL*
     lp
         ( param_clause (NL+ param_clause)* )?
     rp
 	;
 
-param_clause: param_expr | event_handler
+param_clause: paramDefinition | eventHandlerClause
 	;
 
-param_expr: var_name (NL* param)*
+paramDefinition: identifier (NL* param)*
 	;
 
 //-------------------------------------- ATTRIBUTES DEFINITION attributes <name> [version:n]
 // [silentErrors:t/f] [initialRollupState:0xnnnnn] [remap:#(<old_param_names_array>,
 // <new_param_names_array>)]
-attributes_def
-	: ATTRIBUTES NL* var_name (NL* param)* NL*
+attributesDefinition
+	: ATTRIBUTES NL* identifier (NL* param)* NL*
     lp
         attributes_clause ( NL+ attributes_clause )*
     rp
 	;
 
 attributes_clause
-	: var_decl
-	| event_handler
-	| param_def
-	| rollout_def
+	: variableDeclaration
+	| eventHandlerClause
+	| paramsDefinition
+	| rolloutDefinition
 	;
 
 //-------------------------------------- EVENT HANDLER
-event_handler
+eventHandlerClause
 	: ON NL* ev_args = event_args NL* ev_action = (DO | RETURN) NL* ev_body = expr
 	;
 
 event_args
-	: ev_target = var_name NL* ev_type = var_name ( NL* ev_args += var_name )+
-	| ev_target = var_name NL* ev_type = var_name
-	| ev_type = var_name
+	: ev_target = identifier NL* ev_type = identifier ( NL* ev_args += identifier )+
+	| ev_target = identifier NL* ev_type = identifier
+	| ev_type = identifier
 	;
 
 //---------------------------------------- STRUCT DEF
-struct_def
-	: STRUCT NL* str_name = var_name NL*
+structDefinition
+	: STRUCT NL* str_name = identifier NL*
     lp
         struct_member ( comma struct_member )*
     rp
@@ -344,10 +315,10 @@ struct_def
 // /* 
 struct_member
 	: (scope = struct_scope NL*)? (
-		assignment_expr
-		| var_name
-		| fn_def
-		| event_handler
+		assignmentExpression
+		| identifier
+		| fnDefinition
+		| eventHandlerClause
 	)
 	;
 
@@ -357,8 +328,8 @@ struct_scope: PUBLIC | PRIVATE
 // */
 
 //---------------------------------------- FUNCTION DEF
-fn_def
-	: fn_mod = MAPPED? NL* fn_decl = FN NL* fn_name = var_name NL*
+fnDefinition
+	: fn_mod = MAPPED? NL* fn_decl = FN NL* fn_name = identifier NL*
 		( NL* fn_args )*
 		(NL* fn_params)*
 		NL* EQ NL*
@@ -366,7 +337,7 @@ fn_def
 	;
 
 fn_args
-	: var_name
+	: identifier
 	// | de_ref
 	;
 
@@ -374,15 +345,15 @@ fn_params: param | param_name
 	;
 
 //FN_RETURN
-fn_return: RETURN NL* expr
+fnReturnStatement: RETURN NL* expr
 	;
 
 //---------------------------------------- LOOPS While loop
-while_loop: WHILE NL* expr NL* DO NL* expr
+whileLoopExpression: WHILE NL* expr NL* DO NL* expr
 	;
 
 // Do loop
-do_loop: DO NL* expr NL* WHILE NL* expr
+doLoopExpression: DO NL* expr NL* WHILE NL* expr
 	;
 
 /* For loop
@@ -396,10 +367,10 @@ do_loop: DO NL* expr NL* WHILE NL* expr
  * [where <expr>]
  */
 
-for_loop
-	: FOR NL* var = var_name (
-		comma index_name = var_name (
-			comma filtered_index_name = var_name
+forLoopExpression
+	: FOR NL* var = identifier (
+		comma index_name = identifier (
+			comma filtered_index_name = identifier
 		)?
 	)? NL* for_operator = (IN | EQ) NL* for_sequence NL* for_action = (
 		DO
@@ -426,15 +397,15 @@ for_while: WHILE NL* expr
 for_where: WHERE NL* expr
 	;
 
-loop_exit: EXIT ( NL* WITH NL* expr)?
+loopExitStatement: EXIT ( NL* WITH NL* expr)?
 	;
 
 //----------------------------------------TRY EXPR
-try_expr: TRY NL* expr NL* CATCH NL* expr
+tryExpression: TRY NL* expr NL* CATCH NL* expr
 	;
 
 //---------------------------------------- CASE-EXPR
-case_expr
+caseExpression
 	: CASE NL* expr? NL* OF NL* lp case_item (NL+ case_item)* rp
 	;
 
@@ -501,11 +472,11 @@ case_item
 
 // /*
 // this does work but it is slooow
-if_statement
+ifExpression
 	: IF NL* expr NL* (
-		THEN NL* non_if_expr NL* ELSE NL* expr
+		THEN NL* nonIfExpression NL* ELSE NL* expr
 		| (THEN | DO) NL* expr
-		| if_statement
+		| ifExpression
 	)
 	;
 
@@ -527,25 +498,25 @@ if_statement
 */
 
 //---------------------------------------- DECLARATIONS
-var_decl
+variableDeclaration
 	: scope = decl_scope NL*
         decl += declaration ( comma decl += declaration )*
 	;
 
-declaration: assignment_expr | var_name
+declaration: assignmentExpression | identifier
 	;
 
 decl_scope: ( LOCAL | GLOBAL | PERSISTENT NL* GLOBAL)
 	;
 
 //---------------------------------------- ASSIGNMENT EXPRESSION
-assignment_expr: left = destination EQ NL* right = expr
+assignmentExpression: left = destination EQ NL* right = expr
 	;
 
-assignmentOp_expr: left = destination ASSIGN NL* right = expr
+assignmentOpExpression: left = destination ASSIGN NL* right = expr
 	;
 
-destination: accessor | de_ref | var_name | PATH
+destination: accessor | de_ref | identifier | PATH
 	;
 
 //---------------------------------------- SIMPLE_EXPR
@@ -598,28 +569,29 @@ destination: accessor | de_ref | var_name | PATH
  ;
  //
  */
-expr_operand
-	: fn_call	# FnCallExpr
-	| de_ref	# deRef
-	| operand	# OperandExpr
-	;
-
 // /*
-simple_expr
+simpleExpression
 	: left = expr_operand AS NL* classname	# TypecastExpr
 	| expr_operand							# ExprOperand
 	// : (fn_call | de_ref | operand) AS NL* classname #TypecastExpr | fn_call #FnCallExpr | de_ref
 	// #DeRef | operand #OperandExpr
-	| (MINUS | UNARY_MINUS) right = simple_expr									# UnaryExpr
-	| <assoc = right> left = simple_expr POW NL* right = simple_expr			# ExponentExpr
-	| left = simple_expr (PROD | DIV) NL* right = simple_expr					# ProductExpr
-	| left = simple_expr (PLUS | MINUS | UNARY_MINUS) NL* right = simple_expr	# AdditionExpr
-	| left = simple_expr COMPARE NL* right = simple_expr						# ComparisonExpr
-	| <assoc = right> NOT NL* right = simple_expr								# LogicNOTExpr
-	| left = simple_expr (OR | AND) NL* right = simple_expr						# LogicExpr
+	| (MINUS | UNARY_MINUS) right = simpleExpression									# UnaryExpr
+	| <assoc = right> left = simpleExpression POW NL* right = simpleExpression			# ExponentExpr
+	| left = simpleExpression (PROD | DIV) NL* right = simpleExpression					# ProductExpr
+	| left = simpleExpression (PLUS | MINUS | UNARY_MINUS) NL* right = simpleExpression	# AdditionExpr
+	| left = simpleExpression COMPARE NL* right = simpleExpression						# ComparisonExpr
+	| <assoc = right> NOT NL* right = simpleExpression									# LogicNOTExpr
+	| left = simpleExpression (OR | AND) NL* right = simpleExpression					# LogicExpr
 	;
 // */
-classname: var_name | expr_seq
+
+expr_operand
+	: fnCall	# FnCallExpr
+	| de_ref	# deRef
+	| operand	# OperandExpr
+	;
+
+classname: identifier | expr_seq
 	;
 
 //---------------------------------------- FUNCTION CALL Positional Arguments Keyword Arguments
@@ -633,7 +605,7 @@ classname: var_name | expr_seq
  correctly parenthesizing function arguments
  */
 
-fn_call
+fnCall
 	// : caller = fn_caller ( args += operand)+ ( params += param)*
 	: caller = fn_caller (
 		// PAREN_PAIR //nullary call operator
@@ -649,7 +621,7 @@ paren_pair: {this.closedParens()}? LPAREN RPAREN
 	;
 
 fn_caller
-	: var_name
+	: identifier
 	| PATH
 	| de_ref
 	| accessor
@@ -662,7 +634,7 @@ fn_caller
 param: param_name NL* operand_arg
 	;
 
-param_name: {this.colonBeNext()}? (var_name | kw_override) COLON
+param_name: {this.colonBeNext()}? (identifier | kw_override) COLON
 	;
 
 operand_arg
@@ -686,7 +658,7 @@ accessor
 
 //------------------------------------------------------------------------//
 // Property accessor
-property: DOT NL* (var_name | kw_override)
+property: DOT NL* (identifier | kw_override)
 	;
 
 //Index accessor
@@ -695,7 +667,7 @@ index: lb expr rb
 
 //---------------------------------------- FACTORS
 factor
-	: var_name
+	: identifier
 	| bool
 	| STRING
 	| PATH
@@ -758,7 +730,7 @@ arrayList: expr ( comma expr)*
 	;
 
 // */ Identifiers
-var_name: ids | by_ref
+identifier: ids | by_ref
 	;
 
 ids: GLOB? (ID | QUOTED | kw_reserved)
