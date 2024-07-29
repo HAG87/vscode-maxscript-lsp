@@ -9,6 +9,7 @@ import
     StructDefinitionSymbol,
     VariableDeclSymbol,
     IdentifierSymbol,
+    AssignmentExpressionSymbol,
 } from "./ContextSymbolTable.js";
 import { mxsLexer } from "../parser/mxsLexer.js";
 
@@ -56,7 +57,7 @@ export class symbolTableListener extends mxsParserListener
 
     public override enterStructDefinition = (ctx: StructDefinitionContext): void =>
     {
-        this.pushNewSymbol(FnDefinitionSymbol, ctx, ctx._str_name?.getText());
+        this.pushNewSymbol(StructDefinitionSymbol, ctx, ctx._str_name?.getText());
     }
     public override exitStructDefinition = (ctx: StructDefinitionContext): void =>
     {
@@ -78,12 +79,10 @@ export class symbolTableListener extends mxsParserListener
 
     public override enterVariableDeclaration = (ctx: VariableDeclarationContext): void =>
     {
-        // const ctx.identifier()
-        // ctx.assignmentExpression()
         let name = ctx.children[0] instanceof AssignmentExpressionContext
             ? ctx.children[0]._left?.getText()
             : ctx.children[0].getText()
-        
+
         this.pushNewSymbol(VariableDeclSymbol, ctx, name);
     }
 
@@ -92,10 +91,14 @@ export class symbolTableListener extends mxsParserListener
         this.popSymbol();
     }
 
+    public override enterAssignmentExpression = (ctx: AssignmentExpressionContext): void =>
+    {
+        this.pushNewSymbol(AssignmentExpressionSymbol, ctx, ctx._left?.getText());
+    }
 
     public override exitAssignmentExpression = (ctx: AssignmentExpressionContext): void =>
     {
-        // ctx._left
+        this.popSymbol();
     }
 
     public override exitExprOperand = (ctx: ExprOperandContext): void =>

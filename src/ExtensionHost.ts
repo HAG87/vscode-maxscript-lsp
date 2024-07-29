@@ -3,6 +3,8 @@ import { mxsBackend } from './backend/Backend.js';
 import { Utilities } from './utils.js';
 import { mxsSymbolProvider } from './SymbolProvider.js';
 import { diagnosticAdapter } from './Diagnostics.js';
+import { mxsReferenceProvider } from './ReferenceProvider.js';
+import { mxsDefinitionProvider } from './DefinitionProvider.js';
 
 export class ExtensionHost
 {
@@ -36,7 +38,7 @@ export class ExtensionHost
         //register eventHandlers
         this.registerEventHandlers(ctx);
         // register providers
-        // this.registerProviders(ctx);
+        this.registerProviders(ctx);
         // register commands
         // this.registerCommands(ctx);
 
@@ -143,8 +145,16 @@ export class ExtensionHost
                 ExtensionHost.langSelector,
                 new mxsSymbolProvider(this.backend)
             ),
+            languages.registerReferenceProvider(
+                ExtensionHost.langSelector,
+                new mxsReferenceProvider(this.backend)
+            ),
+            languages.registerDefinitionProvider(
+                ExtensionHost.langSelector,
+                new mxsDefinitionProvider(this.backend)
+            ),
             // languages.
-            //..
+            //...
         );
     }
     // register commands

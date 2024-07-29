@@ -12,19 +12,16 @@ export class mxsReferenceProvider implements ReferenceProvider
         context: ReferenceContext,
         token: CancellationToken): ProviderResult<Location[]>
     {
-        // throw new Error("Method not implemented.");
-        // /*
-        return new Promise((resolve, reject) =>
+        return new Promise((resolve) =>
         {
+            //TODO: fix info retrieval!
+            // maybe related on how im resolving the listener, and scopes
             const info = this.backend.symbolInfoAtPosition(
                 document.uri,
                 position.line + 1,
                 position.character,
-                false);
-            
-            
-            console.log(info);
-            
+                true);
+
             const result: Location[] = [];
 
             if (info) {
@@ -39,14 +36,12 @@ export class mxsReferenceProvider implements ReferenceProvider
                             symbol.definition.range.start.column + info.name.length,
                         );
 
-                        const location = new Location( Uri.parse(symbol.source), range);
+                        const location = new Location(Uri.parse(symbol.source), range);
                         result.push(location);
                     }
                 }
-
                 resolve(result);
-            } else reject
+            } else resolve(null);
         });
-        // */
     }
 }
