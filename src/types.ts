@@ -21,7 +21,8 @@ export enum SymbolKind
 	Event,
 	Struct,
 	Function,
-
+	
+	Declaration,	
 	Call,
 	Property,
 	Accessor,

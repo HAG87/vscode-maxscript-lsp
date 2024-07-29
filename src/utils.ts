@@ -19,4 +19,5 @@ export class Utilities {
         );
         return new Range(start, end);
     }
+    
 }

@@ -9,6 +9,7 @@ import { DiagnosticType, IDefinition, IDiagnosticEntry, ISymbolInfo, SymbolKind 
 import { ContextSymbolTable, SymbolSupport } from "./ContextSymbolTable.js";
 import { BaseSymbol } from "antlr4-c3";
 import { symbolTableListener } from "./symbolTableListener.js";
+import { BackendUtils } from "./BackendUtils.js";
 // One context for each valid document
 export class SourceContext
 {
@@ -309,29 +310,50 @@ export class SourceContext
 
         return result;
     }
-    
-    /*
-     public symbolAtPosition(column: number, row: number, limitToChildren: boolean): ISymbolInfo | undefined {
-         if (!this.tree) {
-             return undefined;
-         }
- 
-         const terminal = BackendUtils.parseTreeFromPosition(this.tree, column, row);
-         if (!terminal || !(terminal instanceof TerminalNode)) {
-             return undefined;
-         }
- 
-         // If limitToChildren is set we only want to show info for symbols in specific contexts.
-         // These are contexts which are used as subrules in rule definitions.
-         if (!limitToChildren) {
-             return this.getSymbolInfo(terminal.getText());
-         }
- 
-         let parent = (terminal.parent as ParserRuleContext);
-         if (parent.ruleIndex === ANTLRv4Parser.RULE_identifier) {
-             parent = (parent.parent as ParserRuleContext);
-         }
- 
+
+    public symbolAtPosition(
+        row: number,
+        column: number,
+        limitToChildren: boolean): ISymbolInfo | undefined
+    {
+        if (!this.tree) {
+            return undefined;
+        }
+
+
+        const terminal = BackendUtils.parseTreeFromPosition(this.tree, column, row);
+        if (!terminal || !(terminal instanceof TerminalNode)) {
+            return undefined;
+        }
+
+        // If limitToChildren is set we only want to show info for symbols in specific contexts.
+        if (!limitToChildren) {
+            return this.getSymbolInfo(terminal.getText());
+        }
+
+        //TODO: check
+        // let parent = (terminal.parent as ParserRuleContext);
+        /*
+        const symbol = this.symbolTable.symbolContainingContext(terminal);
+        if (symbol) {
+            return this.getSymbolInfo(symbol);
+        }
+        */
+        // console.log(parent.ruleIndex);
+
+        /*
+        if (parent.ruleIndex === ANTLRv4Parser.RULE_identifier) {
+            parent = (parent.parent as ParserRuleContext);
+            }
+       //  */
+        /*
+        const symbol = this.symbolTable.symbolContainingContext(terminal);
+        // symbol = this.resolveSymbol(symbol.name);
+        if (symbol) {
+            return this.getSymbolInfo(symbol);
+        }
+        */
+        /*
          switch (parent.ruleIndex) {
              case ANTLRv4Parser.RULE_ruleref:
              case ANTLRv4Parser.RULE_terminalDef: {
@@ -377,9 +399,10 @@ export class SourceContext
              }
          }
  
-         return undefined;
-     }
-     */
+         */
+        return undefined;
+    }
+    
     /**
      * Returns the symbol at the given position or one of its outer scopes.
      *
@@ -390,21 +413,26 @@ export class SourceContext
      *
      * @returns The symbol at the given position (if there's any).
     */
-    /*
-    public enclosingSymbolAtPosition(column: number, row: number, ruleScope: boolean): ISymbolInfo | undefined {
+    public enclosingSymbolAtPosition(
+        row: number,
+        column: number,
+        ruleScope: boolean): ISymbolInfo | undefined
+    {
+
         if (!this.tree) {
             return undefined;
         }
 
         let context = BackendUtils.parseTreeFromPosition(this.tree, column, row);
-        if (!context) {
-            return undefined;
-        }
 
         if (context instanceof TerminalNode) {
-            context = context.parent;
+            context = context!.parent;
         }
 
+        if (ruleScope) {
+            context = context!.parent;
+        }
+        /*
         if (ruleScope) {
             let run = context;
             while (run
@@ -417,7 +445,7 @@ export class SourceContext
                 context = run;
             }
         }
-
+        */
         if (context) {
             const symbol = this.symbolTable.symbolWithContextSync(context);
             if (symbol) {
@@ -427,7 +455,6 @@ export class SourceContext
 
         return undefined;
     }
-    */
     public symbolInfoAtPosition(line: number, character: number, limitToChildren = true): DocumentSymbol[] | undefined
     {
         if (!this.tree) {
@@ -524,13 +551,14 @@ export class SourceContext
 
         return result;
     }
-    public getSymbolInfo(symbol: string)
+    public getSymbolInfo(symbol: string | BaseSymbol): ISymbolInfo | undefined
     {
-
+        return this.symbolTable.getSymbolInfo(symbol);
     }
-    public resolveSymbol(symbol: string)
-    {
 
+    public resolveSymbol(symbolName: string): BaseSymbol | undefined
+    {
+        return this.symbolTable.resolveSync(symbolName, false);
     }
 
     // code completions

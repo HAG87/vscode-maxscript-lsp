@@ -16,6 +16,7 @@ const symbolCodeTypeMap = new Map<SymbolKind, vscode.SymbolKind>([
 	[SymbolKind.Struct, vscode.SymbolKind.Struct],
 	[SymbolKind.Function, vscode.SymbolKind.Function],
 
+	[SymbolKind.Declaration, vscode.SymbolKind.Variable],
 	[SymbolKind.Call, vscode.SymbolKind.Method],
 	[SymbolKind.Property, vscode.SymbolKind.Property],
 	[SymbolKind.Accessor, vscode.SymbolKind.Key],
@@ -48,6 +49,7 @@ const symbolDescriptionMap = new Map<SymbolKind, string>([
 	[SymbolKind.Struct, 'Struct'],
 	[SymbolKind.Function, 'Function'],
 
+	[SymbolKind.Declaration, 'Declaration'],
 	[SymbolKind.Call, 'Call'],
 	[SymbolKind.Property, 'Property'],
 	[SymbolKind.Accessor, 'Accessor'],

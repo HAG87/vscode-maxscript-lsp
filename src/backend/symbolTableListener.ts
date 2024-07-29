@@ -3,13 +3,13 @@ import { ParseTree, ParserRuleContext, TerminalNode } from "antlr4ng";
 
 import { mxsParserListener } from "../parser/mxsParserListener.js";
 import
-    {
-        ContextSymbolTable,
-        FnDefinitionSymbol,
-        StructDefinitionSymbol,
-        VariableDeclSymbol,
-        IdentifierSymbol,
-    } from "./ContextSymbolTable.js";
+{
+    ContextSymbolTable,
+    FnDefinitionSymbol,
+    StructDefinitionSymbol,
+    VariableDeclSymbol,
+    IdentifierSymbol,
+} from "./ContextSymbolTable.js";
 import { mxsLexer } from "../parser/mxsLexer.js";
 
 import
@@ -20,138 +20,14 @@ import
     VariableDeclarationContext,
     AssignmentExpressionContext,
     IdentifierContext,
+    FactorContext,
+    ExprOperandContext,
+    Expr_operandContext,
+    DeclarationExpressionContext,
 
 
 
 } from "../parser/mxsParser.js";
-
-/*
-export class simpleExpressionSymbol extends ScopedSymbol {}
-
-export class variableDeclarationSymbol extends ScopedSymbol {}
-
-export class assignmentExpressionSymbol extends ScopedSymbol {}
-
-export class assignmentOpExpressionSymbol extends ScopedSymbol {}
-
-export class whileLoopExpressionSymbol extends ScopedSymbol {}
-
-export class doLoopExpressionSymbol extends ScopedSymbol {}
-
-export class forLoopExpressionSymbol extends ScopedSymbol {}
-
-export class loopExitStatementSymbol extends ScopedSymbol {}
-
-export class caseExpressionSymbol extends ScopedSymbol {}
-
-export class structDefinitionSymbol extends ScopedSymbol {}
-
-export class tryExpressionSymbol extends ScopedSymbol {}
-
-export class fnDefinitionSymbol extends ScopedSymbol {}
-
-export class fnReturnStatementSymbol extends ScopedSymbol {}
-export class contextExpressionSymbol extends ScopedSymbol {}
-
-export class attributesDefinitionSymbol extends ScopedSymbol {}
-
-export class whenStatementSymbol extends ScopedSymbol {}
-
-
-
-rolloutControl
-
-rolloutGroup
-
-fnDefinition
-structDefinition
-
-eventHandlerClause
-
-toolDefinition
-
-rolloutDefinition
-
-eventHandlerClause
-
-rc_submenu
-
-rcmenuControl
-
-nDefinition
-
-structDefinition
-
-toolDefinition
-
-rolloutDefinition
-
-eventHandlerClause
-
-paramsDefinition
-
-eventHandlerClause
-
-paramsDefinition
-
-rolloutDefinition
-
-TypecastExpr
-
-ExprOperand
-
-UnaryExpr
-
-ExponentExpr
-
-ProductExpr
-
-AdditionExpr
-
-ComparisonExpr
-
-LogicNOTExpr
-
-LogicExpr
-
-FnCallExpr
-
-deRef
-
-OperandExpr
-
-operand
-
-accessor
-
-
-bool
-
-STRING
-
-PATH
-
-NAME
-
-NUMBER
-
-TIMEVAL
-
-QUESTION
-
-array
-
-bitArray
-
-point3
-
-point2
-
-box2
-
-expr_seq
-
-*/
 
 export class symbolTableListener extends mxsParserListener
 {
@@ -197,46 +73,64 @@ export class symbolTableListener extends mxsParserListener
         this.popSymbol();
     }
 
+    // public override enterDeclarationExpression = (ctx: DeclarationExpressionContext): void => { }
+    // public override exitDeclarationExpression = (ctx: DeclarationExpressionContext): void => { }
+
     public override enterVariableDeclaration = (ctx: VariableDeclarationContext): void =>
     {
-        //  It can be several declarations in the same statement.
-        //  Here we flatten the nd emmit a symbol for each Declaration
-        // Will be added to the curent scope, but will not produce a ymbol
-
-        //  Assignment is treated as a child of the declaration.
-        //  This will not create symbols for the assignment expression
-
-        // AssignmentExpression can contain high Level symbols, so I should return scoped symbols here
-        // and do the falltening on the SymbolProvider
-
-        const decls = ctx._decl;
-        for (const decl of decls) {
-            const declMember = decl.children[0] as (AssignmentExpressionContext | IdentifierContext);
-            
-            // /*
-            if (declMember instanceof AssignmentExpressionContext) {
-                // console.log(declName._left?.getText());
-                this.addNewSymbol(IdentifierSymbol,declMember.ruleContext ,declMember._left?.getText())
-            } else {
-                // console.log(declName.getText());
-                this.addNewSymbol(IdentifierSymbol,declMember.ruleContext ,declMember?.getText())
-            }
-            // */
-        }
-
+        // const ctx.identifier()
+        // ctx.assignmentExpression()
+        let name = ctx.children[0] instanceof AssignmentExpressionContext
+            ? ctx.children[0]._left?.getText()
+            : ctx.children[0].getText()
+        
+        this.pushNewSymbol(VariableDeclSymbol, ctx, name);
     }
+
     public override exitVariableDeclaration = (ctx: VariableDeclarationContext): void =>
     {
-        // this.popSymbol();
-
+        this.popSymbol();
     }
+
+
+    public override exitAssignmentExpression = (ctx: AssignmentExpressionContext): void =>
+    {
+        // ctx._left
+    }
+
+    public override exitExprOperand = (ctx: ExprOperandContext): void =>
+    {
+        /*
+        const expr_operand = ctx.expr_operand()
+        const op = expr_operand.operand()
+        if (op) {
+            const id = op.factor()?.identifier()
+            if (id) {
+                this.addNewSymbol(IdentifierSymbol, id, id.getText());
+            }
+        }
+        // */
+    }
+
+    // public override exitExpr_operand = (ctx: Expr_operandContext): void => { }
+
+    public override exitFactor = (ctx: FactorContext): void =>
+    {
+        // if (ctx.identifier()) {
+        //     this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
+        // }
+    }
+
     public override exitIdentifier = (ctx: IdentifierContext): void =>
     {
-        // this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
+        // IF I emmit an identifier here, but also use the current enterVariableDeclaration, I will have duplicated symbols
+        // Use operand or factor instead, for now.
+
+        this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
     }
+
     public override visitTerminal = (node: TerminalNode): void =>
     {
-
         //operators
         //...
     }

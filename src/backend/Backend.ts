@@ -14,9 +14,9 @@ export class mxsBackend
 {
     // hold the contexts
     private sourceContexts: Map<string, IContextEntry> = new Map<string, IContextEntry>();
-    
+
     public constructor() { }
-    
+
     // get the context
     public getContext(uri: Uri, source?: string | undefined): SourceContext
     {
@@ -104,7 +104,7 @@ export class mxsBackend
             this.sourceContexts.set(uri.toString(), ctxEntry);
             // set ctx text
             ctx.setText(source);
-            
+
             // do an initial parse run
             this.parseContent(ctxEntry);
         }
@@ -140,12 +140,14 @@ export class mxsBackend
     }
 
     // get symbols -- for mxsDefinitionProvider
-    public symbolInfoAtPosition(uri: Uri,
+
+    public symbolInfoAtPosition(
+        uri: Uri,
         line: number,
         character: number,
-        limitToChildren = true)
+        limitToChildren = true): ISymbolInfo | undefined
     {
-        // return this.getContext(uri).symbolAtPosition(line,character,limitToChildren);
+        return this.getContext(uri).symbolAtPosition(line, character, limitToChildren);
     }
 
     public infoForSymbol(uri: Uri, symbol: string)
@@ -153,12 +155,13 @@ export class mxsBackend
         return this.getContext(uri).getSymbolInfo(symbol);
     }
 
-    public enclosingSymbolAtPosition(uri: Uri,
+    public enclosingSymbolAtPosition(
+        uri: Uri,
         line: number,
         character: number,
         ruleScope = false)
     {
-        // return this.getContext(uri).enclosingSymbolAtPosition(line, character, ruleScope);
+        return this.getContext(uri).enclosingSymbolAtPosition(line, character, ruleScope);
     }
 
     /**
@@ -181,18 +184,18 @@ export class mxsBackend
      * @param symbolName The name of the symbol to check.
      * @returns A list of symbol info entries, each describing one occurrence.
      */
-    public getSymbolOcurrences(uri: Uri, symbolName: string)
+    public getSymbolOccurrences(uri: Uri, symbolName: string): ISymbolInfo[]
     {
-        /*
-        onst context = this.getContext(fileName);
+        
+        const context = this.getContext(uri);
         const result = context.symbolTable.getSymbolOccurrences(symbolName, false);
-
+        /*
         // Sort result by kind. This way rule definitions appear before rule references and are re-parsed first.
         return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => {
             return lhs.kind - rhs.kind;
         });
         */
-        return undefined;
+        return result;
     }
 
     // code completion
