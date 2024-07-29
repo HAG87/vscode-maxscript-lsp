@@ -31,7 +31,7 @@ expr: nonIfExpression | ifExpression
 
 nonIfExpression
 	: simpleExpression
-	| variableDeclaration
+	| declarationExpression
 	| assignmentExpression
 	| assignmentOpExpression
 	| whileLoopExpression
@@ -84,7 +84,7 @@ rolloutDefinition
 	;
 
 rollout_clause
-	: variableDeclaration
+	: declarationExpression
 	| rolloutControl
 	| rolloutGroup
 	| fnDefinition
@@ -112,7 +112,7 @@ toolDefinition
     rp
 	;
 
-tool_clause: variableDeclaration | fnDefinition | structDefinition | eventHandlerClause
+tool_clause: declarationExpression | fnDefinition | structDefinition | eventHandlerClause
 	;
 
 //-------------------------------------- RCMENU_DEF
@@ -128,7 +128,7 @@ rc_submenu
 	;
 
 rc_clause
-	: variableDeclaration
+	: declarationExpression
 	| fnDefinition
 	| structDefinition
 	| eventHandlerClause
@@ -150,7 +150,7 @@ pluginDefinition
 	;
 
 plugin_clause
-	: variableDeclaration
+	: declarationExpression
 	| fnDefinition
 	| structDefinition
 	| toolDefinition
@@ -274,7 +274,7 @@ attributesDefinition
 	;
 
 attributes_clause
-	: variableDeclaration
+	: declarationExpression
 	| eventHandlerClause
 	| paramsDefinition
 	| rolloutDefinition
@@ -498,12 +498,12 @@ ifExpression
 */
 
 //---------------------------------------- DECLARATIONS
-variableDeclaration
+declarationExpression
 	: scope = decl_scope NL*
-        decl += declaration ( comma decl += declaration )*
+        decl += variableDeclaration ( comma decl += variableDeclaration )*
 	;
 
-declaration: assignmentExpression | identifier
+variableDeclaration: assignmentExpression | identifier
 	;
 
 decl_scope: ( LOCAL | GLOBAL | PERSISTENT NL* GLOBAL)
@@ -586,9 +586,9 @@ simpleExpression
 // */
 
 expr_operand
-	: fnCall	# FnCallExpr
-	| de_ref	# deRef
-	| operand	# OperandExpr
+	: functionCall	//# FnCallExpr
+	| de_ref	    //# deRef
+	| operand	    //# OperandExpr
 	;
 
 classname: identifier | expr_seq
@@ -605,7 +605,7 @@ classname: identifier | expr_seq
  correctly parenthesizing function arguments
  */
 
-fnCall
+functionCall
 	// : caller = fn_caller ( args += operand)+ ( params += param)*
 	: caller = fn_caller (
 		// PAREN_PAIR //nullary call operator
@@ -651,6 +651,7 @@ operand
 	;
 
 //------------------------------------------------------------------------//
+// TODO: Remove left recursion
 accessor
     : accessor (index | property)
     | factor (index | property)
