@@ -5,6 +5,8 @@ import { ISymbolInfo, SymbolKind } from "../types.js";
 import { BackendUtils } from "./BackendUtils.js";
 import { mxsParser } from "../parser/mxsParser.js";
 import { BinaryLifting } from "./symbolSearch.js";
+import assert from "assert";
+import path from "path";
 //Definitions
 export class PluginDefinitionSymbol extends ScopedSymbol { }
 export class MacroScriptDefinitionSymbol extends ScopedSymbol { }
@@ -504,12 +506,15 @@ export class ContextSymbolTable extends SymbolTable
         // check if the symbol is the id of a Definition
         // do not get symbol definition in these rules
         let parentRule = symbol.parent?.context as ParserRuleContext;
-        if (
-            parentRule.ruleIndex === mxsParser.RULE_variableDeclaration ||
-            parentRule.ruleIndex === mxsParser.RULE_fn_args
-            //...
-        ) {
-            return symbol;
+
+        switch (parentRule.ruleIndex) {
+            case mxsParser.RULE_variableDeclaration:
+            case mxsParser.RULE_fn_args:
+            case mxsParser.RULE_fn_params:
+                return symbol;
+            // break;
+            default:
+                break;
         }
 
         // in symbol scope
@@ -525,6 +530,7 @@ export class ContextSymbolTable extends SymbolTable
             //...
         ) {
             let prospectRule = prospect.parent?.context as ParserRuleContext;
+
             if (
                 prospectRule.ruleIndex === mxsParser.RULE_fn_args
                 //..
@@ -570,10 +576,311 @@ export class ContextSymbolTable extends SymbolTable
     public getScopedSymbolOccurrences(symbol: BaseSymbol)
     {
         // search on the same scope or in parent scope, NOT on childs of siblings
-
+        let result: BaseSymbol[] | undefined;
         //search on the root
-        let root = symbol.root as ScopedSymbol
-        const table = root.getAllNestedSymbolsSync(symbol.name);
+        const root = symbol.root as ScopedSymbol
+
+        let table = root.getAllNestedSymbolsSync(symbol.name);
+        /*
+                // for fn definition, look in the fn arguments
+                let rootContext = root?.context as ParserRuleContext;
+        
+                const rule = (<ParserRuleContext>table[0].parent?.context);
+        
+                switch (rootContext.ruleIndex) {
+                    case mxsParser.RULE_fnDefinition:
+                        switch (rule.ruleIndex) {
+                            case mxsParser.RULE_fn_args:
+                            case mxsParser.RULE_fn_params:
+                                //stop here
+                                return this.getSymbolOccurrencesInternal(symbol.name, table);
+                        }
+                        break;
+                    case mxsParser.RULE_variableDeclaration:
+                        return this.getSymbolOccurrencesInternal(symbol.name, table);
+                    default:
+                        switch (rule.ruleIndex) {
+                            case mxsParser.RULE_variableDeclaration:
+                                //...
+                                return this.getSymbolOccurrencesInternal(symbol.name, table);
+                        }
+                        break;
+                    // ...
+                }
+          */
+        //seach from top to botton, stop the brach whenever the symbol is redefined
+        //BSF Seach
+        function dfsCollectNodes(root: BaseSymbol | ScopedSymbol, symbol: BaseSymbol | ScopedSymbol, targetName: string): (BaseSymbol | ScopedSymbol)[]
+        {
+            if (!root) {
+                return [];
+            }
+
+            function isSameBranch(path1: number[], path2: number[]): number
+            {
+                if (path1 === path2) return 0;
+                
+                const root: number[] = [];
+                let count = 0;
+                while (path1[count] === path2[count]) {
+                    root.push(path1[count]);
+                    count++;
+                }
+
+                if (root.length < 1) return -1;
+                /*
+                const test1 = path1.slice(0, root.length);
+                const test2 = path2.slice(0, root.length);
+
+                return test1.every((el, i) => test2[i] <= el) ? 1 : -1;
+                */
+                // /*
+                if (path1.length > path2.length) {
+                    return path1.every((el, i) => path2[i] === el) ? 1 : -1;
+                } else {
+                    return path2.every((el, i) => path1[i] === el) ? 1 : -1;
+                }
+                    // */
+            }
+            function isUnderPath(path1: number[], path2: number[]): boolean
+            {
+                // common root
+                const root: number[] = [];
+                let count = 0;
+                while (path1[count] === path2[count]) {
+                    root.push(path1[count]);
+                    count++;
+                }
+
+                if (root.length < 1) return false;
+
+                const test1 = path1.slice(0, root.length);
+                const test2 = path2.slice(0, root.length);
+
+                return test1.every((el, i) => test2[i] <= el)
+            }
+            const symbolPos = (symbol.context as ParserRuleContext).start?.tokenIndex;
+            let found = false;
+            let foundMeIndex: number = 0;
+            let foundPath: number[] = [];
+            const result: (BaseSymbol | ScopedSymbol)[] = [];
+
+            let shouldStop = false;
+            let declFound = false;
+
+            const paths: number[][] = [];
+            let stopPaths: number[][] = [];
+
+            function dfs(node: BaseSymbol | ScopedSymbol, path: number[])
+            {
+
+                // if (!node) return;
+                // console.log(JSON.stringify(paths));
+                if (shouldStop) { console.log('stoped!'); return; }
+
+                // Recursively visit each child if the node is a ScopedSymbol   
+                //inorder   
+                //*          
+                if (node instanceof ScopedSymbol) {
+                    // for (const child of node.children) {
+                    // dfs(child);
+                    // for (let i = 0; i < node.children.length; i++) {
+                    for (let i = node.children.length - 1; i >= 0; i--) {
+                        // dfs(node.children[i]);
+                        dfs(node.children[i], [...path, i]);
+                    }
+                }
+                //*/
+
+                // console.log(node.symbolPath);
+
+                if (node.name === targetName && node instanceof IdentifierSymbol) {
+
+                    console.log(node);
+                    // result.push(node);
+                    // paths.push(path);
+                    // console.log(path);
+
+                    const nodePos = (node.context as ParserRuleContext).start?.tokenIndex;
+
+                    console.log(`${nodePos} : ${path}`);
+                    if (symbolPos === nodePos) {
+                        foundMeIndex = result.length - 1;
+                        foundPath = path;
+                        console.log(`found ${nodePos} : ${path}`);
+                        found = true;
+                    }
+
+
+                    // console.log(`${nodePos} -- ${symbolPos} | ${found} | ${result.length - 1}`);
+
+
+                    // let rule = node.context as ParserRuleContext;
+                    // console.log(rule.start?.line);
+
+
+                    // /*
+                    let parent = node.parent;
+
+                    // if (parent && parent.context && found) {
+                    if (parent && parent.context) {
+                        // console.log(parent);
+                        let parentRule = parent.context as ParserRuleContext;
+                        // console.log(parentRule.start?.line);
+
+                        switch (parentRule.ruleIndex) {
+                            case mxsParser.RULE_fn_args:
+                            case mxsParser.RULE_fn_params:
+                            case mxsParser.RULE_variableDeclaration:
+                                //...
+                                // shouldStop = true;
+                                // prune results
+                                console.log(`declaration! =>  ${path}`);
+                                if (!declFound) {
+                                    declFound = true;
+                                }
+                                if (found) {
+                                    //already found, new declaration overrides it, not a reference, stop
+                                    // compare branches
+                                    // console.log(`isInBranch: ${isSameBranch(foundPath, path)}`)
+                                    shouldStop = true;
+                                    // switch (isSameBranch(path, foundPath)) {
+                                    switch (isSameBranch(foundPath, path)) {
+                                        case -1: // not same branch
+                                            console.log('=> found but not declaration child, test branch, what to do?')
+                                            if (isUnderPath(foundPath, path)) {
+                                                for (let i = paths.length - 1; i >= 0; i--) {
+                                                    console.log(`${path} -- ${paths[i]} || ${isUnderPath(path, paths[i])}`);
+                                                    if (!isUnderPath(path, paths[i])) {
+                                                        result.splice(i, 1);
+                                                        result.splice(i, 1);
+                                                    }
+                                                }
+                                                //test 
+                                                console.log('isunder: '+isUnderPath(foundPath, path));
+                                                // yes go on..
+                                                result.push(node);
+                                                paths.push(path)
+                                            }
+                                            return;
+                                        case 1: // same branch and found, reached declaration, so stop looking
+                                            console.log('easy, same branch')
+                                            result.push(node);
+                                            paths.push(path);
+                                            return;
+                                        case 0: // found at declaration, if the seach is top->down, we can finish here
+                                            console.log('mmmm');
+                                            for (let i = paths.length - 1; i >= 0; i--) {
+                                                if (!isUnderPath(path, paths[i])) {
+                                                    result.splice(i, 1);
+                                                    paths.splice(i, 1);
+                                                }
+                                            }
+                                            // result.length = 0;
+                                            result.push(node);
+                                            paths.push(path);
+                                            return;
+                                    }
+                                    
+                                } else {
+                                    // drop all results until here
+                                    console.log('-> declaration and not found! clear results')
+                                    paths.length = 0;
+                                    result.length = 0;
+                                    return;
+                                }
+                                // console.log(node);
+
+                                // if (found){
+                                //     shouldStop = true;
+                                //     return;
+                                // }
+
+                                stopPaths.push(path);
+                                // result.splice(0, foundMeIndex);
+                                // if (found) return; else break;
+                                break;
+                            // break;
+                            default:
+                                break;
+                        }
+                    }
+                    result.push(node);
+                    paths.push(path);
+                    // console.log(`add: ${path}`);
+                    // */
+
+                }
+                // preorder
+                /*
+                if (node instanceof ScopedSymbol) {
+
+                    // for (const child of node.children) {
+                    // dfs(child);
+                    for (let i = 0; i < node.children.length; i++) {
+                    // for (let i = node.children.length - 1; i >= 0; i--) {
+                        // dfs(node.children[i]);
+                        dfs(node.children[i], [...path, i]);
+                    }
+                }
+                    //*/
+
+
+            }
+
+            dfs(root, []);
+            /*
+            // console.log(JSON.stringify(paths));
+            if (stopPaths.length > 0) {
+                const filteredNodes: (BaseSymbol | ScopedSymbol)[] = [];
+                // remove the index of the symbol that stopped the search, we are only interested in the branc
+
+
+                for (let i = 0; i < paths.length; i++) {
+                    for (let stopPath of stopPaths) {
+                        console.log(`${stopPath} == ${paths[i]} > ${isSameBranch(stopPath, paths[i])}`);
+                        // console.log(result[i]);
+                        // stopPath.pop();
+                        if (!isSameBranch(stopPath, paths[i])) {
+                            filteredNodes.push(result[i]);
+                        }
+                    }
+                    console.log('--');
+                }
+                // return filteredNodes;
+            }
+                */
+            /*
+                        function isSameBranch(path1: number[], path2: number[]): boolean {
+                            const minLength = Math.min(path1.length, path2.length);
+                            for (let i = 0; i < minLength; i++) {
+                                if (path1[i] !== path2[i]) return false;
+                            }
+                            return true;
+                        }
+            
+                        dfs(root, []);
+            
+                        if (stopPath) {
+                            const filteredNodes: (BaseSymbol | ScopedSymbol)[] = [];
+            
+                            const filteredPaths: number[][] = [];
+                            for (let i = 0; i < paths.length; i++) {
+                                if (isSameBranch(stopPath, paths[i])) {
+                                    filteredNodes.push(result[i]);
+                                    filteredPaths.push(paths[i]);
+                                }
+                            }
+                            console.log(filteredNodes)
+                            return filteredNodes;
+                            // return { nodes: filteredNodes, paths: filteredPaths };
+                        }
+            */
+            // console.log(result);
+            // console.log(paths);
+            return result;
+        }
+
         // search siblings of the root, need to do this all the way up
         // iterate over parents
 
@@ -585,20 +892,36 @@ export class ContextSymbolTable extends SymbolTable
             table.push(...siblings);
         }
         */
+        //    this.symbolWithContextSync
 
+
+        console.log('---dfs search---');
+
+        // let sym = this.resolveSync(symbol.name);
+
+        let searchStart = root.parent ? root.parent : root;
         // seach all the way up, do not return childs
-        if (root.parent) {
-            let test = root.parent;
+
+        const test = dfsCollectNodes(searchStart, symbol, symbol.name);
+
+        // console.log(test);
+        for (const sym of test) {
+            // console.log(sym);
+        }
+        table = test;
+        /*
+            let lookUp = root.parent;
             // console.log(test);
-            while (test) {
-                console.log(test);
-                let siblings = test.getAllSymbolsSync(BaseSymbol, true);
+            while (lookUp) {
+                // console.log(test);
+                let siblings = lookUp.getAllSymbolsSync(BaseSymbol, true);
                 table.push(...siblings);
-                if (test.parent) {
-                    test = test.parent;
+                if (lookUp.parent) {
+                    lookUp = lookUp.parent;
                 } else break;
             }
-        }
+            */
+
 
         // console.log(table);
         // console.log(ancestor.resolveSync(symbol.name, false));
