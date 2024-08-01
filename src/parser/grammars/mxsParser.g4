@@ -503,18 +503,20 @@ declarationExpression
         decl += variableDeclaration ( comma decl += variableDeclaration )*
 	;
 
-variableDeclaration: assignmentExpression | identifier
+variableDeclaration: identifier assignment?
 	;
 
 decl_scope: ( LOCAL | GLOBAL | PERSISTENT NL* GLOBAL)
 	;
 
 //---------------------------------------- ASSIGNMENT EXPRESSION
-assignmentExpression: left = destination EQ NL* right = expr
+assignmentExpression: left = destination right = assignment
 	;
 
 assignmentOpExpression: left = destination ASSIGN NL* right = expr
 	;
+
+assignment: EQ NL* expr;
 
 destination: accessor | de_ref | identifier | PATH
 	;

@@ -10,6 +10,8 @@ import
     VariableDeclSymbol,
     IdentifierSymbol,
     AssignmentExpressionSymbol,
+    AssignmentSymbol,
+    fnArgsSymbol,
 } from "./ContextSymbolTable.js";
 import { mxsLexer } from "../parser/mxsLexer.js";
 
@@ -25,6 +27,9 @@ import
     ExprOperandContext,
     Expr_operandContext,
     DeclarationExpressionContext,
+    AssignmentContext,
+    Fn_argsContext,
+    By_refContext,
 
 
 
@@ -73,17 +78,28 @@ export class symbolTableListener extends mxsParserListener
         //console.log(this.symbolStack[0]);
         this.popSymbol();
     }
-
+    public override enterFn_args = (ctx: Fn_argsContext): void => 
+    {
+        this.pushNewSymbol(fnArgsSymbol, ctx);
+    }
+    public override exitFn_args = (ctx: Fn_argsContext): void => 
+    {
+        this.popSymbol();
+    }
     // public override enterDeclarationExpression = (ctx: DeclarationExpressionContext): void => { }
     // public override exitDeclarationExpression = (ctx: DeclarationExpressionContext): void => { }
 
     public override enterVariableDeclaration = (ctx: VariableDeclarationContext): void =>
     {
+        /*
+        // AssignmentContext.enterVariableDeclaration
         let name = ctx.children[0] instanceof AssignmentExpressionContext
             ? ctx.children[0]._left?.getText()
             : ctx.children[0].getText()
 
         this.pushNewSymbol(VariableDeclSymbol, ctx, name);
+        */
+       this.pushNewSymbol(VariableDeclSymbol, ctx,  ctx.identifier().getText());
     }
 
     public override exitVariableDeclaration = (ctx: VariableDeclarationContext): void =>
@@ -93,12 +109,21 @@ export class symbolTableListener extends mxsParserListener
 
     public override enterAssignmentExpression = (ctx: AssignmentExpressionContext): void =>
     {
-        this.pushNewSymbol(AssignmentExpressionSymbol, ctx, ctx._left?.getText());
+        // this.pushNewSymbol(AssignmentExpressionSymbol, ctx, ctx._left?.getText());
+        this.pushNewSymbol(AssignmentExpressionSymbol, ctx, ctx.destination().getText());
     }
 
     public override exitAssignmentExpression = (ctx: AssignmentExpressionContext): void =>
     {
         this.popSymbol();
+    }
+
+    public override enterAssignment = (ctx: AssignmentContext): void => {
+        // this.pushNewSymbol(AssignmentSymbol, ctx);
+    }
+
+    public override exitAssignment = (ctx: AssignmentContext): void => {
+        // this.popSymbol();
     }
 
     public override exitExprOperand = (ctx: ExprOperandContext): void =>
@@ -131,7 +156,11 @@ export class symbolTableListener extends mxsParserListener
 
         this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
     }
-
+    public override exitBy_ref = (ctx: By_refContext): void =>
+    {
+        // emmiting an identifier token here...
+        this.addNewSymbol(IdentifierSymbol, ctx, ctx.ids()?.getText() ?? ctx.PATH()?.getText());
+    }
     public override visitTerminal = (node: TerminalNode): void =>
     {
         //operators
@@ -162,7 +191,6 @@ export class symbolTableListener extends mxsParserListener
     {
         const symbol = this.symbolTable.addNewSymbolOfType(type, this.currentSymbol(), ...args);
         symbol.context = context;
-
         return symbol;
     }
 

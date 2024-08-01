@@ -7,9 +7,10 @@ import { ContextErrorListener } from "./ContextErrorListener.js";
 import * as fs from "fs";
 import { DiagnosticType, IDefinition, IDiagnosticEntry, ISymbolInfo, SymbolKind } from "../types.js";
 import { ContextSymbolTable, SymbolSupport } from "./ContextSymbolTable.js";
-import { BaseSymbol } from "antlr4-c3";
+import { BaseSymbol, IScopedSymbol, ScopedSymbol, SymbolTable, } from "antlr4-c3";
 import { symbolTableListener } from "./symbolTableListener.js";
 import { BackendUtils } from "./BackendUtils.js";
+
 // One context for each valid document
 export class SourceContext
 {
@@ -311,98 +312,49 @@ export class SourceContext
         return result;
     }
 
+    public getTopMostParent(symbol: BaseSymbol): ContextSymbolTable | IScopedSymbol
+    {
+        // not topmost symbol
+        if (!symbol.parent?.parent?.context){
+            return this.symbolTable;
+        }
+        // console.log(symbol.parent instanceof ContextSymbolTable);
+        let symbolTopMostParent = symbol.parent;
+        while (symbolTopMostParent.parent) {
+            if (symbolTopMostParent?.parent.parent !== undefined) {
+                // console.log(symbolTopMostParent);
+                symbolTopMostParent = symbolTopMostParent?.parent;
+            } else break;
+        }
+        return symbolTopMostParent;
+    }
+    
     public symbolAtPosition(
         row: number,
-        column: number,
-        limitToChildren: boolean): ISymbolInfo | undefined
+        column: number): ISymbolInfo | undefined
     {
         if (!this.tree) {
             return undefined;
         }
 
-
-        const terminal = BackendUtils.parseTreeFromPosition(this.tree, column, row);
-        if (!terminal || !(terminal instanceof TerminalNode)) {
+        const symbol = 
+            this.symbolTable.getSymbolAtPosition( row, column );
+        return symbol ? this.symbolTable.getSymbolInfo(symbol) : undefined;
+    }
+    
+    public symbolDefinition(
+        row: number,
+        column: number): ISymbolInfo | undefined
+    {
+        if (!this.tree) {
             return undefined;
         }
 
-        // If limitToChildren is set we only want to show info for symbols in specific contexts.
-        if (!limitToChildren) {
-            return this.getSymbolInfo(terminal.getText());
-        }
-
-        //TODO: check
-        // let parent = (terminal.parent as ParserRuleContext);
-        /*
-        const symbol = this.symbolTable.symbolContainingContext(terminal);
-        if (symbol) {
-            return this.getSymbolInfo(symbol);
-        }
-        */
-        // console.log(parent.ruleIndex);
-
-        /*
-        if (parent.ruleIndex === ANTLRv4Parser.RULE_identifier) {
-            parent = (parent.parent as ParserRuleContext);
-            }
-       //  */
-        /*
-        const symbol = this.symbolTable.symbolContainingContext(terminal);
-        // symbol = this.resolveSymbol(symbol.name);
-        if (symbol) {
-            return this.getSymbolInfo(symbol);
-        }
-        */
-        /*
-         switch (parent.ruleIndex) {
-             case ANTLRv4Parser.RULE_ruleref:
-             case ANTLRv4Parser.RULE_terminalDef: {
-                 let symbol = this.symbolTable.symbolContainingContext(terminal);
-                 if (symbol) {
-                     // This is only the reference to a symbol. See if that symbol exists actually.
-                     symbol = this.resolveSymbol(symbol.name);
-                     if (symbol) {
-                         return this.getSymbolInfo(symbol);
-                     }
-                 }
- 
-                 break;
-             }
- 
-             case ANTLRv4Parser.RULE_actionBlock:
-             case ANTLRv4Parser.RULE_ruleAction:
-             case ANTLRv4Parser.RULE_lexerCommandExpr:
-             case ANTLRv4Parser.RULE_optionValue:
-             case ANTLRv4Parser.RULE_delegateGrammar:
-             case ANTLRv4Parser.RULE_modeSpec:
-             case ANTLRv4Parser.RULE_setElement: {
-                 const symbol = this.symbolTable.symbolContainingContext(terminal);
-                 if (symbol) {
-                     return this.getSymbolInfo(symbol);
-                 }
- 
-                 break;
-             }
- 
-             case ANTLRv4Parser.RULE_lexerCommand:
-             case ANTLRv4Parser.RULE_lexerCommandName: {
-                 const symbol = this.symbolTable.symbolContainingContext(terminal);
-                 if (symbol) {
-                     return this.getSymbolInfo(symbol);
-                 }
- 
-                 break;
-             }
- 
-             default: {
-                 break;
-             }
-         }
- 
-         */
-        return undefined;
+        const symbol = this.symbolTable.getSymbolAtPosition( row, column );
+        const definition = this.symbolTable.getSymbolDefinition(symbol!);
+        return definition ? this.symbolTable.getSymbolInfo(definition) : undefined;
     }
-    
+
     /**
      * Returns the symbol at the given position or one of its outer scopes.
      *
@@ -455,79 +407,7 @@ export class SourceContext
 
         return undefined;
     }
-    public symbolInfoAtPosition(line: number, character: number, limitToChildren = true): DocumentSymbol[] | undefined
-    {
-        if (!this.tree) {
-            return undefined;
-        }
 
-        /*
-        const terminal = BackendUtils.parseTreeFromPosition(this.tree, column, row);
-        if (!terminal || !(terminal instanceof TerminalNode)) {
-            return undefined;
-        }
-
-        // If limitToChildren is set we only want to show info for symbols in specific contexts.
-        // These are contexts which are used as subrules in rule definitions.
-        if (!limitToChildren) {
-            return this.getSymbolInfo(terminal.getText());
-        }
-
-        let parent = (terminal.parent as ParserRuleContext);
-        if (parent.ruleIndex === ANTLRv4Parser.RULE_identifier) {
-            parent = (parent.parent as ParserRuleContext);
-        }
-
-        switch (parent.ruleIndex) {
-            case ANTLRv4Parser.RULE_ruleref:
-            case ANTLRv4Parser.RULE_terminalDef: {
-                let symbol = this.symbolTable.symbolContainingContext(terminal);
-                if (symbol) {
-                    // This is only the reference to a symbol. See if that symbol exists actually.
-                    symbol = this.resolveSymbol(symbol.name);
-                    if (symbol) {
-                        return this.getSymbolInfo(symbol);
-                    }
-                }
-
-                break;
-            }
-
-            case ANTLRv4Parser.RULE_actionBlock:
-            case ANTLRv4Parser.RULE_ruleAction:
-            case ANTLRv4Parser.RULE_lexerCommandExpr:
-            case ANTLRv4Parser.RULE_optionValue:
-            case ANTLRv4Parser.RULE_delegateGrammar:
-            case ANTLRv4Parser.RULE_modeSpec:
-            case ANTLRv4Parser.RULE_setElement: {
-                const symbol = this.symbolTable.symbolContainingContext(terminal);
-                if (symbol) {
-                    return this.getSymbolInfo(symbol);
-                }
-
-                break;
-            }
-
-            case ANTLRv4Parser.RULE_lexerCommand:
-            case ANTLRv4Parser.RULE_lexerCommandName: {
-                const symbol = this.symbolTable.symbolContainingContext(terminal);
-                if (symbol) {
-                    return this.getSymbolInfo(symbol);
-                }
-
-                break;
-            }
-
-            default: {
-                break;
-            }
-        }
-
-        return undefined;
-        */
-        //...
-        return undefined;
-    }
     public listTopLevelSymbols(includeDependencies: boolean): ISymbolInfo[]
     {
         return this.symbolTable.listTopLevelSymbols(includeDependencies);

@@ -13,11 +13,10 @@ export class mxsDefinitionProvider implements DefinitionProvider
     {
         return new Promise((resolve) =>
         {
-            const info = this.backend.symbolInfoAtPosition(
+            const info = this.backend.symbolInfoDefinition(
                 document.uri,
                 position.line + 1,
-                position.character,
-                false);
+                position.character);
 
             if (info) {
                 // VS code shows the text for the range given here on holding ctrl/cmd, which is rather

@@ -1,6 +1,7 @@
 import { DocumentSymbol, SymbolInformation, Uri } from 'vscode';
 import { SourceContext } from './SourceContext.js';
 import { ISymbolInfo } from '../types.js';
+import { BaseSymbol } from 'antlr4-c3';
 
 export interface IContextEntry
 {
@@ -144,10 +145,17 @@ export class mxsBackend
     public symbolInfoAtPosition(
         uri: Uri,
         line: number,
-        character: number,
-        limitToChildren = true): ISymbolInfo | undefined
+        character: number): ISymbolInfo | undefined
     {
-        return this.getContext(uri).symbolAtPosition(line, character, limitToChildren);
+        return this.getContext(uri).symbolAtPosition(line, character);
+    }
+
+    public symbolInfoDefinition(
+        uri: Uri,
+        line: number,
+        character: number): ISymbolInfo | undefined
+    {
+        return this.getContext(uri).symbolDefinition(line, character);
     }
 
     public infoForSymbol(uri: Uri, symbol: string)
@@ -188,14 +196,32 @@ export class mxsBackend
     {
         
         const context = this.getContext(uri);
+        
         const result = context.symbolTable.getSymbolOccurrences(symbolName, false);
-        /*
+        // /*
         // Sort result by kind. This way rule definitions appear before rule references and are re-parsed first.
         return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => {
             return lhs.kind - rhs.kind;
         });
-        */
-        return result;
+        // */
+        // return result;
+    }
+
+    public symbolInfoAtPositionCtxOccurrences(
+        uri: Uri,
+        line: number,
+        character: number): ISymbolInfo[] | undefined
+    {
+        const context = this.getContext(uri);
+        const symbol = context.symbolTable.getSymbolAtPosition(line, character);
+       
+        if (!symbol) { return undefined; }
+        
+        const result = context.symbolTable.getScopedSymbolOccurrences(symbol);
+
+        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => {
+            return lhs.kind - rhs.kind;
+        });
     }
 
     // code completion

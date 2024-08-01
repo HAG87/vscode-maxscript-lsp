@@ -14,16 +14,38 @@ export class mxsReferenceProvider implements ReferenceProvider
     {
         return new Promise((resolve) =>
         {
-            //TODO: fix info retrieval!
-            // maybe related on how im resolving the listener, and scopes
+            const occurrences = this.backend.symbolInfoAtPositionCtxOccurrences(
+                document.uri,
+                position.line + 1,
+                position.character);
+            
+            if (occurrences) {
+                const result: Location[] = [];
+                for (const symbol of occurrences) {
+                    if (symbol.definition) {
+
+                        const range = new Range(
+                            symbol.definition.range.start.row - 1,
+                            symbol.definition.range.start.column,
+                            symbol.definition.range.end.row - 1,
+                            symbol.definition.range.start.column + symbol.name.length,
+                        );
+
+                        const location = new Location(Uri.parse(symbol.source), range);
+                        result.push(location);
+                    }
+                }
+                resolve(result);
+            } else resolve(null);
+            /*
             const info = this.backend.symbolInfoAtPosition(
                 document.uri,
                 position.line + 1,
                 position.character,
-                true);
+                false);
 
             const result: Location[] = [];
-
+            
             if (info) {
                 const occurrences = this.backend.getSymbolOccurrences(document.uri, info.name);
                 for (const symbol of occurrences) {
@@ -42,6 +64,7 @@ export class mxsReferenceProvider implements ReferenceProvider
                 }
                 resolve(result);
             } else resolve(null);
+             // */
         });
     }
 }

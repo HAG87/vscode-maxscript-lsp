@@ -1,8 +1,10 @@
-import { BaseSymbol, ISymbolTableOptions, SymbolTable, SymbolConstructor, ScopedSymbol } from "antlr4-c3";
-import { ParserRuleContext, ParseTree } from "antlr4ng";
+import { VariableSymbol, LiteralSymbol, BaseSymbol, ISymbolTableOptions, SymbolTable, SymbolConstructor, ScopedSymbol, IScopedSymbol } from "antlr4-c3";
+import { ParserRuleContext, ParseTree, TerminalNode } from "antlr4ng";
 import { SourceContext } from "./SourceContext.js";
 import { ISymbolInfo, SymbolKind } from "../types.js";
-
+import { BackendUtils } from "./BackendUtils.js";
+import { mxsParser } from "../parser/mxsParser.js";
+import { BinaryLifting } from "./symbolSearch.js";
 //Definitions
 export class PluginDefinitionSymbol extends ScopedSymbol { }
 export class MacroScriptDefinitionSymbol extends ScopedSymbol { }
@@ -13,11 +15,14 @@ export class RcMenuDefinitionSymbol extends ScopedSymbol { }
 
 export class StructDefinitionSymbol extends ScopedSymbol { }
 export class FnDefinitionSymbol extends ScopedSymbol { }
+export class fnArgsSymbol extends ScopedSymbol { }
 
 export class ControlDefinition extends BaseSymbol { }
 
 export class VariableDeclSymbol extends ScopedSymbol { }
-export class AssignmentExpressionSymbol extends ScopedSymbol {}
+export class AssignmentExpressionSymbol extends ScopedSymbol { }
+
+export class AssignmentSymbol extends ScopedSymbol { }
 
 export class IdentifierSymbol extends BaseSymbol { }
 
@@ -197,9 +202,9 @@ export class ContextSymbolTable extends SymbolTable
      *
      * @returns The symbol covering the given context or undefined if nothing was found.
      */
-    public symbolContainingContext(context: ParseTree): BaseSymbol | undefined
+    public symbolContainingContext(context: ParseTree): BaseSymbol | ScopedSymbol | undefined
     {
-        const findRecursive = (parent: ScopedSymbol): BaseSymbol | undefined =>
+        const findRecursive = (parent: ScopedSymbol): BaseSymbol | ScopedSymbol | undefined =>
         {
             for (const symbol of parent.children) {
                 if (!symbol.context) {
@@ -353,8 +358,30 @@ export class ContextSymbolTable extends SymbolTable
     // TODO: ScopedSymbol???
     public getSymbolInfo(symbol: string | BaseSymbol): ISymbolInfo | undefined
     {
+        /*
+          function resolveSync(name, localOnly = false) {
+            for (const child of this.#children) {
+            if (child.name === name) {
+                return child;
+            }
+            }
+            if (!localOnly) {
+            if (this.parent) {
+                return this.parent.resolveSync(name, false);
+            }
+            }
+            return void 0;
+        }
+    // */
+        // all the symbols
+        // let symbols = this.getAllSymbolsSync(BaseSymbol,false);
+        // recursively look for the symbol
+
+        // console.log(symbols);
+
+
         if (!(symbol instanceof BaseSymbol)) {
-            const temp = this.resolveSync(symbol, false);
+            const temp = this.resolveSync(symbol);
             if (!temp) {
                 return undefined;
             }
@@ -410,34 +437,194 @@ export class ContextSymbolTable extends SymbolTable
             name: symbol.name,
             source: (symbol.context && symbolTable && symbolTable.owner) ? symbolTable.owner.sourceUri.toString() : "maxscript",
             definition: SourceContext.definitionForContext(symbol.context, true),
-            // description: undefined,
+            description: undefined,
         };
 
     }
 
+    private findRoot(symbol: BaseSymbol): ContextSymbolTable
+    {
+        if (symbol.parent) {
+            let root = symbol.parent;
+            while (root) {
+                if (root.parent) {
+                    root = root.parent;
+                } else {
+                    return root as ContextSymbolTable;
+                }
+            }
+        }
+        return symbol as ContextSymbolTable;
+    }
+
+    public getTopMostParent(symbol: BaseSymbol): ContextSymbolTable | IScopedSymbol
+    {
+        // not topmost symbol
+        if (!symbol.parent?.parent?.context) {
+            return this;
+        }
+        // console.log(symbol.parent instanceof ContextSymbolTable);
+        let symbolTopMostParent = symbol.parent;
+        while (symbolTopMostParent.parent) {
+            if (symbolTopMostParent?.parent.parent !== undefined) {
+                // console.log(symbolTopMostParent);
+                symbolTopMostParent = symbolTopMostParent?.parent;
+            } else break;
+        }
+        return symbolTopMostParent;
+    }
+
+    public getSymbolAtPosition(
+        row: number,
+        column: number): BaseSymbol | undefined
+    {
+        if (!this.tree) {
+            return undefined;
+        }
+
+        // this will return the token at the position
+        const terminal = BackendUtils.parseTreeFromPosition(this.tree, column, row);
+        if (!terminal || !(terminal instanceof TerminalNode)) {
+            return undefined;
+        }
+
+        let parent = (terminal.parent as ParserRuleContext);
+        // filter!
+        if (parent.ruleIndex !== mxsParser.RULE_ids) {
+            return undefined;
+        }
+        return this.symbolContainingContext(terminal);
+    }
+
+    public getSymbolDefinition(symbol: BaseSymbol): BaseSymbol
+    {
+        // let ancestor = this.getTopMostParent(symbol) as ContextSymbolTable;
+        let ancestor = symbol.root as ContextSymbolTable;
+
+        // check if the symbol is the id of a Definition
+        // do not get symbol definition in these rules
+        let parentRule = symbol.parent?.context as ParserRuleContext;
+        if (
+            parentRule.ruleIndex === mxsParser.RULE_variableDeclaration ||
+            parentRule.ruleIndex === mxsParser.RULE_fn_args
+            //...
+        ) {
+            return symbol;
+        }
+
+        // in symbol scope
+        let prospects: BaseSymbol[] = ancestor.getAllNestedSymbolsSync(symbol.name);
+
+        let prospect: BaseSymbol = prospects[0];
+
+        // handle some special cases
+        parentRule = symbol.root?.context as ParserRuleContext;
+
+        if (
+            parentRule.ruleIndex === mxsParser.RULE_fnDefinition
+            //...
+        ) {
+            let prospectRule = prospect.parent?.context as ParserRuleContext;
+            if (
+                prospectRule.ruleIndex === mxsParser.RULE_fn_args
+                //..
+            ) {
+                return prospect;
+            }
+        }
+
+        // seach in top-level symbols as last chance
+        if (ancestor.parent) {
+            let topScope = ancestor.parent;
+            while (topScope) {
+                // let siblings = topScope.getAllSymbolsSync(BaseSymbol, true);
+                let sibling = topScope.resolveSync(symbol.name, true);
+                if (sibling) {
+                    prospect = sibling;
+                    break;
+                }
+                if (topScope.parent) {
+                    topScope = topScope.parent;
+                } else break;
+            }
+        }
+
+        /*
+        // option: seach for a common ancestor
+        let ancestor = this.symbolTable;
+        const table = ancestor.getAllNestedSymbolsSync(symbol.name);
+        const searcher = new BinaryLifting(ancestor as ScopedSymbol);
+        
+        for (const prospect of table) {
+            // const lca = searcher.lca(symbol as ScopedSymbol, prospect);
+            // console.log(lca);
+            if (searcher.lca(symbol as ScopedSymbol, prospect)) {
+                symbol = prospect;
+                break;
+            }
+        }
+        //*/
+        return prospect;
+    }
+
+    public getScopedSymbolOccurrences(symbol: BaseSymbol)
+    {
+        // search on the same scope or in parent scope, NOT on childs of siblings
+
+        //search on the root
+        let root = symbol.root as ScopedSymbol
+        const table = root.getAllNestedSymbolsSync(symbol.name);
+        // search siblings of the root, need to do this all the way up
+        // iterate over parents
+
+        /*
+        let ancestor = this.getTopMostParent(symbol) as ContextSymbolTable;
+        // let ancestor = root.parent;
+        if (ancestor) {
+            let siblings = ancestor.getAllSymbolsSync(BaseSymbol, true);
+            table.push(...siblings);
+        }
+        */
+
+        // seach all the way up, do not return childs
+        if (root.parent) {
+            let test = root.parent;
+            // console.log(test);
+            while (test) {
+                console.log(test);
+                let siblings = test.getAllSymbolsSync(BaseSymbol, true);
+                table.push(...siblings);
+                if (test.parent) {
+                    test = test.parent;
+                } else break;
+            }
+        }
+
+        // console.log(table);
+        // console.log(ancestor.resolveSync(symbol.name, false));
+
+        return this.getSymbolOccurrencesInternal(symbol.name, table);
+    }
+
     public getSymbolOccurrences(symbolName: string, localOnly: boolean): ISymbolInfo[]
     {
-        const result: ISymbolInfo[] = [];
-        // this will ignore scope...
         const symbols = this.getAllSymbolsSync(BaseSymbol, localOnly);
+
+        return this.getSymbolOccurrencesInternalNested(symbolName, symbols);
+    }
+
+    private getSymbolOccurrencesInternal(symbolName: string, symbols: BaseSymbol[]): ISymbolInfo[]
+    {
+        const result: ISymbolInfo[] = [];
         for (const symbol of symbols) {
-            // owner is the document URI
-            const owner = (symbol.root as ContextSymbolTable).owner;
+            const owner = this.findRoot(symbol).owner;
+
             if (owner) {
                 // symbol has context and name matches the search...
                 if (symbol.context && symbol.name === symbolName) {
-                    // for high level symbols
-                    // for values, like identifiers
-                    // childrens
+
                     let context = symbol.context;
-                    /*
-                    
-                    if (symbol instanceof FragmentTokenSymbol) {
-                        context = (symbol.context as ParserRuleContext).children[1];
-                    } else if (symbol instanceof TokenSymbol || symbol instanceof RuleSymbol) {
-                        context = (symbol.context as ParserRuleContext).children[0];
-                    }
-                    */
+
                     result.push({
                         kind: SourceContext.getKindFromSymbol(symbol),
                         name: symbolName,
@@ -447,21 +634,54 @@ export class ContextSymbolTable extends SymbolTable
                     });
 
                 }
+            }
+        }
+
+        return result;
+    }
+
+    private getSymbolOccurrencesInternalNested(symbolName: string, symbols: BaseSymbol[], localOnly = true): ISymbolInfo[]
+    {
+        const result: ISymbolInfo[] = [];
+        // this will ignore scope...
+        for (const symbol of symbols) {
+            // owner is the document URI
+            // const owner = (symbol.root as ContextSymbolTable).owner;
+            const owner = this.findRoot(symbol).owner;
+
+            if (owner) {
                 // childrens
-                /*
                 if (symbol instanceof ScopedSymbol) {
+                    // const references = symbol.getAllNestedSymbolsSync();
                     const references = symbol.getAllNestedSymbolsSync(symbolName);
+
                     for (const reference of references) {
+                        if (reference.context && reference.name === symbolName) {
+                            // console.log(reference);
+                            result.push({
+                                kind: SourceContext.getKindFromSymbol(reference),
+                                name: symbolName,
+                                source: owner.sourceUri.toString(),
+                                definition: SourceContext.definitionForContext(reference.context, true),
+                                // description: undefined,
+                            });
+                        }
+                    }
+                } else {
+                    // symbol has context and name matches the search...
+                    if (symbol.context && symbol.name === symbolName) {
+                        let context = symbol.context;
+
                         result.push({
-                            kind: SourceContext.getKindFromSymbol(reference),
+                            kind: SourceContext.getKindFromSymbol(symbol),
                             name: symbolName,
                             source: owner.sourceUri.toString(),
-                            definition: SourceContext.definitionForContext(reference.context, true),
+                            definition: SourceContext.definitionForContext(context, true),
                             // description: undefined,
                         });
+
                     }
                 }
-                // */
             }
         }
 
