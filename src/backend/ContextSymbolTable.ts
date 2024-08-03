@@ -498,48 +498,123 @@ export class ContextSymbolTable extends SymbolTable
         return this.symbolContainingContext(terminal);
     }
 
+    private seachSymbolDefinition(root: BaseSymbol, entry: BaseSymbol): BaseSymbol | undefined
+    {
+        let found = false;
+        let stop = false;
+        const entryIndex = (entry.context as ParserRuleContext).start?.tokenIndex;
+
+        function _dfs(node: BaseSymbol): BaseSymbol | undefined
+        {
+            if (stop) { return; }
+
+            //posorder
+            if (node instanceof ScopedSymbol) {
+                // for (let child of node.children) { _dfs(child); }
+                for (let i = node.children.length - 1; i >= 0; i--) {
+                    // if (!stop) _dfs(node.children[i]);
+                    const result = _dfs(node.children[i]);
+                    if (result) return result;
+                }
+
+            }
+
+            // seach for the symbol
+            const nodeIndex = (node.context as ParserRuleContext).start?.tokenIndex;
+
+            // console.log(`${nodeIndex} --- ${entryIndex}`);
+            if (node.name === entry.name && nodeIndex === entryIndex) {
+                // console.log(`found: ${nodeIndex} --- ${entryIndex}`);
+                found = true;
+                // return node;
+                return;
+            }
+
+            if (found && node.name === entry.name) {
+                // console.log(`${nodeIndex} --- ${entryIndex}`);
+                if (node.parent) {
+                    const rule = node.parent.context as ParserRuleContext;
+                    switch (rule.ruleIndex) {
+                        case mxsParser.RULE_variableDeclaration:
+                        case mxsParser.RULE_fn_args:
+                        case mxsParser.RULE_fn_params:
+                            //...
+                            console.log(`stopped at: ${nodeIndex}`);
+                            stop = true;
+                            return node.parent;
+                        case mxsParser.RULE_fnDefinition:
+                            //...
+                            if (node.parent.name === node.name) {
+                                console.log(`stopped at: ${nodeIndex}`);
+                                stop = true;
+                                return node.parent;
+                            }
+                            break;
+                        default:
+                            // this will end with the first appearance of the symbol.
+                            // maybe will work for loose typed vars?
+                            // return node;
+                            break;
+                    }
+                }
+
+            }
+            //inorder
+            return;
+        }
+        return _dfs(root);
+    }
+
     public getSymbolDefinition(symbol: BaseSymbol): BaseSymbol
     {
-        // let ancestor = this.getTopMostParent(symbol) as ContextSymbolTable;
-        let ancestor = symbol.root as ContextSymbolTable;
-
         // check if the symbol is the id of a Definition
         // do not get symbol definition in these rules
         let parentRule = symbol.parent?.context as ParserRuleContext;
-
         switch (parentRule.ruleIndex) {
             case mxsParser.RULE_variableDeclaration:
             case mxsParser.RULE_fn_args:
             case mxsParser.RULE_fn_params:
+                //...
+                // console.log('symbol is in definition!');
                 return symbol;
-            // break;
             default:
                 break;
         }
 
+        // let ancestor = this.getTopMostParent(symbol) as ContextSymbolTable;
+        // topmost parent that its not _ContextSymbolTable
+        // const ancestor = symbol.symbolPath[symbol.symbolPath.length - 2] as ContextSymbolTable;
+        let ancestor = symbol.root as ContextSymbolTable;
         // in symbol scope
-        let prospects: BaseSymbol[] = ancestor.getAllNestedSymbolsSync(symbol.name);
-
-        let prospect: BaseSymbol = prospects[0];
+        const prospects: BaseSymbol[] = ancestor.getAllNestedSymbolsSync(symbol.name);
 
         // handle some special cases
-        parentRule = symbol.root?.context as ParserRuleContext;
-
-        if (
-            parentRule.ruleIndex === mxsParser.RULE_fnDefinition
-            //...
-        ) {
-            let prospectRule = prospect.parent?.context as ParserRuleContext;
-
-            if (
-                prospectRule.ruleIndex === mxsParser.RULE_fn_args
-                //..
-            ) {
-                return prospect;
-            }
+        let prospect: BaseSymbol = prospects[0];
+        parentRule = ancestor.context as ParserRuleContext;
+        // /*
+        switch (parentRule.ruleIndex) {
+            case mxsParser.RULE_fnDefinition:
+                //...
+                const prospectRule = prospect.parent?.context as ParserRuleContext;
+                switch (prospectRule.ruleIndex) {
+                    case mxsParser.RULE_fn_args:
+                        //...
+                        // console.log('first appearance in paren is definition!');
+                        return prospect;
+                }
+                break;
         }
+        // */
+        //check if the symbol is the only one!
+        // if (prospects.length === 1) return prospects[0];
 
-        // seach in top-level symbols as last chance
+        //walk the tree, starting from the symbol, going up parents...
+        // the problem is with undeclared variables, I dont know how to define the scope start... or where to stop
+        // let searchDefinition = this.seachSymbolDefinition(this, symbol);
+        // if (searchDefinition) return searchDefinition;
+
+        // /*
+        // seach in top-level symbols as last chance, unreilable
         if (ancestor.parent) {
             let topScope = ancestor.parent;
             while (topScope) {
@@ -554,7 +629,7 @@ export class ContextSymbolTable extends SymbolTable
                 } else break;
             }
         }
-
+        // */
         /*
         // option: seach for a common ancestor
         let ancestor = this.symbolTable;

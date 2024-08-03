@@ -315,7 +315,7 @@ export class SourceContext
     public getTopMostParent(symbol: BaseSymbol): ContextSymbolTable | IScopedSymbol
     {
         // not topmost symbol
-        if (!symbol.parent?.parent?.context){
+        if (!symbol.parent?.parent?.context) {
             return this.symbolTable;
         }
         // console.log(symbol.parent instanceof ContextSymbolTable);
@@ -328,30 +328,24 @@ export class SourceContext
         }
         return symbolTopMostParent;
     }
-    
-    public symbolAtPosition(
-        row: number,
-        column: number): ISymbolInfo | undefined
-    {
-        if (!this.tree) {
-            return undefined;
-        }
 
-        const symbol = 
-            this.symbolTable.getSymbolAtPosition( row, column );
+    public symbolAtPosition(row: number, column: number): ISymbolInfo | undefined
+    {
+        if (!this.tree) return undefined;
+
+        const symbol =
+            this.symbolTable.getSymbolAtPosition(row, column);
         return symbol ? this.symbolTable.getSymbolInfo(symbol) : undefined;
     }
-    
-    public symbolDefinition(
-        row: number,
-        column: number): ISymbolInfo | undefined
-    {
-        if (!this.tree) {
-            return undefined;
-        }
 
-        const symbol = this.symbolTable.getSymbolAtPosition( row, column );
-        const definition = this.symbolTable.getSymbolDefinition(symbol!);
+    public symbolDefinition(row: number, column: number): ISymbolInfo | undefined
+    {
+        if (!this.tree) return undefined;
+
+        const symbol =
+            this.symbolTable.getSymbolAtPosition(row, column);
+        const definition =
+            this.symbolTable.getSymbolDefinition(symbol!);
         return definition ? this.symbolTable.getSymbolInfo(definition) : undefined;
     }
 
