@@ -333,7 +333,11 @@ fnDefinition
 		( NL* fn_args )*
 		(NL* fn_params)*
 		NL* EQ NL*
-		fn_body = expr
+		fn_body
+	;
+
+fn_body
+	: expr
 	;
 
 fn_args

@@ -1,6 +1,17 @@
-import { LiteralSymbol, BlockSymbol, BaseSymbol, VariableSymbol, SymbolConstructor, ScopedSymbol } from "antlr4-c3";
-import { ParseTree, ParserRuleContext, TerminalNode } from "antlr4ng";
-
+import {
+    LiteralSymbol,
+    /* BlockSymbol, */
+    BaseSymbol,
+    VariableSymbol,
+    SymbolConstructor,
+    ScopedSymbol
+} from "antlr4-c3";
+import {
+    ParseTree,
+    ParserRuleContext,
+    TerminalNode
+} from "antlr4ng";
+// import { mxsLexer } from "../parser/mxsLexer.js";
 import { mxsParserListener } from "../parser/mxsParserListener.js";
 import
 {
@@ -12,9 +23,9 @@ import
     AssignmentExpressionSymbol,
     AssignmentSymbol,
     fnArgsSymbol,
+    ExpSeqSymbol,
+    fnParamsSymbol,
 } from "./ContextSymbolTable.js";
-import { mxsLexer } from "../parser/mxsLexer.js";
-
 import
 {
     FnDefinitionContext,
@@ -30,18 +41,17 @@ import
     AssignmentContext,
     Fn_argsContext,
     By_refContext,
-
-
-
+    ExprContext,
+    Expr_seqContext,
+    Fn_paramsContext,
+    Fn_bodyContext,
 } from "../parser/mxsParser.js";
 
 export class symbolTableListener extends mxsParserListener
 {
     private symbolStack: BaseSymbol[] = [];
 
-    public constructor(
-        private symbolTable: ContextSymbolTable
-    )
+    public constructor( private symbolTable: ContextSymbolTable )
     {
         super();
     }
@@ -59,7 +69,24 @@ export class symbolTableListener extends mxsParserListener
         return this.symbolStack.length === 0 ? "" : this.symbolStack[0].name;
     }
     //-------------------------------------------------------------------------
-
+    /*
+    public override enterExpr = (ctx: ExprContext): void => {
+        this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString());
+    }
+    public override exitExpr = (ctx: ExprContext): void => {
+        this.popSymbol();
+    }
+    // */
+    /*
+    public override enterExpr_seq = (ctx: Expr_seqContext): void => {
+        
+        this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString());
+    }
+    
+    public override exitExpr_seq = (ctx: Expr_seqContext): void => {
+        this.popSymbol();
+    }
+    */
     public override enterStructDefinition = (ctx: StructDefinitionContext): void =>
     {
         this.pushNewSymbol(StructDefinitionSymbol, ctx, ctx._str_name?.getText());
@@ -68,7 +95,7 @@ export class symbolTableListener extends mxsParserListener
     {
         this.popSymbol();
     }
-
+    // fn defintition
     public override enterFnDefinition = (ctx: FnDefinitionContext): void =>
     {
         this.pushNewSymbol(FnDefinitionSymbol, ctx, ctx._fn_name?.getText());
@@ -86,6 +113,24 @@ export class symbolTableListener extends mxsParserListener
     {
         this.popSymbol();
     }
+    public override enterFn_params = (ctx: Fn_paramsContext): void =>
+    {
+        this.pushNewSymbol(fnParamsSymbol, ctx);
+    }
+    public override exitFn_params = (ctx: Fn_paramsContext): void =>
+    {
+        this.popSymbol();
+    }
+    public override enterFn_body = (ctx: Fn_bodyContext): void =>
+    {
+        this.pushNewSymbol(ExpSeqSymbol, ctx);
+    }
+    public override exitFn_body = (ctx: Fn_bodyContext): void =>
+    {
+        this.popSymbol();
+    }
+
+
     // public override enterDeclarationExpression = (ctx: DeclarationExpressionContext): void => { }
     // public override exitDeclarationExpression = (ctx: DeclarationExpressionContext): void => { }
 
@@ -99,7 +144,7 @@ export class symbolTableListener extends mxsParserListener
 
         this.pushNewSymbol(VariableDeclSymbol, ctx, name);
         */
-       this.pushNewSymbol(VariableDeclSymbol, ctx,  ctx.identifier().getText());
+        this.pushNewSymbol(VariableDeclSymbol, ctx, ctx.identifier().getText());
     }
 
     public override exitVariableDeclaration = (ctx: VariableDeclarationContext): void =>
@@ -118,11 +163,13 @@ export class symbolTableListener extends mxsParserListener
         this.popSymbol();
     }
 
-    public override enterAssignment = (ctx: AssignmentContext): void => {
+    public override enterAssignment = (ctx: AssignmentContext): void =>
+    {
         // this.pushNewSymbol(AssignmentSymbol, ctx);
     }
 
-    public override exitAssignment = (ctx: AssignmentContext): void => {
+    public override exitAssignment = (ctx: AssignmentContext): void =>
+    {
         // this.popSymbol();
     }
 
