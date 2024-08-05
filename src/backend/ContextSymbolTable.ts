@@ -1,4 +1,4 @@
-import { VariableSymbol, LiteralSymbol, BaseSymbol, ISymbolTableOptions, SymbolTable, SymbolConstructor, ScopedSymbol, IScopedSymbol } from "antlr4-c3";
+import { VariableSymbol, LiteralSymbol, /* BlockSymbol ,*/ BaseSymbol, ISymbolTableOptions, SymbolTable, SymbolConstructor, IScopedSymbol, ScopedSymbol } from "antlr4-c3";
 import { ParserRuleContext, ParseTree, TerminalNode } from "antlr4ng";
 import { SourceContext } from "./SourceContext.js";
 import { ISymbolInfo, SymbolKind } from "../types.js";
@@ -7,26 +7,61 @@ import { mxsParser } from "../parser/mxsParser.js";
 import { BinaryLifting } from "./symbolSearch.js";
 import assert from "assert";
 import path from "path";
-//Definitions
-export class PluginDefinitionSymbol extends ScopedSymbol { }
-export class MacroScriptDefinitionSymbol extends ScopedSymbol { }
-export class toolDefinitionSymbol extends ScopedSymbol { }
-export class UtilityDefinitionSymbol extends ScopedSymbol { }
-export class RolloutDefinitionSymbol extends ScopedSymbol { }
-export class RcMenuDefinitionSymbol extends ScopedSymbol { }
 
-export class StructDefinitionSymbol extends ScopedSymbol { }
-export class FnDefinitionSymbol extends ScopedSymbol { }
-export class fnArgsSymbol extends ScopedSymbol { }
+export interface IExprSymbol extends IScopedSymbol
+{
+    pathIndex?: number[];
+}
+export class ExprSymbol extends ScopedSymbol implements IExprSymbol
+{
+    pathIndex?: number[];
+    // scope: BaseSymbol[] | undefined;
+    constructor(name?: string, pathIndex: number[] = [0])
+    {
+        super(name);
+        this.pathIndex = pathIndex;
+    }
+    public override addSymbol(symbol: BaseSymbol, pathIndex?: number[]): void
+    {
+
+        // console.log(`${this.name} : ${this.pathIndex}`);
+        // if (symbol.parent) {
+        //     console.log(`${(symbol.parent as BlockSymbol).pathIndex}`);
+        // }
+        super.addSymbol(symbol);
+        // console.log(`${this.pathIndex} --> ${symbol.name}`);
+        // console.log(symbol.symbolPath);
+        if (this.pathIndex) {
+            (symbol as ExprSymbol).pathIndex = [...this.pathIndex, this.children.length];
+        }
+
+    }
+
+}
+
+//Definitions
+export class PluginDefinitionSymbol extends ExprSymbol { }
+export class MacroScriptDefinitionSymbol extends ExprSymbol { }
+export class toolDefinitionSymbol extends ExprSymbol { }
+export class UtilityDefinitionSymbol extends ExprSymbol { }
+export class RolloutDefinitionSymbol extends ExprSymbol { }
+export class RcMenuDefinitionSymbol extends ExprSymbol { }
+
+export class StructDefinitionSymbol extends ExprSymbol { }
+
+export class FnDefinitionSymbol extends ExprSymbol { }
+export class fnArgsSymbol extends ExprSymbol { }
+export class fnParamsSymbol extends ExprSymbol { }
+// export class fnBodySymbol extends ExprSymbol {}
 
 export class ControlDefinition extends BaseSymbol { }
 
-export class VariableDeclSymbol extends ScopedSymbol { }
-export class AssignmentExpressionSymbol extends ScopedSymbol { }
+export class VariableDeclSymbol extends ExprSymbol { }
+export class AssignmentExpressionSymbol extends ExprSymbol { }
 
-export class AssignmentSymbol extends ScopedSymbol { }
+export class AssignmentSymbol extends ExprSymbol { }
 
-export class ExpSeqSymbol extends BlockSymbol { }
+export class ExpSeqSymbol extends ExprSymbol { }
 
 export class IdentifierSymbol extends BaseSymbol { }
 
@@ -157,6 +192,19 @@ box2
 expr_seq
 
 */
+interface PathNode
+{
+    symbol: BaseSymbol | ExprSymbol; // Updated to use ScopedSymbol
+    path: number[];
+    index: number; // Index of the node in the path
+}
+
+interface BFSResult
+{
+    path: number[];
+    indices: number[];
+    targetSymbol: BaseSymbol | ExprSymbol; // Include the target symbol in the result
+}
 
 export class SymbolSupport
 {
@@ -174,6 +222,7 @@ export class SymbolSupport
         FnDefinitionSymbol,
         StructDefinitionSymbol,
         VariableDeclSymbol,
+        ExpSeqSymbol,
         //...
     )
 }
@@ -181,18 +230,61 @@ export class SymbolSupport
 export class ContextSymbolTable extends SymbolTable
 {
     public tree?: ParserRuleContext;
-
+    public pathIndex: number[];
     // Caches with reverse lookup for indexed symbols.
     //...
 
     public constructor(
         name: string,
+        // TODO: OPTIONS!
         options: ISymbolTableOptions,
-        public owner?: SourceContext
+        public owner?: SourceContext,
+        pathIndex: number[] = [0]
     )
-    { super(name, options); }
+    {
+        super(name, options);
+        this.pathIndex = pathIndex;
+    }
 
-    private static isType(symbol: any): symbol is BaseSymbol | ScopedSymbol
+    public override addSymbol(symbol: BaseSymbol): void
+    {
+
+        super.addSymbol(symbol);
+
+        // console.log(symbol);
+        // console.log(this.children.length);
+        if (this.pathIndex) {
+            (symbol as ExprSymbol).pathIndex = [...this.pathIndex, this.children.length];
+        }
+    }
+
+    public override addNewSymbolOfType<T extends BaseSymbol, Args extends unknown[]>
+        (t: SymbolConstructor<T, Args>, parent: ScopedSymbol | undefined, ...args: Args): T
+    {
+        const result = new t(...args);
+
+        if (!parent || parent === this) {
+            // console.log(this.pathIndex);
+
+            this.addSymbol(result);
+
+            // if ( 'pathIndex' in result) console.log(result.pathIndex);
+        } else {
+            (parent as ExprSymbol).addSymbol(result, (parent as ExprSymbol).pathIndex);
+        }
+
+        if (result instanceof FnDefinitionSymbol) {
+            // console.log(result.pathIndex);
+        }
+        if (result instanceof ExprSymbol) {
+            // console.log(result.pathIndex);
+        }
+
+        // return super.addNewSymbolOfType(t, parent, ...args);
+        return result;
+    }
+    //--------------------------------------------------------------------------
+    private static isType(symbol: any): symbol is BaseSymbol | ExprSymbol
     {
         return SymbolSupport.topLevelSymbolsType.some(t => symbol instanceof t);
     }
@@ -219,15 +311,7 @@ export class ContextSymbolTable extends SymbolTable
                     let child;
                     if (symbol instanceof ScopedSymbol) {
                         child = findRecursive(symbol);
-
                     }
-                    /*
-                    if (child) {
-                        return child;
-                    } else {
-                        return symbol;
-                    }
-                    */
                     return child ? child : symbol;
                 }
             }
@@ -354,9 +438,10 @@ export class ContextSymbolTable extends SymbolTable
         }
         return result;
         //*/
-        return (SymbolSupport.topLevelSymbolsType.map(t => 
+        return (SymbolSupport.topLevelSymbolsType.map(t =>
             this.scopedSymbolsOfType(t as typeof ExprSymbol, localOnly)).flat());
     }
+
     // TODO: ScopedSymbol???
     public getSymbolInfo(symbol: string | BaseSymbol): ISymbolInfo | undefined
     {
@@ -481,71 +566,225 @@ export class ContextSymbolTable extends SymbolTable
         return this.symbolContainingContext(terminal);
     }
 
+    private compareSymbols(symbolA: BaseSymbol, symbolB: BaseSymbol): boolean
+    {
+        return symbolA.name === symbolB.name &&
+            (symbolA.context as ParserRuleContext).ruleIndex === (symbolB.context as ParserRuleContext).ruleIndex &&
+            JSON.stringify((symbolA.context as ParserRuleContext).start) === JSON.stringify((symbolB.context as ParserRuleContext).start);
+    }
+
+
     private seachSymbolDefinition(root: BaseSymbol, entry: BaseSymbol): BaseSymbol | undefined
     {
-        let found = false;
-        let stop = false;
-        const entryIndex = (entry.context as ParserRuleContext).start?.tokenIndex;
-
-        function _dfs(node: BaseSymbol): BaseSymbol | undefined
+        const commonPath = (A: number[], B: number[]): number[] =>
         {
-            if (stop) { return; }
+            // Initialize an array to hold the common segments
+            let commonRoot: number[] = [];
 
-            //posorder
-            if (node instanceof ScopedSymbol) {
-                // for (let child of node.children) { _dfs(child); }
-                for (let i = node.children.length - 1; i >= 0; i--) {
-                    // if (!stop) _dfs(node.children[i]);
-                    const result = _dfs(node.children[i]);
-                    if (result) return result;
+            // Compare segments from both paths
+            for (let i = 0; i < Math.min(A.length, B.length); i++) {
+                if (A[i] === B[i]) {
+                    commonRoot.push(A[i]);
+                } else {
+                    break; // Stop if the segments diverge
                 }
-
             }
 
-            // seach for the symbol
-            const nodeIndex = (node.context as ParserRuleContext).start?.tokenIndex;
+            // Join the common segments to form the lowest common root
+            return commonRoot;
+        };
+        const divergentPath = (root: number[], path: number[]): number[] =>
+        {
+            return path.filter((n, i) => n !== root[i]);
+        };
 
-            // console.log(`${nodeIndex} --- ${entryIndex}`);
-            if (node.name === entry.name && nodeIndex === entryIndex) {
-                // console.log(`found: ${nodeIndex} --- ${entryIndex}`);
-                found = true;
-                // return node;
+
+        // let found = false;
+        let foundSymbol: BaseSymbol | undefined;
+        let stop = false;
+        // let currentpath: string[] = [];
+
+        const entryIndex = (entry.context as ParserRuleContext).start?.tokenIndex;
+
+        function _dfs(node: BaseSymbol/* , foundSymbol: BaseSymbol | undefined = undefined */): BaseSymbol | undefined
+        {
+            // do not do anything anymore
+            if (stop) {
                 return;
             }
 
-            if (found && node.name === entry.name) {
+            //posorder
+            if (node instanceof ScopedSymbol) {
+                for (let i = node.children.length - 1; i >= 0; i--) {
+                    const res = _dfs(node.children[i]);
+                    if (res) return res;
+                }
+            }
+            /*
+            if (node instanceof ExprSymbol) {
+                let symPath: string[] = [];
+
+                // for (let child of node.children) { _dfs(child); }
+                for (let i = node.children.length - 1; i >= 0; i--) {
+                    // if (!stop) _dfs(node.children[i]);
+                    // console.log(node.children[i].name);
+                    symPath.push(node.children[i].name);
+                    const result = _dfs(node.children[i]);
+                    if (result) return result;
+
+                }
+                symPath.push(node.name)
+                currentpath = symPath;
+            }
+            */
+
+            // IN THE SEARCH FOR THE SYMBOL: since the symbol we are looking for is an instance of IdentifierSymbol,
+            // we can filter the seach for the symbol
+            const nodeIndex = (node.context as ParserRuleContext).start?.tokenIndex || 0;
+
+            if (node.name === entry.name &&
+                nodeIndex === entryIndex &&
+                node instanceof IdentifierSymbol) {
+                // found = true;
+                foundSymbol = node;
+                // if ('pathIndex' in node) { console.log(`> found it!: ${node.pathIndex} --> ${entryIndex} | ${node.name}`); }
+                // return, we already discarded that the found symbols is the definition.
+                return;
+            }
+
+            // Once we found the symbol, look for the definition. this seach starts at the bottom,
+            // because the symbol definition should be upstream
+            // from now on, if found, the current symbol is up the tree or in another branch.
+            // note: if the definition is a global variable, we will need to return all the references in the ReferencesProvider
+            if (foundSymbol && node.name === entry.name && node instanceof IdentifierSymbol && node.parent) {
+                if ('pathIndex' in node) {
+                    console.log(`   - prospect: ${node.pathIndex} --> ${nodeIndex} | ${node.name}`);
+                }
+                // console.log(node.symbolPath); // <-- maps all the parents. look for scope start
+
+                //check if there is a parent that definetly starts the scope
+                // also, keep track of ExprSeq, if we reach the top, and no definition is found,
+                // return the first appearance in the ExprSeq that contains the found node
+
+                // use the parser context to compare types
+                const parentRule = node.parent.context as ParserRuleContext;
+                switch (parentRule.ruleIndex) {
+                    case mxsParser.RULE_variableDeclaration:
+                        // we reached the definition, stop looking.
+                        stop = true;
+                        console.log('found a candidate!');
+                        // return the parent, since we are looking the Identifiers,
+                        // the parent contains the correct context of the definition.
+                        return node.parent;
+                    case mxsParser.RULE_fnDefinition: {
+                        console.log('is this the fn defintion?');
+
+                        // console.log(node.parent);
+
+                        const foundPath = (<ExprSymbol>foundSymbol).pathIndex;
+                        const prospectPath = (<ExprSymbol>node).pathIndex;
+                        if (!foundPath || !prospectPath) { return; }
+                        const commonRoot = commonPath(foundPath, prospectPath);
+
+                        console.log(`       found: ${(<ExprSymbol>foundSymbol).pathIndex} <> prospect: ${(<ExprSymbol>node).pathIndex} || ${(<ExprSymbol>node.parent).pathIndex}`);
+                    }
+                        return;
+                    // console.log(`fnDefinition: ${(<ExprSymbol>node).pathIndex}`);
+                    // console.log(node.symbolPath);
+                    // break;
+                    // case mxsParser.RULE_expr_seq:
+                        //...
+                    case mxsParser.RULE_fn_args:
+                    case mxsParser.RULE_fn_params:
+                        // for loop
+                        // controls
+                        //...
+                        const foundPath = (<ExprSymbol>foundSymbol).pathIndex;
+                        const prospectPath = (<ExprSymbol>node).pathIndex;
+
+                        if (!foundPath || !prospectPath) { return; }
+
+                        // if we stop here we can be out of scope if we are in another branch. check the scope against foundSymbol.
+                        console.log(`       found: ${(<ExprSymbol>foundSymbol).pathIndex} <> prospect: ${(<ExprSymbol>node).pathIndex} || ${(<ExprSymbol>node.parent).pathIndex}`);
+                        // console.log(node.symbolPath);
+                        // let trace = node.symbolPath.map(symbol => ((<ExprSymbol>symbol).pathIndex));
+                        // console.log(trace);
+
+                        // find where the paths diverge
+                        const commonRoot = commonPath(foundPath, prospectPath);
+                        if (commonRoot.length > 1) {
+                            // we have at least some common root.
+                            // check if the first index in the array of prospect es less than the value in found
+                            // these nodes should be siblings. meaning that, the current node is preceeding the found node.
+                            const foundDivergence = foundPath.filter((n, i) => n !== commonRoot[i]);
+                            const propspectDivergence = prospectPath.filter((n, i) => n !== commonRoot[i]);
+
+                            console.log(`+++ found: ${foundDivergence} --- prospect: ${propspectDivergence} ~~~ ${foundDivergence[0] >= propspectDivergence[0]}`);
+
+                            if (foundDivergence[0] >= propspectDivergence[0]) {
+                                console.log('found a candidate!');
+                                stop = true;
+                                return node.parent;
+                            }
+                        }
+                        return;
+                    default:
+                        break;
+                }
+            }
+            /*
                 // console.log(`${nodeIndex} --- ${entryIndex}`);
                 if (node.parent) {
                     const rule = node.parent.context as ParserRuleContext;
                     switch (rule.ruleIndex) {
                         case mxsParser.RULE_variableDeclaration:
-                        case mxsParser.RULE_fn_args:
-                        case mxsParser.RULE_fn_params:
-                            //...
-                            console.log(`stopped at: ${nodeIndex}`);
                             stop = true;
                             return node.parent;
+                        case mxsParser.RULE_fn_args:
+                        case mxsParser.RULE_fn_params:
+                        
+                            // console.log('test fn precedence');
+                            const currFn = node.parent.parent?.name;
+                            const inSymbolPath = foundSymbol?.symbolPath
+                                // seach if the current fn definition is in the foundSymbol path
+                                .filter(parent => parent instanceof FnDefinitionSymbol)
+                                .every(symbol => symbol.name === currFn);
+                            // console.log(inSymbolPath);
+                            if (inSymbolPath) {
+                                //...
+                                // console.log(`stopped at: ${nodeIndex}`);
+                                stop = true;
+                                return node.parent;
+                            }
+                        
+                        // break;
                         case mxsParser.RULE_fnDefinition:
                             //...
                             if (node.parent.name === node.name) {
-                                console.log(`stopped at: ${nodeIndex}`);
+                                // console.log(`stopped at: ${nodeIndex}`);
                                 stop = true;
                                 return node.parent;
                             }
                             break;
                         default:
+                            //at this point the identifier most problably is a undeclared variable.
+                            //I should check if it is in the path of the found node.
+
                             // this will end with the first appearance of the symbol.
                             // maybe will work for loose typed vars?
                             // return node;
                             break;
                     }
                 }
-
-            }
+            //*/
             //inorder
             return;
         }
-        return _dfs(root);
+        let result = _dfs(root);
+        console.log('returned!');
+        console.log(result);
+        // return _dfs(root);
+        return result;
     }
 
     public getSymbolDefinition(symbol: BaseSymbol): BaseSymbol
@@ -553,18 +792,19 @@ export class ContextSymbolTable extends SymbolTable
         // check if the symbol is the id of a Definition
         // do not get symbol definition in these rules
         let parentRule = symbol.parent?.context as ParserRuleContext;
-        switch (parentRule.ruleIndex) {
-            case mxsParser.RULE_variableDeclaration:
-            case mxsParser.RULE_fn_args:
-            case mxsParser.RULE_fn_params:
-                //...
-                // console.log('symbol is in definition!');
-                return symbol;
-            default:
-                break;
+        // console.log(parentRule);
+        if (parentRule) {
+            switch (parentRule.ruleIndex) {
+                case mxsParser.RULE_variableDeclaration:
+                case mxsParser.RULE_fn_args:
+                case mxsParser.RULE_fn_params:
+                    //...
+                    // console.log('symbol is in definition!');
+                    return symbol;
+                default:
+                    break;
+            }
         }
-
-        // let ancestor = this.getTopMostParent(symbol) as ContextSymbolTable;
         // topmost parent that its not _ContextSymbolTable
         // const ancestor = symbol.symbolPath[symbol.symbolPath.length - 2] as ContextSymbolTable;
         let ancestor = symbol.root as ContextSymbolTable;
@@ -574,7 +814,8 @@ export class ContextSymbolTable extends SymbolTable
         // handle some special cases
         let prospect: BaseSymbol = prospects[0];
         parentRule = ancestor.context as ParserRuleContext;
-        // /*
+
+        /*
         switch (parentRule.ruleIndex) {
             case mxsParser.RULE_fnDefinition:
                 //...
@@ -588,13 +829,14 @@ export class ContextSymbolTable extends SymbolTable
                 break;
         }
         // */
-        //check if the symbol is the only one!
+        // check if the symbol is the only one!
         // if (prospects.length === 1) return prospects[0];
 
         //walk the tree, starting from the symbol, going up parents...
         // the problem is with undeclared variables, I dont know how to define the scope start... or where to stop
-        // let searchDefinition = this.seachSymbolDefinition(this, symbol);
-        // if (searchDefinition) return searchDefinition;
+        console.log('---DFS---');
+        let searchDefinition = this.seachSymbolDefinition(this, symbol);
+        if (searchDefinition) return searchDefinition;
 
         // /*
         // seach in top-level symbols as last chance, unreilable
@@ -631,7 +873,7 @@ export class ContextSymbolTable extends SymbolTable
         return prospect;
     }
 
-    public dfsCollectNodes(root: BaseSymbol | ScopedSymbol, symbol: BaseSymbol | ScopedSymbol, targetName: string): (BaseSymbol | ScopedSymbol)[]
+    public dfsCollectNodes(root: BaseSymbol | ExprSymbol, symbol: BaseSymbol | ExprSymbol, targetName: string): (BaseSymbol | ExprSymbol)[]
     {
         if (!root) {
             return [];
@@ -685,7 +927,7 @@ export class ContextSymbolTable extends SymbolTable
         const symbolPos = (symbol.context as ParserRuleContext).start?.tokenIndex;
         let found = false;
         let foundPath: number[] = [];
-        const result: (BaseSymbol | ScopedSymbol)[] = [];
+        const result: (BaseSymbol | ExprSymbol)[] = [];
 
         let shouldStop = false;
         let declFound = false;
@@ -693,7 +935,7 @@ export class ContextSymbolTable extends SymbolTable
         const paths: number[][] = [];
         let stopPaths: number[][] = [];
 
-        function dfs(node: BaseSymbol | ScopedSymbol, path: number[])
+        function dfs(node: BaseSymbol | ExprSymbol, path: number[])
         {
             // if (!node) return;
             if (shouldStop) { console.log('stoped!'); return; }
@@ -701,7 +943,7 @@ export class ContextSymbolTable extends SymbolTable
             // Recursively visit each child if the node is a ScopedSymbol   
             //inorder   
             //*          
-            if (node instanceof ScopedSymbol) {
+            if (node instanceof ExprSymbol) {
                 // for (const child of node.children) {
                 // dfs(child);
                 // for (let i = 0; i < node.children.length; i++) {
@@ -824,12 +1066,12 @@ export class ContextSymbolTable extends SymbolTable
     }
 
     private bfsShortestPathWithIndex(
-        root: BaseSymbol | ScopedSymbol,
-        searchSymbol: BaseSymbol | ScopedSymbol,
+        root: BaseSymbol | ExprSymbol,
+        searchSymbol: BaseSymbol | ExprSymbol,
         targetName: string): BFSResult | null
     {
         // Queue for BFS
-        const queue: PathNode[] = [{ symbol: <ScopedSymbol>root, path: [0], index: 0 }];
+        const queue: PathNode[] = [{ symbol: <ExprSymbol>root, path: [0], index: 0 }];
         const visited = new Set<string>();
         // const indices: number[] = []; // To store indices of the path
 
@@ -859,7 +1101,7 @@ export class ContextSymbolTable extends SymbolTable
 
             // console.log(symbol instanceof ScopedSymbol);
             // Enqueue all unvisited children
-            if (symbol instanceof ScopedSymbol) {
+            if (symbol instanceof ExprSymbol) {
                 for (const [childIndex, child] of symbol.children.entries()) {
                     const childPos = (child.context as ParserRuleContext)?.start?.tokenIndex ?? 0;
                     const childKey = `${child.name}:${childPos}:${child instanceof IdentifierSymbol}`;
@@ -879,58 +1121,166 @@ export class ContextSymbolTable extends SymbolTable
         return null;
     }
 
+    public getScopedSymbolOccurrences(symbol: BaseSymbol)
+    {
+        // search on the same scope or in parent scope, NOT on childs of siblings
+        let result: BaseSymbol[] | undefined;
+        //search on the root
+        const root = symbol.root as ExprSymbol
+
+        // optimize the search. if the parent of the node is a variable declaration, arguments or parameters, then is the start of the scope.
+
+        let table = root.getAllNestedSymbolsSync(symbol.name);
+        /*
+                // for fn definition, look in the fn arguments
+                let rootContext = root?.context as ParserRuleContext;
+        
+                const rule = (<ParserRuleContext>table[0].parent?.context);
+        
+                switch (rootContext.ruleIndex) {
+                    case mxsParser.RULE_fnDefinition:
+                        switch (rule.ruleIndex) {
+                            case mxsParser.RULE_fn_args:
+                            case mxsParser.RULE_fn_params:
+                                //stop here
+                                return this.getSymbolOccurrencesInternal(symbol.name, table);
+                        }
+                        break;
+                    case mxsParser.RULE_variableDeclaration:
+                        return this.getSymbolOccurrencesInternal(symbol.name, table);
+                    default:
+                        switch (rule.ruleIndex) {
+                            case mxsParser.RULE_variableDeclaration:
+                                //...
+                                return this.getSymbolOccurrencesInternal(symbol.name, table);
+                        }
+                        break;
+                    // ...
+                }
+          */
+
+        function iterativeDeepeningDfsCollectBranch(
+            root: BaseSymbol | ExprSymbol,
+            symbol: BaseSymbol | ExprSymbol,
+            targetName: string
+            // targetType: string
+        ): { nodes: (BaseSymbol | ExprSymbol)[], paths: number[][] }
+        {
+            let targetNode: BaseSymbol | ExprSymbol | null = null;
+            let targetFoundInBranch = false;
+            let identifierPaths: number[][] = [];
+            let allIdentifierPaths: number[][] = [];
+            // let allIdentifierNodes: (BaseSymbol | ScopedSymbol)[] = [];
+            let foundDepth = 0;
+
+            const symbolPos = (symbol.context as ParserRuleContext).start?.tokenIndex;
+
+            // Depth-Limited Search (DLS)
+            function dls(
+                node: BaseSymbol | ExprSymbol,
+                path: number[],
+                depth: number,
+                limit: number
+            ): boolean
+            {
+                if (depth > limit) return false;
+                let foundInSubtree = false;
+
+                if (node.name === targetName && node instanceof IdentifierSymbol) {
+                    identifierPaths.push([...path]);
+
+                    const nodePos = (node.context as ParserRuleContext).start?.tokenIndex;
+                    if (symbolPos === nodePos) {
+                        // console.log(`${nodePos} : ${symbolPos} === ${depth}`);
+                        targetNode = node;
+                        targetFoundInBranch = true;
+                        foundDepth = depth;
+                        foundInSubtree = true;
+                        // return true;
+                    }
+                }
+
+                if (node instanceof ExprSymbol) {
+                    for (let i = 0; i < node.children.length; i++) {
+                        if (dls(node.children[i], [...path, i], depth + 1, limit)) {
+                            foundInSubtree = true;
                         }
                     }
-                    console.log('--');
                 }
-                // return filteredNodes;
+                console.log(identifierPaths);
+                return foundInSubtree;
             }
-                */
-            /*
-                        function isSameBranch(path1: number[], path2: number[]): boolean {
-                            const minLength = Math.min(path1.length, path2.length);
-                            for (let i = 0; i < minLength; i++) {
-                                if (path1[i] !== path2[i]) return false;
-                            }
-                            return true;
+
+            // Iterative Deepening
+            let limit = 0;
+            while (true) {
+                identifierPaths = [];
+                targetFoundInBranch = false;
+
+                if (dls(root, [], 0, limit)) {
+                    if (targetFoundInBranch) {
+                        allIdentifierPaths = [...identifierPaths];
+                        break;
+                    }
+                } else {
+                    identifierPaths = []; // Reset identifierPaths if targetNode is not found in the current branch
+                }
+
+                limit++;
+            }
+            // console.log(targetNode);
+            // console.log(identifierPaths);
+            // console.log(allIdentifierPaths);
+
+            // If target node is not found, return empty result
+            if (!targetNode) {
+                return { nodes: [], paths: [] };
+            }
+
+            // Collect all nodes based on collected paths
+            const nodes: (BaseSymbol | ExprSymbol)[] = [];
+            const paths: number[][] = [];
+
+            function collectNodesAndPathsByIdentifierPaths()
+            {
+                allIdentifierPaths.forEach((path) =>
+                {
+                    let currentNode: BaseSymbol | ExprSymbol | null = root;
+                    for (let i = 0; i < path.length; i++) {
+                        if (currentNode instanceof ExprSymbol && currentNode.children.length > path[i]) {
+                            currentNode = currentNode.children[path[i]];
+                        } else {
+                            currentNode = null;
+                            break;
                         }
-            
-                        dfs(root, []);
-            
-                        if (stopPath) {
-                            const filteredNodes: (BaseSymbol | ScopedSymbol)[] = [];
-            
-                            const filteredPaths: number[][] = [];
-                            for (let i = 0; i < paths.length; i++) {
-                                if (isSameBranch(stopPath, paths[i])) {
-                                    filteredNodes.push(result[i]);
-                                    filteredPaths.push(paths[i]);
-                                }
-                            }
-                            console.log(filteredNodes)
-                            return filteredNodes;
-                            // return { nodes: filteredNodes, paths: filteredPaths };
-                        }
-            */
-            // console.log(result);
-            // console.log(paths);
-            return result;
+                    }
+
+                    if (currentNode && currentNode instanceof IdentifierSymbol) {
+                        nodes.push(currentNode);
+                        paths.push(path);
+                    }
+                });
+            }
+
+            collectNodesAndPathsByIdentifierPaths();
+            // console.log(nodes);
+            return { nodes, paths };
         }
+
+        //seach from top to botton, stop the brach whenever the symbol is redefined
+        //BSF Seach
+
 
         // search siblings of the root, need to do this all the way up
         // iterate over parents
 
-        /*
-        let ancestor = this.getTopMostParent(symbol) as ContextSymbolTable;
-        // let ancestor = root.parent;
-        if (ancestor) {
-            let siblings = ancestor.getAllSymbolsSync(BaseSymbol, true);
-            table.push(...siblings);
-        }
-        */
         //    this.symbolWithContextSync
 
 
+        // if I already have the node, it has a path, so maybe I can walk the tree using that path, collection all the references to the symbol.
+
+
+        console.log(symbol.symbolPath);
         console.log('---dfs search---');
 
         // let sym = this.resolveSync(symbol.name);
@@ -938,13 +1288,14 @@ export class ContextSymbolTable extends SymbolTable
         let searchStart = root.parent ? root.parent : root;
         // seach all the way up, do not return childs
 
-        const test = dfsCollectNodes(searchStart, symbol, symbol.name);
-
+        // const test = this.dfsCollectNodes(searchStart, symbol, symbol.name);
+        // const test = iterativeDeepeningDfsCollectBranch(searchStart, symbol, symbol.name);
+        const test = this.bfsShortestPathWithIndex(searchStart, symbol, symbol.name);
         // console.log(test);
-        for (const sym of test) {
-            // console.log(sym);
-        }
-        table = test;
+        // for (const sym of test) {
+        // console.log(sym);
+        // }
+        table = [test?.targetSymbol!];
         /*
             let lookUp = root.parent;
             // console.log(test);
@@ -976,7 +1327,8 @@ export class ContextSymbolTable extends SymbolTable
     {
         const result: ISymbolInfo[] = [];
         for (const symbol of symbols) {
-            const owner = this.findRoot(symbol).owner;
+            // const owner = this.findRoot(symbol).owner;
+            const owner = (symbol.root?.parent as ContextSymbolTable).owner! ?? this.owner;
 
             if (owner) {
                 // symbol has context and name matches the search...
@@ -1005,12 +1357,12 @@ export class ContextSymbolTable extends SymbolTable
         // this will ignore scope...
         for (const symbol of symbols) {
             // owner is the document URI
-            // const owner = (symbol.root as ContextSymbolTable).owner;
-            const owner = this.findRoot(symbol).owner;
+            // const owner = this.findRoot(symbol).owner;
+            const owner = (symbol.root?.parent as ContextSymbolTable).owner! ?? this.owner;
 
             if (owner) {
                 // childrens
-                if (symbol instanceof ScopedSymbol) {
+                if (symbol instanceof ExprSymbol) {
                     // const references = symbol.getAllNestedSymbolsSync();
                     const references = symbol.getAllNestedSymbolsSync(symbolName);
 
