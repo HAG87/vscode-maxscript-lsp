@@ -58,7 +58,7 @@ nonIfExpression
 
 //-------------------------------------- MACROSCRIPT_DEF
 macroscriptDefinition
-	: MACROSCRIPT NL* identifier ( NL* param_name NL* (operand | RESOURCE) )* NL*
+	: MACROSCRIPT NL* identifier ( NL* param )* NL*
     lp
         (macroscript_clause (NL* macroscript_clause)*)?
     rp
@@ -162,13 +162,13 @@ plugin_clause
 //-------------------------------------- CHANGE_HANDLER when <attribute> <objects> change[s] [
 // id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr> when <objects>
 // deleted [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr>
-// objects var_name | PATH | array
+// objects var_name | path | array
 
 whenStatement: when_predicate NL* DO NL* expr
 	;
 
 when_predicate
-	: WHEN NL* (identifier NL*)? (identifier | PATH | expr_seq | array) NL* (CHANGE | DELETED)  NL*  (NL* param)* (NL* operand)?
+	: WHEN NL* (identifier NL*)? (identifier | path | expr_seq | array) NL* (CHANGE | DELETED)  NL*  (NL* param)* (NL* operand)?
 	;
 
 //-------------------------------------- CONTEXT_EXPR
@@ -345,7 +345,8 @@ fn_args
 	// | de_ref
 	;
 
-fn_params: param | param_name
+fn_params
+	: {this.colonBeNext()}? (identifier | kw_override) COLON (NL* operand_arg)?
 	;
 
 //FN_RETURN
@@ -428,7 +429,7 @@ case_item
  case_factor
  : accessor
  | var_name
- | PATH
+ | path
  | by_ref
  | bool
  | STRING
@@ -522,7 +523,7 @@ assignmentOpExpression: left = destination ASSIGN NL* right = expr
 
 assignment: EQ NL* expr;
 
-destination: accessor | de_ref | identifier | PATH
+destination: accessor | de_ref | identifier | path
 	;
 
 //---------------------------------------- SIMPLE_EXPR
@@ -628,7 +629,7 @@ paren_pair: {this.closedParens()}? LPAREN RPAREN
 
 fn_caller
 	: identifier
-	| PATH
+	| path
 	| de_ref
 	| accessor
 	// | unary_minus //UNARY MINUS
@@ -677,7 +678,7 @@ factor
 	: identifier
 	| bool
 	| STRING
-	| PATH
+	| path
 	| NAME
 	| NUMBER
 	| TIMEVAL
@@ -743,10 +744,13 @@ identifier: ids | by_ref
 ids: GLOB? (ID | QUOTED | kw_reserved)
 	;
 
-by_ref: {this.noWSBeNext()}? AMP (ids | PATH)
+path: PATH
 	;
 
-de_ref: {this.noWSBeNext()}? PROD (accessor | ids | PATH)
+by_ref: {this.noWSBeNext()}? AMP (ids | path)
+	;
+
+de_ref: {this.noWSBeNext()}? PROD (accessor | ids | path)
 	;
 
 // Boolean

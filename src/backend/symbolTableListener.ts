@@ -23,12 +23,13 @@ import
     VariableDeclSymbol,
     IdentifierSymbol,
     AssignmentExpressionSymbol,
-    AssignmentSymbol,
+    FnCallSymbol,
     fnArgsSymbol,
-    ExpSeqSymbol,
     fnParamsSymbol,
+    ExpSeqSymbol,
     ExprSymbol,
     DeclarationSymbol,
+    ParamSymbol,
 } from "./ContextSymbolTable.js";
 import
 {
@@ -50,7 +51,13 @@ import
     Fn_paramsContext,
     Fn_bodyContext,
     mxsParser,
+    Param_nameContext,
+    ParamContext,
+    Kw_overrideContext,
+    FunctionCallContext,
+    PathContext,
 } from "../parser/mxsParser.js";
+import { mxsLexer } from "../parser/mxsLexer.js";
 
 export class symbolTableListener extends mxsParserListener
 {
@@ -127,12 +134,14 @@ export class symbolTableListener extends mxsParserListener
     }
     public override enterFn_params = (ctx: Fn_paramsContext): void =>
     {
+        // this is a workaround for param: without assignment
         this.pushNewSymbol(fnParamsSymbol, ctx);
     }
     public override exitFn_params = (ctx: Fn_paramsContext): void =>
     {
         this.popSymbol();
     }
+    // for loop
     // public override enterFn_body = (ctx: Fn_bodyContext): void =>
     // {
     //     this.pushNewSymbol(ExpSeqSymbol, ctx);
@@ -141,8 +150,36 @@ export class symbolTableListener extends mxsParserListener
     // {
     //     this.popSymbol();
     // }
-
-
+    
+    public override enterFunctionCall = (ctx: FunctionCallContext): void => 
+    {
+        this.pushNewSymbol(FnCallSymbol, ctx,  ctx._caller?.getText());
+    }
+    public override exitFunctionCall = (ctx: FunctionCallContext): void => 
+    {
+        this.popSymbol();
+    }
+    // /*
+    public override enterParam = (ctx: ParamContext): void =>
+    {
+        // ctx.param_name().getText()
+        this.pushNewSymbol(ParamSymbol, ctx);
+    }
+    public override exitParam = (ctx: ParamContext): void =>
+    {
+        this.popSymbol();
+    }    
+    // */
+    /*
+    public override enterParam_name = (ctx: Param_nameContext): void =>
+    {
+        this.pushNewSymbol(ParamSymbol, ctx, ctx.getText());
+    }
+    public override exitParam_name = (ctx: Param_nameContext): void =>
+    {
+        this.popSymbol();
+    }
+    //*/
     // public override enterDeclarationExpression = (ctx: DeclarationExpressionContext): void => { }
     // public override exitDeclarationExpression = (ctx: DeclarationExpressionContext): void => { }
 
@@ -162,7 +199,7 @@ export class symbolTableListener extends mxsParserListener
 
         if (ctx.parent && ctx.parent.ruleIndex === mxsParser.RULE_declarationExpression) {
             const decl = (ctx.parent as DeclarationExpressionContext)._scope?.getText().toLowerCase() || 'local';
-            const scope = (symbol as DeclarationSymbol).declarationScope = decl;
+            (symbol as DeclarationSymbol).declarationScope = decl;
         }
 
     }
@@ -183,7 +220,7 @@ export class symbolTableListener extends mxsParserListener
     {
         this.popSymbol();
     }
-
+    /*
     public override enterAssignment = (ctx: AssignmentContext): void =>
     {
         // this.pushNewSymbol(AssignmentSymbol, ctx);
@@ -193,10 +230,10 @@ export class symbolTableListener extends mxsParserListener
     {
         // this.popSymbol();
     }
-
+    //*/
+    /*
     public override exitExprOperand = (ctx: ExprOperandContext): void =>
     {
-        /*
         const expr_operand = ctx.expr_operand()
         const op = expr_operand.operand()
         if (op) {
@@ -205,8 +242,8 @@ export class symbolTableListener extends mxsParserListener
                 this.addNewSymbol(IdentifierSymbol, id, id.getText());
             }
         }
-        // */
     }
+    
 
     // public override exitExpr_operand = (ctx: Expr_operandContext): void => { }
 
@@ -216,23 +253,46 @@ export class symbolTableListener extends mxsParserListener
         //     this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
         // }
     }
-
+    // */
     public override exitIdentifier = (ctx: IdentifierContext): void =>
     {
         // IF I emmit an identifier here, but also use the current enterVariableDeclaration, I will have duplicated symbols
         // Use operand or factor instead, for now.
-
         this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
     }
+    public override exitPath = (ctx: PathContext): void =>
+    {
+        // emiting an identifier here
+        this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
+    }
+    public override enterKw_override = (ctx: Kw_overrideContext): void =>
+    {
+        this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
+    }
+    /*
+    public override enterBy_ref = (ctx: By_refContext): void =>
+    {
+        // this.pushNewSymbol();
+    }
+     //*/
     public override exitBy_ref = (ctx: By_refContext): void =>
     {
+        // this.popSymbol();
         // emmiting an identifier token here...
-        this.addNewSymbol(IdentifierSymbol, ctx, ctx.ids()?.getText() ?? ctx.PATH()?.getText());
+        this.addNewSymbol(IdentifierSymbol, ctx, ctx.ids()?.getText() ?? ctx.path()?.getText());
     }
+   
     public override visitTerminal = (node: TerminalNode): void =>
     {
-        //operators
-        //...
+        /*
+        switch (node.symbol.type) {
+            case mxsLexer.PATH:
+                this.addNewSymbol(IdentifierSymbol,node, node.getText())
+            break;
+            //operators
+            //...
+        }
+        */
     }
 
     //-------------------------------------------------------------------------
