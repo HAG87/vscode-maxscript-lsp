@@ -404,7 +404,7 @@ export class SourceContext
 
     public listTopLevelSymbols(includeDependencies: boolean): ISymbolInfo[]
     {
-        return this.symbolTable.listTopLevelSymbols(includeDependencies);
+        return this.symbolTable.symbolInfoTopLevel(includeDependencies);
     }
 
     public async getAllSymbols(recursive: boolean): Promise<BaseSymbol[]>
