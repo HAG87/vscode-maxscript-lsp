@@ -1,6 +1,6 @@
 import { Position, Range, TextDocument } from "vscode";
 import { ExtensionHost } from "./ExtensionHost.js";
-import { ILexicalRange } from "./types.js";
+import { ILexicalRange, ISymbolInfo } from "./types.js";
 
 export class Utilities {
     public static isLanguageFile(document?: TextDocument | undefined): boolean {
@@ -20,4 +20,12 @@ export class Utilities {
         return new Range(start, end);
     }
     
+    public static symbolNameRange(symbol: ISymbolInfo): Range {
+        return new Range(
+            symbol.definition!.range.start.row - 1,
+            symbol.definition!.range.start.column,
+            symbol.definition!.range.end.row - 1,
+            symbol.definition!.range.start.column + symbol.name.length,
+        );
+    }
 }

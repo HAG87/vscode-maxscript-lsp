@@ -229,49 +229,35 @@ export class SourceContext
                 },
             },
         };
+        
+        if (ctx instanceof ParserRuleContext && ctx.start && ctx.stop) {
+            
+            const start = ctx.start;
+            const stop = ctx.stop;
 
-        if (ctx instanceof ParserRuleContext) {
-            let start = ctx.start!.start;
-            let stop = ctx.stop!.stop;
             /*
             result.range.start.row = ctx.start!.line;
             result.range.start.column = ctx.start!.column;
             result.range.end.row = ctx.stop!.line;
             result.range.end.column = ctx.stop!.column;
             */
+
             result.range = {
                 start: {
-                    row: ctx.start!.line,
-                    column: ctx.start!.column
+                    row: start.line,
+                    column: start.column
                 },
                 end: {
-                    row: ctx.stop!.line,
-                    column: ctx.stop!.column
+                    row: stop.line,
+                    column: stop.column
                 }
             }
-            /*
-            // For mode definitions we only need the init line, not all the lexer rules following it.
-            if (ctx.ruleIndex === ANTLRv4Parser.RULE_modeSpec) {
-                const modeSpec = ctx as ModeSpecContext;
-                stop = modeSpec.SEMI().symbol.stop;
-                result.range.end.column = modeSpec.SEMI().symbol.column;
-                result.range.end.row = modeSpec.SEMI().symbol.line;
-            } else if (ctx.ruleIndex === ANTLRv4Parser.RULE_grammarSpec) {
-                // Similar for entire grammars. We only need the introducer line here.
-                const grammarDecl = (ctx as GrammarSpecContext).grammarDecl();
-                stop = grammarDecl.SEMI().symbol.stop;
-                result.range.end.column = grammarDecl.SEMI().symbol.column;
-                result.range.end.row = grammarDecl.SEMI().symbol.line;
-        
-                start = grammarDecl.grammarType().start!.start;
-                result.range.start.column = grammarDecl.grammarType().start!.column;
-                result.range.start.row = grammarDecl.grammarType().start!.line;
-            }
-            */
+            // console.log(result.range);            
             const inputStream = ctx.start?.tokenSource?.inputStream;
             if (inputStream) {
                 try {
-                    result.text = inputStream.getTextFromRange(start, stop);
+                    result.text = inputStream.getTextFromRange(start.start, stop.stop);
+                    // console.log(result.text);
                 } catch (e) {
                     // The method getText uses an unreliable JS String API which can throw on larger texts.
                     // In this case we cannot return the text of the given context.
@@ -281,12 +267,6 @@ export class SourceContext
             }
         } else if (ctx instanceof TerminalNode) {
             result.text = ctx.getText();
-            /*
-             result.range.start.row = ctx.symbol.line;
-             result.range.start.column = ctx.symbol.column;
-             result.range.end.row = ctx.symbol.line;
-             result.range.end.column = ctx.symbol.column + result.text.length;
-            */
             result.range = {
                 start: {
                     row: ctx.symbol!.line,
@@ -294,7 +274,7 @@ export class SourceContext
                 },
                 end: {
                     row: ctx.symbol!.line,
-                    column: ctx.symbol!.column
+                    column: ctx.symbol!.column + result.text.length
                 }
             }
         }
@@ -304,7 +284,7 @@ export class SourceContext
         }
 
         const quoteChar = result.text[0];
-        if ((quoteChar === '"' || quoteChar === "`" || quoteChar === "'")
+        if ((quoteChar === '"' || quoteChar === "'")
             && quoteChar === result.text[result.text.length - 1]) {
             result.text = result.text.substring(1, result.text.length - 1);
         }

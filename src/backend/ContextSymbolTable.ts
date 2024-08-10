@@ -566,7 +566,7 @@ export class ContextSymbolTable extends SymbolTable
         };
     }
 
-    private seachSymbolDefinition(root: BaseSymbol, entry: BaseSymbol): IDefinitionResult
+    private seachSymbolDefinition(root: BaseSymbol, entry: BaseSymbol, identifiersOnly = false): IDefinitionResult
     {
         const entryIndex = (entry.context as ParserRuleContext).start?.tokenIndex;
 
@@ -665,14 +665,16 @@ export class ContextSymbolTable extends SymbolTable
                     return symbol.parent;
                 }
                 */
+               const returnValue = () => identifiersOnly? symbol: symbol.parent!;
+
                 switch (parentRule.ruleIndex) {
                     //...
                     case mxsParser.RULE_structDefinition:
                     case mxsParser.RULE_fnDefinition:
                         console.log('   + is fn_Definition?')
                         if (testScopePrecedence(foundSymbol, symbol)) {
-                            result.push(symbol.parent);
-                            return symbol.parent;
+                            result.push(returnValue());
+                            return returnValue();
                         }
                         break;
                     case mxsParser.RULE_fn_args:
@@ -690,8 +692,8 @@ export class ContextSymbolTable extends SymbolTable
                         //TODO: global variable
                         if (testScopePrecedence(foundSymbol, symbol)) {
                             // stop = true;
-                            result.push(symbol.parent);
-                            return symbol.parent;
+                            result.push(returnValue());
+                            return returnValue();
                         }
                         break;
                     // properties!! look for the identifier
@@ -881,17 +883,17 @@ export class ContextSymbolTable extends SymbolTable
 
         //walk the tree, starting from the symbol, going up parents...
         // the problem is with undeclared variables, I dont know how to define the scope start... or where to stop
-        console.log('---DFS---');
+        // console.log('---DFS---');
         const searchDefinition = this.seachSymbolDefinition(this, symbol);
-        console.log('SEARCH ENDED');
-        console.log(searchDefinition);
+        // console.log('SEARCH ENDED');
+        // console.log(searchDefinition);
         if (searchDefinition.definition) return searchDefinition.definition;
         // candidates for implicit declaration
         if (searchDefinition.candidates.length > 0) {
             //test implicit declaration candidates
             // test scope of candidates
-            console.log('implicit declaration');
-            console.log(searchDefinition.candidates[searchDefinition.candidates.length - 1]);
+            // console.log('implicit declaration');
+            // console.log(searchDefinition.candidates[searchDefinition.candidates.length - 1]);
             return searchDefinition.candidates[searchDefinition.candidates.length - 1];
         };
 
@@ -1189,15 +1191,14 @@ export class ContextSymbolTable extends SymbolTable
 
         const parent = symbol.parent as ScopedSymbol;
         // unreilable method, disable until a better solution is implemented
-        table = scopeSearch(parent);
-
+        // table = scopeSearch(parent);
        
         // this.symbolWithContextSync
         // this.resolveSync(symbol.name);
         
         // /*
         // dfs search        
-        const searchDefinition = this.seachSymbolDefinition(this, symbol);
+        const searchDefinition = this.seachSymbolDefinition(this, symbol, true);
         if (searchDefinition.candidates.length > 0) {
             if (searchDefinition.definition) {
                 table = [searchDefinition.definition];

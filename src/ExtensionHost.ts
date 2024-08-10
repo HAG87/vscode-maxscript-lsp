@@ -5,6 +5,7 @@ import { mxsSymbolProvider } from './SymbolProvider.js';
 import { diagnosticAdapter } from './Diagnostics.js';
 import { mxsReferenceProvider } from './ReferenceProvider.js';
 import { mxsDefinitionProvider } from './DefinitionProvider.js';
+import { mxsRenameProvider } from './RenameProvider.js';
 
 export class ExtensionHost
 {
@@ -152,6 +153,10 @@ export class ExtensionHost
             languages.registerDefinitionProvider(
                 ExtensionHost.langSelector,
                 new mxsDefinitionProvider(this.backend)
+            ),
+            languages.registerRenameProvider(
+                ExtensionHost.langSelector,
+                new mxsRenameProvider(this.backend)
             ),
             // languages.
             //...
