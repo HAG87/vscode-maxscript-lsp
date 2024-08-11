@@ -1,18 +1,71 @@
-import { CancellationToken, CompletionContext, CompletionItem, CompletionItemProvider, CompletionList, Position, ProviderResult, TextDocument } from "vscode";
+import { CancellationToken, CompletionContext, CompletionItem, CompletionItemKind, CompletionItemProvider, CompletionList, Position, ProviderResult, Range, TextDocument } from "vscode";
 import { mxsBackend } from "./backend/Backend.js";
+import { mxsLanguageCompletions, maxCompletions } from "./backend/schemas/mxsCompletions-base.js";
+import { mxClassMembers } from "./backend/schemas/mxsCompletions-clases.js";
+import { mxStructsMembers } from "./backend/schemas/mxsCompletions-structs.js";
+import { mxInterfaceMembers } from "./backend/schemas/mxsCompletions-interfaces.js";
 
-export class mxsCompletionItems implements CompletionItemProvider
+export class mxsCompletionProvider implements CompletionItemProvider
 {
+    private wordPattern: RegExp = /\b(\p{L}[\p{L}0-9]*)\b(?:[ \t\r\n]*[.]?)$/u;
+
     public constructor(private backend: mxsBackend) { }
+
+    private completionsFromAPI(document: TextDocument, position: Position, context: CompletionContext): CompletionItem[]
+    {
+        let wordAtPos: string = '';
+        const wordRange = document.getWordRangeAtPosition(position);    //, this.wordPattern);
+
+        if (wordRange) {
+            wordAtPos = document.getText(wordRange);
+        } else {
+            const txtUntilPos = document.getText(new Range(0, 0, position.line, position.character));
+            const wordSearch = this.wordPattern.exec(txtUntilPos) || [];
+            console.log(txtUntilPos);
+            console.log(wordSearch);
+            if (wordSearch.length > 0) {
+                wordAtPos = wordSearch[1];
+            }
+        }
+
+        if (context.triggerKind === 1 && context.triggerCharacter === '.') {
+            const parent = mxsLanguageCompletions.has(wordAtPos);
+            if (parent) {
+                switch (parent.kind) {
+                    case CompletionItemKind.Class:
+                        return mxClassMembers?.[parent.label as string];
+                    case CompletionItemKind.Struct:
+                        return mxStructsMembers?.[parent.label as string];
+                    case CompletionItemKind.Interface:
+                        return mxInterfaceMembers?.[parent.label as string];
+                    default:
+                        return [];
+                }
+            }
+        } else {
+            const APIcandidates = mxsLanguageCompletions.contains(wordAtPos);
+            return APIcandidates;
+        }
+        // return all the list
+        return maxCompletions;
+    }
     
     provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: CompletionContext): ProviderResult<CompletionItem[] | CompletionList<CompletionItem>>
     {
-        throw new Error("Method not implemented.");
-        /*
-        return new Promise((resolve, reject) => {
-            this.backend.getCodeCompletionCandidates(document.fileName, position.character, position.line + 1)
+        // throw new Error("Method not implemented.");
+        return new Promise((resolve, reject) =>
+        {
+            const completionList: CompletionItem[] = [];
+
+            // Method to provide API completions
+            // vscode will filter the list of completions, so I can provide the entire list, check if there is a perfomance gain providing partial lists
+            completionList.push(...this.completionsFromAPI(document, position, context));
+
+            // antlr-c3 used to provide code completion items
+            // this.backend.getCodeCompletionCandidates(document.uri, position.line + 1, position.character)
+            /*
                 .then((candidates) => {
-                    const completionList: CompletionItem[] = [];
+                    
                     candidates.forEach((info) => {
                         const item = new CompletionItem(info.name, translateCompletionKind(info.kind));
                         item.sortText = sortKeys[info.kind] + info.name;
@@ -25,11 +78,15 @@ export class mxsCompletionItems implements CompletionItemProvider
                 }).catch((reason) => {
                     reject(reason);
                 });
+                */
+            resolve(new CompletionList(completionList, false));
+            // resolve(new CompletionList(completionList, true));
         });
-        */
     }
+    /*
     resolveCompletionItem?(item: CompletionItem, token: CancellationToken): ProviderResult<CompletionItem>
     {
         throw new Error("Method not implemented.");
     }
+    */
 }

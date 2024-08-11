@@ -7,6 +7,7 @@ import { mxsReferenceProvider } from './ReferenceProvider.js';
 import { mxsDefinitionProvider } from './DefinitionProvider.js';
 import { mxsRenameProvider } from './RenameProvider.js';
 import { mxsHoverProvider } from './HoverProvider.js';
+import { mxsCompletionProvider } from './CompletionItemProvider.js';
 
 export class ExtensionHost
 {
@@ -162,6 +163,11 @@ export class ExtensionHost
             languages.registerHoverProvider(
                 ExtensionHost.langSelector,
                 new mxsHoverProvider(this.backend)
+            ),
+            languages.registerCompletionItemProvider(
+                ExtensionHost.langSelector,
+                new mxsCompletionProvider(this.backend),
+                " ", ".", "="
             ),
             // languages.
             //...

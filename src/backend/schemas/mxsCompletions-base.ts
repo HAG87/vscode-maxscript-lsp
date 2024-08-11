@@ -2636,5 +2636,9 @@ export class mxsLanguageCompletions
 	{
 		return maxCompletions.find(item => item.label === name);
 	}
+	public static contains(pattern: string): CompletionItem[]
+	{
+		return maxCompletions.filter(item => (item.label as string).startsWith(pattern));
+	}
 }
 //# sourceMappingURL=mxsSchema.js.map
