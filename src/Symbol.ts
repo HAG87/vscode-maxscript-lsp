@@ -24,6 +24,8 @@ const symbolCodeTypeMap = new Map<SymbolKind, vscode.SymbolKind>([
 	[SymbolKind.Identifier, vscode.SymbolKind.Variable],
 
 	[SymbolKind.Operator, vscode.SymbolKind.Operator],
+	[SymbolKind.Keyword, vscode.SymbolKind.Key],
+
 	[SymbolKind.Array, vscode.SymbolKind.Object],
 	[SymbolKind.BitArray, vscode.SymbolKind.Object],
 	[SymbolKind.Object, vscode.SymbolKind.Object],
@@ -45,18 +47,15 @@ const symbolDescriptionMap = new Map<SymbolKind, string>([
 	[SymbolKind.Control, 'Control'],
 	[SymbolKind.Attributes, 'Attributes def'],
 	[SymbolKind.Event, 'Event action'],
-
 	[SymbolKind.Struct, 'Struct'],
 	[SymbolKind.Function, 'Function'],
-
 	[SymbolKind.Declaration, 'Declaration'],
 	[SymbolKind.Call, 'Call'],
 	[SymbolKind.Property, 'Property'],
 	[SymbolKind.Accessor, 'Accessor'],
-
 	[SymbolKind.Identifier, 'Identifier'],
 	[SymbolKind.Operator, 'Operator'],
-
+	[SymbolKind.Keyword, 'Keyword'],
 	[SymbolKind.Array, 'Array'],
 	[SymbolKind.BitArray, 'BitArray'],
 	[SymbolKind.Object, 'Object'],
@@ -67,6 +66,35 @@ const symbolDescriptionMap = new Map<SymbolKind, string>([
 	[SymbolKind.Null, 'Void value'],
 ]);
 
+const symbolCompletionTypeMap = new Map<SymbolKind, vscode.CompletionItemKind>([
+	[SymbolKind.Plugin,      vscode.CompletionItemKind.Class],
+	[SymbolKind.MacroScript, vscode.CompletionItemKind.Class],
+	[SymbolKind.Tool,        vscode.CompletionItemKind.Class],
+	[SymbolKind.Utility,     vscode.CompletionItemKind.Class],
+	[SymbolKind.Rollout,     vscode.CompletionItemKind.Class],
+	[SymbolKind.RcMenu,      vscode.CompletionItemKind.Class],
+	[SymbolKind.Parameters,  vscode.CompletionItemKind.Class],
+	[SymbolKind.Control,     vscode.CompletionItemKind.Field],
+	[SymbolKind.Attributes,  vscode.CompletionItemKind.Field],
+	[SymbolKind.Event,       vscode.CompletionItemKind.Event],
+	[SymbolKind.Struct,      vscode.CompletionItemKind.Struct],
+	[SymbolKind.Function,    vscode.CompletionItemKind.Function],
+	[SymbolKind.Declaration, vscode.CompletionItemKind.Variable],
+	[SymbolKind.Call,        vscode.CompletionItemKind.Method],
+	[SymbolKind.Property,    vscode.CompletionItemKind.Reference],
+	[SymbolKind.Accessor,    vscode.CompletionItemKind.Reference],
+	[SymbolKind.Identifier,  vscode.CompletionItemKind.Variable],
+	[SymbolKind.Operator,    vscode.CompletionItemKind.Operator],
+	[SymbolKind.Keyword,     vscode.CompletionItemKind.Keyword],
+	[SymbolKind.Array,       vscode.CompletionItemKind.Value],
+	[SymbolKind.BitArray,    vscode.CompletionItemKind.Value],
+	[SymbolKind.Object,      vscode.CompletionItemKind.Value],
+	[SymbolKind.Constant,    vscode.CompletionItemKind.Constant],
+	[SymbolKind.String,      vscode.CompletionItemKind.Value],
+	[SymbolKind.Number,      vscode.CompletionItemKind.Value],
+	[SymbolKind.Boolean,     vscode.CompletionItemKind.Value],
+	[SymbolKind.Null,        vscode.CompletionItemKind.Value],
+]);
 /**
  * Converts the native symbol kind to a vscode symbol kind.
  *
@@ -77,7 +105,16 @@ const symbolDescriptionMap = new Map<SymbolKind, string>([
 export const translateSymbolKind = (kind: SymbolKind): vscode.SymbolKind => {
     return symbolCodeTypeMap.get(kind) || vscode.SymbolKind.Null;
 };
-
+/**
+ * Converts the native symbol kind to a vscode completion item kind.
+ *
+ * @param kind The kind of symbol for which return the completion item kind.
+ *
+ * @returns The vscode completion item kind.
+ */
+export const translateCompletionKind = (kind: SymbolKind): vscode.CompletionItemKind => {
+    return symbolCompletionTypeMap.get(kind) || vscode.CompletionItemKind.Text;
+};
 /**
  * Provides a textual expression for a native symbol kind.
  *

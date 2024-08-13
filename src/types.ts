@@ -29,6 +29,7 @@ export enum SymbolKind
 
 	Identifier,
 	Operator,
+	Keyword,
 	Array,
 	BitArray,
 

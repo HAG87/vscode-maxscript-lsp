@@ -229,18 +229,10 @@ export class SourceContext
                 },
             },
         };
-        
+
         if (ctx instanceof ParserRuleContext && ctx.start && ctx.stop) {
-            
             const start = ctx.start;
             const stop = ctx.stop;
-
-            /*
-            result.range.start.row = ctx.start!.line;
-            result.range.start.column = ctx.start!.column;
-            result.range.end.row = ctx.stop!.line;
-            result.range.end.column = ctx.stop!.column;
-            */
 
             result.range = {
                 start: {
@@ -252,8 +244,9 @@ export class SourceContext
                     column: stop.column
                 }
             }
-            // console.log(result.range);            
+            // console.log(result.range);  
             const inputStream = ctx.start?.tokenSource?.inputStream;
+
             if (inputStream) {
                 try {
                     result.text = inputStream.getTextFromRange(start.start, stop.stop);
@@ -746,12 +739,16 @@ export class SourceContext
 
         return result;
     }
-    */
 
     // diagnostics
-    public getDiagnostics(): IDiagnosticEntry[]
+    /*     public getDiagnostics(): IDiagnosticEntry[]
+        {
+            this.runSemanticAnalysisIfNeeded();
+            return this.diagnostics;
+        } */
+
+    public get getDiagnostics(): IDiagnosticEntry[]
     {
-        this.runSemanticAnalysisIfNeeded();
         return this.diagnostics;
     }
 

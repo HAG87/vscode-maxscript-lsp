@@ -225,15 +225,15 @@ export class mxsBackend
     }
 
     // code completion
-    public getCodeCompletionCandidates(uri: Uri, line: number, character: number)
+    public async getCodeCompletionCandidates(uri: Uri, line: number, character: number): Promise<ISymbolInfo[]>
     {
-        // return this.getContext(uri).getCodeCompletionCandidates(line, character);
+        return this.getContext(uri).getCodeCompletionCandidates(line, character);
     }
 
     // diagnostics
     public getDiagnostics(uri: Uri)
     {
-        return this.getContext(uri).getDiagnostics();
+        return this.getContext(uri).getDiagnostics;
     }
 
     public hasErrors(uri: Uri): boolean
