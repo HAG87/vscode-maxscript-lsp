@@ -10,6 +10,7 @@ import { ContextSymbolTable, SymbolSupport } from "./ContextSymbolTable.js";
 import { BaseSymbol, IScopedSymbol, ScopedSymbol, SymbolTable, } from "antlr4-c3";
 import { symbolTableListener } from "./symbolTableListener.js";
 import { BackendUtils } from "./BackendUtils.js";
+import { semanticTokenListener } from "./semanticTokenListener.js";
 
 // One context for each valid document
 export class SourceContext
@@ -26,6 +27,7 @@ export class SourceContext
 
     // hold diagnostics for the context
     public diagnostics: IDiagnosticEntry[] = [];
+    public semanticTokens: ISemanticToken[] = [];
     // Contexts referencing us.
     private references: SourceContext[] = [];
 
@@ -130,15 +132,21 @@ export class SourceContext
                 throw e;
             }
         }
-        // console.log(this.tree);
+        
+        // semantic tokens!
+        const semanticListener = new semanticTokenListener(this.semanticTokens);
+        ParseTreeWalker.DEFAULT.walk(semanticListener, this.tree);
 
+        // let test = this.tree
+        // console.log(test);
+        
         // load symbols!
         this.symbolTable.tree = this.tree;
 
         // carefully copy this!
-        const listener = new symbolTableListener(this.symbolTable);
+        const symbolsListener = new symbolTableListener(this.symbolTable);
         // const listener = new DetailsListener(this.symbolTable, this.info.imports);
-        ParseTreeWalker.DEFAULT.walk(listener, this.tree);
+        ParseTreeWalker.DEFAULT.walk(symbolsListener, this.tree);
 
         // this.info.unreferencedRules = this.symbolTable.getUnreferencedSymbols();
 
@@ -761,7 +769,12 @@ export class SourceContext
         }
         return false;
     }
-
+    
+    //semantic tokens
+    public get getSemanticTokens(): ISemanticToken[]
+    {
+        return this.semanticTokens;
+    }
     // references
 
     // dependencies

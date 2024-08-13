@@ -1,6 +1,6 @@
 import { DocumentSymbol, SymbolInformation, Uri } from 'vscode';
 import { SourceContext } from './SourceContext.js';
-import { ISymbolInfo } from '../types.js';
+import { ISemanticToken, ISymbolInfo } from '../types.js';
 import { BaseSymbol } from 'antlr4-c3';
 
 export interface IContextEntry
@@ -241,6 +241,13 @@ export class mxsBackend
         return this.getContext(uri).hasErrors;
     }
 
+    // semantic tokens
+    
+    public getDocumentSemanticTokens(uri: Uri): ISemanticToken[]
+    {
+        return this.getContext(uri).getSemanticTokens;
+    }
+    
     // references
     /**
      * Count how many times a symbol has been referenced. The given file must contain the definition of this symbol.

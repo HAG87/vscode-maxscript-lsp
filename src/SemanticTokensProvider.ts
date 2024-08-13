@@ -1,17 +1,58 @@
-import { CancellationToken, DocumentRangeSemanticTokensProvider, DocumentSemanticTokensProvider, Event, ProviderResult, Range, SemanticTokens, SemanticTokensEdits, TextDocument } from "vscode";
+import { CancellationToken, DocumentRangeSemanticTokensProvider, DocumentSemanticTokensProvider, Event, Position, ProviderResult, Range, SemanticTokens, SemanticTokensBuilder, SemanticTokensEdits, SemanticTokensLegend, TextDocument, Uri } from "vscode";
 import { mxsBackend } from "./backend/Backend.js";
+import { ISemanticToken, semTokenModifiers, semTokenTypes } from "./types.js";
+
+
+export const mxsSemtoTokensLegend = new SemanticTokensLegend(semTokenTypes, semTokenModifiers);
+
 /**
  * Always takes a full document as input.
  */
 export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider 
 {
-    public constructor(private backend: mxsBackend) {}
+    // private tokensBuilder: SemanticTokensBuilder;
+    private currentTokens: ISemanticToken[] = [];
+
+    // private documentTokenBuilder: Map<string,SemanticTokensBuilder> = new Map<string,SemanticTokensBuilder>();
+
+    public constructor(private backend: mxsBackend)
+    {
+        // this.tokensBuilder = new SemanticTokensBuilder(mxsSemtoTokensLegend);
+        // console.log('semtokens new');
+    }
+
     onDidChangeSemanticTokens?: Event<void> | undefined;
 
     provideDocumentSemanticTokens(document: TextDocument, token: CancellationToken): ProviderResult<SemanticTokens>
     {
-        throw new Error("Method not implemented.");
-        // if no parse tree is available, fallback to Apy and regex method
+        /*
+        const uri = document.uri.toString();
+        let tokensBuilder: SemanticTokensBuilder;
+        if (this.documentTokenBuilder.has(uri)) {
+            tokensBuilder = this.documentTokenBuilder.get(uri)!;
+        } else {
+            tokensBuilder = new SemanticTokensBuilder(mxsSemtoTokensLegend);
+            this.documentTokenBuilder.set(uri, tokensBuilder);
+        }
+        */
+        // if no parse tree is available, fallback to Apply and regex method?
+
+        // console.log('needs recompute');
+        return new Promise((resolve) =>
+        {
+            const tokens = this.backend.getDocumentSemanticTokens(document.uri);
+            // some optimizations to recompute the tokens only if they have changed...
+            if (tokens && tokens.length > 0) {
+                const tokensBuilder = new SemanticTokensBuilder(mxsSemtoTokensLegend);
+                tokens.forEach(token => tokensBuilder.push(
+                    new Range(token.line - 1, token.startCharacter, token.line - 1, token.startCharacter + token.length),
+                    token.tokenType as string,
+                    token.tokenModifiers as string[]));
+                resolve(tokensBuilder.build());
+            } else {
+                resolve(undefined);
+            }
+        });
     }
 
     provideDocumentSemanticTokensEdits?(document: TextDocument, previousResultId: string, token: CancellationToken): ProviderResult<SemanticTokens | SemanticTokensEdits>

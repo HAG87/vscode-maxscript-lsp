@@ -8,6 +8,7 @@ import { mxsDefinitionProvider } from './DefinitionProvider.js';
 import { mxsRenameProvider } from './RenameProvider.js';
 import { mxsHoverProvider } from './HoverProvider.js';
 import { mxsCompletionProvider } from './CompletionItemProvider.js';
+import { mxsSemanticTokensProvider, mxsSemtoTokensLegend } from './SemanticTokensProvider.js';
 
 export class ExtensionHost
 {
@@ -169,6 +170,11 @@ export class ExtensionHost
                 new mxsCompletionProvider(this.backend),
                 " ", ".", "="
             ),
+            languages.registerDocumentSemanticTokensProvider(
+                ExtensionHost.langSelector,
+                new mxsSemanticTokensProvider(this.backend),
+                mxsSemtoTokensLegend
+            )
             // languages.
             //...
         );

@@ -3,6 +3,45 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
 */
 
+export const semTokenTypes =
+    [
+        'class',
+        'function',
+        'interface',
+        'keyword',
+        'namespace',
+        'struct',
+        'type',
+        'variable',
+        // 'enumMember',
+        // 'string',
+        // 'number',
+        // 'enum',
+        // 'typeParameter',
+        // 'member',
+        // 'property',
+        // 'parameter',
+    ];
+
+export const semTokenModifiers =
+    [
+		'defaultLibrary',
+        'declaration',
+        'readonly',
+        'static',
+        // 'documentation',
+        // 'abstract',
+        // 'deprecated',
+    ];
+
+export interface ISemanticToken
+{
+	line: number;
+	startCharacter: number;
+	length: number;
+	tokenType: number | string;
+	tokenModifiers: number | string[];
+}
 
 /**
  * A symbol kind.
