@@ -53,12 +53,9 @@ nonIfExpression
 	| macroscriptDefinition
 	| pluginDefinition
 	;
-
-// */
-
 //-------------------------------------- MACROSCRIPT_DEF
 macroscriptDefinition
-	: MACROSCRIPT NL* identifier ( NL* param )* NL*
+	: MacroScript NL* identifier ( NL* param )* NL*
     lp
         (macroscript_clause (NL* macroscript_clause)*)?
     rp
@@ -69,7 +66,7 @@ macroscript_clause: expr | eventHandlerClause
 
 //-------------------------------------- UTILITY_DEF
 utilityDefinition
-	: UTILITY NL* identifier NL* operand (NL* param)* NL*
+	: Utility NL* identifier NL* operand (NL* param)* NL*
     lp
         ( rollout_clause (NL* rollout_clause)* )?
     rp
@@ -77,7 +74,7 @@ utilityDefinition
 
 //-------------------------------------- ROLLOUT_DEF
 rolloutDefinition
-	: ROLLOUT NL* identifier NL* operand (NL* param)* NL*
+	: Rollout NL* identifier NL* operand (NL* param)* NL*
     lp
         ( rollout_clause (NL* rollout_clause)* )?
     rp
@@ -95,18 +92,47 @@ rollout_clause
 	;
 
 rolloutGroup
-	: GROUP NL* STRING? NL*
+	: Group NL* STRING? NL*
     lp
         ( rolloutControl (NL* rolloutControl)* )?
     rp
 	;
 
-rolloutControl: RolloutControl (NL* operand)+ (NL* param)*
+rolloutControl: rolloutControlName (NL* operand)+ (NL* param)*
 	;
 
+rolloutControlName
+	: Angle
+	| Bitmap
+	| Button
+	| CheckBox
+	| CheckButton
+	| ColorPicker
+	| ComboBox
+	| CurveControl
+	| DotnetControl
+	| DropdownList
+	| EditText
+	| GroupBox
+	| Hyperlink
+	| ImgTag
+	| Label
+	| ListBox
+	| MapButton
+	| MaterialButton
+	| MultilistBox
+	| PickButton
+	| PopupBenu
+	| Progressbar
+	| RadioButtons
+	| Slider
+	| Spinner
+	| Subrollout
+	| Timer
+	;
 //-------------------------------------- TOOL_DEF
 toolDefinition
-	: TOOL NL* identifier (NL* param)* NL*
+	: Tool NL* identifier (NL* param)* NL*
     lp
         tool_clause (NL* tool_clause)+
     rp
@@ -117,11 +143,11 @@ tool_clause: declarationExpression | fnDefinition | structDefinition | eventHand
 
 //-------------------------------------- RCMENU_DEF
 rcmenuDefinition
-	: RCMENU NL* identifier NL* lp (rc_clause (NL* rc_clause)*)? rp
+	: RCmenu NL* identifier NL* lp (rc_clause (NL* rc_clause)*)? rp
 	;
 
 rc_submenu
-	: SUBMENU NL* STRING (NL* param)* NL*
+	: SubMenu NL* STRING (NL* param)* NL*
     lp
         ( rc_clause (NL* rc_clause)* )?
     rp
@@ -137,13 +163,13 @@ rc_clause
 	;
 
 rcmenuControl
-	: MENUITEM (NL* operand)+ (NL* param)*
-	| SEPARATOR NL* identifier (NL* param)*
+	: MenuItem (NL* operand)+ (NL* param)*
+	| Separator NL* identifier (NL* param)*
 	;
 
 //-------------------------------------- PLUGIN_DEF
 pluginDefinition
-	: PLUGIN NL* identifier NL* identifier (NL* param)* NL*
+	: Plugin NL* identifier NL* identifier (NL* param)* NL*
     lp
         plugin_clause (NL* plugin_clause)*
     rp
@@ -221,7 +247,6 @@ contextExpression: ctx_cascading | ctx_set
 
 ctx_cascading: ctx_predicate (comma ctx_predicate)* NL* expr
 	;
-
 ctx_set
 	: SET (ANIMATE | TIME | IN | LEVEL) NL* operand
 	| SET COORDSYS NL* (LOCAL | operand)
@@ -235,23 +260,23 @@ ctx_predicate
 	| ABOUT NL* (COORDSYS | operand)
 	| IN? NL* COORDSYS NL* (LOCAL | operand)
 	| WITH? NL* UNDO NL* (STRING | param | identifier)? NL* simpleExpression
-	| WITH? NL* DEFAULTACTION NL* NAME
+	| WITH? NL* DefaultAction NL* name
 	| WITH? NL* ctx_keyword NL* simpleExpression
 	;
 
 ctx_keyword
 	: ( ANIMATE
-	| DONTREPEATMESSAGES
-	| MACRORECORDEREMITERENABLED
-	| MXSCALLSTACKCAPTUREENABLED
-	| PRINTALLELEMENTS
+	| DontRepeatMessages
+	| MacroRecorderEmitterEnabled
+	| MXScallstackCaptureEnabled
+	| PrintAllElements
 	| QUIET
 	| REDRAW )
 	;
 
 //-------------------------------------- PARAMETER DEF
 paramsDefinition
-	: PARAMETERS NL* identifier (NL* param)* NL*
+	: Parameters NL* identifier (NL* param)* NL*
     lp
         ( param_clause (NL+ param_clause)* )?
     rp
@@ -259,15 +284,13 @@ paramsDefinition
 
 param_clause: paramDefinition | eventHandlerClause
 	;
-
 paramDefinition: identifier (NL* param)*
 	;
-
 //-------------------------------------- ATTRIBUTES DEFINITION attributes <name> [version:n]
 // [silentErrors:t/f] [initialRollupState:0xnnnnn] [remap:#(<old_param_names_array>,
 // <new_param_names_array>)]
 attributesDefinition
-	: ATTRIBUTES NL* identifier (NL* param)* NL*
+	: Attributes NL* identifier (NL* param)* NL*
     lp
         attributes_clause ( NL+ attributes_clause )*
     rp
@@ -295,56 +318,39 @@ event_args
 structDefinition
 	: STRUCT NL* str_name = identifier NL*
     lp
-        struct_member ( comma struct_member )*
+        struct_body
     rp
 	;
 
-// struct_members: struct_member (comma struct_member)* ;
-/*
- struct_member
- : (scope = struct_scope NL*)? 
- (
- assignment_expr
- | var_name
- | fn_def
- |
- event_handler
- )
- ;
- */
-// /* 
-struct_member
-	: (scope = struct_scope NL*)? (
-		assignmentExpression
-		| identifier
-		| fnDefinition
-		| eventHandlerClause
-	)
+struct_body: (struct_access NL*)? struct_members ( comma (struct_access NL*)? struct_members )*
+	;
+struct_members
+	: struct_member
+	| fnDefinition
+	| eventHandlerClause	
 	;
 
-struct_scope: PUBLIC | PRIVATE
+struct_member: identifier assignment? // | ids
 	;
 
-// */
+struct_access: PUBLIC | PRIVATE
+	;
 
 //---------------------------------------- FUNCTION DEF
 fnDefinition
 	: fn_mod = MAPPED? NL* fn_decl = FN NL* fn_name = identifier NL*
 		( NL* fn_args )*
 		(NL* fn_params)*
-		NL* EQ NL*
-		fn_body
+		NL* assignment
 	;
 
 fn_body
 	: expr
 	;
-
 fn_args
 	: identifier
 	// | de_ref
 	;
-
 fn_params
 	: {this.colonBeNext()}? (identifier | kw_override) COLON (NL* operand_arg)?
 	;
@@ -507,75 +513,52 @@ declarationExpression
 	: scope = decl_scope NL*
         decl += variableDeclaration ( comma decl += variableDeclaration )*
 	;
-
 variableDeclaration: identifier assignment?
 	;
-
 decl_scope: ( LOCAL | GLOBAL | PERSISTENT NL* GLOBAL)
 	;
-
 //---------------------------------------- ASSIGNMENT EXPRESSION
-assignmentExpression: left = destination right = assignment
+assignmentExpression
+	: destination (ASSIGN | EQ) NL* expr
 	;
 
-assignmentOpExpression: left = destination ASSIGN NL* right = expr
+assignment: EQ NL* expr
 	;
-
-assignment: EQ NL* expr;
 
 destination: accessor | de_ref | identifier | path
 	;
-
 //---------------------------------------- SIMPLE_EXPR
 /*
- simple_expr
- : logic
- ;
- 
- logic
- : right = logic (OR | AND) NL* left = comparison
- |
- <assoc=right>
- NOT NL* right = logic
- | comparison
- ;
+simple_expr : logic ;
+logic
+	: right = logic (OR | AND) NL* left = comparison
+	| <assoc=right> NOT NL* right = logic | comparison
+	;
  comparison
- : right = comparison COMPARE
- NL*
- left = sum
- |
+	: right = comparison COMPARE NL* left = sum
+	| sum
+	;
  sum
- ;
- sum
- : left = sum (PLUS | MINUS | UNARY_MINUS) NL* right = prod
- |
+	: left = sum (PLUS | MINUS | UNARY_MINUS) NL* right = prod
+	| prod
+ 	;
  prod
- ;
- prod
- : left =
- prod (PROD | DIV) NL* right = pow
- | pow
- ;
+ 	: left = prod (PROD | DIV) NL* right = pow
+ 	| pow
+ 	;
  pow
- : <assoc=right> left =
- pow POW
- NL* right = as
- |
+	 : <assoc=right> left = pow POW NL* right = as
+	| as
+ 	;
  as
- ;
- as
- : left = as AS NL* classname
- | unary
- ;
- 
+	: left = as AS NL* classname
+	| unary
+	; 
  unary
- : (MINUS
- |
- UNARY_MINUS) expr_operand
- | expr_operand
- ;
- //
- */
+	: (MINUS | UNARY_MINUS) expr_operand
+	| expr_operand
+	;
+ // */
 // /*
 simpleExpression
 	: left = expr_operand AS NL* classname	# TypecastExpr
@@ -632,7 +615,6 @@ fn_caller
 	| path
 	| de_ref
 	| accessor
-	// | unary_minus //UNARY MINUS
 	| expr_seq //EXPRESSION SEQUENCE
 	| QUESTION
 	;
@@ -679,7 +661,7 @@ factor
 	| bool
 	| STRING
 	| path
-	| NAME
+	| name
 	| NUMBER
 	| TIMEVAL
 	| QUESTION
@@ -695,7 +677,6 @@ factor
 //---------------------------------------- UNARY_MINUS unary_minus : (MINUS NL*| UNARY_MINUS) expr ;
 
 //---------------------------------------- EXPR_SEQ <expr_seq> ::= ( <expr> { ( ; | <eol>) <expr> }
-// )
 expr_seq
 	: lp (expr (NL+ expr)*)? rp //| LPAREN NL* RPAREN
 	;
@@ -722,69 +703,63 @@ point2:
 // BitArray
 bitArray: SHARP NL* lc bitList? rc
 	;
-
 bitList: bitexpr ( comma bitexpr)*
 	;
-
-// */
 bitexpr: expr NL* DOTDOT NL* expr | expr
 	;
-
 // Array
 array: SHARP NL* lp arrayList? rp
 	;
-
 arrayList: expr ( comma expr)*
 	;
-
-// */ Identifiers
-identifier: ids | by_ref
+// Identifiers
+identifier: GLOB? ids | by_ref
 	;
 
-ids: GLOB? (ID | QUOTED | kw_reserved)
+ids: (ID | QUOTED_ID | kw_reserved)
 	;
 
 path: PATH
 	;
+name: NAME
+	;
 
 by_ref: {this.noWSBeNext()}? AMP (ids | path)
 	;
-
 de_ref: {this.noWSBeNext()}? PROD (accessor | ids | path)
 	;
 
 // Boolean
-bool: (BOOL | OFF | ON)
+bool: (TRUE | FALSE | OFF | ON)
 	;
-
 //---------------------------------------- OVERRIDABLE KEYWORDS CONTEXTUAL KEYWORDS...can be used as
 // identifiers outside the context...
 kw_reserved
-	: (
-		RolloutControl
-		| CHANGE
+	: rolloutControlName |
+	(
+		  CHANGE
 		| DELETED
-		| GROUP
+		| Group
 		| LEVEL
-		| MENUITEM
-		| SEPARATOR
+		| MenuItem
+		| Separator
 		| SET
-		| SUBMENU
+		| SubMenu
 		| TIME
-		| PRINTALLELEMENTS
+		| PrintAllElements
 	)
 	;
 
 kw_override
 	: (
-		ATTRIBUTES
-		| PARAMETERS
-		| PLUGIN
-		| RCMENU
+		  Attributes
+		| Parameters
+		| Plugin
+		| RCmenu
 		| RETURN
-		| ROLLOUT
+		| Rollout
+		| Tool
 		| TO
-		| TOOL
 		| ON
 	)
 	;
