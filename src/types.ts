@@ -5,6 +5,7 @@
 
 export const semTokenTypes =
     [
+		'method',
         'class',
         'function',
         'interface',
@@ -27,6 +28,7 @@ export const semTokenModifiers =
     [
 		'defaultLibrary',
         'declaration',
+        'modification',
         'readonly',
         'static',
         // 'documentation',

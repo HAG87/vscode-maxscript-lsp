@@ -1,12 +1,12 @@
 import { DocumentSymbol, Uri, workspace } from "vscode";
 import { mxsLexer } from "../parser/mxsLexer.js";
-import { BailErrorStrategy, CharStream, CommonTokenStream, DefaultErrorStrategy, ParseCancellationException, ParserRuleContext, ParseTree, ParseTreeWalker, PredictionMode, TerminalNode } from "antlr4ng";
-import { mxsParser, ProgramContext } from "../parser/mxsParser.js";
+import { BailErrorStrategy, CharStream, CommonTokenStream, DefaultErrorStrategy, ParseCancellationException, ParserRuleContext, ParseTree, ParseTreeWalker, PredictionMode, TerminalNode, Token } from "antlr4ng";
+import { Expr_seqContext, FnDefinitionContext, IdentifierContext, mxsParser, ProgramContext, StructDefinitionContext } from "../parser/mxsParser.js";
 import { ContextLexerErrorListener } from "./ContextLexerErrorListener.js";
 import { ContextErrorListener } from "./ContextErrorListener.js";
 import * as fs from "fs";
-import { DiagnosticType, IDefinition, IDiagnosticEntry, ISymbolInfo, SymbolKind } from "../types.js";
-import { ContextSymbolTable, SymbolSupport } from "./ContextSymbolTable.js";
+import { DiagnosticType, IDefinition, IDiagnosticEntry, ISemanticToken, ISymbolInfo, SymbolKind } from "../types.js";
+import { ContextSymbolTable, ExprSymbol, fnArgsSymbol, FnDefinitionSymbol, fnParamsSymbol, IdentifierSymbol, StructDefinitionSymbol, StructMemberSymbol, SymbolSupport, VariableDeclSymbol } from "./ContextSymbolTable.js";
 import { BaseSymbol, IScopedSymbol, ScopedSymbol, SymbolTable, } from "antlr4-c3";
 import { symbolTableListener } from "./symbolTableListener.js";
 import { BackendUtils } from "./BackendUtils.js";
@@ -22,11 +22,12 @@ export class SourceContext
     public symbolTable: ContextSymbolTable;
     // document uri?
     // symbolTable: string;
-    // semantic tokens... so on
+
     // could be useful to store te token stream...
 
     // hold diagnostics for the context
     public diagnostics: IDiagnosticEntry[] = [];
+    // semantic tokens
     public semanticTokens: ISemanticToken[] = [];
     // Contexts referencing us.
     private references: SourceContext[] = [];
@@ -42,7 +43,7 @@ export class SourceContext
         new ContextErrorListener(this.diagnostics);
 
     // The root context from the last parse run.
-    private tree: ProgramContext | undefined;
+    private tree: ParserRuleContext | undefined;
 
     public constructor(uri: Uri, /*settings*/)
     {
@@ -89,7 +90,7 @@ export class SourceContext
             this.lexer.inputStream = CharStream.fromString(this.getDocumentText());
         }
     }
-
+    //----------------------------------------------------------------
     public parse(): void
     {
         // console.log(this.lexer.text);
@@ -104,6 +105,9 @@ export class SourceContext
         this.parser.reset();
         this.parser.errorHandler = new BailErrorStrategy();
         this.parser.interpreter.predictionMode = PredictionMode.SLL;
+
+        //TODO: semantic tokens
+        // this.parser.addParseListener();
 
         // this.info.imports.length = 0;
 
@@ -132,14 +136,14 @@ export class SourceContext
                 throw e;
             }
         }
-        
+
         // semantic tokens!
         const semanticListener = new semanticTokenListener(this.semanticTokens);
         ParseTreeWalker.DEFAULT.walk(semanticListener, this.tree);
 
         // let test = this.tree
         // console.log(test);
-        
+
         // load symbols!
         this.symbolTable.tree = this.tree;
 
@@ -293,29 +297,11 @@ export class SourceContext
         return result;
     }
 
-    public getTopMostParent(symbol: BaseSymbol): ContextSymbolTable | IScopedSymbol
-    {
-        // not topmost symbol
-        if (!symbol.parent?.parent?.context) {
-            return this.symbolTable;
-        }
-        // console.log(symbol.parent instanceof ContextSymbolTable);
-        let symbolTopMostParent = symbol.parent;
-        while (symbolTopMostParent.parent) {
-            if (symbolTopMostParent?.parent.parent !== undefined) {
-                // console.log(symbolTopMostParent);
-                symbolTopMostParent = symbolTopMostParent?.parent;
-            } else break;
-        }
-        return symbolTopMostParent;
-    }
-
     public symbolAtPosition(row: number, column: number): ISymbolInfo | undefined
     {
         if (!this.tree) return undefined;
 
-        const symbol =
-            this.symbolTable.getSymbolAtPosition(row, column);
+        const symbol = this.symbolTable.getSymbolAtPosition(row, column);
         return symbol ? this.symbolTable.getSymbolInfo(symbol) : undefined;
     }
 
@@ -347,10 +333,10 @@ export class SourceContext
     {
 
         if (!this.tree) {
-            return undefined;
+            return;
         }
 
-        let context = BackendUtils.parseTreeFromPosition(this.tree, column, row);
+        let context = BackendUtils.parseTreeFromPosition(this.tree, row, column);
 
         if (context instanceof TerminalNode) {
             context = context!.parent;
@@ -363,16 +349,18 @@ export class SourceContext
         if (ruleScope) {
             let run = context;
             while (run
-                && !(run instanceof ParserRuleSpecContext)
-                && !(run instanceof OptionsSpecContext)
-                && !(run instanceof LexerRuleSpecContext)) {
+                && !(run instanceof Expr_seqContext)
+                && !(run instanceof FnDefinitionContext)
+                && !(run instanceof StructDefinitionContext)
+                //...
+            ) {
                 run = run.parent;
             }
             if (run) {
                 context = run;
             }
         }
-        */
+        // */
         if (context) {
             const symbol = this.symbolTable.symbolWithContextSync(context);
             if (symbol) {
@@ -380,7 +368,7 @@ export class SourceContext
             }
         }
 
-        return undefined;
+        return;
     }
 
     public listTopLevelSymbols(includeDependencies: boolean): ISymbolInfo[]
@@ -769,7 +757,7 @@ export class SourceContext
         }
         return false;
     }
-    
+
     //semantic tokens
     public get getSemanticTokens(): ISemanticToken[]
     {
@@ -783,6 +771,7 @@ export class SourceContext
     public formatCode() { }
     public formatCodeRange() { }
     // prettify
+    
     // minify
     public minifyCode() { }
     //...

@@ -3,9 +3,18 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  */
 
-import { ParseTree, ParserRuleContext, TerminalNode } from "antlr4ng";
+import {
+    ParseTree,
+    ParserRuleContext,
+    TerminalNode,
+    // Token,
+    // TokenStream,
+} from "antlr4ng";
 
-export class BackendUtils {
+// export type TokenPosition = { index: number, context: ParseTree, text: string };
+
+export class BackendUtils
+{
     /**
      * Get the lowest level parse tree, which covers the given position.
      *
@@ -15,12 +24,14 @@ export class BackendUtils {
      *
      * @returns The parse tree which covers the given position or undefined if none could be found.
      */
-    public static parseTreeFromPosition = (root: ParseTree, column: number, row: number): ParseTree | null => {
+    public static parseTreeFromPosition(root: ParseTree, row: number, column: number): ParseTree | null
+    {
         // Does the root node actually contain the position? If not we don't need to look further.
         if (root instanceof TerminalNode) {
-            const terminal = (root);
+            const terminal = root;
             const token = terminal.symbol;
-            if (token?.line !== row) {
+
+            if (token.line !== row) {
                 return null;
             }
 
@@ -47,7 +58,7 @@ export class BackendUtils {
 
             if (context.children) {
                 for (const child of context.children) {
-                    const result = BackendUtils.parseTreeFromPosition(child, column, row);
+                    const result = BackendUtils.parseTreeFromPosition(child, row, column);
                     if (result) {
                         return result;
                     }
@@ -55,7 +66,6 @@ export class BackendUtils {
             }
 
             return context;
-
         }
     };
 

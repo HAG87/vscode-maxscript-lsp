@@ -25,15 +25,11 @@ options {
 program: NL* expr (NL+ expr)* NL* EOF
 	;
 
-// /*
-expr: nonIfExpression | ifExpression
-	;
-
-nonIfExpression
+expr
 	: simpleExpression
 	| declarationExpression
 	| assignmentExpression
-	| assignmentOpExpression
+	| ifExpression
 	| whileLoopExpression
 	| doLoopExpression
 	| forLoopExpression
@@ -98,10 +94,10 @@ rolloutGroup
     rp
 	;
 
-rolloutControl: rolloutControlName (NL* operand)+ (NL* param)*
+rolloutControl: rolloutControlType NL* controlName = identifier (NL* operand)* (NL* param)*
 	;
 
-rolloutControlName
+rolloutControlType
 	: Angle
 	| Bitmap
 	| Button
@@ -368,47 +364,31 @@ doLoopExpression: DO NL* expr NL* WHILE NL* expr
 	;
 
 /* For loop
- * for <var_name> [, <index_name>[, <filtered_index_name>]] ( in | = )<sequence> ( do |
- * collect ) <expr>
+ * for <var_name> [, <index_name>[, <filtered_index_name>]] ( in | = )<sequence> ( do | collect ) <expr>
  * for-sequence
  * <expr> to <expr> [ by <expr> ] [while <expr>] [where <expr> ]
  * <expr> to <expr> [ by <expr> ] [where <expr> ]
  * <expr> [while <expr>] [ where<expr> ]
- * <expr>
- * [where <expr>]
+ * <expr> [where <expr>]
  */
 
 forLoopExpression
-	: FOR NL* var = identifier (
-		comma index_name = identifier (
-			comma filtered_index_name = identifier
-		)?
-	)? NL* for_operator = (IN | EQ) NL* for_sequence NL* for_action = (
-		DO
-		| COLLECT
-	) NL* expr
+	: FOR NL* for_body NL* for_operator = (IN | EQ) NL* for_sequence NL* for_action = (DO | COLLECT) NL* expr
 	;
 
-for_sequence
-	: expr NL* (
-		for_to NL* for_by? NL* for_while? NL* for_where?
-		| for_while? NL* for_where?
-	)
+for_body : var = identifier ( comma index_name = identifier ( comma filtered_index_name = identifier )? )?
 	;
-
+for_sequence : expr ( NL* for_to NL* for_by? )? ( NL* (for_while NL* for_where? | for_where) )?
+	;
 for_to: TO NL* expr
 	;
-
 for_by: BY NL* expr
 	;
-
 for_while: WHILE NL* expr
 	;
-
 for_where: WHERE NL* expr
 	;
-
-loopExitStatement: EXIT ( NL* WITH NL* expr)?
+loopExitStatement: EXIT (NL* WITH NL* expr)?
 	;
 
 //----------------------------------------TRY EXPR
@@ -433,21 +413,20 @@ case_item
     ;
 
  case_factor
- : accessor
- | var_name
- | path
- | by_ref
- | bool
- | STRING
- | NAME
- | array
- | bitArray
- | point3
- | point2
- | box2
- | unary_minus
- | expr_seq
- ;
+	: accessor
+	| var_name
+	| path
+	| bool
+	| STRING
+	| name
+	| array
+	| bitArray
+	| point3
+	| point2
+	| box2
+	| unary_minus
+	| expr_seq
+	;
  */
 //---------------------------------------- IF-CLAUSE
 /*
@@ -484,11 +463,8 @@ case_item
 // /*
 // this does work but it is slooow
 ifExpression
-	: IF NL* expr NL* (
-		THEN NL* nonIfExpression NL* ELSE NL* expr
-		| (THEN | DO) NL* expr
-		| ifExpression
-	)
+	: IF NL* simpleExpression NL* THEN NL* expr (NL* ELSE NL* expr)?
+	| IF NL* simpleExpression NL*   DO NL* expr	
 	;
 
 /*
@@ -561,17 +537,16 @@ logic
  // */
 // /*
 simpleExpression
-	: left = expr_operand AS NL* classname	# TypecastExpr
-	| expr_operand							# ExprOperand
-	// : (fn_call | de_ref | operand) AS NL* classname #TypecastExpr | fn_call #FnCallExpr | de_ref
-	// #DeRef | operand #OperandExpr
-	| (MINUS | UNARY_MINUS) right = simpleExpression									# UnaryExpr
-	| <assoc = right> left = simpleExpression POW NL* right = simpleExpression			# ExponentExpr
-	| left = simpleExpression (PROD | DIV) NL* right = simpleExpression					# ProductExpr
-	| left = simpleExpression (PLUS | MINUS | UNARY_MINUS) NL* right = simpleExpression	# AdditionExpr
-	| left = simpleExpression COMPARE NL* right = simpleExpression						# ComparisonExpr
-	| <assoc = right> NOT NL* right = simpleExpression									# LogicNOTExpr
-	| left = simpleExpression (OR | AND) NL* right = simpleExpression					# LogicExpr
+	// : (fn_call | de_ref | operand) AS NL* classname #TypecastExpr | fn_call #FnCallExpr | de_ref #DeRef | operand #OperandExpr
+	: left = simpleExpression AS NL* classname	                                        //# TypecastExpr
+	| (MINUS | UNARY_MINUS) right = simpleExpression									//# UnaryExpr
+	| <assoc = right> left = simpleExpression POW NL* right = simpleExpression			//# ExponentExpr
+	| left = simpleExpression (PROD | DIV) NL* right = simpleExpression					//# ProductExpr
+	| left = simpleExpression (PLUS | MINUS | UNARY_MINUS) NL* right = simpleExpression	//# AdditionExpr
+	| left = simpleExpression COMPARE NL* right = simpleExpression						//# ComparisonExpr
+	| <assoc = right> NOT NL* right = simpleExpression									//# LogicNOTExpr
+	| left = simpleExpression (OR | AND) NL* right = simpleExpression					//# LogicExpr
+	| expr_operand							                                            //# ExprOperand
 	;
 // */
 
@@ -642,8 +617,9 @@ operand
 //------------------------------------------------------------------------//
 // TODO: Remove left recursion
 accessor
-    : accessor (index | property)
-    | factor (index | property)
+    // : accessor (index | property)
+    // | factor (index | property)
+    : factor (index | property)+
 	;
 
 //------------------------------------------------------------------------//
@@ -713,19 +689,21 @@ array: SHARP NL* lp arrayList? rp
 arrayList: expr ( comma expr)*
 	;
 // Identifiers
-identifier: GLOB? ids | by_ref
+identifier: GLOB? ids | {this.noWSBeNext()}? AMP ids
 	;
 
 ids: (ID | QUOTED_ID | kw_reserved)
 	;
 
-path: PATH
+path
+	: {this.noWSBeNext()}? AMP PATH
+	| PATH
 	;
+
 name: NAME
 	;
 
-by_ref: {this.noWSBeNext()}? AMP (ids | path)
-	;
+// by_ref: {this.noWSBeNext()}? AMP (ids | path) ;
 de_ref: {this.noWSBeNext()}? PROD (accessor | ids | path)
 	;
 
@@ -735,7 +713,7 @@ bool: (TRUE | FALSE | OFF | ON)
 //---------------------------------------- OVERRIDABLE KEYWORDS CONTEXTUAL KEYWORDS...can be used as
 // identifiers outside the context...
 kw_reserved
-	: rolloutControlName |
+	: rolloutControlType |
 	(
 		  CHANGE
 		| DELETED
