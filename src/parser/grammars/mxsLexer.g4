@@ -253,7 +253,9 @@ COMPARE: ('==' | '<' | '>' | '<=' | '>=' | '!=')
 	;
 ASSIGN: ('+=' | '-=' | '*=' | '/=')
 	;
-UNARY_MINUS: '-' {this.followed()}?
+UNARY_MINUS
+		: {!this.preceeded()}? '-'
+		| '-' {this.followed()}?
 	;
 MINUS: '-'
 	;
