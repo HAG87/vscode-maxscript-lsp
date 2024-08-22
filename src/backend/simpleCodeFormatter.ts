@@ -1,3 +1,5 @@
+import { mxsLexer } from "../parser/mxsLexer.js";
+
 enum filterCurrenEnum {
 	assign,
 	newline,
@@ -21,29 +23,41 @@ enum filterAheadEnum {
 	bitrange,
 	unaryminus
 };
-enum indentTokensEnum {
-	lparen,
-	lbracket,
-	lbrace,
-	arraydef,
-	bitarraydef
-};
-enum unindentTokensEnum {
-	rparen,
-	rbracket,
-	rbrace
+
+export interface ISimpleFormatterSettings
+{
+	indentOnly: boolean;
+	indentChar: string;
+	whitespaceChar: string;
+	indentBlock: boolean;
+	blockInNewLine: boolean;
+	maintainNewline: boolean;
 }
 
-export interface SimpleFormatterSettings
-{
-	indentOnly: boolean,
-	indentChar: string
-	whitespaceChar: string
-}
+const indentTokens: Set<number> = new Set([
+	mxsLexer.LPAREN,
+	mxsLexer.LBRACK,
+	mxsLexer.LBRACE,
+]);
+
+const unIndentTokens: Set<number> = new Set([
+	mxsLexer.RPAREN,
+	mxsLexer.RBRACK,
+	mxsLexer.RBRACE,	
+]);
+
 /**
  * Fallback class to provide simple formatting options when the parser is not available
  */
 export class mxsSimpleFormatter {
     // use moo as basic tokenizer to format code or..
     // use the regex method.
+	// use antlr tokenizer
+	
+	indentation: number = 0;
+
+	constructor() {}
+	// format entire document
+	// format range
+	
 }

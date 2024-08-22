@@ -4,6 +4,27 @@ import { mxsLanguageCompletions, maxCompletions } from "./backend/schemas/mxsCom
 import { mxClassMembers } from "./backend/schemas/mxsCompletions-clases.js";
 import { mxStructsMembers } from "./backend/schemas/mxsCompletions-structs.js";
 import { mxInterfaceMembers } from "./backend/schemas/mxsCompletions-interfaces.js";
+import { symbolDescriptionFromEnum, translateCompletionKind } from "./Symbol.js";
+
+/** Determines the sort order in the completion list. One value for each SymbolKind. */
+const sortKeys = [
+    "01", // Keyword
+    "06", // TokenVocab
+    "07", // Import
+    "03", // BuiltInLexerToken
+    "03", // VirtualLexerToken
+    "03", // FragmentLexerToken
+    "03", // LexerToken
+    "05", // BuiltInMode
+    "05", // LexerMode
+    "02", // BuiltInChannel
+    "02", // TokenChannel
+    "04", // ParserRule
+    "08", // Action
+    "09", // Predicate
+    "00", // Operator
+    "10", // Option
+];
 
 export class mxsCompletionProvider implements CompletionItemProvider
 {
@@ -21,8 +42,6 @@ export class mxsCompletionProvider implements CompletionItemProvider
         } else {
             const txtUntilPos = document.getText(new Range(0, 0, position.line, position.character));
             const wordSearch = this.wordPattern.exec(txtUntilPos) || [];
-            console.log(txtUntilPos);
-            console.log(wordSearch);
             if (wordSearch.length > 0) {
                 wordAtPos = wordSearch[1];
             }
@@ -30,6 +49,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
 
         if (context.triggerKind === 1 && context.triggerCharacter === '.') {
             const parent = mxsLanguageCompletions.has(wordAtPos);
+            // console.log(parent);
             if (parent) {
                 switch (parent.kind) {
                     case CompletionItemKind.Class:
@@ -41,45 +61,56 @@ export class mxsCompletionProvider implements CompletionItemProvider
                     default:
                         return [];
                 }
+            } else {
+                return [];
             }
         } else {
             const APIcandidates = mxsLanguageCompletions.contains(wordAtPos);
-            return APIcandidates;
+            return APIcandidates.length > 0 ? APIcandidates : maxCompletions;
         }
         // return all the list
-        return maxCompletions;
+        // return maxCompletions;
     }
-    
-    provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: CompletionContext): ProviderResult<CompletionItem[] | CompletionList<CompletionItem>>
+
+    provideCompletionItems(
+        document: TextDocument, position: Position, token: CancellationToken, context: CompletionContext
+    ): ProviderResult<CompletionItem[] | CompletionList<CompletionItem>>
     {
         // throw new Error("Method not implemented.");
         return new Promise((resolve, reject) =>
         {
             const completionList: CompletionItem[] = [];
-
+            // console.log('---COMPLETIONS---');
             // Method to provide API completions
             // vscode will filter the list of completions, so I can provide the entire list, check if there is a perfomance gain providing partial lists
-            completionList.push(...this.completionsFromAPI(document, position, context));
+            // completionList.push(...this.completionsFromAPI(document, position, context));
 
+            // /*
             // antlr-c3 used to provide code completion items
-            // this.backend.getCodeCompletionCandidates(document.uri, position.line + 1, position.character)
-            /*
-                .then((candidates) => {
-                    
-                    candidates.forEach((info) => {
+            this.backend.getCodeCompletionCandidates(document.uri, position.line + 1, position.character)
+                .then(({completions: candidates, provideLanguageCompletions}) =>
+                {
+                    // console.log(candidates);
+                    candidates.forEach((info) =>
+                    {
                         const item = new CompletionItem(info.name, translateCompletionKind(info.kind));
-                        item.sortText = sortKeys[info.kind] + info.name;
-                        item.detail = (info.description !== undefined) ? info.description : details[info.kind];
-
+                        //     item.sortText = sortKeys[info.kind] + info.name;
+                        item.detail = info.description || symbolDescriptionFromEnum(info.kind);
+                        // console.log(item);
                         completionList.push(item);
                     });
-
-                    resolve(new CompletionList(completionList, false));
-                }).catch((reason) => {
+                    // console.log(completionList);
+                    if (provideLanguageCompletions) {
+                        completionList.push(...this.completionsFromAPI(document, position, context));
+                    }
+                    resolve(new CompletionList(completionList, false));               
+                }).catch((reason) =>
+                {
                     reject(reason);
+                    // completionList.push(...this.completionsFromAPI(document, position, context));
                 });
-                */
-            resolve(new CompletionList(completionList, false));
+            // */
+            // resolve(new CompletionList(completionList, false));
             // resolve(new CompletionList(completionList, true));
         });
     }

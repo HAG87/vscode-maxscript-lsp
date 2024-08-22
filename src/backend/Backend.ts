@@ -1,5 +1,5 @@
 import { DocumentSymbol, SymbolInformation, Uri } from 'vscode';
-import { SourceContext } from './SourceContext.js';
+import { ICompletionsResult, SourceContext } from './SourceContext.js';
 import { ISemanticToken, ISymbolInfo } from '../types.js';
 import { BaseSymbol } from 'antlr4-c3';
 
@@ -225,7 +225,7 @@ export class mxsBackend
     }
 
     // code completion
-    public async getCodeCompletionCandidates(uri: Uri, line: number, character: number): Promise<ISymbolInfo[]>
+    public async getCodeCompletionCandidates(uri: Uri, line: number, character: number): Promise<ICompletionsResult>
     {
         return this.getContext(uri).getCodeCompletionCandidates(line, character);
     }

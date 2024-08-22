@@ -7,11 +7,16 @@ import { ContextErrorListener } from "./ContextErrorListener.js";
 import * as fs from "fs";
 import { DiagnosticType, IDefinition, IDiagnosticEntry, ISemanticToken, ISymbolInfo, SymbolKind } from "../types.js";
 import { ContextSymbolTable, ExprSymbol, fnArgsSymbol, FnDefinitionSymbol, fnParamsSymbol, IdentifierSymbol, StructDefinitionSymbol, StructMemberSymbol, SymbolSupport, VariableDeclSymbol } from "./ContextSymbolTable.js";
-import { BaseSymbol, IScopedSymbol, ScopedSymbol, SymbolTable, } from "antlr4-c3";
+import { BaseSymbol, CodeCompletionCore, IScopedSymbol, ScopedSymbol, SymbolTable, SymbolConstructor, ICandidateRule } from "antlr4-c3";
 import { symbolTableListener } from "./symbolTableListener.js";
 import { BackendUtils } from "./BackendUtils.js";
 import { semanticTokenListener } from "./semanticTokenListener.js";
 
+export interface ICompletionsResult
+{
+    completions: ISymbolInfo[];
+    provideLanguageCompletions: boolean;
+}
 // One context for each valid document
 export class SourceContext
 {
@@ -404,68 +409,152 @@ export class SourceContext
         return this.symbolTable.resolveSync(symbolName, false);
     }
 
-    // code completions
-    /*
-        public async getCodeCompletionCandidates(column: number, row: number): Promise<ISymbolInfo[]> {
-        if (!this.parser) {
-            return [];
+    // ------------------------------------------------- code completion
+    private async getScope(context: ParseTree | null, symbolTable: SymbolTable): Promise<BaseSymbol | undefined>
+    {
+        async function dfs(context: ParseTree | null): Promise<BaseSymbol | undefined>
+        {
+            if (!context) {
+                return undefined;
+            }
+            const scope = await symbolTable.symbolWithContext(context);
+            if (scope) {
+                return scope;
+            } else {
+                return await dfs(context.parent);
+            }
         }
+        return await dfs(context);
+    }
+
+    public async getAllSymbolsInScope(scope: ScopedSymbol[],)
+    {
+
+    }
+
+    public async getCodeCompletionCandidates(row: number, column: number, languageCompletions: boolean = false): Promise<ICompletionsResult>
+    {
+        if (!this.parser) {
+            return { completions: [], provideLanguageCompletions: true };
+        }
+
+        const prettyValue = (id: string): string =>
+        {
+            return id.split('').reduce((acc: string, c: string, i: number) =>
+            {
+                if (i < id.length - 1) {
+                    const next = id[i + 1];
+                    // is current uppercase?
+                    const currentCase = (c === c.toUpperCase() && c !== c.toLowerCase());
+                    // is next uppercase?
+                    const nextCase = (next === next.toUpperCase() && next !== next.toLowerCase());
+                    // curent is upercase, and next also.
+                    return currentCase && nextCase ? acc + c.toLowerCase() : acc + c;
+                }
+                return acc + c.toLowerCase();
+            }, '');
+        };
 
         const core = new CodeCompletionCore(this.parser);
         core.showResult = false;
+        // core.showResult = true;
+        // core.showDebugOutput = true;
+
         core.ignoredTokens = new Set([
-            ANTLRv4Lexer.TOKEN_REF,
-            ANTLRv4Lexer.RULE_REF,
-            ANTLRv4Lexer.LEXER_CHAR_SET,
-            ANTLRv4Lexer.DOC_COMMENT,
-            ANTLRv4Lexer.BLOCK_COMMENT,
-            ANTLRv4Lexer.LINE_COMMENT,
-            ANTLRv4Lexer.INT,
-            ANTLRv4Lexer.STRING_LITERAL,
-            ANTLRv4Lexer.UNTERMINATED_STRING_LITERAL,
-            ANTLRv4Lexer.MODE,
-            ANTLRv4Lexer.COLON,
-            ANTLRv4Lexer.COLONCOLON,
-            ANTLRv4Lexer.COMMA,
-            ANTLRv4Lexer.SEMI,
-            ANTLRv4Lexer.LPAREN,
-            ANTLRv4Lexer.RPAREN,
-            ANTLRv4Lexer.LBRACE,
-            ANTLRv4Lexer.RBRACE,
-            ANTLRv4Lexer.GT,
-            ANTLRv4Lexer.DOLLAR,
-            ANTLRv4Lexer.RANGE,
-            ANTLRv4Lexer.DOT,
-            ANTLRv4Lexer.AT,
-            ANTLRv4Lexer.POUND,
-            ANTLRv4Lexer.NOT,
-            ANTLRv4Lexer.ID,
-            ANTLRv4Lexer.WS,
-            ANTLRv4Lexer.END_ARGUMENT,
-            ANTLRv4Lexer.UNTERMINATED_ARGUMENT,
-            ANTLRv4Lexer.ARGUMENT_CONTENT,
-            ANTLRv4Lexer.END_ACTION,
-            ANTLRv4Lexer.UNTERMINATED_ACTION,
-            ANTLRv4Lexer.ACTION_CONTENT,
-            ANTLRv4Lexer.UNTERMINATED_CHAR_SET,
+            mxsParser.BLOCK_COMMENT,
+            mxsParser.LINE_COMMENT,
+            mxsParser.STRING,
+            mxsParser.NUMBER,
+            mxsParser.TIMEVAL,
+            mxsParser.RESOURCE,
+            mxsParser.TRUE,
+            mxsParser.FALSE,
+            mxsParser.OFF,
+
+            // mxsParser.PATH,
+            // mxsParser.NAME,
+            mxsParser.ID,
+            mxsParser.QUOTED_ID,
+
+            mxsParser.NL,
+            mxsParser.WS,
+
+            mxsParser.COMPARE,
+            mxsParser.ASSIGN,
+            mxsParser.UNARY_MINUS,
+            mxsParser.MINUS,
+            mxsParser.PLUS,
+            mxsParser.PROD,
+            mxsParser.DIV,
+            mxsParser.POW,
+            // mxsParser.EQ,
+            mxsParser.SHARP,
+            mxsParser.COMMA,
+            mxsParser.COLON,
+            mxsParser.GLOB,
+            // mxsParser.DOT,
+            // mxsParser.DOTDOT,
+            mxsParser.AMP,
+            mxsParser.QUESTION,
+
+            mxsParser.LPAREN,
+            mxsParser.RPAREN,
+            mxsParser.LBRACE,
+            mxsParser.RBRACE,
+            mxsParser.LBRACK,
+            mxsParser.RBRACK,
+
             Token.EOF,
         ]);
 
         core.preferredRules = new Set([
-            ANTLRv4Parser.RULE_argActionBlock,
-            ANTLRv4Parser.RULE_actionBlock,
-            ANTLRv4Parser.RULE_terminalDef,
-            ANTLRv4Parser.RULE_lexerCommandName,
-            ANTLRv4Parser.RULE_identifier,
-            ANTLRv4Parser.RULE_ruleref,
+            // mxsParser.RULE_simpleExpression,
+            mxsParser.RULE_identifier,
+            mxsParser.RULE_path,
+            mxsParser.RULE_name,
+            // mxsParser.RULE_functionCall,
+            // mxsParser.RULE_fn_args,
+            // mxsParser.RULE_variableDeclaration,
+            // mxsParser.RULE_accessor,
+            mxsParser.RULE_property,
+            // mxsParser.RULE_operand,
+            // mxsParser.RULE_factor,
+
+            // mxsParser.RULE_assignment,
+            // mxsParser.RULE_assignmentExpression,
+
+            // mxsParser.RULE_expr_seq,
+            // mxsParser.RULE_expr,
+            // mxsParser.RULE_ifExpression,
+            // mxsParser.RULE_nonIfExpression,
+
+            // mxsParser.RULE_fnDefinition,
+            // mxsParser.RULE_structDefinition,
+            mxsParser.RULE_struct_member,
+            // mxsParser.RULE_rolloutControl,
+            // mxsParser.RULE_rolloutDefinition,
+            // mxsParser.RULE_utilityDefinition,
+            // mxsParser.RULE_toolDefinition,
+            // mxsParser.RULE_macroscriptDefinition,
+            // mxsParser.RULE_pluginDefinition,
+            // mxsParser.RULE_attributesDefinition,
+            //...
         ]);
 
+        // let position = BackendUtils.computeTokenPosition((this.tree as ParseTree), this.tokenStream, row, column);
+        // console.log(position);
+
+        // let test = BackendUtils.parseTreeFromPosition(this.tree as ParseTree, row, column);
+        // this.tree?.getTokens
+
+        // console.log('context');
+        // console.log(test);
         // Search the token index which covers our caret position.
         let index: number;
         this.tokenStream.fill();
         for (index = 0; ; ++index) {
             const token = this.tokenStream.get(index);
-            //console.log(token.toString());
+            // console.log(token.toString());
             if (token.type === Token.EOF || token.line > row) {
                 break;
             }
@@ -473,127 +562,121 @@ export class SourceContext
                 continue;
             }
             const length = token.text ? token.text.length : 0;
+
             if ((token.column + length) >= column) {
                 break;
             }
         }
 
+        // console.log(`trigger: ${JSON.stringify(this.tokenStream.get(index).text)}`);
+
         const candidates = core.collectCandidates(index);
+        // let test: ICandidateRule = candidates.rules;
+        // console.log(candidates.rules);
+
         const result: ISymbolInfo[] = [];
 
-        candidates.tokens.forEach((following: number[], type: number) => {
+        // /*
+        candidates.tokens.forEach((following: number[], type: number) =>
+        {
             switch (type) {
-                case ANTLRv4Lexer.RARROW: {
-                    result.push({
-                        kind: SymbolKind.Operator,
-                        name: "->",
-                        description: "Lexer action introducer",
-                        source: this.fileName,
-                    });
-
-                    break;
-                }
-                case ANTLRv4Lexer.LT: {
-                    result.push({
-                        kind: SymbolKind.Operator,
-                        name: "< key = value >",
-                        description: "Rule element option",
-                        source: this.fileName,
-                    });
-
-                    break;
-                }
-                case ANTLRv4Lexer.ASSIGN: {
+                //...
+                case mxsLexer.EQ: {
                     result.push({
                         kind: SymbolKind.Operator,
                         name: "=",
                         description: "Variable assignment",
-                        source: this.fileName,
-                    });
-
-                    break;
-                }
-
-                case ANTLRv4Lexer.QUESTION: {
-                    result.push({
-                        kind: SymbolKind.Operator,
-                        name: "?",
-                        description: "Zero or one repetition operator",
-                        source: this.fileName,
+                        source: this.sourceUri.toString(),
                     });
                     break;
                 }
-
-                case ANTLRv4Lexer.STAR: {
-                    result.push({
-                        kind: SymbolKind.Operator,
-                        name: "*",
-                        description: "Zero or more repetition operator",
-                        source: this.fileName,
-                    });
-
-                    break;
-                }
-
-                case ANTLRv4Lexer.PLUS_ASSIGN: {
-                    result.push({
-                        kind: SymbolKind.Operator,
-                        name: "+=",
-                        description: "Variable list addition",
-                        source: this.fileName,
-                    });
-
-                    break;
-                }
-
-                case ANTLRv4Lexer.PLUS: {
-                    result.push({
-                        kind: SymbolKind.Operator,
-                        name: "+",
-                        description: "One or more repetition operator",
-                        source: this.fileName,
-                    });
-
-                    break;
-                }
-
-                case ANTLRv4Lexer.OR: {
-                    result.push({
-                        kind: SymbolKind.Operator,
-                        name: "|",
-                        description: "Rule alt separator",
-                        source: this.fileName,
-                    });
-                    break;
-                }
-
                 default: {
                     const value = this.parser?.vocabulary.getDisplayName(type) ?? "";
                     result.push({
                         kind: SymbolKind.Keyword,
-                        name: value[0] === "'" ? value.substring(1, value.length - 1) : value, // Remove quotes.
-                        source: this.fileName,
+                        name: prettyValue(value),   //value[0] === "'" ? value.substring(1, value.length - 1) : value, // Remove quotes.
+                        //description: "Rule alt separator",
+                        source: this.sourceUri.toString(),
                     });
-
                     break;
                 }
             }
         });
+        // */
+        // console.log(result);
+        // console.log(candidates);
 
         const promises: Array<Promise<BaseSymbol[] | undefined>> = [];
-        candidates.rules.forEach((candidateRule, key) => {
+
+        candidates.rules.forEach((candidateRule, key) =>
+        {
+            // console.log(JSON.stringify(this.tokenStream.get(key).text));
+            // this.parser.getRuleIndexMap().forEach((index, ruleName) => { if (index === key) { console.log(ruleName); } });
+            // console.log(this.parser?.vocabulary?.getSymbolicName(key));
+            // console.log(candidateRule);
+
             switch (key) {
-                case ANTLRv4Parser.RULE_argActionBlock: {
-                    result.push({
-                        kind: SymbolKind.Arguments,
-                        name: "[ argument action code ]",
-                        source: this.fileName,
-                        definition: undefined,
-                        description: undefined,
-                    });
+
+                case mxsParser.RULE_identifier: {
+
+                    languageCompletions = true;
+
+                    const context = BackendUtils.parseTreeFromPosition(<ParseTree>this.tree, row, column);
+
+                    // if (!context) { return []; }
+                    if (!context) { return; }
+
+                    const currentSymbol = this.symbolTable.symbolContainingContext(context);
+
+                    if (currentSymbol && currentSymbol.parent) {
+                        
+                        const entrySymbol =
+                            currentSymbol instanceof IdentifierSymbol && currentSymbol.parent
+                                ? currentSymbol.parent as ExprSymbol
+                                : currentSymbol as ExprSymbol;                        
+                       
+                        // entrySymbol.getAllSymbols(IdentifierSymbol, true).then((symbols) => symbols.forEach(symbol => console.log(symbol.name)));
+                        // promises.push(entrySymbol.getAllSymbols(BaseSymbol));
+                        // promises.push(entrySymbol.getAllSymbols(ScopedSymbol));
+                        
+                        promises.push(entrySymbol.getAllSymbols(IdentifierSymbol));
+                        promises.push(entrySymbol.getAllSymbols(VariableDeclSymbol));
+                        promises.push(entrySymbol.getAllSymbols(FnDefinitionSymbol));
+                        promises.push(entrySymbol.getAllSymbols(fnArgsSymbol));
+                        promises.push(entrySymbol.getAllSymbols(fnParamsSymbol));
+                        promises.push(entrySymbol.getAllSymbols(StructDefinitionSymbol));
+                        promises.push(entrySymbol.getAllSymbols(StructMemberSymbol));
+
+                        // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, IdentifierSymbol));
+                        // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, VariableDeclSymbol));
+                        // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, FnDefinitionSymbol));
+                        // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, fnArgsSymbol));
+                        // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, fnParamsSymbol));
+                        // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, StructDefinitionSymbol));
+                        // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, StructMemberSymbol));                
+                    }
                     break;
                 }
-
+                case mxsParser.RULE_struct_member: {
+                    result.push(
+                        {
+                            kind: SymbolKind.Keyword,
+                            name: 'Public',
+                            source: this.sourceUri.toString(),
+                            definition: undefined,
+                            description: undefined,
+                        },
+                        {
+                            kind: SymbolKind.Keyword,
+                            name: 'Private',
+                            source: this.sourceUri.toString(),
+                            definition: undefined,
+                            description: undefined,
+                        }
+                    );
+                    break;
+                }
+                /*    
                 case ANTLRv4Parser.RULE_actionBlock: {
                     result.push({
                         kind: SymbolKind.ParserAction,
@@ -602,7 +685,7 @@ export class SourceContext
                         definition: undefined,
                         description: undefined,
                     });
-
+    
                     // Include predicates only when we are in a lexer or parser element.
                     const list = candidateRule.ruleList;
                     if (list[list.length - 1] === ANTLRv4Parser.RULE_lexerElement) {
@@ -622,118 +705,65 @@ export class SourceContext
                             description: undefined,
                         });
                     }
-
+    
                     break;
                 }
-
+    
                 case ANTLRv4Parser.RULE_terminalDef: { // Lexer rules.
                     promises.push(this.symbolTable.getAllSymbols(BuiltInTokenSymbol));
                     promises.push(this.symbolTable.getAllSymbols(VirtualTokenSymbol));
                     promises.push(this.symbolTable.getAllSymbols(TokenSymbol));
-
+    
                     // Include fragment rules only when referenced from a lexer rule.
                     const list = candidateRule.ruleList;
                     if (list[list.length - 1] === ANTLRv4Parser.RULE_lexerAtom) {
                         promises.push(this.symbolTable.getAllSymbols(FragmentTokenSymbol));
                     }
-
+    
                     break;
-                }
-
-                case ANTLRv4Parser.RULE_lexerCommandName: {
-                    ["channel", "skip", "more", "mode", "push", "pop"].forEach((symbol) => {
-                        result.push({
-                            kind: SymbolKind.Keyword,
-                            name: symbol,
-                            source: this.fileName,
-                            definition: undefined,
-                            description: undefined,
-                        });
-                    });
-                    break;
-                }
-
-                case ANTLRv4Parser.RULE_ruleref: {
-                    promises.push(this.symbolTable.getAllSymbols(RuleSymbol));
-
-                    break;
-                }
-
-                case ANTLRv4Parser.RULE_identifier: {
-                    // Identifiers can be a lot of things. We only handle special cases here.
-                    // More concrete identifiers should be captured by rules further up in the call chain.
-                    const list = candidateRule.ruleList;
-                    switch (list[list.length - 1]) {
-                        case ANTLRv4Parser.RULE_option: {
-                            ["superClass", "language", "tokenVocab", "TokenLabelType", "contextSuperClass",
-                                "caseInsensitive", "exportMacro"]
-                                .forEach((symbol) => {
-                                    result.push({
-                                        kind: SymbolKind.Option,
-                                        name: symbol,
-                                        source: this.fileName,
-                                        definition: undefined,
-                                        description: undefined,
-                                    });
-                                });
-                            break;
-                        }
-
-                        // eslint-disable-next-line no-underscore-dangle
-                        case ANTLRv4Parser.RULE_action_: {
-                            ["header", "members", "preinclude", "postinclude", "context", "declarations", "definitions",
-                                "listenerpreinclude", "listenerpostinclude", "listenerdeclarations", "listenermembers",
-                                "listenerdefinitions", "baselistenerpreinclude", "baselistenerpostinclude",
-                                "baselistenerdeclarations", "baselistenermembers", "baselistenerdefinitions",
-                                "visitorpreinclude", "visitorpostinclude", "visitordeclarations", "visitormembers",
-                                "visitordefinitions", "basevisitorpreinclude", "basevisitorpostinclude",
-                                "basevisitordeclarations", "basevisitormembers", "basevisitordefinitions"]
-                                .forEach((symbol) => {
-                                    result.push({
-                                        kind: SymbolKind.Keyword,
-                                        name: symbol,
-                                        source: this.fileName,
-                                        definition: undefined,
-                                        description: undefined,
-                                    });
-                                });
-
-                            break;
-                        }
-
-                        default: {
-                            break;
-                        }
-                    }
-
-                    break;
-                }
-
-                default: {
-                    break;
-                }
+                } 
+                   
+                // */
             }
 
         });
 
         const symbolLists = await Promise.all(promises);
-        symbolLists.forEach((symbols) => {
+        const collectedNames: Set<string> = new Set([]);
+
+        symbolLists.forEach((symbols) =>
+        {
             if (symbols) {
-                symbols.forEach((symbol) => {
-                    if (symbol.name !== "EOF") {
-                        result.push({
-                            kind: SourceContext.getKindFromSymbol(symbol),
-                            name: symbol.name,
-                            source: this.fileName,
-                            definition: undefined,
-                            description: undefined,
-                        });
+                symbols.forEach((symbol) =>
+                {
+                    // console.log(symbol);
+                    if (symbol.name && symbol.name !== "EOF" && !(collectedNames.has(symbol.name))) {
+                        // filter out symbols downwards the current position
+                        let collectThis = true;
+                        if (symbol.context) {
+                            const symline = (symbol.context as ParserRuleContext).start?.line ?? 0;
+                            // console.log(`${symline}--${row}`);
+                            collectThis = symline <= row;
+                        }
+                        if (collectThis) {
+                            result.push({
+                                kind: SourceContext.getKindFromSymbol(symbol),
+                                name: symbol.name,
+                                source: this.sourceUri.toString(),
+                                definition: undefined,
+                                description: undefined,
+                            });
+                            collectedNames.add(symbol.name);
+                        }
                     }
                 });
             }
         });
 
-        return result;
+        return {
+            completions: result,
+            provideLanguageCompletions: languageCompletions
+        };
     }
 
     // diagnostics
