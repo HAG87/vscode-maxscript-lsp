@@ -267,14 +267,11 @@ export class mxsBackend
         // return this.getContext(uri).getReferenceCount(symbol);
     }
     // formatting
-    /*
-        public formatGrammar(fileName: string, options: IFormattingOptions, start: number,
-        stop: number): [string, number, number] {
-        const context = this.getContext(fileName);
-
-        return context.formatGrammar(options, start, stop);
+    
+    public formatCode(uri: string,/*  options: IFormattingOptions, */ range: ILexicalRange)  //: [string, number, number]
+    {
+        return this.getContext(uri).formatCode(/* options, */ range);
     }
-        // prettify
-        // minify
-    */
+    // prettify
+    // minify    
 }

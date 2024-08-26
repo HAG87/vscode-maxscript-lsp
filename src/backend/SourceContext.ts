@@ -9,6 +9,7 @@ import { ContextSymbolTable, ExprSymbol, fnArgsSymbol, FnDefinitionSymbol, fnPar
 import { symbolTableListener } from "./symbolTableListener.js";
 import { semanticTokenListener } from "./semanticTokenListener.js";
 import { BackendUtils } from "./BackendUtils.js";
+import { mxsSimpleFormatter } from "./CodeFormatter.js";
 
 export interface ICompletionsResult
 {
@@ -782,11 +783,90 @@ export class SourceContext
 
     // dependencies
 
-    // format
-    public formatCode() { }
-    public formatCodeRange() { }
+    // format code
+    public formatCode(/* options, */ /* start: number, stop: number */range: ILexicalRange)
+    {
+
+        // rectify the start and stop positions with the parse tree we are in
+        function findParentExpr(ctx: ParserRuleContext): ParserRuleContext
+        {
+            while (ctx && (ctx.ruleIndex !== mxsParser.RULE_expr)) {
+                if (ctx.parent) {
+                    ctx = ctx.parent;
+                } else break;
+            }
+            return ctx;
+        }
+
+        let contextToFormat: ParserRuleContext;
+
+        const ctxStart =
+            BackendUtils.parseTreeFromPosition(<ParseTree>this.tree, range.start.row, range.start.column) as ParserRuleContext;
+
+        if (!ctxStart) {
+            contextToFormat = this.tree as ParserRuleContext;
+        } else {
+            contextToFormat = findParentExpr(ctxStart);
+        }
+
+        const ctxStop =
+            (BackendUtils.parseTreeFromPosition(<ParseTree>this.tree, range.end.row, range.end.column) ?? this.tree) as ParserRuleContext;
+        // check if ctxStop is contained in ctxStart
+        if (ctxStop) {
+            const startEnd = contextToFormat.stop?.tokenIndex ?? 0;
+            const stopEnd = ctxStop.stop?.tokenIndex ?? 0;
+
+            if (stopEnd > startEnd) {
+                contextToFormat = findParentExpr(ctxStop);
+            }
+        }
+
+        const startToken = contextToFormat.start;
+        const stopToken = contextToFormat.stop;
+
+        // console.log(contextToFormat);
+        // if (startToken && stopToken) {
+        //     console.log(this.lexer.vocabulary.getSymbolicName(startToken.type));
+        //     console.log(this.lexer.vocabulary.getSymbolicName(stopToken.type));
+        // }
+
+        // console.log(range);
+
+        // console.log(ctxStart);
+        // console.log(ctxStop);
+
+        // console.log(ctxStart.start?.tokenIndex);
+        // console.log(ctxStart.stop?.tokenIndex);
+
+        // console.log(ctxStop.start?.tokenIndex);
+        // console.log(ctxStop.stop?.tokenIndex);
+
+
+
+        // save an instance of the formatter, to avoid initialization every time it is called
+        this.lexer.reset();
+        this.tokenStream.setTokenSource(this.lexer);
+        this.tokenStream.fill();
+
+        const tokens = this.tokenStream.getTokens(startToken?.tokenIndex, stopToken?.tokenIndex);
+
+        // console.log(tokens);
+
+        const formatter = new mxsSimpleFormatter(tokens);
+
+
+        formatter.formatRange()
+
+        // console.log(formatter.formatRange());
+
+        // return formatter.formatGrammar(options, start, stop);        
+        // formatter.formatRange(start, stop);
+
+    }
+
     // prettify
-    
+    public prettyfiCode() { }
+
     // minify
     public minifyCode() { }
     //...
