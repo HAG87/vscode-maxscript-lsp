@@ -16,11 +16,6 @@ options {
 	// caseInsensitive = true;
 	superClass = mxsLexerBase;
 }
-/* 
- @members{ 
- public static readonly NEWLINE_CHANNEL = 2;
- }
- //*/
 
 //COMMENTS
 BLOCK_COMMENT: '/*' .*? ('*/' | EOF) -> channel(HIDDEN)
@@ -31,17 +26,6 @@ LINE_COMMENT: '--' ~[\r\n]* -> channel(HIDDEN)
 
 //STRING
 STRING: String_regular | String_verbatim
-	;
-//BASIC VALUES
-NUMBER
-	: Int Cnot?
-	| Float
-	| Hex
-	;
-TIMEVAL
-	: (( (Int? [.])? Int | Int [.]) [mfstMFST])+
-	| Int [:] Int? [.] Int
-	| Int [nN]
 	;
 //--------------------------------------------------------------//
 //VALUES
@@ -214,7 +198,7 @@ PERSISTENT: P E R S I S T E N T
 	;
 //--------------------------------------------------------------//
 //IDENTIFIERS
-NAME: Sharp (Alpha | Num)+
+NAME: Sharp (Alpha | Int)+
 	;
 PATH: Dollar (Alphanum | [*?\\] | Quoted | '...' | '..' | '/')*
 	;
@@ -268,6 +252,18 @@ DIV: '/'
 POW: '^'
 	;
 //--------------------------------------------------------------//
+//NUMERIC VALUES
+NUMBER
+	: Int+ Cnot?
+	| Float
+	| Hex
+	;
+TIMEVAL
+	: (( (Int* [.])? Int+ | Int+ [.]) [mfstMFST])+
+	| Int+ [:] Int* [.] Int+
+	| Int+ [nN]
+	;
+//--------------------------------------------------------------//
 //SYMBOLS
 SHARP: Sharp
 	;
@@ -277,9 +273,9 @@ GLOB: '::'
 	;
 COLON: ':' //{this.preceeded()}? ':';
 	;
-DOT: '.'
-	;
 DOTDOT: '..'
+	;
+DOT: '.'
 	;
 AMP: '&'
 	;
@@ -322,14 +318,15 @@ fragment WSchar: [ \t]
 fragment NLchar: [\r\n] | Semicolon
 	;
 //--------------------------------------------------------------//
-fragment Float: Int [.] (Int Cnot?)? | [.] Int Cnot?
+fragment Float
+	: Int+ [.] {this.inputStream.LA(1) !== '.'.charCodeAt(0)}?
+	| Int* [.] Int+ Cnot?
 	;
-fragment Cnot: ( [eEdD] ([+-]? Int)? | [LP] )
+fragment Cnot: ( [eEdD] ([+-]? Int+)? | [LP] )
 	;
-fragment Hex: '0' [xX] (Num | [aAfF])+
+fragment Hex: '0' [xX] (Int | [aAfF])+
 	;
-fragment Int: Num+
-	;
+
 fragment String_regular: '"' (~["\r\n] | '\\"')* '"'
 	;
 fragment String_verbatim: '@"' ~["]* '"'
@@ -344,11 +341,11 @@ fragment Void
 	| O K
 	;
 // BASIC FRAGMENTS
-fragment Num: [0-9]
-	;
 fragment Alpha: [_\p{L}]
 	;
-fragment Alphanum: Alpha (Alpha | Num)*
+fragment Alphanum: Alpha (Alpha | Int)*
+	;
+fragment Int: [0-9]
 	;
 //--------------------------------------------------------------//
 //LETTERS
