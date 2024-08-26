@@ -1,7 +1,7 @@
 import { Uri } from 'vscode';
 import * as fs from "fs";
 import { ICompletionsResult, SourceContext } from './SourceContext.js';
-import { ISemanticToken, ISymbolInfo } from '../types.js';
+import { ILexicalRange, ISemanticToken, ISymbolInfo } from '../types.js';
 import { BaseSymbol } from 'antlr4-c3';
 
 export interface IContextEntry

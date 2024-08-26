@@ -8,7 +8,8 @@ import { mxsDefinitionProvider } from './DefinitionProvider.js';
 import { mxsRenameProvider } from './RenameProvider.js';
 import { mxsHoverProvider } from './HoverProvider.js';
 import { mxsCompletionProvider } from './CompletionItemProvider.js';
-import { mxsSemanticTokensProvider, mxsSemtoTokensLegend } from './SemanticTokensProvider.js';
+import { mxsRangeSemanticTokensProvider, mxsSemanticTokensProvider, mxsSemtoTokensLegend } from './SemanticTokensProvider.js';
+import { mxsFormattingProvider, mxsRangeFormattingProvider } from './FormattingProvider.js';
 
 export class ExtensionHost
 {
@@ -174,7 +175,26 @@ export class ExtensionHost
                 ExtensionHost.langSelector,
                 new mxsSemanticTokensProvider(this.backend),
                 mxsSemtoTokensLegend
+            ),
+            /*
+            languages.registerDocumentRangeSemanticTokensProvider(
+                ExtensionHost.langSelector,
+                new mxsRangeSemanticTokensProvider(this.backend),
+                mxsSemtoTokensLegend
+            ),
+            */
+           /*
+            languages.registerDocumentFormattingEditProvider(
+                ExtensionHost.langSelector,
+                new mxsFormattingProvider(this.backend)
+            ),
+            // */
+            // /*
+            languages.registerDocumentRangeFormattingEditProvider(
+                ExtensionHost.langSelector,
+                new mxsRangeFormattingProvider(this.backend)
             )
+            // */
             // languages.
             //...
         );

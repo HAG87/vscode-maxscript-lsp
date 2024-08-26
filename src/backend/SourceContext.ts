@@ -1,15 +1,14 @@
-import { mxsLexer } from "../parser/mxsLexer.js";
 import { BailErrorStrategy, CharStream, CommonTokenStream, DefaultErrorStrategy, ParseCancellationException, ParserRuleContext, ParseTree, ParseTreeWalker, PredictionMode, TerminalNode, Token } from "antlr4ng";
-import { Expr_seqContext, FnDefinitionContext, IdentifierContext, mxsParser, ProgramContext, StructDefinitionContext } from "../parser/mxsParser.js";
+import { BaseSymbol, CodeCompletionCore, ScopedSymbol, SymbolTable, IScopedSymbol, SymbolConstructor, ICandidateRule } from "antlr4-c3";
+import { mxsLexer } from "../parser/mxsLexer.js";
+import { mxsParser } from "../parser/mxsParser.js";
 import { ContextLexerErrorListener } from "./ContextLexerErrorListener.js";
 import { ContextErrorListener } from "./ContextErrorListener.js";
-import * as fs from "fs";
-import { DiagnosticType, IDefinition, IDiagnosticEntry, ISemanticToken, ISymbolInfo, SymbolKind } from "../types.js";
+import { DiagnosticType, IDefinition, IDiagnosticEntry, ILexicalRange, ISemanticToken, ISymbolInfo, SymbolKind } from "../types.js";
 import { ContextSymbolTable, ExprSymbol, fnArgsSymbol, FnDefinitionSymbol, fnParamsSymbol, IdentifierSymbol, StructDefinitionSymbol, StructMemberSymbol, SymbolSupport, VariableDeclSymbol } from "./ContextSymbolTable.js";
-import { BaseSymbol, CodeCompletionCore, IScopedSymbol, ScopedSymbol, SymbolTable, SymbolConstructor, ICandidateRule } from "antlr4-c3";
 import { symbolTableListener } from "./symbolTableListener.js";
-import { BackendUtils } from "./BackendUtils.js";
 import { semanticTokenListener } from "./semanticTokenListener.js";
+import { BackendUtils } from "./BackendUtils.js";
 
 export interface ICompletionsResult
 {
@@ -615,16 +614,16 @@ export class SourceContext
                     const currentSymbol = this.symbolTable.symbolContainingContext(context);
 
                     if (currentSymbol && currentSymbol.parent) {
-                        
+
                         const entrySymbol =
                             currentSymbol instanceof IdentifierSymbol && currentSymbol.parent
                                 ? currentSymbol.parent as ExprSymbol
-                                : currentSymbol as ExprSymbol;                        
-                       
+                                : currentSymbol as ExprSymbol;
+
                         // entrySymbol.getAllSymbols(IdentifierSymbol, true).then((symbols) => symbols.forEach(symbol => console.log(symbol.name)));
                         // promises.push(entrySymbol.getAllSymbols(BaseSymbol));
                         // promises.push(entrySymbol.getAllSymbols(ScopedSymbol));
-                        
+
                         promises.push(entrySymbol.getAllSymbols(IdentifierSymbol));
                         promises.push(entrySymbol.getAllSymbols(VariableDeclSymbol));
                         promises.push(entrySymbol.getAllSymbols(FnDefinitionSymbol));
