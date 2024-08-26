@@ -23,9 +23,20 @@ BLOCK_COMMENT: '/*' .*? ('*/' | EOF) -> channel(HIDDEN)
 
 LINE_COMMENT: '--' ~[\r\n]* -> channel(HIDDEN)
 	;
-
+//--------------------------------------------------------------//
 //STRING
 STRING: String_regular | String_verbatim
+	;
+//NUMERIC VALUES
+NUMBER
+	: Int+ Cnot?
+	| Float
+	| Hex
+	;
+TIMEVAL
+	: (( (Int* [.])? Int+ | Int+ [.]) [mfstMFST])+
+	| Int+ [:] Int* [.] Int+
+	| Int+ [nN]
 	;
 //--------------------------------------------------------------//
 //VALUES
@@ -238,8 +249,8 @@ COMPARE: ('==' | '<' | '>' | '<=' | '>=' | '!=')
 ASSIGN: ('+=' | '-=' | '*=' | '/=')
 	;
 UNARY_MINUS
-		: {!this.preceeded()}? '-'
-		| '-' {this.followed()}?
+		: {!this.noWsOrEqualBefore()}? '-' {this.noWsOrEqualNext()}?
+		// : {!this.noWsOrEqualBefore()}? '-' | '-' {this.noWsOrEqualNext()}?
 	;
 MINUS: '-'
 	;
@@ -252,18 +263,6 @@ DIV: '/'
 POW: '^'
 	;
 //--------------------------------------------------------------//
-//NUMERIC VALUES
-NUMBER
-	: Int+ Cnot?
-	| Float
-	| Hex
-	;
-TIMEVAL
-	: (( (Int* [.])? Int+ | Int+ [.]) [mfstMFST])+
-	| Int+ [:] Int* [.] Int+
-	| Int+ [nN]
-	;
-//--------------------------------------------------------------//
 //SYMBOLS
 SHARP: Sharp
 	;
@@ -271,7 +270,7 @@ COMMA: ','
 	;
 GLOB: '::'
 	;
-COLON: ':' //{this.preceeded()}? ':';
+COLON: ':' //{this.noWsOrEqualBefore()}? ':';
 	;
 DOTDOT: '..'
 	;
