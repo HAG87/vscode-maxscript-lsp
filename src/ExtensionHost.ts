@@ -30,12 +30,12 @@ export class ExtensionHost
         const editor = window.activeTextEditor;
         if (editor && Utilities.isLanguageFile(editor.document)) {
             const document = editor.document;
-            this.backend.loadDocument(document.uri, document.getText());
+            this.backend.loadDocument(document.uri.toString(), document.getText());
 
             // this.regenerateBackgroundData(document);
             this.diagnosticCollection.set(
                 document.uri,
-                diagnosticAdapter(this.backend.getDiagnostics(document.uri))
+                diagnosticAdapter(this.backend.getDiagnostics(document.uri.toString()))
             );
         }
         // */
@@ -61,19 +61,19 @@ export class ExtensionHost
             workspace.onDidOpenTextDocument((document: TextDocument) =>
             {
                 if (Utilities.isLanguageFile(document)) {
-                    this.backend.loadDocument(document.uri, document.getText());
+                    this.backend.loadDocument(document.uri.toString(), document.getText());
 
                     // this.regenerateBackgroundData(document);
                     this.diagnosticCollection.set(
                         document.uri,
-                        diagnosticAdapter(this.backend.getDiagnostics(document.uri))
+                        diagnosticAdapter(this.backend.getDiagnostics(document.uri.toString()))
                     );
                 }
             }),
             workspace.onDidCloseTextDocument((document: TextDocument) =>
             {
                 if (Utilities.isLanguageFile(document)) {
-                    this.backend.unloadDocument(document.uri);
+                    this.backend.unloadDocument(document.uri.toString());
                     // clear diagnostics for the document
                     this.diagnosticCollection.set(document.uri, []);
                 }
@@ -83,7 +83,7 @@ export class ExtensionHost
                 // /*
                 // check for content changes
                 if (event.contentChanges.length > 0 && Utilities.isLanguageFile(event.document)) {
-                    this.backend.setText(event.document.uri, event.document.getText());
+                    this.backend.setText(event.document.uri.toString(), event.document.getText());
 
                     const fileName = event.document.fileName;
                     const timer = this.changeTimers.get(fileName);
@@ -98,7 +98,7 @@ export class ExtensionHost
                         // this.processDiagnostic(event.document);
                         this.diagnosticCollection.set(
                             event.document.uri,
-                            diagnosticAdapter(this.backend.getDiagnostics(event.document.uri))
+                            diagnosticAdapter(this.backend.getDiagnostics(event.document.uri.toString()))
                         );
 
                         // this.codeLensProvider.refresh();

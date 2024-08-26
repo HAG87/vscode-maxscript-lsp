@@ -16,7 +16,7 @@ export class mxsRenameProvider implements RenameProvider
         {
             const occurrences =
                 this.backend.symbolInfoAtPositionCtxOccurrences(
-                    document.uri,
+                    document.uri.toString(),
                     position.line + 1,
                     position.character);
 

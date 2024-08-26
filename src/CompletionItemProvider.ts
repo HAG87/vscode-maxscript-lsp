@@ -87,7 +87,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
 
             // /*
             // antlr-c3 used to provide code completion items
-            this.backend.getCodeCompletionCandidates(document.uri, position.line + 1, position.character)
+            this.backend.getCodeCompletionCandidates(document.uri.toString(), position.line + 1, position.character)
                 .then(({completions: candidates, provideLanguageCompletions}) =>
                 {
                     // console.log(candidates);

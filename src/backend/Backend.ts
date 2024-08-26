@@ -1,4 +1,5 @@
-import { DocumentSymbol, SymbolInformation, Uri } from 'vscode';
+import { Uri } from 'vscode';
+import * as fs from "fs";
 import { ICompletionsResult, SourceContext } from './SourceContext.js';
 import { ISemanticToken, ISymbolInfo } from '../types.js';
 import { BaseSymbol } from 'antlr4-c3';
@@ -19,9 +20,9 @@ export class mxsBackend
     public constructor() { }
 
     // get the context
-    public getContext(uri: Uri, source?: string | undefined): SourceContext
+    public getContext(uri: string, source?: string): SourceContext
     {
-        const cxtEntry = this.sourceContexts.get(uri.toString());
+        const cxtEntry = this.sourceContexts.get(uri);
         if (!cxtEntry) {
             return this.loadDocument(uri, source);
         }
@@ -68,6 +69,11 @@ export class mxsBackend
         }
     }
 
+    public getDocumentText(uri: string): string
+    {
+        return fs.readFileSync(Uri.parse(uri).fsPath, "utf8");
+    }
+    
     /**
      * Call this to refresh the internal input stream as a preparation to a reparse call
      * or for code completion
@@ -75,11 +81,11 @@ export class mxsBackend
      * @param uri The document uri
      * @param source The document content, or undefined to read from the file
      */
-    public setText(uri: Uri, source?: string): void
+    public setText(uri: string, source?: string): void
     {
         const ctxEntry = this.sourceContexts.get(uri.toString());
         if (ctxEntry) {
-            ctxEntry.context.setText(source);
+            ctxEntry.context.setText(source ?? this.getDocumentText(uri));
         }
     }
 
@@ -89,10 +95,9 @@ export class mxsBackend
      * @param source the document text
      * @returns 
      */
-    public loadDocument(uri: Uri, source?: string): SourceContext
+    public loadDocument(uri: string, source?: string): SourceContext
     {
-        // console.log('Add context!');
-        let ctxEntry = this.sourceContexts.get(uri.toString());
+        let ctxEntry = this.sourceContexts.get(uri);
         if (!ctxEntry) {
             // new context
             const ctx = new SourceContext(uri);
@@ -102,9 +107,10 @@ export class mxsBackend
                 // dependencies: []
             };
             // add to SourceContexts
-            this.sourceContexts.set(uri.toString(), ctxEntry);
+            this.sourceContexts.set(uri, ctxEntry);
+
             // set ctx text
-            ctx.setText(source);
+            ctx.setText(source ?? this.getDocumentText(uri));
 
             // do an initial parse run
             this.parseContent(ctxEntry);
@@ -119,11 +125,9 @@ export class mxsBackend
      * @param uri 
      * @param referencing 
      */
-    public unloadDocument(uri: Uri, referencing?: IContextEntry): void
+    public unloadDocument(uri: string, referencing?: IContextEntry): void
     {
-        // console.log('Remove context!');
-        const id = uri.toString();
-        const ctxEntry = this.sourceContexts.get(id);
+        const ctxEntry = this.sourceContexts.get(uri);
         if (ctxEntry) {
             if (referencing) {
                 // If a referencing context is given remove this one from the reference's dependencies list,
@@ -133,9 +137,8 @@ export class mxsBackend
             ctxEntry.refCount--;
             if (ctxEntry.refCount === 0) {
                 // release all dependencies
-                // for (const dep of ctxEntry.dependencies) {
-                // this.unloadDocument(dep, contextEntry); }
-                this.sourceContexts.delete(id);
+                // for (const dep of ctxEntry.dependencies) { this.unloadDocument(dep, contextEntry); }
+                this.sourceContexts.delete(uri);
             }
         }
     }
@@ -143,7 +146,7 @@ export class mxsBackend
     // get symbols -- for mxsDefinitionProvider
 
     public symbolInfoAtPosition(
-        uri: Uri,
+        uri: string,
         line: number,
         character: number): ISymbolInfo | undefined
     {
@@ -151,20 +154,20 @@ export class mxsBackend
     }
 
     public symbolInfoDefinition(
-        uri: Uri,
+        uri: string,
         line: number,
         character: number): ISymbolInfo | undefined
     {
         return this.getContext(uri).symbolDefinition(line, character);
     }
 
-    public infoForSymbol(uri: Uri, symbol: string)
+    public infoForSymbol(uri: string, symbol: string)
     {
         return this.getContext(uri).getSymbolInfo(symbol);
     }
 
     public enclosingSymbolAtPosition(
-        uri: Uri,
+        uri: string,
         line: number,
         character: number,
         ruleScope = false)
@@ -179,7 +182,7 @@ export class mxsBackend
      * @param full If true, includes symbols from all dependencies as well.
      * @returns A list of symbol info entries.
      */
-    public listTopLevelSymbols(uri: Uri, fullList: boolean): ISymbolInfo[]
+    public listTopLevelSymbols(uri: string, fullList: boolean): ISymbolInfo[]
     {
         return this.getContext(uri).listTopLevelSymbols(!fullList);
     }
@@ -192,7 +195,7 @@ export class mxsBackend
      * @param symbolName The name of the symbol to check.
      * @returns A list of symbol info entries, each describing one occurrence.
      */
-    public getSymbolOccurrences(uri: Uri, symbolName: string): ISymbolInfo[]
+    public getSymbolOccurrences(uri: string, symbolName: string): ISymbolInfo[]
     {
         
         const context = this.getContext(uri);
@@ -208,7 +211,7 @@ export class mxsBackend
     }
 
     public symbolInfoAtPositionCtxOccurrences(
-        uri: Uri,
+        uri: string,
         line: number,
         character: number): ISymbolInfo[] | undefined
     {
@@ -225,25 +228,28 @@ export class mxsBackend
     }
 
     // code completion
-    public async getCodeCompletionCandidates(uri: Uri, line: number, character: number): Promise<ICompletionsResult>
+    public async getCodeCompletionCandidates(
+        uri: string,
+        line: number,
+        character: number): Promise<ICompletionsResult>
     {
         return this.getContext(uri).getCodeCompletionCandidates(line, character);
     }
 
     // diagnostics
-    public getDiagnostics(uri: Uri)
+    public getDiagnostics(uri: string)
     {
         return this.getContext(uri).getDiagnostics;
     }
 
-    public hasErrors(uri: Uri): boolean
+    public hasErrors(uri: string): boolean
     {
         return this.getContext(uri).hasErrors;
     }
 
     // semantic tokens
     
-    public getDocumentSemanticTokens(uri: Uri): ISemanticToken[]
+    public getDocumentSemanticTokens(uri: string): ISemanticToken[]
     {
         return this.getContext(uri).getSemanticTokens;
     }
@@ -256,7 +262,7 @@ export class mxsBackend
      * @param symbol The symbol for which to determine the reference count.
      * @returns The reference count.
      */
-    public countReferences(uri: Uri, symbol: string)
+    public countReferences(uri: string, symbol: string)
     {
         // return this.getContext(uri).getReferenceCount(symbol);
     }

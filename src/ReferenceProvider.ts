@@ -16,7 +16,7 @@ export class mxsReferenceProvider implements ReferenceProvider
         {
             const occurrences =
                 this.backend.symbolInfoAtPositionCtxOccurrences(
-                    document.uri,
+                    document.uri.toString(),
                     position.line + 1,
                     position.character);
 

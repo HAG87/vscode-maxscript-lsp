@@ -40,7 +40,7 @@ export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider
         // console.log('needs recompute');
         return new Promise((resolve) =>
         {
-            const tokens = this.backend.getDocumentSemanticTokens(document.uri);
+            const tokens = this.backend.getDocumentSemanticTokens(document.uri.toString());
             // some optimizations to recompute the tokens only if they have changed...
             if (tokens && tokens.length > 0) {
                 const tokensBuilder = new SemanticTokensBuilder(mxsSemtoTokensLegend);

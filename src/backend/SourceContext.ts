@@ -1,4 +1,3 @@
-import { DocumentSymbol, Uri, workspace } from "vscode";
 import { mxsLexer } from "../parser/mxsLexer.js";
 import { BailErrorStrategy, CharStream, CommonTokenStream, DefaultErrorStrategy, ParseCancellationException, ParserRuleContext, ParseTree, ParseTreeWalker, PredictionMode, TerminalNode, Token } from "antlr4ng";
 import { Expr_seqContext, FnDefinitionContext, IdentifierContext, mxsParser, ProgramContext, StructDefinitionContext } from "../parser/mxsParser.js";
@@ -21,7 +20,7 @@ export interface ICompletionsResult
 export class SourceContext
 {
     // context source uri pointing at the document
-    public sourceUri: Uri;
+    public sourceUri: string;
 
     // symbols for the current document
     public symbolTable: ContextSymbolTable;
@@ -50,12 +49,12 @@ export class SourceContext
     // The root context from the last parse run.
     private tree: ParserRuleContext | undefined;
 
-    public constructor(uri: Uri, /*settings*/)
+    public constructor(uri: string, /*settings*/)
     {
         this.sourceUri = uri;
         // initialize simbol table
         this.symbolTable = new ContextSymbolTable(
-            this.sourceUri.toString(),
+            this.sourceUri,
             { allowDuplicateSymbols: true },
             this);
 
@@ -78,22 +77,9 @@ export class SourceContext
         this.parser.addErrorListener(this.errorListener);
     }
 
-    public getDocumentText(): string
+    public setText(source: string): void
     {
-        return fs.readFileSync(this.sourceUri.fsPath, "utf8");
-    }
-
-    public setText(source?: string): void
-    {
-        if (source) {
-            // console.log(source);
-            this.lexer.inputStream = CharStream.fromString(source);
-            // console.log(this.lexer.text)
-            //...
-        } else {
-            // console.log(this.getDocumentText());
-            this.lexer.inputStream = CharStream.fromString(this.getDocumentText());
-        }
+        this.lexer.inputStream = CharStream.fromString(source);
     }
     //----------------------------------------------------------------
     public parse(): void
@@ -586,7 +572,7 @@ export class SourceContext
                         kind: SymbolKind.Operator,
                         name: "=",
                         description: "Variable assignment",
-                        source: this.sourceUri.toString(),
+                        source: this.sourceUri,
                     });
                     break;
                 }
@@ -596,7 +582,7 @@ export class SourceContext
                         kind: SymbolKind.Keyword,
                         name: prettyValue(value),   //value[0] === "'" ? value.substring(1, value.length - 1) : value, // Remove quotes.
                         //description: "Rule alt separator",
-                        source: this.sourceUri.toString(),
+                        source: this.sourceUri,
                     });
                     break;
                 }
@@ -662,14 +648,14 @@ export class SourceContext
                         {
                             kind: SymbolKind.Keyword,
                             name: 'Public',
-                            source: this.sourceUri.toString(),
+                            source: this.sourceUri,
                             definition: undefined,
                             description: undefined,
                         },
                         {
                             kind: SymbolKind.Keyword,
                             name: 'Private',
-                            source: this.sourceUri.toString(),
+                            source: this.sourceUri,
                             definition: undefined,
                             description: undefined,
                         }
@@ -749,7 +735,7 @@ export class SourceContext
                             result.push({
                                 kind: SourceContext.getKindFromSymbol(symbol),
                                 name: symbol.name,
-                                source: this.sourceUri.toString(),
+                                source: this.sourceUri,
                                 definition: undefined,
                                 description: undefined,
                             });

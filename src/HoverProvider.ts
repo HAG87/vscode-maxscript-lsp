@@ -12,7 +12,7 @@ export class mxsHoverProvider implements HoverProvider
         return new Promise((resolve) =>
         {
             const info = this.backend.symbolInfoAtPosition(
-                document.uri,
+                document.uri.toString(),
                 position.line + 1,
                 position.character
             );
