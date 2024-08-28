@@ -1,49 +1,15 @@
-import { CharStream, CommonTokenStream, Token } from "antlr4ng";
+import { CharStream, CommonTokenStream, Token, TokenStream } from "antlr4ng";
 import { mxsLexer } from "../parser/mxsLexer.js";
 import { IMaxScriptSettings } from "../settings.js";
 // import { ILexicalRange } from "../types.js";
 
-/*
-enum filterCurrenEnum
+export interface IformatterResult
 {
-	assign,
-	newline,
-	delimiter,
-	lbracket,
-	emptyparens,
-	emptybraces,
-	bitrange,
-	unaryminus
-};
-enum filterAheadEnum
-{
-	assign,
-	newline,
-	delimiter,
-	sep,
-	ws,
-	lbracket,
-	rbracket,
-	emptyparens,
-	emptybraces,
-	bitrange,
-	unaryminus
-};
-
-
-const indentTokens: Set<number> = new Set([
-	mxsLexer.LPAREN,
-	mxsLexer.LBRACK,
-	mxsLexer.LBRACE,
-]);
-
-const unIndentTokens: Set<number> = new Set([
-	mxsLexer.RPAREN,
-	mxsLexer.RBRACK,
-	mxsLexer.RBRACE,
-]);
-*/
-
+	code: string;
+	start: number;
+	stop: number;
+	offset: number;
+}
 
 class blockNode
 {
@@ -77,14 +43,19 @@ class blockNode
 const defaultFormatSettings: Partial<IMaxScriptSettings> =
 {
 	formatter: {
+		indentChar: '\t',
+		newLineChar: '\r\n',
+		lineEndChar: ';',
+		lineContinuationChar: '\\',
+		whitespaceChar: ' ',
+
 		keepComments: true,
 		keepEmptyLines: true,
 		indentOnly: false,
-		indentChar: '\t',
-		whitespaceChar: ' ',
+
 		codeblock: {
-			newlineAtParens: true,
-			newlineAllways: true,
+			parensInNewLine: false,
+			newlineAllways: false,
 			spaced: true,
 		},
 		statements: {
@@ -92,40 +63,39 @@ const defaultFormatSettings: Partial<IMaxScriptSettings> =
 			optionalWhitespace: false
 		},
 		list: {
-			useLineBreaks: true
+			useLineBreaks: false
 		}
 	}
 };
 
+
 /**
  * Fallback class to provide simple formatting options when the parser is not available
+ * format entire document
+ * format range
  */
 export class mxsSimpleFormatter
 {
-	// use moo as basic tokenizer to format code or..
-	// use the regex method.
-	// use antlr tokenizer
+	options: Partial<IMaxScriptSettings>;
+
+	private tokenStream: CommonTokenStream;
 	private tokens: Token[];
-
-	indentation: number = 0;
-
+	// outputPipeline: (string | string[])[] = [];
 	//TODO: add options!
-
-	public constructor(grammarOrTokens: string | Token[])
+	public constructor(grammarOrTokens: string | CommonTokenStream, options?: Partial<IMaxScriptSettings>)
 	{
 		if (typeof grammarOrTokens === "string") {
 			const lexer = new mxsLexer(CharStream.fromString(grammarOrTokens));
 			lexer.removeErrorListeners();
-			const tokenStream = new CommonTokenStream(lexer);
-			tokenStream.fill();
-			this.tokens = tokenStream.getTokens();
+			this.tokenStream = new CommonTokenStream(lexer);
+			this.tokenStream.fill();
+			this.tokens = this.tokenStream.getTokens();
 		} else {
-			this.tokens = grammarOrTokens;
+			this.tokenStream = grammarOrTokens;
+			this.tokens = grammarOrTokens.getTokens();
 		}
+		this.options = options || defaultFormatSettings;
 	}
-
-	// format entire document
-	// format range
 
 	/**
 	 * Returns the index for the token which covers the given character index.
@@ -185,6 +155,7 @@ export class mxsSimpleFormatter
 		}
 		return false;
 	}
+
 	private isSingleLineBlock(index: number): boolean
 	{
 		for (let i = index; i < this.tokens.length; i++) {
@@ -200,63 +171,40 @@ export class mxsSimpleFormatter
 		return false;
 	}
 
-	outputPipeline: (string | string[])[] = [];
-
-	// get tokens within range
-	public formatRange(start?: number, stop?: number)
+	private formattingTree(): blockNode
 	{
+		// options
+		const opt = this.options.formatter!;
+		// list: { useLineBreaks: true }
+		const afterCommaChar = opt.list.useLineBreaks ? opt.newLineChar : opt.whitespaceChar;
+		// statements: { useLineBreaks: true, }
+		const afterKeyword = opt.statements.useLineBreaks;
 		//---------------------------------------------------------
-		//filter WS tokens...
-		this.tokens = this.tokens.filter(token => token.type !== mxsLexer.WS);
-		//---------------------------------------------------------
-		// line continuations???
-
-		// const indentationChars = '\t';
-		const indentationChars = '    ';
-		const newLineChars = '\r\n';
-		const lineEndChars = ';';
-		const wsChar = ' ';
-		const lineContinuationChar = '\\';
-
-		let indentation = 0;
-
 		let root: blockNode = new blockNode();
-
 		const stack: blockNode[] = [root];
-
 		const cStack = () => stack[stack.length - 1];
-
+		let indentation = 0;
+		//---------------------------------------------------------
 		for (let i = 0; i < this.tokens.length; i++) {
 			const prevToken = i > 0 ? this.tokens[i - 1] : null;
 			const currToken = this.tokens[i];
 			const nextToken = i < this.tokens.length ? this.tokens[i + 1] : null;
-
 			// console.log(currToken.type);
 			switch (currToken.type) {
-				// /*
-				/*
-				case mxsLexer.LBRACE:
-					indentation++;
-				case mxsLexer.RBRACE:
-					indentation--;
-				*/
+				case mxsLexer.EOF:
+					// return here
+					return root;
+				//---------------------------------------------------------
 				case mxsLexer.LBRACE:
 				case mxsLexer.LPAREN:
 					{
 						//indentation?
 						indentation++;
-						const node = new blockNode(currToken.text!, indentation);
+						// const node = new blockNode(currToken.text!, indentation);
+						const node = new blockNode(undefined, indentation);
 						node.start = currToken.text!;
-						/*
-						if (nextToken!.type !== mxsLexer.RPAREN) {
-							node.vals.push(wsChar);
-						}
-						*/
 						cStack().vals.push(node);
 						stack.push(node);
-
-						// node.val += currToken.text!;
-						// cStack().vals.push(currToken.text!);
 					}
 					break;
 				case mxsLexer.RBRACE:
@@ -264,105 +212,133 @@ export class mxsSimpleFormatter
 					{
 						//indentation?
 						indentation--;
-
 						cStack().end = currToken.text!;
-
-						cStack().vals.push(currToken.text!);
-						/*
-						if (nextToken!.type !== mxsLexer.RPAREN) {
-							cStack().vals.push(wsChar);
-						}
-							*/
+						// cStack().vals.push(currToken.text!);
 						stack.pop();
 					}
 					break;
-				// */
 				//---------------------------------------------------------
 				// tokens that increase indentation, when sigle expression is next
+				// case mxsLexer.OF:
+				// case mxsLexer.RETURN:
+				// case mxsLexer.WITH:				
 				case mxsLexer.THEN:
 				case mxsLexer.DO:
 				case mxsLexer.COLLECT:
-					// case mxsLexer.RETURN:
-					// case mxsLexer.WITH:				
 					{
 						cStack().vals.push(currToken.text!);
-						cStack().vals.push(newLineChars);
-						// later on, if the next exp is a block, closing the block decreases indentation, but if it is a single expression, newline decreases indentation.
-						// indentation++;
-						cStack().vals.push(indentationChars);
+						// /*
+						if (afterKeyword) {
+							// if (nextToken && nextToken.type !== mxsLexer.NL) {
+							cStack().vals.push(opt.newLineChar);
+							// }
+
+							cStack().vals.push(opt.indentChar);
+
+						} else {
+							cStack().vals.push(opt.whitespaceChar);
+						}
+						// */
+						// cStack().vals.push(opt.whitespaceChar);
 					}
 					break;
 				// case mxsLexer.THEN:
 				case mxsLexer.ELSE:
 					{
-						cStack().vals.push(newLineChars);
-						cStack().vals.push(currToken.text!);
-						// later on, if the next exp is a block, closing the block decreases indentation, but if it is a single expression, newline decreases indentation.
-						// indentation++;
-						cStack().vals.push(newLineChars);
-						cStack().vals.push(indentationChars);
-					}
-					break;
-				// case mxsLexer.ON:
-				//---------------------------------------------------------
-				case mxsLexer.EOF:
-					// return here
-					return;
-				case mxsLexer.WS:
-					{
-						// line continuation handling
-						if (currToken.text && currToken.text.length > 1 && currToken.text.includes(lineContinuationChar)) {
-							cStack().vals.push(lineContinuationChar, newLineChars);
-						}
-					}
-					break;
-				case mxsLexer.NL:
-					{
-						if (currToken.text && currToken.text.includes(';')) {
-							cStack().vals.push(lineEndChars);
-							cStack().vals.push(wsChar);
-						} else {
+						// /*
+						if (afterKeyword) {
+							/*
 							let emmitNL = true;
 							if (prevToken && nextToken) {
 								switch (prevToken.type) {
-									case mxsLexer.LPAREN:
-									// case mxsLexer.RPAREN:
-									case mxsLexer.LBRACE:
+									case mxsLexer.NL:
 										emmitNL = false;
 										break;
 								}
 
 								switch (nextToken.type) {
-									case mxsLexer.LPAREN:
-									case mxsLexer.RPAREN:
-									case mxsLexer.RBRACE:
+									case mxsLexer.NL:
 										emmitNL = false;
 										break;
 								}
 							}
-							if (emmitNL) {
-								cStack().vals.push(newLineChars);
-							}
+							if (emmitNL) { cStack().vals.push(opt.newLineChar); }
+							cStack().vals.push(currToken.text!);
+							if (emmitNL) { cStack().vals.push(opt.newLineChar); }
+							*/
+							// cStack().vals.push(opt.newLineChar, opt.indentChar);
+							cStack().vals.push(opt.newLineChar);
+							cStack().vals.push(currToken.text!);
+							cStack().vals.push(opt.newLineChar);
+							cStack().vals.push(opt.indentChar);
+						} else {
+							cStack().vals.push(currToken.text!);
+							cStack().vals.push(opt.whitespaceChar);
 						}
-						// should decrease indentation?
-						// TODO: do not add NL when is handled elsewhere : PARENS
-						/*
-						if (prevToken && nextToken) {
-							if (
-
-								!(
-									(prevToken.type === mxsLexer.LPAREN || prevToken.type === mxsLexer.RPAREN) &&
-									(nextToken.type === mxsLexer.RPAREN || nextToken.type === mxsLexer.LPAREN)
-								)
-							) {
-								if (prevToken.type !== mxsLexer.LPAREN && nextToken.type !== mxsLexer.RPAREN) {
-									cStack().vals.push(newLineChars);
+						// */
+						// cStack().vals.push(currToken.text!);
+						// cStack().vals.push(opt.whitespaceChar);
+					}
+					break;
+				// case mxsLexer.ON:
+				//---------------------------------------------------------				
+				case mxsLexer.WS:
+					{
+						// line continuation handling
+						if (currToken.text && currToken.text.length > 1 && currToken.text.includes(opt.lineContinuationChar)) {
+							cStack().vals.push(opt.lineContinuationChar, opt.newLineChar);
+						}
+					}
+					break;
+				case mxsLexer.NL:
+					{
+						//TODO: FIX FOR THEN ELSE...
+						if (currToken.text && currToken.text.includes(';')) {
+							cStack().vals.push(opt.lineEndChar, opt.whitespaceChar);
+						} else {
+							// /*
+							if (nextToken && prevToken) {
+								let emmit = true;
+								switch (prevToken.type) {
+									case mxsLexer.NL:
+									case mxsLexer.LBRACE:
+									case mxsLexer.LPAREN:
+										// case mxsLexer.RBRACE:
+										// case mxsLexer.RPAREN:
+										emmit = false;
+										break;
+									case mxsLexer.ELSE:
+									case mxsLexer.THEN:
+									case mxsLexer.DO:
+									case mxsLexer.COLLECT:
+										if (afterKeyword) {
+											emmit = false;
+										}
+										break;
+								}
+								switch (nextToken.type) {
+									case mxsLexer.NL:
+									case mxsLexer.LBRACE:
+									case mxsLexer.LPAREN:
+									case mxsLexer.RBRACE:
+									case mxsLexer.RPAREN:
+										emmit = false;
+										break;
+									case mxsLexer.ELSE:
+									case mxsLexer.THEN:
+									case mxsLexer.DO:
+									case mxsLexer.COLLECT:
+										if (afterKeyword) {
+											emmit = false;
+										}
+										break;
+								}
+								if (emmit) {
+									cStack().vals.push(opt.newLineChar);
 								}
 							}
-						} else {
-							// cStack().vals.push(newLineChars);
+							// */
 						}
-						*/
 					}
 					break;
 				//---------------------------------------------------------
@@ -382,7 +358,7 @@ export class mxsSimpleFormatter
 					{
 						cStack().vals.push(currToken.text!);
 						// here we sould add NL in functions...
-						cStack().vals.push(wsChar);
+						cStack().vals.push(opt.whitespaceChar);
 					}
 					break;
 				//---------------------------------------------------------
@@ -391,18 +367,23 @@ export class mxsSimpleFormatter
 						cStack().vals.push(currToken.text!);
 					}
 					break;
+				case mxsLexer.COMMA:
+					{
+						cStack().vals.push(currToken.text!);
+						cStack().vals.push(afterCommaChar);
+					}
+					break;
 				//---------------------------------------------------------
 				default:
 					{
 						//TODO: mandatory whitespace
-
 						cStack().vals.push(currToken.text!);
 						// /*
 						switch (nextToken?.type) {
 							case mxsLexer.COLON:
 								{
 									if (currToken.type === mxsLexer.NUMBER) {
-										cStack().vals.push(wsChar);
+										cStack().vals.push(opt.whitespaceChar);
 									}
 								}
 								break;
@@ -413,22 +394,11 @@ export class mxsSimpleFormatter
 							case mxsLexer.DOTDOT:
 							case mxsLexer.COMMA:
 							case mxsLexer.NL:
-								break;
 							case mxsLexer.LPAREN:
-								{
-									// not at empty parens
-									if (!(currToken.type === mxsLexer.ID && this.isEmptyBlock(i + 1))) {
-										cStack().vals.push(wsChar);
-									}
-								}
-								break;
 							case mxsLexer.RPAREN:
-								{
-
-								}
 								break;
 							default:
-								cStack().vals.push(wsChar);
+								cStack().vals.push(opt.whitespaceChar);
 								break;
 						}
 						// */
@@ -437,90 +407,150 @@ export class mxsSimpleFormatter
 
 			}
 		}
+		return root;
+	}
 
-		function process(root: blockNode)
+	private codeFromTree(root: blockNode): string
+	{
+		// options
+		const opt = this.options.formatter!;
+		/*
+		codeblock: {
+			parensInNewLine: true,
+			newlineAllways: true,
+			spaced: true,
+		}
+		*/
+		//---------------------------------------------------------
+		function dfs(node: blockNode, parent?: blockNode)
 		{
-			function dfs(node: blockNode, parent?: blockNode)
-			{
-				let result = '';
+			let result = '';
+			// main loop to visit children
+			for (let i = 0; i < node.vals.length; i++) {
+				const val = node.vals[i];
 
-				for (let i = 0; i < node.vals.length; i++) {
+				if (typeof val === 'string') {
 
-					let val = node.vals[i];
+					result += val;
+					// indent
+					if (val === opt.newLineChar) {
+						result += opt.indentChar.repeat(node.indent);
+					}
+				} else {
 
-					if (typeof val === 'string') {
-						switch (val) {
-							case '(':
-								{
-									if (node.hasLineBreaks()) {
+					const inner = dfs(<blockNode>val, node);
+					// add linebreaks or whitespace?
+					if (inner.length > 2) {
 
-										result += newLineChars;
-										result += indentationChars.repeat(parent!.indent ?? 0);
+						const linebreak = val.hasLineBreaks();
+						const nextToken = node.vals[i + 1];
 
-										result += val;
-										result += newLineChars;
-										result += indentationChars.repeat(node.indent);
-									} else {
-										result += val;
-										// result += wsChar;
-									}
-								}
-								break;
-							case ')':
-								{
-									if (node.hasLineBreaks()) {
-										result += newLineChars;
-										result += indentationChars.repeat(parent!.indent ?? 0);
-										result += val;
-									} else {
-										// result += wsChar;
-										result += val;
-									}
-								}
-								break;
-							case '{':
-								{
-									result += val;
-									if (node.hasLineBreaks()) {
-										result += newLineChars;
-										result += indentationChars.repeat(node.indent);
-									}
-								}
-								break;
-							case '}':
-								{
-									if (node.hasLineBreaks()) {
-										result += newLineChars;
-										result += indentationChars.repeat(parent!.indent ?? 0);
-									}
-									result += val;
-								}
-								break;
-							case newLineChars:
-								{
-									result += val;
-									result += indentationChars.repeat(node.indent);
-								}
-								break;
-							default:
-								result += val;
-								break;
+						if (
+							!result.endsWith('#') &&
+							result.length > 0 &&
+							!(result.endsWith(opt.newLineChar) || result.endsWith(opt.lineEndChar))
+						) {
+							if (linebreak && opt.codeblock.parensInNewLine) {
+								result += opt.newLineChar;
+								result += opt.indentChar.repeat(node.indent);
+							} else if (!result.endsWith(opt.whitespaceChar)) {
+								result += opt.whitespaceChar;
+							}
+						}
+
+						result += inner;
+						// line break after, this is after adding the parens
+						if (
+							typeof nextToken === 'string' &&
+							nextToken.length > 0 &&
+							!(nextToken.endsWith(opt.newLineChar) || nextToken.endsWith(opt.lineEndChar))
+						) {
+							if (linebreak) {
+								result += opt.newLineChar;
+								result += opt.indentChar.repeat(node.indent);
+							} else if (!result.endsWith(opt.whitespaceChar)) {
+								result += opt.whitespaceChar;
+							}
 						}
 					} else {
-						result += dfs(<blockNode>val, node);
+						// empty parens
+						result += inner;
 					}
+					//...
 				}
-
-				return result;
 			}
+			// console.log(JSON.stringify(result));
+			// console.log('-----------------------------------');
+			// console.log(result.endsWith(opt.newLineChar) || result.endsWith(opt.lineEndChar));
+			// wrap the block
+			// /*
+			const nodeLineBreaks = node.hasLineBreaks();
+			if (node.start.length > 0) {
+				let preStart = '', posStart = '';
+				if (
+					nodeLineBreaks ||
+					(node.vals.length > 0 && opt.codeblock.newlineAllways)
+				) {
+					// const indentrep = parent ? parent.indent : (node.indent !== 0 ? node.indent - 1 : 0);
+					// const preindent = opt.indentChar.repeat(indentrep);
+					posStart = opt.newLineChar + opt.indentChar.repeat(node.indent);
+				} else if (node.vals.length > 0 && opt.codeblock.spaced) {
+					posStart = opt.whitespaceChar;
+				}
+				result = `${node.start}${posStart}${result}`;
+			}
+			if (node.end.length > 0) {
+				let preEnd = '', posEnd = '';
+				if (
+					nodeLineBreaks ||
+					(node.vals.length > 0 && opt.codeblock.newlineAllways)
+				) {
+					const indentrep = parent ? parent.indent : (node.indent !== 0 ? node.indent - 1 : 0);
+					const preindent = opt.indentChar.repeat(indentrep);
+					// end
+					preEnd = opt.newLineChar + preindent;
+				} else if (node.vals.length > 0 && opt.codeblock.spaced) {
+					preEnd = opt.whitespaceChar;
+				}
+				result = `${result}${preEnd}${node.end}`;
+			}
+			//*/
+			return result;
+		}
+		//---------------------------------------------------------
+		return dfs(root);
+	}
 
-			return dfs(root);
+	// get tokens within range
+	public formatRange(start?: number, stop?: number): IformatterResult
+	{
+		if (start && stop) {
+			//limit the tokens to the range
+			this.tokens = this.tokenStream.getTokens(start, stop);
 		}
 
-		let res = process(root);
-		console.log('-------------------------------------');
-		console.log(res);
-		return res;
+		//filter WS tokens...
+		this.tokens = this.tokens.filter(token => token.type !== mxsLexer.WS);
+
+		const startPos = this.tokens[0].start;
+		const stopPos = this.tokens[this.tokens.length - 1].stop;
+
+		// console.log(`${_start.start} - ${_stop.stop}`);
+
+		// produce the tree
+		const codeTree = this.formattingTree();
+		// derive the code
+		const code = this.codeFromTree(codeTree);
+		// new offset
+		const offset = startPos + (code.length - 1);
+
+		//return
+		// console.log(code);
+		// console.log(JSON.stringify(code));
+		// start token position
+		// stop token position
+		// offsets
+		return { code, start: startPos, stop: stopPos, offset };
 	}
 
 }

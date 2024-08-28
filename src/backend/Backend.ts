@@ -3,6 +3,7 @@ import * as fs from "fs";
 import { ICompletionsResult, SourceContext } from './SourceContext.js';
 import { ILexicalRange, ISemanticToken, ISymbolInfo } from '../types.js';
 import { BaseSymbol } from 'antlr4-c3';
+import { IformatterResult } from './CodeFormatter.js';
 
 export interface IContextEntry
 {
@@ -268,7 +269,7 @@ export class mxsBackend
     }
     // formatting
     
-    public formatCode(uri: string,/*  options: IFormattingOptions, */ range: ILexicalRange)  //: [string, number, number]
+    public formatCode(uri: string,/*  options: IFormattingOptions, */ range: ILexicalRange): IformatterResult
     {
         return this.getContext(uri).formatCode(/* options, */ range);
     }

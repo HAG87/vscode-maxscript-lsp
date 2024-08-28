@@ -9,7 +9,7 @@ import { ContextSymbolTable, ExprSymbol, fnArgsSymbol, FnDefinitionSymbol, fnPar
 import { symbolTableListener } from "./symbolTableListener.js";
 import { semanticTokenListener } from "./semanticTokenListener.js";
 import { BackendUtils } from "./BackendUtils.js";
-import { mxsSimpleFormatter } from "./CodeFormatter.js";
+import { IformatterResult, mxsSimpleFormatter } from "./CodeFormatter.js";
 
 export interface ICompletionsResult
 {
@@ -784,9 +784,9 @@ export class SourceContext
     // dependencies
 
     // format code
-    public formatCode(/* options, */ /* start: number, stop: number */range: ILexicalRange)
+    // TODO: formatter that uses the parse tree and a visitor
+    public formatCode(range: ILexicalRange/* , options */): IformatterResult
     {
-
         // rectify the start and stop positions with the parse tree we are in
         function findParentExpr(ctx: ParserRuleContext): ParserRuleContext
         {
@@ -824,44 +824,20 @@ export class SourceContext
         const startToken = contextToFormat.start;
         const stopToken = contextToFormat.stop;
 
-        // console.log(contextToFormat);
-        // if (startToken && stopToken) {
-        //     console.log(this.lexer.vocabulary.getSymbolicName(startToken.type));
-        //     console.log(this.lexer.vocabulary.getSymbolicName(stopToken.type));
-        // }
-
-        // console.log(range);
-
-        // console.log(ctxStart);
-        // console.log(ctxStop);
-
-        // console.log(ctxStart.start?.tokenIndex);
-        // console.log(ctxStart.stop?.tokenIndex);
-
-        // console.log(ctxStop.start?.tokenIndex);
-        // console.log(ctxStop.stop?.tokenIndex);
-
-
-
-        // save an instance of the formatter, to avoid initialization every time it is called
+        
         this.lexer.reset();
         this.tokenStream.setTokenSource(this.lexer);
         this.tokenStream.fill();
+        // const tokens = this.tokenStream.getTokens(startToken?.tokenIndex, stopToken?.tokenIndex);
+        // initialize the formatter
+        const formatter = new mxsSimpleFormatter(this.tokenStream);
+        // format code
 
-        const tokens = this.tokenStream.getTokens(startToken?.tokenIndex, stopToken?.tokenIndex);
-
-        // console.log(tokens);
-
-        const formatter = new mxsSimpleFormatter(tokens);
-
-
-        formatter.formatRange()
+        return formatter.formatRange(startToken?.tokenIndex, stopToken?.tokenIndex);
 
         // console.log(formatter.formatRange());
-
         // return formatter.formatGrammar(options, start, stop);        
         // formatter.formatRange(start, stop);
-
     }
 
     // prettify

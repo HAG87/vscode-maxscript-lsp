@@ -26,14 +26,17 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
 
     provideDocumentRangeFormattingEdits(document: TextDocument, range: Range, options: FormattingOptions, token: CancellationToken): ProviderResult<TextEdit[]>
     {
-        let start = document.offsetAt(range.start);
-        let end = document.offsetAt(range.end);
+        let _start = document.offsetAt(range.start);
+        let _end = document.offsetAt(range.end);
         
-        // console.log(`format range: ${start} - ${end}`);
+        // console.log(`format range: ${_start} - ${_end}`);
         // console.log(range);
         
-        this.backend.formatCode(document.uri.toString(), Utilities.rangeToLexicalRange(range));
+        let { code, start, stop, offset } = this.backend.formatCode(document.uri.toString(), Utilities.rangeToLexicalRange(range));
 
+        const resultRange = range.with(document.positionAt(start), document.positionAt(stop + 1));
+
+        return [TextEdit.replace(resultRange, code)];
 
         /*
         const formatOptions = workspace.getConfiguration("antlr4.format");
@@ -48,7 +51,8 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
         */
 
         // throw new Error("Method not implemented.");
-        return;
+
+        // return;
     }
     
     provideDocumentRangesFormattingEdits?(document: TextDocument, ranges: Range[], options: FormattingOptions, token: CancellationToken): ProviderResult<TextEdit[]>

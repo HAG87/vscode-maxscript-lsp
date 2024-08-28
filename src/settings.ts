@@ -1,41 +1,49 @@
 // Settings
-export interface MaxScriptSettings
+export interface IMaxScriptSettings
 {
-    // GoToSymbol: boolean;
-    // GoToDefinition: boolean;
-    // Diagnostics: boolean;
-    // Completions: {
-    // 	dataBaseCompletion: boolean,
-    // 	Definitions: boolean,
-    // 	Identifiers: boolean
-    // };
-    MinifyFilePrefix: string;
+    language?: {
+        SemanticTokens: boolean,
+        GoToSymbol: boolean,
+        GoToDefinition: boolean,
+        Diagnostics: boolean,
+    },
+    Completions?: {
+        dataBaseCompletion: boolean,
+        codeCompletion: boolean
+    };
+    // parser: {
+    // 	multiThreading: boolean,
+    // }
     formatter: {
+        keepComments: boolean,
+        keepEmptyLines: boolean,
         indentOnly: boolean,
         indentChar: string,
-        whitespaceChar: string
-    },
-    // parser: {
-    // 	errorCheck: boolean,
-    // 	multiThreading: boolean,
-    // 	errorLimit: number
-    // }
-    prettifier: {
-        filePrefix: string,
-        codeblock?: {
-            newlineAtParens: boolean,
+        newLineChar: string,
+        lineEndChar: string,
+        lineContinuationChar: string,
+        whitespaceChar: string,
+        codeblock: {
+            parensInNewLine: boolean,
             newlineAllways: boolean,
             spaced: boolean,
         },
-        statements?: {
+        statements: {
+            useLineBreaks: boolean,
             optionalWhitespace: boolean
         },
-        list?: {
+        list: {
             useLineBreaks: boolean
         }
     },
-    // language?: { semantics: boolean };
-    // ...
+    prettifier: {
+        expressionsToBlock: boolean,
+        filePrefix: string,
+    },
+    minifier: {
+        removeUnnecessaryScopes: boolean,
+        filePrefix: string,
+    }
 }
 
 /**
@@ -46,39 +54,50 @@ export interface MaxScriptSettings
  *------------------------------------------------------------------------------------------
 */
 // put default settings here
-export const defaultSettings: MaxScriptSettings = {
-    // GoToSymbol: true,
-    // GoToDefinition: true,
-    // Diagnostics: true,
+export const defaultSettings: IMaxScriptSettings = {
+    // language: {
+    //  SemanticTokens: true,
+    //  GoToSymbol: true,
+    //  GoToDefinition: true,
+    //  Diagnostics: true,
+    //},
     // Completions: {
     // 	dataBaseCompletion: true,
-    // 	Definitions: true,
-    // 	Identifiers: true
+    // codeCompletion: boolean
     // },
-    MinifyFilePrefix: 'min_',
-    formatter: {
-        indentOnly: true,
-        indentChar: '\t',
-        whitespaceChar: ' '
-    },
     // parser: {
-    // 	errorCheck: true,
     // 	multiThreading: true,
-    // 	errorLimit: 10
     // },
+    formatter: {
+		indentChar: '\t',
+		newLineChar: '\r\n',
+		lineEndChar: ';',
+		lineContinuationChar: '\\',
+		whitespaceChar: ' ',
+
+		keepComments: true,
+		keepEmptyLines: true,		
+		indentOnly: false,
+		
+		codeblock: {
+			parensInNewLine: true,
+			newlineAllways: false,
+			spaced: true,
+		},
+		statements: {
+			useLineBreaks: true,
+			optionalWhitespace: false
+		},
+		list: {
+			useLineBreaks: false
+		}
+	},
     prettifier: {
         filePrefix: 'pretty_',
-        codeblock: {
-            newlineAtParens: true,
-            newlineAllways: true,
-            spaced: true,
-        },
-        statements: {
-            optionalWhitespace: false
-        },
-        list: {
-            useLineBreaks: true
-        }
+        expressionsToBlock: true,
     },
-    // language: { semantics: true },
+    minifier: {
+        filePrefix: 'min_',
+        removeUnnecessaryScopes: true,
+    }
 };
