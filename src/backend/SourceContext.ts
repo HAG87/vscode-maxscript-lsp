@@ -799,10 +799,8 @@ export class SourceContext
         }
 
         let contextToFormat: ParserRuleContext;
-
         const ctxStart =
             BackendUtils.parseTreeFromPosition(<ParseTree>this.tree, range.start.row, range.start.column) as ParserRuleContext;
-
         if (!ctxStart) {
             contextToFormat = this.tree as ParserRuleContext;
         } else {

@@ -10,35 +10,6 @@ export interface IformatterResult
 	offset: number;
 }
 
-class blockNode
-{
-	vals: (string | blockNode)[];
-	indent: number;
-	start: string = '';
-	end: string = '';
-
-	constructor(val?: string, indent?: number)
-	{
-		this.vals = val ? [val] : [];
-		this.indent = indent ?? 0;
-	}
-
-	public hasLineBreaks(): boolean
-	{
-		let res = false;
-		for (let val of this.vals) {
-			if (val instanceof blockNode) {
-				if (!res) {
-					res = val.hasLineBreaks();
-				}
-			} else if (val === '\r\n') {
-				res = true;
-			}
-		}
-		return res;
-	}
-}
-
 const defaultFormatSettings: Partial<IMaxScriptSettings> =
 {
 	formatter: {
@@ -65,8 +36,62 @@ const defaultFormatSettings: Partial<IMaxScriptSettings> =
 			useLineBreaks: false
 		}
 	}
-};
+}
 
+class blockNode
+{
+	vals: (string | blockNode)[];
+	indent: number;
+	start: string = '';
+	end: string = '';
+
+	constructor(val?: string, indent?: number)
+	{
+		this.vals = val ? [val] : [];
+		this.indent = indent ?? 0;
+	}
+	get first(): string | blockNode
+	{
+		return this.vals[0];
+	}
+	get last(): string | blockNode
+	{
+		return this.vals[this.vals.length - 1];
+	}
+	public hasLineBreaks(): boolean
+	{
+		let res = false;
+		for (let val of this.vals) {
+			if (val instanceof blockNode) {
+				if (!res) {
+					res = val.hasLineBreaks();
+				}
+			} else if (val === '\r\n') {
+				res = true;
+			}
+		}
+		return res;
+	}
+
+	public startsWithNL(): boolean
+	{
+		return (typeof this.first === 'string' && this.first?.search(/[\r\n;]+[ \t]*/) >= 0);
+	}
+	public endsWithNL(): boolean
+	{
+		// const last = this.vals[this.vals.length - 1];
+		return (typeof this.last === 'string' && this.last?.search(/[\r\n;]+[ \t]*/) >= 0);
+	}
+	public isEmpty(): boolean
+	{
+		return this.vals.length === 0;
+	}
+	public canBeMultiline(): boolean
+	{
+		return this.vals.length > 1;
+	}
+
+}
 
 /**
  * Fallback class to provide simple formatting options when the parser is not available
@@ -140,43 +165,11 @@ export class mxsSimpleFormatter
 		return this.tokens.length - 1;
 	}
 
-	/*
-	private isEmptyBlock(index: number): boolean
+	private nextRealToken(source: Token[], index: number, stop?: number): Token | undefined
 	{
-		for (let i = index + 1; i < this.tokens.length; i++) {
-			switch (this.tokens[i].type) {
-				case mxsLexer.WS:
-					break;
-				case mxsLexer.RPAREN:
-					return true;
-				default:
-					return false;
-			}
-		}
-		return false;
-	}
-
-	private isSingleLineBlock(index: number): boolean
-	{
-		for (let i = index; i < this.tokens.length; i++) {
-			switch (this.tokens[i].type) {
-				case mxsLexer.NL:
-					return false;
-				case mxsLexer.RPAREN:
-					return true;
-				default:
-					break;
-			}
-		}
-		return false;
-	}
-	*/
-
-	private nextRealToken(index: number, stop?: number): Token | undefined
-	{
-		const limit = stop ?? this.tokens.length;
-		for (let i = index; i < limit; i++) {
-			const currToken = this.tokens[i];
+		const limit = stop ?? source.length - 1;
+		for (let i = index; i <= limit; i++) {
+			const currToken = source[i];
 			if (currToken.type === mxsLexer.EOF) {
 				return;
 			}
@@ -189,7 +182,7 @@ export class mxsSimpleFormatter
 		return;
 	}
 
-	private formattingTree(): blockNode
+	private formattingTree(tokens: Token[]): blockNode
 	{
 		// options
 		const opt = this.options.formatter!;
@@ -205,15 +198,16 @@ export class mxsSimpleFormatter
 		//---------------------------------------------------------
 		// for (let i = start; i <= stop; i++) {
 		// for (const [i, currToken] of this.tokens.entries()) {
-		for (let i = 0; i < this.tokens.length; i++) {
-			const currToken = this.tokens[i];
-			const prevToken = i > 0 ? this.tokens[i - 1] : null;
-			const nextToken = i < this.tokens.length ? this.tokens[i + 1] : null;
+		for (let i = 0; i < tokens.length; i++) {
+			const currToken = tokens[i];
+			const prevToken = tokens[i - 1];
+			const nextToken = tokens[i + 1];
 
 			if (currToken.type === mxsLexer.EOF) {
 				return root;
 			}
 
+			// last token
 			if (!nextToken) {
 				switch (currToken.type) {
 					case mxsLexer.NL:
@@ -234,8 +228,19 @@ export class mxsSimpleFormatter
 				return root;
 			}
 
+			//---------------------------------------------------------
 			switch (currToken.type) {
-				//---------------------------------------------------------
+				case mxsLexer.LINE_COMMENT:
+					cStack().vals.push(currToken.text!);
+					cStack().vals.push(opt.newLineChar);
+					break;
+				// /*
+				case mxsLexer.BLOCK_COMMENT:
+					if (nextToken.type === mxsLexer.NL) {
+						cStack().vals.push(opt.newLineChar);
+					}
+					break;
+				// */
 				case mxsLexer.LBRACE:
 				case mxsLexer.LPAREN:
 					{
@@ -245,15 +250,12 @@ export class mxsSimpleFormatter
 						const node = new blockNode(undefined, indentation);
 						node.start = currToken.text!;
 						cStack().vals.push(node);
+						//-------------------------
 						stack.push(node);
-
-						switch (nextToken.type) {
-							case mxsLexer.NL:
-								// case mxsLexer.RBRACE:										
-								// 	break;
-								// default:
-								cStack().vals.push(opt.newLineChar);
-								break;
+						//-------------------------
+						// new line after
+						if (nextToken.type === mxsLexer.NL) {
+							cStack().vals.push(opt.newLineChar);
 						}
 					}
 					break;
@@ -264,71 +266,25 @@ export class mxsSimpleFormatter
 						indentation--;
 						// cStack().vals.push(currToken.text!);
 						cStack().end = currToken.text!;
-
-						/*
-						let nextRealToken = null;
-						for (let f = i; f < this.tokens.length; f++) {
-							if (this.tokens[f].type !== mxsLexer.NL) {
-								nextRealToken = this.tokens[f];
-								break; 
+						//-------------------------
+						stack.pop();
+						//-------------------------
+						if (nextToken.type === mxsLexer.NL) {
+							const next = this.nextRealToken(tokens, i + 2);
+							switch (next?.type) {
+								case mxsLexer.RPAREN:
+								case mxsLexer.RBRACE:
+									break;
+								default:
+									cStack().vals.push(opt.newLineChar);
+									break;
 							}
 						}
-						// */
-						// /*
-						//TODO: ERROR ) \n )
-						stack.pop();
-						switch (nextToken.type) {
-							case mxsLexer.NL:
-								const next = this.nextRealToken(i + 2);
-								switch (next?.type) {
-									case mxsLexer.RPAREN:
-									case mxsLexer.RBRACE:
-										break;
-									default:
-										cStack().vals.push(opt.newLineChar);
-										break;
-								}
-								// if (next?.type !== mxsLexer.RPAREN)
-								// cStack().vals.push(opt.newLineChar);
-								// cStack().vals.push(opt.indentChar);
-								break;
-						}
-						// */
-						
 					}
 					break;
 				//---------------------------------------------------------
 				// tokens that increase indentation, when sigle expression is next
 				// case mxsLexer.OF:
-				/*
-				case mxsLexer.ON:
-				{
-					cStack().vals.push(currToken.text!);
-					switch (nextToken.type) {
-						case mxsLexer.ID:
-						case mxsLexer.NUMBER:
-						case mxsLexer.NAME:
-						case mxsLexer.TIME:
-						case mxsLexer.PATH:
-							{
-								cStack().vals.push(opt.whitespaceChar);
-							}
-							break;
-						case mxsLexer.LPAREN:	
-						{
-							if (afterKeyword) {
-								cStack().vals.push(opt.newLineChar);
-								cStack().vals.push(opt.indentChar);
-							} else {
-								cStack().vals.push(opt.whitespaceChar);
-							}
-						}
-						break;
-
-					}					
-				}
-				break;
-				*/
 				// case mxsLexer.RETURN:
 				case mxsLexer.COLLECT:
 				case mxsLexer.DO:
@@ -360,55 +316,20 @@ export class mxsSimpleFormatter
 					}
 					break;
 				case mxsLexer.NL:
+					//...
 					/*
-					{
-						//TODO: FIX FOR THEN ELSE...
-						if (currToken.text && currToken.text.includes(';')) {
-							cStack().vals.push(opt.lineEndChar, opt.whitespaceChar);
-						} else {
-							let emmit = true;
-							// /
-							switch (prevToken.type) {
-								// case mxsLexer.NL:
-								// case mxsLexer.LBRACE:
-								// case mxsLexer.LPAREN:
-									// case mxsLexer.RBRACE:
-									// case mxsLexer.RPAREN:
-									// emmit = false;
-									// break;
-								case mxsLexer.ELSE:
-								case mxsLexer.THEN:
-								case mxsLexer.DO:
-								case mxsLexer.COLLECT:
-									if (afterKeyword) {
-										emmit = false;
-									}
-									break;
-							}
-							switch (nextToken.type) {
-								// case mxsLexer.NL:
-								// case mxsLexer.LBRACE:
-								// case mxsLexer.LPAREN:
-								// case mxsLexer.RBRACE:
-								// case mxsLexer.RPAREN:
-									// emmit = false;
-									// break;
-								case mxsLexer.ELSE:
-								case mxsLexer.THEN:
-								case mxsLexer.DO:
-								case mxsLexer.COLLECT:
-									if (afterKeyword) {
-										emmit = false;
-									}
-									break;
-							}
-							// /
-							if (emmit) {
-								cStack().vals.push(opt.newLineChar);
-							}
-						}
-					}
-					*/
+					switch (nextToken.type) {
+						case mxsLexer.RPAREN:
+						case mxsLexer.LPAREN:
+						case mxsLexer.RBRACE:
+						case mxsLexer.LBRACE:
+							break;
+						default:
+							cStack().vals.push(opt.newLineChar);
+							// cStack().vals.push(opt.indentChar);
+							break;
+					}	
+					// */
 					break;
 				//---------------------------------------------------------
 				case mxsLexer.AMP:
@@ -447,13 +368,10 @@ export class mxsSimpleFormatter
 				case mxsLexer.EQ:
 					{
 						cStack().vals.push(currToken.text!);
-						// here we sould add NL in functions...
-						// console.log(nextToken.type === mxsLexer.NL);
 
 						if (nextToken.type === mxsLexer.NL) {
-							const next = this.nextRealToken(i + 1);
-							// console.log(next?.text!);
-							if (next && next.type !== mxsLexer.LPAREN) {
+							const next = this.nextRealToken(tokens, i + 2);
+							if (next?.type !== mxsLexer.LPAREN) {
 								cStack().vals.push(opt.newLineChar);
 							}
 						} else {
@@ -475,7 +393,7 @@ export class mxsSimpleFormatter
 				default:
 					{
 						cStack().vals.push(currToken.text!);
-						// /*
+
 						switch (nextToken.type) {
 							case mxsLexer.COMMA:
 							case mxsLexer.DOT:
@@ -495,11 +413,20 @@ export class mxsSimpleFormatter
 								break;
 							case mxsLexer.NL:
 								{
-									const next = this.nextRealToken(i + 2);
 									// look further up
-									if (next?.type !== mxsLexer.RPAREN && next?.type !== mxsLexer.RBRACE) {
-										cStack().vals.push(opt.newLineChar); // cStack().vals.push(opt.indentChar);
+									const next = this.nextRealToken(tokens, i + 2);
+									// /*
+									switch (next?.type) {
+										case mxsLexer.RPAREN:
+										case mxsLexer.LPAREN:
+										case mxsLexer.RBRACE:
+										case mxsLexer.LBRACE:
+											break;
+										default:
+											cStack().vals.push(opt.newLineChar);
+											break;
 									}
+									// */
 								}
 								break;
 							case mxsLexer.ELSE:
@@ -512,10 +439,8 @@ export class mxsSimpleFormatter
 								cStack().vals.push(opt.whitespaceChar);
 								break;
 						}
-						// */
 					}
 					break;
-
 			}
 		}
 		return root;
@@ -543,108 +468,70 @@ export class mxsSimpleFormatter
 				if (typeof val === 'string') {
 
 					result += val;
-					// indent
-					if (val === opt.newLineChar) {
+					// TODO: indent
+					// if (val === opt.newLineChar) {
+					if (val === opt.newLineChar && typeof node.vals[i + 1] === 'string') {
 						result += opt.indentChar.repeat(node.indent);
 					}
 				} else {
 					const inner = dfs(<blockNode>val, node);
 
 					let before = ''; let after = '';
-
+					let innerBefore = ''; let innerAfter = '';
 					// add linebreaks or whitespace?
 					const linebreak = val.hasLineBreaks();
 					const nextToken = node.vals[i + 1];
 
-					if (inner.length > 2) {
+					if (inner.length > 0) {
+
 						if (
 							!result.endsWith('#') &&
-							result.length > 0 &&
 							!(result.endsWith(opt.newLineChar) || result.endsWith(opt.lineEndChar))
 						) {
+
 							if (linebreak && opt.codeblock.parensInNewLine) {
-								before = opt.newLineChar;
+								before += opt.newLineChar;
+								//TODO: PROBLEM AT THE START OF STRUCT WITH INDENT!!!
 								before += opt.indentChar.repeat(node.indent);
 							} else if (!result.endsWith(opt.whitespaceChar)) {
 								before = opt.whitespaceChar;
 							}
 						}
-						// /*
+
 						if (
 							typeof nextToken === 'string' &&
-							nextToken.length > 0 &&
 							!(nextToken.endsWith(opt.newLineChar) || nextToken.endsWith(opt.lineEndChar))
 						) {
-							// console.log(JSON.stringify(nextToken));
 							if (linebreak) {
 								after = opt.newLineChar;
 								after += opt.indentChar.repeat(node.indent);
-							}// else if (!result.endsWith(opt.whitespaceChar)) {
+							}
 							after = opt.whitespaceChar;
-							//}
 						}
-						// */
-						// after = opt.newLineChar;
-						// after += opt.indentChar.repeat(node.indent);
-					}
 
-					let innerBefore = ''; let innerAfter = '';
+						if (val.start.length > 0 && val.end.length > 0) {
+							if (linebreak || opt.codeblock.newlineAllways) {
+								if (!inner.startsWith(opt.newLineChar) || !inner.startsWith(opt.newLineChar + opt.indentChar)) {
+									innerBefore = opt.newLineChar
+								}
+								innerBefore += opt.indentChar.repeat(val.indent);
 
-					if (inner.length > 0 && val.start.length > 0 && val.end.length > 0) {
-						if (linebreak || opt.codeblock.newlineAllways) {
-							if (!inner.startsWith(opt.newLineChar)) {
-								innerBefore = opt.newLineChar
+								// console.log(JSON.stringify(inner));
+
+								if (!inner.endsWith(opt.newLineChar) || !inner.endsWith(opt.newLineChar + opt.indentChar)) {
+									innerAfter = opt.newLineChar;
+								}
+								innerAfter += opt.indentChar.repeat(node.indent);
+
+							} else if (opt.codeblock.spaced) {
+								innerBefore = opt.whitespaceChar;
+								innerAfter = opt.whitespaceChar;
 							}
-							innerBefore += opt.indentChar.repeat(val.indent);
-							// const indentrep = parent ? parent.indent : (node.indent !== 0 ? node.indent - 1 : 0);
-							// const preindent = opt.indentChar.repeat(indentrep);
-
-							if (!inner.endsWith(opt.newLineChar)) {
-								// console.log(JSON.stringify(inner, undefined));
-								innerAfter = opt.newLineChar;
-								// innerAfter += 'pipi';
-							}
-							innerAfter += opt.indentChar.repeat(node.indent);
-
-						} else if (opt.codeblock.spaced) {
-							innerBefore = opt.whitespaceChar;
-							innerAfter = opt.whitespaceChar;
 						}
 					}
-					// result += before; result += val.start; result += innerBefore; result += inner; result += innerAfter; result += val.end; result += after;
 					result += `${before}${val.start}${innerBefore}${inner}${innerAfter}${val.end}${after}`;
-					// result += `${before}${val.start}${innerBefore}${inner}${val.end}${after}`;
 				}
 			}
-			/*
-			const nodeLineBreaks = node.hasLineBreaks();
-			if (node.start.length > 0) {
-				let preStart = '', posStart = '';
-				if (
-					node.vals.length > 0 ||
-					( nodeLineBreaks || opt.codeblock.newlineAllways)
-				) {
-					posStart = opt.newLineChar + opt.indentChar.repeat(node.indent);
-				} else if (node.vals.length > 0 && opt.codeblock.spaced) {
-					posStart = opt.whitespaceChar;
-				}
-				result = `${node.start}${posStart}${result}`;
-			}
-			if (node.end.length > 0) {
-				let preEnd = '', posEnd = '';
-				if (
-					nodeLineBreaks ||
-					(node.vals.length > 0 && opt.codeblock.newlineAllways)
-				) {
-					const indentrep = parent ? parent.indent : (node.indent !== 0 ? node.indent - 1 : 0);
-					const preindent = opt.indentChar.repeat(indentrep);
-					preEnd = opt.newLineChar + preindent;
-				} else if (node.vals.length > 0 && opt.codeblock.spaced) {
-					preEnd = opt.whitespaceChar;
-				}
-				result = `${result}${preEnd}${node.end}`;
-			}
-			//*/
 			return result;
 		}
 		//---------------------------------------------------------
@@ -654,34 +541,40 @@ export class mxsSimpleFormatter
 	// get tokens within range
 	public formatRange(start?: number, stop?: number): IformatterResult
 	{
-		/*
-		const startIndex = start ? this.tokenFromIndex(start, false) : 0;
-		const stopIndex = stop ? this.tokenFromIndex(stop, false) : this.tokens.length - 1;
+		// /*
+		// const startIndex = start ? this.tokenFromIndex(start, false) : 0;
+		// const stopIndex = stop ? this.tokenFromIndex(stop, false) : this.tokens.length - 1;
 		let activeTokens = this.tokenStream.getTokens(start, stop);
 		activeTokens = activeTokens.filter(token => token.type !== mxsLexer.WS);
+
+		// TODO: start values, indent, whitespace, NL, etc for the first token
+
+		// produce the tree
+		const codeTree = this.formattingTree(activeTokens);
+		// derive the code
+		// const code = codeTree.parse(this.options);
+		const code = this.codeFromTree(codeTree);
+		// new offset
 		const startPos = activeTokens[0].start;
 		const stopPos = activeTokens[activeTokens.length - 1].stop;
+		// */
 
-		const codeTree = this.formattingTree(activeTokens);
-
-		//...
-		*/
+		/*
 		if (start && stop) {
 			//limit the tokens to the range
 			this.tokens = this.tokenStream.getTokens(start, stop);
 		}
-
 		//filter WS tokens...
-		this.tokens = this.tokens.filter(token => token.type !== mxsLexer.WS);
-
-		// produce the tree
-		const codeTree = this.formattingTree();
+		this.tokens = this.tokens.filter(token => token.type !== mxsLexer.WS);		
+		// produce the tree		
+		const codeTree = this.formattingTree(this.tokens);
 		// derive the code
-		const code = this.codeFromTree(codeTree);
-
+		// const code = this.codeFromTree(codeTree);
+		const code = codeTree.parse(this.options);		
 		// new offset
 		const startPos = this.tokens[0].start;
 		const stopPos = this.tokens[this.tokens.length - 1].stop;
+		*/
 		const offset = startPos + (code.length - 1);
 
 		//return
