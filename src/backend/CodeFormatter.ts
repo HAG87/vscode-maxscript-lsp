@@ -77,10 +77,10 @@ class blockNode
 	{
 		return (typeof this.first === 'string' && this.first?.search(/[\r\n;]+[ \t]*/) >= 0);
 	}
+
 	public endsWithNL(): boolean
 	{
-		// const last = this.vals[this.vals.length - 1];
-		return (typeof this.last === 'string' && this.last?.search(/[\r\n;]+[ \t]*/) >= 0);
+		return (typeof this.last === 'string' && this.last?.search(/[\r\n;]+[ \t]*$/) >= 0);
 	}
 	public isEmpty(): boolean
 	{
@@ -90,7 +90,104 @@ class blockNode
 	{
 		return this.vals.length > 1;
 	}
+	private stringEndsWithNL(val: string): boolean
+	{
+		return val.search(/[\r\n;]+[ \t]*$/) >= 0;
+	}
 
+	public parse(options: Partial<IMaxScriptSettings> = defaultFormatSettings): string
+	{
+		const opt = options.formatter!;
+
+		function dfs(node: blockNode, parent?: blockNode): string
+		{
+			let result = '';
+			//-----------------------------------------------------
+			// main loop to visit children
+			for (let i = 0; i < node.vals.length; i++) {
+				//----------------------------
+				const val = node.vals[i];
+				//----------------------------
+				if (typeof val === 'string') {
+					result += val;
+					// indent
+					// if (val === opt.newLineChar) {
+					if (val === opt.newLineChar && typeof node.vals[i + 1] === 'string') {
+						result += opt.indentChar.repeat(node.indent);
+					}
+				} else {
+					// blocNode
+					let start = '', end = '';
+					const hasLinebreaks = val.hasLineBreaks();
+					const inner = dfs(val, node);
+
+					if (!val.isEmpty()) {
+						// block start
+						// look for invalid positions
+						if (
+							!result.endsWith('#') &&
+							!(result.search(/[\r\n;]+[ \t]*$/) >= 0)
+								// indent
+								start += opt.indentChar.repeat(node.indent);
+							} else if (!result.endsWith(opt.whitespaceChar)) {
+								start += opt.whitespaceChar;
+							}
+						}
+						// block end
+						// look for invalid positions
+						const nextToken = node.vals[i + 1];
+						// add ending newlines and indent only when the block is followed by a token,
+						// blockNodes siblings will be addressed on the blockNode start
+						if (
+							typeof nextToken === 'string' &&
+							nextToken.length > 0 &&
+							!(nextToken.endsWith(opt.newLineChar) || nextToken.endsWith(opt.lineEndChar))
+						) {
+							if (hasLinebreaks) {
+								end += opt.newLineChar;
+								end += opt.indentChar.repeat(node.indent);
+							}
+							end += opt.whitespaceChar;
+						}
+					}
+
+					// add the parens
+					start += val.start;
+					end += val.end;
+					// wrap the content
+					if (!val.isEmpty() && val.start && val.end) {
+						if (hasLinebreaks || (val.canBeMultiline() && opt.codeblock.newlineAllways)) {
+							// before inner
+							console.log(!val.startsWithNL());
+							if (!val.startsWithNL()) {
+								start += opt.newLineChar;
+							}
+							// indent
+							start += opt.indentChar.repeat(val.indent);
+							// after inner
+							if (!val.endsWithNL()) {
+								end += opt.newLineChar;
+							}
+							end += opt.indentChar.repeat(val.indent);
+						} else {
+							start += opt.whitespaceChar;
+							end += opt.whitespaceChar;
+						}
+					}
+					// return the child text
+					result += start;
+					result += inner;
+					result += end;
+				}
+			}
+			//-----------------------------------------------------
+			return result;
+		}
+		//---------------------------------------------------------
+		return dfs(this);
+		//---------------------------------------------------------
+		// return '';
+	}
 }
 
 /**
@@ -181,6 +278,27 @@ export class mxsSimpleFormatter
 		}
 		return;
 	}
+	private tokensTillEOL(source: Token[], index: number): number
+	{
+		const currline = source[index].line;
+		// let test = source[index].text!;
+		let count = 0;
+		for (let i = index + 1; i < source.length; i++) {
+			// console.log(`${currline} - ${source[i].line}`);
+			const currToken = source[i];
+			if (currToken.type === mxsLexer.NL ||
+				currToken.type === mxsLexer.WS
+			) {
+				continue;
+			}
+			if (source[i].line !== currline) {
+				// console.log(`ret: ${test} :: ${count}`);
+				return count;
+			}
+			count++;
+		}
+		return count;
+	}
 
 	private formattingTree(tokens: Token[]): blockNode
 	{
@@ -206,6 +324,27 @@ export class mxsSimpleFormatter
 			if (currToken.type === mxsLexer.EOF) {
 				return root;
 			}
+			// TODO: start values, indent, whitespace, NL, etc for the first token
+			if (i === 0) {
+				// if first token is new line...
+				if (currToken.type === mxsLexer.NL) {
+					//determine the position?
+					//emmit the token?
+					cStack().vals.push(currToken.text!);
+				}
+				// search the tokens before...
+				console.log('--------------------');
+				for (let j = 0; j < currToken.tokenIndex; j++) {
+					console.log(this.tokens[j]);
+				}
+				console.log('--------------------');
+				console.log(currToken);
+				console.log(currToken.text!);
+				console.log(currToken.tokenIndex);
+				console.log('--------------------');
+
+				continue;
+			}
 
 			// last token
 			if (!nextToken) {
@@ -227,7 +366,6 @@ export class mxsSimpleFormatter
 				}
 				return root;
 			}
-
 			//---------------------------------------------------------
 			switch (currToken.type) {
 				case mxsLexer.LINE_COMMENT:
@@ -297,7 +435,8 @@ export class mxsSimpleFormatter
 					{
 						cStack().vals.push(currToken.text!);
 						if (nextToken.type !== mxsLexer.LPAREN) {
-							if (afterKeyword) {
+
+							if (afterKeyword && this.tokensTillEOL(tokens, i) > 1) {
 								cStack().vals.push(opt.newLineChar);
 								cStack().vals.push(opt.indentChar);
 							} else {
@@ -500,13 +639,15 @@ export class mxsSimpleFormatter
 
 						if (
 							typeof nextToken === 'string' &&
-							!(nextToken.endsWith(opt.newLineChar) || nextToken.endsWith(opt.lineEndChar))
+							!(nextToken.endsWith(opt.newLineChar) || nextToken.endsWith(opt.lineEndChar)) &&
+							!(nextToken.endsWith(',') || nextToken.endsWith('.'))
 						) {
 							if (linebreak) {
 								after = opt.newLineChar;
 								after += opt.indentChar.repeat(node.indent);
+							} else {
+								after = opt.whitespaceChar;
 							}
-							after = opt.whitespaceChar;
 						}
 
 						if (val.start.length > 0 && val.end.length > 0) {
