@@ -1,6 +1,6 @@
 import { CharStream, CommonTokenStream, Token } from "antlr4ng";
 import { mxsLexer } from "../parser/mxsLexer.js";
-import { IMaxScriptSettings } from "../settings.js";
+import { ICodeFormatSettings } from "../settings.js";
 
 export interface IformatterResult
 {
@@ -10,31 +10,29 @@ export interface IformatterResult
 	offset: number;
 }
 
-const defaultFormatSettings: Partial<IMaxScriptSettings> =
+const defaultFormatSettings: ICodeFormatSettings =
 {
-	formatter: {
-		indentChar: '\t',
-		newLineChar: '\r\n',
-		lineEndChar: ';',
-		lineContinuationChar: '\\',
-		whitespaceChar: ' ',
+	indentChar: '\t',
+	newLineChar: '\r\n',
+	lineEndChar: ';',
+	lineContinuationChar: '\\',
+	whitespaceChar: ' ',
 
-		keepComments: true,
-		keepEmptyLines: true,
-		indentOnly: false,
+	keepComments: true,
+	keepEmptyLines: true,
+	indentOnly: false,
 
-		codeblock: {
-			parensInNewLine: true,
-			newlineAllways: false,
-			spaced: true,
-		},
-		statements: {
-			useLineBreaks: true,
-			optionalWhitespace: false
-		},
-		list: {
-			useLineBreaks: false
-		}
+	codeblock: {
+		parensInNewLine: true,
+		newlineAllways: false,
+		spaced: true,
+	},
+	statements: {
+		useLineBreaks: true,
+		optionalWhitespace: false
+	},
+	list: {
+		useLineBreaks: false
 	}
 }
 
@@ -82,6 +80,7 @@ class blockNode
 	{
 		return (typeof this.last === 'string' && this.last?.search(/[\r\n;]+[ \t]*$/) >= 0);
 	}
+
 	public isEmpty(): boolean
 	{
 		return this.vals.length === 0;
@@ -95,10 +94,8 @@ class blockNode
 		return val.search(/[\r\n;]+[ \t]*$/) >= 0;
 	}
 
-	public parse(options: Partial<IMaxScriptSettings> = defaultFormatSettings): string
+	public parse(options: ICodeFormatSettings = defaultFormatSettings): string
 	{
-		const opt = options.formatter!;
-
 		function dfs(node: blockNode, parent?: blockNode): string
 		{
 			let result = '';
@@ -112,14 +109,15 @@ class blockNode
 					result += val;
 					// indent
 					// if (val === opt.newLineChar) {
-					if (val === opt.newLineChar && typeof node.vals[i + 1] === 'string') {
-						result += opt.indentChar.repeat(node.indent);
+					if (val === options.newLineChar && typeof node.vals[i + 1] === 'string') {
+						result += options.indentChar.repeat(node.indent);
 					}
 				} else {
-					// blocNode
-					let start = '', end = '';
+					// blockNode
+					let before = '', start = '', end = '', after = '';
 					const hasLinebreaks = val.hasLineBreaks();
 					const inner = dfs(val, node);
+					// const inner = val.parse(options);
 
 					if (!val.isEmpty()) {
 						// block start
@@ -127,57 +125,57 @@ class blockNode
 						if (
 							!result.endsWith('#') &&
 							!(result.search(/[\r\n;]+[ \t]*$/) >= 0)
+						) {
+							if (hasLinebreaks && options.codeblock.parensInNewLine) {
+								before += options.newLineChar;
 								// indent
-								start += opt.indentChar.repeat(node.indent);
-							} else if (!result.endsWith(opt.whitespaceChar)) {
-								start += opt.whitespaceChar;
+								before += options.indentChar.repeat(node.indent);
+							} else if (!result.endsWith(options.whitespaceChar)) {
+								before += options.whitespaceChar;
 							}
 						}
-						// block end
-						// look for invalid positions
-						const nextToken = node.vals[i + 1];
-						// add ending newlines and indent only when the block is followed by a token,
-						// blockNodes siblings will be addressed on the blockNode start
-						if (
-							typeof nextToken === 'string' &&
-							nextToken.length > 0 &&
-							!(nextToken.endsWith(opt.newLineChar) || nextToken.endsWith(opt.lineEndChar))
-						) {
-							if (hasLinebreaks) {
-								end += opt.newLineChar;
-								end += opt.indentChar.repeat(node.indent);
+
+						// wrap the content
+						if (val.start && val.end) {
+							if (hasLinebreaks || (val.canBeMultiline() && options.codeblock.newlineAllways)) {
+								// before inner
+								if (!val.startsWithNL()) {
+									start += options.newLineChar;
+								}
+								// indent
+								start += options.indentChar.repeat(val.indent);
+								// after inner
+								if (!val.endsWithNL()) {
+									end += options.newLineChar;
+								}
+								end += options.indentChar.repeat(node.indent);
+							} else {
+								start += options.whitespaceChar;
+								end += options.whitespaceChar;
 							}
-							end += opt.whitespaceChar;
+						}
+					}
+					// block end
+					// look for invalid positions
+					const nextToken = node.vals[i + 1];
+					// add ending newlines and indent only when the block is followed by a token,
+					// blockNodes siblings will be addressed on the blockNode start
+					if (
+						typeof nextToken === 'string' &&
+						!(nextToken.startsWith(options.newLineChar) || nextToken.startsWith(options.lineEndChar)) &&
+						!(nextToken.startsWith(',') || nextToken.startsWith('.'))
+					) {
+						if (hasLinebreaks) {
+							after += options.newLineChar;
+							after += options.indentChar.repeat(node.indent);
+						} else {
+							after += options.whitespaceChar;
 						}
 					}
 
-					// add the parens
-					start += val.start;
-					end += val.end;
-					// wrap the content
-					if (!val.isEmpty() && val.start && val.end) {
-						if (hasLinebreaks || (val.canBeMultiline() && opt.codeblock.newlineAllways)) {
-							// before inner
-							console.log(!val.startsWithNL());
-							if (!val.startsWithNL()) {
-								start += opt.newLineChar;
-							}
-							// indent
-							start += opt.indentChar.repeat(val.indent);
-							// after inner
-							if (!val.endsWithNL()) {
-								end += opt.newLineChar;
-							}
-							end += opt.indentChar.repeat(val.indent);
-						} else {
-							start += opt.whitespaceChar;
-							end += opt.whitespaceChar;
-						}
-					}
 					// return the child text
-					result += start;
-					result += inner;
-					result += end;
+					// result = result.concat(before, val.start, start, inner, end, val.end, after);
+					result += before + val.start + start + inner + end + val.end + after;
 				}
 			}
 			//-----------------------------------------------------
@@ -185,8 +183,6 @@ class blockNode
 		}
 		//---------------------------------------------------------
 		return dfs(this);
-		//---------------------------------------------------------
-		// return '';
 	}
 }
 
@@ -197,13 +193,13 @@ class blockNode
  */
 export class mxsSimpleFormatter
 {
-	options: Partial<IMaxScriptSettings>;
+	options: ICodeFormatSettings;
 
 	private tokenStream: CommonTokenStream;
 	private tokens: Token[];
 	// outputPipeline: (string | string[])[] = [];
 	//TODO: add options!
-	public constructor(grammarOrTokens: string | CommonTokenStream, options?: Partial<IMaxScriptSettings>)
+	public constructor(grammarOrTokens: string | CommonTokenStream, options?: ICodeFormatSettings)
 	{
 		if (typeof grammarOrTokens === "string") {
 			const lexer = new mxsLexer(CharStream.fromString(grammarOrTokens));
@@ -303,7 +299,7 @@ export class mxsSimpleFormatter
 	private formattingTree(tokens: Token[]): blockNode
 	{
 		// options
-		const opt = this.options.formatter!;
+		const opt = this.options;
 		// list: { useLineBreaks: true }
 		const afterCommaChar = opt.list.useLineBreaks ? opt.newLineChar : opt.whitespaceChar;
 		// statements: { useLineBreaks: true, }
@@ -326,26 +322,37 @@ export class mxsSimpleFormatter
 			}
 			// TODO: start values, indent, whitespace, NL, etc for the first token
 			if (i === 0) {
+				/*
 				// if first token is new line...
 				if (currToken.type === mxsLexer.NL) {
-					//determine the position?
+					// TODO: determine the position?
+					// TODO: determine the indent?
+					// with the token and the tokens before to determine if the indent is right
 					//emmit the token?
-					cStack().vals.push(currToken.text!);
+					// cStack().vals.push(currToken.text!);
 				}
+
 				// search the tokens before...
-				console.log('--------------------');
-				for (let j = 0; j < currToken.tokenIndex; j++) {
-					console.log(this.tokens[j]);
-				}
-				console.log('--------------------');
-				console.log(currToken);
-				console.log(currToken.text!);
-				console.log(currToken.tokenIndex);
-				console.log('--------------------');
+				
+				// console.log('--------before------------');
+				// for (let j = 0; j < currToken.tokenIndex; j++) {
+				// 	console.log(this.tokens[j]);
+				// }
+				// console.log('----------current----------');
+				// console.log(currToken);
+				// console.log(currToken.text!);
+				// console.log(currToken.tokenIndex);
+				// console.log('--------------------');
 
+				//---------------------------------------------------------
+				// TODO: disable this!
+				cStack().vals.push(currToken.text!); 
+				cStack().vals.push(opt.whitespaceChar);
 				continue;
+				//---------------------------------------------------------
+				*/
 			}
-
+			//---------------------------------------------------------
 			// last token
 			if (!nextToken) {
 				switch (currToken.type) {
@@ -588,7 +595,7 @@ export class mxsSimpleFormatter
 	private codeFromTree(root: blockNode): string
 	{
 		// options
-		const opt = this.options.formatter!;
+		const opt = this.options;
 		/*
 		codeblock: {
 			parensInNewLine: true,
@@ -656,9 +663,6 @@ export class mxsSimpleFormatter
 									innerBefore = opt.newLineChar
 								}
 								innerBefore += opt.indentChar.repeat(val.indent);
-
-								// console.log(JSON.stringify(inner));
-
 								if (!inner.endsWith(opt.newLineChar) || !inner.endsWith(opt.newLineChar + opt.indentChar)) {
 									innerAfter = opt.newLineChar;
 								}
@@ -687,26 +691,22 @@ export class mxsSimpleFormatter
 		// const stopIndex = stop ? this.tokenFromIndex(stop, false) : this.tokens.length - 1;
 		let activeTokens = this.tokenStream.getTokens(start, stop);
 		activeTokens = activeTokens.filter(token => token.type !== mxsLexer.WS);
-
-		// TODO: start values, indent, whitespace, NL, etc for the first token
-
 		// produce the tree
 		const codeTree = this.formattingTree(activeTokens);
 		// derive the code
-		// const code = codeTree.parse(this.options);
-		const code = this.codeFromTree(codeTree);
+		const code = codeTree.parse(this.options);
+		// const code = this.codeFromTree(codeTree);
 		// new offset
 		const startPos = activeTokens[0].start;
 		const stopPos = activeTokens[activeTokens.length - 1].stop;
 		// */
-
 		/*
 		if (start && stop) {
 			//limit the tokens to the range
 			this.tokens = this.tokenStream.getTokens(start, stop);
 		}
 		//filter WS tokens...
-		this.tokens = this.tokens.filter(token => token.type !== mxsLexer.WS);		
+		this.tokens = this.tokens.filter(token => token.type !== mxsLexer.WS);
 		// produce the tree		
 		const codeTree = this.formattingTree(this.tokens);
 		// derive the code
@@ -715,7 +715,7 @@ export class mxsSimpleFormatter
 		// new offset
 		const startPos = this.tokens[0].start;
 		const stopPos = this.tokens[this.tokens.length - 1].stop;
-		*/
+		// */
 		const offset = startPos + (code.length - 1);
 
 		//return

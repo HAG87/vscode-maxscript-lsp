@@ -1,21 +1,7 @@
 // Settings
-export interface IMaxScriptSettings
+export interface ICodeFormatSettings
 {
-    language?: {
-        SemanticTokens: boolean,
-        GoToSymbol: boolean,
-        GoToDefinition: boolean,
-        Diagnostics: boolean,
-    },
-    Completions?: {
-        dataBaseCompletion: boolean,
-        codeCompletion: boolean
-    };
-    // parser: {
-    // 	multiThreading: boolean,
-    // }
-    formatter: {
-        keepComments: boolean,
+    keepComments: boolean,
         keepEmptyLines: boolean,
         indentOnly: boolean,
         indentChar: string,
@@ -35,11 +21,28 @@ export interface IMaxScriptSettings
         list: {
             useLineBreaks: boolean
         }
+}
+
+export interface IMaxScriptSettings
+{
+    language?: {
+        SemanticTokens: boolean,
+        GoToSymbol: boolean,
+        GoToDefinition: boolean,
+        Diagnostics: boolean,
     },
+    Completions?: {
+        dataBaseCompletion: boolean,
+        codeCompletion: boolean
+    };
+    // parser: {
+    // 	multiThreading: boolean,
+    // }
+    formatter: ICodeFormatSettings;
     prettifier: {
         expressionsToBlock: boolean,
         filePrefix: string,
-    },
+    };
     minifier: {
         removeUnnecessaryScopes: boolean,
         filePrefix: string,
