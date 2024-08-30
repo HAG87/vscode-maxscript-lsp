@@ -1,26 +1,23 @@
 // Settings
 export interface ICodeFormatSettings
 {
-    keepComments: boolean,
-        keepEmptyLines: boolean,
-        indentOnly: boolean,
-        indentChar: string,
-        newLineChar: string,
-        lineEndChar: string,
-        lineContinuationChar: string,
-        whitespaceChar: string,
-        codeblock: {
-            parensInNewLine: boolean,
-            newlineAllways: boolean,
-            spaced: boolean,
-        },
-        statements: {
-            useLineBreaks: boolean,
-            optionalWhitespace: boolean
-        },
-        list: {
-            useLineBreaks: boolean
-        }
+    indentChar: string,
+    newLineChar: string,
+    lineEndChar: string,
+    lineContinuationChar: string,
+    whitespaceChar: string,
+    codeblock: {
+        parensInNewLine: boolean,
+        newlineAllways: boolean,
+        spaced: boolean,
+    },
+    statements: {
+        useLineBreaks: boolean,
+        optionalWhitespace: boolean
+    },
+    list: {
+        useLineBreaks: boolean
+    }
 }
 
 export interface IMaxScriptSettings
@@ -31,19 +28,23 @@ export interface IMaxScriptSettings
         GoToDefinition: boolean,
         Diagnostics: boolean,
     },
+    // parser: {
+    // 	multiThreading: boolean,
+    // }
     Completions?: {
         dataBaseCompletion: boolean,
         codeCompletion: boolean
     };
-    // parser: {
-    // 	multiThreading: boolean,
-    // }
     formatter: ICodeFormatSettings;
     prettifier: {
+        keepComments?: boolean,
+        keepEmptyLines?: boolean,
+        indentOnly?: boolean,
         expressionsToBlock: boolean,
         filePrefix: string,
     };
     minifier: {
+        expressionsToBlock: boolean,
         removeUnnecessaryScopes: boolean,
         filePrefix: string,
     }
@@ -72,35 +73,31 @@ export const defaultSettings: IMaxScriptSettings = {
     // 	multiThreading: true,
     // },
     formatter: {
-		indentChar: '\t',
-		newLineChar: '\r\n',
-		lineEndChar: ';',
-		lineContinuationChar: '\\',
-		whitespaceChar: ' ',
-
-		keepComments: true,
-		keepEmptyLines: true,		
-		indentOnly: false,
-		
-		codeblock: {
-			parensInNewLine: true,
-			newlineAllways: false,
-			spaced: true,
-		},
-		statements: {
-			useLineBreaks: true,
-			optionalWhitespace: false
-		},
-		list: {
-			useLineBreaks: false
-		}
-	},
+        indentChar: '\t',
+        newLineChar: '\r\n',
+        lineEndChar: ';',
+        lineContinuationChar: '\\',
+        whitespaceChar: ' ',
+        codeblock: {
+            parensInNewLine: true,
+            newlineAllways: false,
+            spaced: true,
+        },
+        statements: {
+            useLineBreaks: true,
+            optionalWhitespace: false
+        },
+        list: {
+            useLineBreaks: false
+        }
+    },
     prettifier: {
         filePrefix: 'pretty_',
-        expressionsToBlock: true,
+        expressionsToBlock: true,        
     },
     minifier: {
         filePrefix: 'min_',
         removeUnnecessaryScopes: true,
+        expressionsToBlock: true, 
     }
 };

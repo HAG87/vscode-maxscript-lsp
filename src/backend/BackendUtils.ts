@@ -2,16 +2,14 @@
  * Copyright (c) Mike Lischke. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
  */
-
-import {
+import
+{
     ParseTree,
     ParserRuleContext,
     TerminalNode,
-    // Token,
-    // TokenStream,
 } from "antlr4ng";
-
-// export type TokenPosition = { index: number, context: ParseTree, text: string };
+import { ILexicalRange } from "../types.js";
+import { mxsParser } from "../parser/mxsParser.js";
 
 export class BackendUtils
 {
@@ -67,6 +65,56 @@ export class BackendUtils
 
             return context;
         }
-    };
+    }
 
+    public static findParentExpr(ctx: ParserRuleContext): ParserRuleContext
+    {
+        while (ctx && (ctx.ruleIndex !== mxsParser.RULE_expr)) {
+            if (ctx.parent) {
+                ctx = ctx.parent;
+            } else break;
+        }
+        return ctx;
+    }
+
+    public static parseTreeContainingRange(root: ParseTree, range: ILexicalRange)
+    {
+        let ctx: ParserRuleContext = root as ParserRuleContext;
+        let ctxStart =
+            BackendUtils.parseTreeFromPosition(root, range.start.row, range.start.column) as ParserRuleContext;
+
+        if (ctxStart) {
+            if (ctxStart instanceof TerminalNode) {
+                ctxStart = BackendUtils.findParentExpr(ctxStart);
+            }
+            ctx = ctxStart;
+        }
+
+        let ctxStop =
+            (BackendUtils.parseTreeFromPosition(root, range.end.row, range.end.column) ?? root) as ParserRuleContext;
+
+        if (ctxStop) {
+            if (ctxStop instanceof TerminalNode) {
+                ctxStop = BackendUtils.findParentExpr(ctxStop);
+            }
+            const startEnd = ctx.stop?.tokenIndex ?? 0;
+            const stopEnd = ctxStop.stop?.tokenIndex ?? 0;
+            // check if ctxStop is contained in ctxStart
+            if (stopEnd > startEnd) {
+                // find common parent
+                let run = true;
+                let parent = ctx.parent;
+                while (parent && run) {
+                    if (parent.stop) {
+                        if (run = !(stopEnd <= parent.stop.tokenIndex)) {
+                            // console.log(`${parent.start?.tokenIndex} - ${parent.stop.tokenIndex} :: ${stopEnd} :: ${stopEnd <= parent.stop.tokenIndex}}`);
+                            parent = parent.parent;
+                        }
+                    }
+                }
+                return parent ?? ctxStop;
+            }
+        }
+        return ctx;
+    }
 }

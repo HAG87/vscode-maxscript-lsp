@@ -787,42 +787,12 @@ export class SourceContext
     // TODO: formatter that uses the parse tree and a visitor
     public formatCode(range: ILexicalRange/* , options */): IformatterResult
     {
-        // rectify the start and stop positions with the parse tree we are in
-        function findParentExpr(ctx: ParserRuleContext): ParserRuleContext
-        {
-            while (ctx && (ctx.ruleIndex !== mxsParser.RULE_expr)) {
-                if (ctx.parent) {
-                    ctx = ctx.parent;
-                } else break;
-            }
-            return ctx;
-        }
-
-        let contextToFormat: ParserRuleContext;
-        const ctxStart =
-            BackendUtils.parseTreeFromPosition(<ParseTree>this.tree, range.start.row, range.start.column) as ParserRuleContext;
-        if (!ctxStart) {
-            contextToFormat = this.tree as ParserRuleContext;
-        } else {
-            contextToFormat = findParentExpr(ctxStart);
-        }
-
-        const ctxStop =
-            (BackendUtils.parseTreeFromPosition(<ParseTree>this.tree, range.end.row, range.end.column) ?? this.tree) as ParserRuleContext;
-        // check if ctxStop is contained in ctxStart
-        if (ctxStop) {
-            const startEnd = contextToFormat.stop?.tokenIndex ?? 0;
-            const stopEnd = ctxStop.stop?.tokenIndex ?? 0;
-
-            if (stopEnd > startEnd) {
-                contextToFormat = findParentExpr(ctxStop);
-            }
-        }
+        let contextToFormat = BackendUtils.parseTreeContainingRange(<ParseTree>this.tree, range);
 
         const startToken = contextToFormat.start;
         const stopToken = contextToFormat.stop;
-
-        
+        // console.log(startToken);
+        // console.log(stopToken);
         this.lexer.reset();
         this.tokenStream.setTokenSource(this.lexer);
         this.tokenStream.fill();
@@ -830,12 +800,8 @@ export class SourceContext
         // initialize the formatter
         const formatter = new mxsSimpleFormatter(this.tokenStream);
         // format code
-
-        return formatter.formatRange(startToken?.tokenIndex, stopToken?.tokenIndex);
-
         // console.log(formatter.formatRange());
-        // return formatter.formatGrammar(options, start, stop);        
-        // formatter.formatRange(start, stop);
+        return formatter.formatRange(startToken?.tokenIndex, stopToken?.tokenIndex);
     }
 
     // prettify

@@ -18,10 +18,6 @@ const defaultFormatSettings: ICodeFormatSettings =
 	lineContinuationChar: '\\',
 	whitespaceChar: ' ',
 
-	keepComments: true,
-	keepEmptyLines: true,
-	indentOnly: false,
-
 	codeblock: {
 		parensInNewLine: true,
 		newlineAllways: false,
@@ -129,6 +125,7 @@ class blockNode
 							if (hasLinebreaks && options.codeblock.parensInNewLine) {
 								before += options.newLineChar;
 								// indent
+								// before += 'caca azul';
 								before += options.indentChar.repeat(node.indent);
 							} else if (!result.endsWith(options.whitespaceChar)) {
 								before += options.whitespaceChar;
@@ -143,7 +140,7 @@ class blockNode
 									start += options.newLineChar;
 								}
 								// indent
-								start += options.indentChar.repeat(val.indent);
+								// start += options.indentChar.repeat(val.indent);
 								// after inner
 								if (!val.endsWithNL()) {
 									end += options.newLineChar;
@@ -322,35 +319,86 @@ export class mxsSimpleFormatter
 			}
 			// TODO: start values, indent, whitespace, NL, etc for the first token
 			if (i === 0) {
-				/*
-				// if first token is new line...
 				if (currToken.type === mxsLexer.NL) {
 					// TODO: determine the position?
 					// TODO: determine the indent?
 					// with the token and the tokens before to determine if the indent is right
 					//emmit the token?
-					// cStack().vals.push(currToken.text!);
+					cStack().vals.push(currToken.text!);
+				} if (currToken.type !== mxsLexer.WS) {
+
 				}
 
+				let nextRealToken: Token;
+				let prevRealToken: Token | undefined = undefined;
+
+				// set the indentation
+				// tokens ahead
+				for (let j = currToken.tokenIndex; j < tokens.length ; j++) {
+					if (
+						tokens[j].type !== mxsLexer.WS &&
+						tokens[j].type !== mxsLexer.NL
+					) {
+						nextRealToken = tokens[j];
+						break;
+					}					
+				}
+
+				// navigate up till I find a indent context...
+				console.log('--------before------------');
+				let keepSearching = true;
+				for (let j = currToken.tokenIndex; j >= 0 ; j--) {
+					// console.log(this.tokens[j].text!);
+					if (!keepSearching) { break;}
+					switch (this.tokens[j].type) {
+						case mxsLexer.LPAREN:
+						case mxsLexer.THEN:
+						case mxsLexer.ELSE:
+						case mxsLexer.DO:
+						case mxsLexer.COLLECT:
+						case mxsLexer.EQ:
+						case mxsLexer.TRY:
+						case mxsLexer.CATCH:
+							prevRealToken = this.tokens[j];
+							keepSearching = false;
+							break;
+					}
+				}
+				console.log(prevRealToken);
+
+				if (prevRealToken) {
+
+				}
+				// indentation =  currToken.column;
+				// cStack().indent = currToken.column;
+
+
+
+				// cStack().indent = currToken.column;
+				// console.log(JSON.stringify(currToken.text!));
+				// console.log(JSON.stringify(currToken.));
+				// console.log(JSON.stringify(currToken.line));
+				// console.log(JSON.stringify(currToken.column));
+				// if first token is new line...
+
+
+				/*
 				// search the tokens before...
 				
-				// console.log('--------before------------');
-				// for (let j = 0; j < currToken.tokenIndex; j++) {
-				// 	console.log(this.tokens[j]);
-				// }
+				
+				*/
 				// console.log('----------current----------');
 				// console.log(currToken);
-				// console.log(currToken.text!);
+
 				// console.log(currToken.tokenIndex);
 				// console.log('--------------------');
-
 				//---------------------------------------------------------
 				// TODO: disable this!
-				cStack().vals.push(currToken.text!); 
-				cStack().vals.push(opt.whitespaceChar);
-				continue;
+				// cStack().vals.push(currToken.text!); 
+				// cStack().vals.push(opt.whitespaceChar);
+				// continue;
 				//---------------------------------------------------------
-				*/
+
 			}
 			//---------------------------------------------------------
 			// last token
@@ -596,13 +644,6 @@ export class mxsSimpleFormatter
 	{
 		// options
 		const opt = this.options;
-		/*
-		codeblock: {
-			parensInNewLine: true,
-			newlineAllways: true,
-			spaced: true,
-		}
-		*/
 		//---------------------------------------------------------
 		function dfs(node: blockNode, parent?: blockNode)
 		{
@@ -686,6 +727,7 @@ export class mxsSimpleFormatter
 	// get tokens within range
 	public formatRange(start?: number, stop?: number): IformatterResult
 	{
+		// console.log(`range: ${start} -- ${stop}`);
 		// /*
 		// const startIndex = start ? this.tokenFromIndex(start, false) : 0;
 		// const stopIndex = stop ? this.tokenFromIndex(stop, false) : this.tokens.length - 1;
