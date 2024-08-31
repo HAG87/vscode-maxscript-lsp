@@ -5,6 +5,7 @@ import
     FormattingOptions,
     TextDocument, TextEdit,
     ProviderResult, Range,
+    workspace,
 } from "vscode";
 import { mxsBackend } from "./backend/Backend.js";
 import { Utilities } from "./utils.js";
@@ -12,7 +13,13 @@ import { ICodeFormatSettings } from "./settings.js";
 
 export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditProvider
 {
-    public constructor(private backend: mxsBackend, private options?: ICodeFormatSettings) { }
+    public constructor(private backend: mxsBackend, private options?: ICodeFormatSettings)
+    {
+        if (!options) {
+            options = workspace.getConfiguration('maxScript').get('formatter') as ICodeFormatSettings;
+            console.log(options);
+        }
+    }
 
     provideDocumentRangeFormattingEdits(document: TextDocument, range: Range,
         _options: FormattingOptions, _token: CancellationToken): ProviderResult<TextEdit[]>
@@ -22,7 +29,8 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
             const { code, start, stop } =
                 this.backend.formatCode(
                     document.uri.toString(),
-                    Utilities.rangeToLexicalRange(range)
+                    Utilities.rangeToLexicalRange(range),
+                    this.options
                 );
             const resultRange = range.with(
                 document.positionAt(start),
@@ -46,7 +54,8 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
                         {
                             start: document.offsetAt(range.start),
                             stop: document.offsetAt(range.end) - 1
-                        }
+                        },
+                        this.options
                     );
                 const resultRange = range.with(
                     document.positionAt(start),
@@ -91,7 +100,12 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
 
 export class mxsFormattingProvider implements DocumentFormattingEditProvider
 {
-    public constructor(private backend: mxsBackend, private options?: ICodeFormatSettings) { }
+    public constructor(private backend: mxsBackend, private options?: ICodeFormatSettings)
+    {
+        if (!options) {
+            options = workspace.getConfiguration('maxScript').get('formatter') as ICodeFormatSettings;
+        }
+    }
 
     provideDocumentFormattingEdits(document: TextDocument,
         _options: FormattingOptions, _token: CancellationToken): ProviderResult<TextEdit[]>
@@ -105,7 +119,8 @@ export class mxsFormattingProvider implements DocumentFormattingEditProvider
             const { code, start, stop } =
                 this.backend.formatCode(
                     document.uri.toString(),
-                    Utilities.rangeToLexicalRange(range)
+                    Utilities.rangeToLexicalRange(range),
+                    this.options
                 );
             const resultRange = range.with(
                 document.positionAt(start),
