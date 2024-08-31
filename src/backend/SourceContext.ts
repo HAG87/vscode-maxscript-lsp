@@ -34,7 +34,7 @@ export class SourceContext
     public diagnostics: IDiagnosticEntry[] = [];
     // semantic tokens
     public semanticTokens: ISemanticToken[] = [];
-    // Contexts referencing us.
+    // TODO: Contexts referencing us.
     private references: SourceContext[] = [];
 
     // Parsing infrastructure.
@@ -68,7 +68,7 @@ export class SourceContext
         this.lexer.addErrorListener(this.lexerErrorListener);
 
         // initialize token stream
-        // this.tokenStream = new multiChannelTokenStream(this.lexer);
+        // TODO: this.tokenStream = new multiChannelTokenStream(this.lexer);
         this.tokenStream = new CommonTokenStream(this.lexer);
 
         // initialize parer instance
@@ -82,13 +82,10 @@ export class SourceContext
     {
         this.lexer.inputStream = CharStream.fromString(source);
     }
-    //----------------------------------------------------------------
+    //----------------------------------------------------------------parser
     public parse(): void
     {
-        // console.log(this.lexer.text);
-
         this.tree = undefined;
-        // /*
         // Rewind the input stream for a new parse run.
         this.lexer.reset();
 
@@ -100,20 +97,18 @@ export class SourceContext
 
         //TODO: semantic tokens
         // this.parser.addParseListener();
-
         // this.info.imports.length = 0;
-
         // this.semanticAnalysisDone = false;
+
         this.diagnostics.length = 0;
 
         this.symbolTable.clear();
-        // this.symbolTable.addDependencies(SourceContext.globalSymbols);
+        // TODO: this.symbolTable.addDependencies(SourceContext.globalSymbols);
 
         try {
             this.tree = this.parser.program();
         } catch (e) {
             if (e instanceof ParseCancellationException) {
-                // console.log(e);
                 // TODO: hack: clear diagnostics to avoid duplicates
                 this.diagnostics.length = 0;
 
@@ -133,9 +128,6 @@ export class SourceContext
         const semanticListener = new semanticTokenListener(this.semanticTokens);
         ParseTreeWalker.DEFAULT.walk(semanticListener, this.tree);
 
-        // let test = this.tree
-        // console.log(test);
-
         // load symbols!
         this.symbolTable.tree = this.tree;
 
@@ -144,13 +136,12 @@ export class SourceContext
         // const listener = new DetailsListener(this.symbolTable, this.info.imports);
         ParseTreeWalker.DEFAULT.walk(symbolsListener, this.tree);
 
-        // this.info.unreferencedRules = this.symbolTable.getUnreferencedSymbols();
-
+        // TODO: this.info.unreferencedRules = this.symbolTable.getUnreferencedSymbols();
         // return this.info.imports;
-        // */
     }
-    // ------------------------------------------------- semantic analysis
-    // integrate here the methods for semantic tokens...
+
+    // TODO: semantic analysis
+    // TODO: integrate here the methods for semantic tokens...
     private runSemanticAnalysisIfNeeded()
     {
         /*
@@ -164,6 +155,7 @@ export class SourceContext
         */
     }
 
+    // TODO: references
     public addAsReferenceTo(context: SourceContext): void
     {
         /*
@@ -185,7 +177,6 @@ export class SourceContext
         this.symbolTable.addDependencies(context.symbolTable);
         */
     }
-
     public getReferenceCount(symbol: string): number
     {
         /*
@@ -196,12 +187,11 @@ export class SourceContext
         for (const reference of this.references) {
             result += reference.getReferenceCount(symbol);
         }
-
         return result;
-        */
+        // */
         return 0;
     }
-    // ------------------------------------------------- SYMBOLS
+    //------------------------------------------------- SYMBOLS
 
     public static getKindFromSymbol(symbol: BaseSymbol): SymbolKind
     {
@@ -315,7 +305,6 @@ export class SourceContext
      * @param row The source line index.
      * @param ruleScope If true find the enclosing rule (if any) and return it's range, instead of the directly
      *                  enclosing scope.
-     *
      * @returns The symbol at the given position (if there's any).
     */
     public enclosingSymbolAtPosition(
@@ -396,7 +385,7 @@ export class SourceContext
         return this.symbolTable.resolveSync(symbolName, false);
     }
 
-    // ------------------------------------------------- code completion
+    //------------------------------------------------- code completion
     private async getScope(context: ParseTree | null, symbolTable: SymbolTable): Promise<BaseSymbol | undefined>
     {
         async function dfs(context: ParseTree | null): Promise<BaseSymbol | undefined>
@@ -414,12 +403,9 @@ export class SourceContext
         return await dfs(context);
     }
 
-    public async getAllSymbolsInScope(scope: ScopedSymbol[],)
-    {
-
-    }
-
-    public async getCodeCompletionCandidates(row: number, column: number, languageCompletions: boolean = false): Promise<ICompletionsResult>
+    public async getCodeCompletionCandidates(
+        row: number, column: number,
+        languageCompletions: boolean = false): Promise<ICompletionsResult>
     {
         if (!this.parser) {
             return { completions: [], provideLanguageCompletions: true };
@@ -495,47 +481,14 @@ export class SourceContext
         ]);
 
         core.preferredRules = new Set([
-            // mxsParser.RULE_simpleExpression,
             mxsParser.RULE_identifier,
             mxsParser.RULE_path,
             mxsParser.RULE_name,
-            // mxsParser.RULE_functionCall,
-            // mxsParser.RULE_fn_args,
-            // mxsParser.RULE_variableDeclaration,
-            // mxsParser.RULE_accessor,
             mxsParser.RULE_property,
-            // mxsParser.RULE_operand,
-            // mxsParser.RULE_factor,
-
-            // mxsParser.RULE_assignment,
-            // mxsParser.RULE_assignmentExpression,
-
-            // mxsParser.RULE_expr_seq,
-            // mxsParser.RULE_expr,
-            // mxsParser.RULE_ifExpression,
-            // mxsParser.RULE_nonIfExpression,
-
-            // mxsParser.RULE_fnDefinition,
-            // mxsParser.RULE_structDefinition,
             mxsParser.RULE_struct_member,
-            // mxsParser.RULE_rolloutControl,
-            // mxsParser.RULE_rolloutDefinition,
-            // mxsParser.RULE_utilityDefinition,
-            // mxsParser.RULE_toolDefinition,
-            // mxsParser.RULE_macroscriptDefinition,
-            // mxsParser.RULE_pluginDefinition,
-            // mxsParser.RULE_attributesDefinition,
             //...
         ]);
 
-        // let position = BackendUtils.computeTokenPosition((this.tree as ParseTree), this.tokenStream, row, column);
-        // console.log(position);
-
-        // let test = BackendUtils.parseTreeFromPosition(this.tree as ParseTree, row, column);
-        // this.tree?.getTokens
-
-        // console.log('context');
-        // console.log(test);
         // Search the token index which covers our caret position.
         let index: number;
         this.tokenStream.fill();
@@ -555,15 +508,9 @@ export class SourceContext
             }
         }
 
-        // console.log(`trigger: ${JSON.stringify(this.tokenStream.get(index).text)}`);
-
         const candidates = core.collectCandidates(index);
-        // let test: ICandidateRule = candidates.rules;
-        // console.log(candidates.rules);
-
         const result: ISymbolInfo[] = [];
 
-        // /*
         candidates.tokens.forEach((following: number[], type: number) =>
         {
             switch (type) {
@@ -589,34 +536,20 @@ export class SourceContext
                 }
             }
         });
-        // */
-        // console.log(result);
-        // console.log(candidates);
 
         const promises: Array<Promise<BaseSymbol[] | undefined>> = [];
-
         candidates.rules.forEach((candidateRule, key) =>
         {
-            // console.log(JSON.stringify(this.tokenStream.get(key).text));
-            // this.parser.getRuleIndexMap().forEach((index, ruleName) => { if (index === key) { console.log(ruleName); } });
-            // console.log(this.parser?.vocabulary?.getSymbolicName(key));
-            // console.log(candidateRule);
-
             switch (key) {
-
                 case mxsParser.RULE_identifier: {
-
                     languageCompletions = true;
-
                     const context = BackendUtils.parseTreeFromPosition(<ParseTree>this.tree, row, column);
 
-                    // if (!context) { return []; }
                     if (!context) { return; }
 
                     const currentSymbol = this.symbolTable.symbolContainingContext(context);
 
                     if (currentSymbol && currentSymbol.parent) {
-
                         const entrySymbol =
                             currentSymbol instanceof IdentifierSymbol && currentSymbol.parent
                                 ? currentSymbol.parent as ExprSymbol
@@ -626,13 +559,15 @@ export class SourceContext
                         // promises.push(entrySymbol.getAllSymbols(BaseSymbol));
                         // promises.push(entrySymbol.getAllSymbols(ScopedSymbol));
 
-                        promises.push(entrySymbol.getAllSymbols(IdentifierSymbol));
-                        promises.push(entrySymbol.getAllSymbols(VariableDeclSymbol));
-                        promises.push(entrySymbol.getAllSymbols(FnDefinitionSymbol));
-                        promises.push(entrySymbol.getAllSymbols(fnArgsSymbol));
-                        promises.push(entrySymbol.getAllSymbols(fnParamsSymbol));
-                        promises.push(entrySymbol.getAllSymbols(StructDefinitionSymbol));
-                        promises.push(entrySymbol.getAllSymbols(StructMemberSymbol));
+                        promises.push(
+                            entrySymbol.getAllSymbols(IdentifierSymbol),
+                            entrySymbol.getAllSymbols(VariableDeclSymbol),
+                            entrySymbol.getAllSymbols(FnDefinitionSymbol),
+                            entrySymbol.getAllSymbols(fnArgsSymbol),
+                            entrySymbol.getAllSymbols(fnParamsSymbol),
+                            entrySymbol.getAllSymbols(StructDefinitionSymbol),
+                            entrySymbol.getAllSymbols(StructMemberSymbol),
+                        );
 
                         // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, IdentifierSymbol));
                         // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, VariableDeclSymbol));
@@ -692,7 +627,6 @@ export class SourceContext
                             description: undefined,
                         });
                     }
-    
                     break;
                 }
     
@@ -709,10 +643,8 @@ export class SourceContext
     
                     break;
                 } 
-                   
                 // */
             }
-
         });
 
         const symbolLists = await Promise.all(promises);
@@ -723,13 +655,11 @@ export class SourceContext
             if (symbols) {
                 symbols.forEach((symbol) =>
                 {
-                    // console.log(symbol);
                     if (symbol.name && symbol.name !== "EOF" && !(collectedNames.has(symbol.name))) {
                         // filter out symbols downwards the current position
                         let collectThis = true;
                         if (symbol.context) {
                             const symline = (symbol.context as ParserRuleContext).start?.line ?? 0;
-                            // console.log(`${symline}--${row}`);
                             collectThis = symline <= row;
                         }
                         if (collectThis) {
@@ -753,13 +683,12 @@ export class SourceContext
         };
     }
 
-    // diagnostics
-    /*     public getDiagnostics(): IDiagnosticEntry[]
-        {
-            this.runSemanticAnalysisIfNeeded();
-            return this.diagnostics;
-        } */
-
+    //-------------------------------------------------diagnostics
+    /*  public getDiagnostics(): IDiagnosticEntry[]
+    {
+        this.runSemanticAnalysisIfNeeded();
+        return this.diagnostics;
+    } */
     public get getDiagnostics(): IDiagnosticEntry[]
     {
         return this.diagnostics;
@@ -775,16 +704,81 @@ export class SourceContext
         return false;
     }
 
-    //semantic tokens
+    //-------------------------------------------------semantic tokens
     public get getSemanticTokens(): ISemanticToken[]
     {
         return this.semanticTokens;
     }
-    // references
 
-    // dependencies
+    // TODO: references
+    // TODO: dependencies
+    /*
+    private runSemanticAnalysisIfNeeded() {
+        if (!this.semanticAnalysisDone && this.tree) {
+            this.semanticAnalysisDone = true;
+            //this.diagnostics.length = 0; Don't, we would lose our syntax errors from last parse run.
 
-    // format code
+            const semanticListener = new SemanticListener(this.diagnostics, this.symbolTable);
+            ParseTreeWalker.DEFAULT.walk(semanticListener, this.tree);
+        }
+    }
+    */
+    
+    /**
+     * Add this context to the list of referencing contexts in the given context.
+     *
+     * @param context The context to add.
+     */     
+    /*  public addAsReferenceTo(context: SourceContext): void
+    {
+        // Check for mutual inclusion. References are organized like a mesh.
+        const pipeline: SourceContext[] = [context];
+        while (pipeline.length > 0) {
+            const current = pipeline.shift();
+            if (!current) {
+                continue;
+            }
+
+            if (current.references.indexOf(this) > -1) {
+                return; // Already in the list.
+            }
+
+            pipeline.push(...current.references);
+        }
+        context.references.push(this);
+        this.symbolTable.addDependencies(context.symbolTable);
+    }
+    */
+
+    /**
+     * Remove the given context from our list of dependencies.
+     *
+     * @param context The context to remove.
+     */
+    /*
+    public removeDependency(context: SourceContext): void {
+        const index = context.references.indexOf(this);
+        if (index > -1) {
+            context.references.splice(index, 1);
+        }
+        this.symbolTable.removeDependency(context.symbolTable);
+    }
+    */
+    /*
+    public getReferenceCount(symbol: string): number {
+        this.runSemanticAnalysisIfNeeded();
+
+        let result = this.symbolTable.getReferenceCount(symbol);
+
+        for (const reference of this.references) {
+            result += reference.getReferenceCount(symbol);
+        }
+
+        return result;
+    }
+    */
+   
+    // -------------------------------------------------format code
     // TODO: formatter that uses the parse tree and a visitor
     public formatCode(range: ILexicalRange, options?: ICodeFormatSettings): IformatterResult
     public formatCode(range: { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult

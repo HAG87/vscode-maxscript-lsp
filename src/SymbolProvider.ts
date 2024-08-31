@@ -1,4 +1,4 @@
-import { CancellationToken, DocumentSymbol, DocumentSymbolProvider, ProviderResult, SymbolInformation, TextDocument, SymbolKind, Location } from "vscode";
+import { CancellationToken, DocumentSymbol, DocumentSymbolProvider, ProviderResult, SymbolInformation, TextDocument } from "vscode";
 import { mxsBackend } from "./backend/Backend.js";
 import { Utilities } from "./utils.js";
 import { ISymbolInfo } from "./types.js";
@@ -7,14 +7,12 @@ import { symbolDescriptionFromEnum, translateSymbolKind } from "./Symbol.js";
 export class mxsSymbolProvider implements DocumentSymbolProvider
 {
     public constructor(private backend: mxsBackend) { }
-    
+
     private collectAllChildren(symbol: ISymbolInfo): DocumentSymbol
     {
         function dfs(currentSymbol: ISymbolInfo): DocumentSymbol    
         {
-            // if (!currentSymbol.definition) {
-            //     return;
-            // }
+            // if (!currentSymbol.definition) { return; }
 
             const range = Utilities.lexicalRangeToRange(currentSymbol.definition!.range);
 
@@ -36,7 +34,7 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
         }
         return dfs(symbol);
     }
-    
+
     provideDocumentSymbols(document: TextDocument, token: CancellationToken):
         ProviderResult<SymbolInformation[] | DocumentSymbol[]>
     {
@@ -44,8 +42,6 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
         {
             const symbols = this.backend.listTopLevelSymbols(document.uri.toString(), false);
             const symbolsList: DocumentSymbol[] = [];
-
-            // console.log('PROVIDE SYMBOLS');
 
             for (const symbol of symbols) {
                 if (!symbol.definition || !symbol.name) {

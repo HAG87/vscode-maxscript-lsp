@@ -24,7 +24,6 @@ export class mxsRenameProvider implements RenameProvider
                 const result = new WorkspaceEdit();
                 for (const symbol of occurrences) {
                     if (symbol.definition) {
-                        // console.log(`${document.getText(Utilities.symbolNameRange(symbol))} ---> ${newName}`);
                         result.replace(
                             Uri.parse(symbol.source),
                             Utilities.symbolNameRange(symbol),

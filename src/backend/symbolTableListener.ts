@@ -1,7 +1,7 @@
 import
 {
     BaseSymbol,
-    ScopedSymbol,
+    // ScopedSymbol,
     SymbolConstructor,
     // LiteralSymbol,
     // BlockSymbol,
@@ -10,10 +10,9 @@ import
 import
 {
     ParseTree,
-    ParserRuleContext,
+    // ParserRuleContext,
     TerminalNode
 } from "antlr4ng";
-// import { mxsLexer } from "../parser/mxsLexer.js";
 import { mxsParserListener } from "../parser/mxsParserListener.js";
 import
 {
@@ -184,10 +183,7 @@ export class symbolTableListener extends mxsParserListener
         /*
         if (ctx.children.length > 0) {
             const rule = ctx.children[0] as ParserRuleContext
-            if (rule.ruleIndex === mxsParser.RULE_identifier) {
-
-            }
-            // console.log(rule.ruleIndex !== mxsParser.RULE_fnDefinition || rule.ruleIndex !== mxsParser.RULE_eventHandlerClause);
+            if (rule.ruleIndex === mxsParser.RULE_identifier) { }
         }
         */
         this.pushNewSymbol(StructMemberSymbol, ctx, ctx.identifier().getText());
@@ -290,7 +286,6 @@ export class symbolTableListener extends mxsParserListener
     // params
     public override enterParam = (ctx: ParamContext): void =>
     {
-        // ctx.param_name().getText()
         this.pushNewSymbol(ParamSymbol, ctx);
     }
     public override exitParam = (ctx: ParamContext): void =>
@@ -305,7 +300,6 @@ export class symbolTableListener extends mxsParserListener
         // this.pushNewSymbol(AssignmentExpressionSymbol, ctx, ctx._left?.getText());
         this.pushNewSymbol(AssignmentExpressionSymbol, ctx, ctx.destination().getText());
     }
-
     public override exitAssignmentExpression = (ctx: AssignmentExpressionContext): void => { this.popSymbol(); }
     */
 
@@ -314,7 +308,6 @@ export class symbolTableListener extends mxsParserListener
     {
         // this.pushNewSymbol(AssignmentSymbol, ctx);
     }
-
     public override exitAssignment = (ctx: AssignmentContext): void =>
     {
         // this.popSymbol();
@@ -332,15 +325,13 @@ export class symbolTableListener extends mxsParserListener
             }
         }
     }
-    
-
-    // public override exitExpr_operand = (ctx: Expr_operandContext): void => { }
+    public override exitExpr_operand = (ctx: Expr_operandContext): void => { }
 
     public override exitFactor = (ctx: FactorContext): void =>
     {
-        // if (ctx.identifier()) {
-        //     this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
-        // }
+        if (ctx.identifier()) {
+            this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
+        }
     }
     // */
 

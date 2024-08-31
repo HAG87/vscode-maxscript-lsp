@@ -14,6 +14,7 @@ export interface IContextEntry
     // dependencies: string[]
     //...
 }
+
 export class mxsBackend
 {
     // hold the contexts
@@ -146,7 +147,6 @@ export class mxsBackend
     }
 
     // get symbols -- for mxsDefinitionProvider
-
     public symbolInfoAtPosition(
         uri: string,
         line: number,
@@ -199,18 +199,9 @@ export class mxsBackend
      */
     public getSymbolOccurrences(uri: string, symbolName: string): ISymbolInfo[]
     {
-
-        const context = this.getContext(uri);
-
-        const result = context.symbolTable.getSymbolOccurrences(symbolName, false);
-        // /*
+        const result = this.getContext(uri).symbolTable.getSymbolOccurrences(symbolName, false);
         // Sort result by kind. This way rule definitions appear before rule references and are re-parsed first.
-        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) =>
-        {
-            return lhs.kind - rhs.kind;
-        });
-        // */
-        // return result;
+        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => lhs.kind - rhs.kind);
     }
 
     public symbolInfoAtPositionCtxOccurrences(
@@ -223,12 +214,9 @@ export class mxsBackend
 
         if (!symbol) { return undefined; }
 
-        const result = context.symbolTable.getScopedSymbolOccurrences(symbol);
+        const result = context.symbolTable.getScopedSymbolOccurrences(symbol)
 
-        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) =>
-        {
-            return lhs.kind - rhs.kind;
-        });
+        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => lhs.kind - rhs.kind);
     }
 
     // code completion

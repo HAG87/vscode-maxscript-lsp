@@ -12,6 +12,7 @@ export interface IExprSymbol extends IScopedSymbol
 {
     pathIndex?: number[];
 }
+
 export class ExprSymbol extends ScopedSymbol implements IExprSymbol
 {
     pathIndex?: number[];
@@ -22,20 +23,13 @@ export class ExprSymbol extends ScopedSymbol implements IExprSymbol
         super(name);
         this.pathIndex = pathIndex;
     }
+
     public override addSymbol(symbol: BaseSymbol, pathIndex?: number[]): void
     {
-
-        // console.log(`${this.name} : ${this.pathIndex}`);
-        // if (symbol.parent) {
-        //     console.log(`${(symbol.parent as BlockSymbol).pathIndex}`);
-        // }
         super.addSymbol(symbol);
-        // console.log(`${this.pathIndex} --> ${symbol.name}`);
-        // console.log(symbol.symbolPath);
         if (this.pathIndex) {
             (symbol as ExprSymbol).pathIndex = [...this.pathIndex, this.children.length];
         }
-
     }
 
     public getScope(): BaseSymbol[]
@@ -76,13 +70,14 @@ export class ExprSymbol extends ScopedSymbol implements IExprSymbol
     }
 }
 
-//Definitions
+//TODO: Definitions
 export class PluginDefinitionSymbol extends ExprSymbol { }
 export class MacroScriptDefinitionSymbol extends ExprSymbol { }
 export class ToolDefinitionSymbol extends ExprSymbol { }
 export class UtilityDefinitionSymbol extends ExprSymbol { }
 export class RolloutDefinitionSymbol extends ExprSymbol { }
 export class RcMenuDefinitionSymbol extends ExprSymbol { }
+
 export class StructDefinitionSymbol extends ExprSymbol { }
 export class StructMemberSymbol extends ExprSymbol { }
 export class EventHandlerClauseSymbol extends ExprSymbol { }
@@ -120,37 +115,39 @@ export class loopExitStatementSymbol extends ScopedSymbol {}
 export class caseExpressionSymbol extends ScopedSymbol {}
 export class tryExpressionSymbol extends ScopedSymbol {}
 export class fnReturnStatementSymbol extends ScopedSymbol {}
+
 export class contextExpressionSymbol extends ScopedSymbol {}
+
 export class attributesDefinitionSymbol extends ScopedSymbol {}
+
 export class whenStatementSymbol extends ScopedSymbol {}
-rolloutControl
+
+rolloutControl, rcmenuControl
+export class controlSymbol extends ExprSymbol {}
 rolloutGroup
+
+
 eventHandlerClause
-toolDefinition
-rolloutDefinition
-rc_submenu
-rcmenuControl
+
 paramsDefinition
+
 TypecastExpr
-ExprOperand
-UnaryExpr
-ExponentExpr
-ProductExpr
-AdditionExpr
-ComparisonExpr
-LogicNOTExpr
-LogicExpr
-deRef
-OperandExpr
-operand
-accessor
-bool
-STRING
-PATH
-NAME
-NUMBER
-TIMEVAL
-QUESTION
+
+ExprOperandSymbol
+
+deRefSymbol
+
+OperandExprSymbol
+accessorSymbol
+
+export class BooleanSymbol extends BaseSymbol {}
+export class StringSymbol extends BaseSymbol {}
+export class PathSymbol extends BaseSymbol {}
+export class NameSymbol extends BaseSymbol {}
+export class NumberSymbol extends BaseSymbol {}
+export class TimeSymbol extends BaseSymbol {}
+export class QuestionMarkSymbol extends BaseSymbol {}
+
 export class arraySymbol extends ExprSymbol {}
 export class bitArraySymbol extends ExprSymbol {}
 export class point3Symbol extends ExprSymbol {}
@@ -465,17 +462,11 @@ export class ContextSymbolTable extends SymbolTable
 
         function assertSymbols(symbolA: BaseSymbol, symbolB: BaseSymbol): boolean
         {
-            // console.log(`names: ${symbolA.name} <--> ${symbolB.name}`);
-            // console.log(`ruleIndex: ${(symbolA.context as ParserRuleContext).ruleIndex} <--> ${(symbolB.context as ParserRuleContext).ruleIndex}`);
-
             const contextA = symbolA.context as ParserRuleContext;
             const contextB = symbolB.context as ParserRuleContext;
 
             const rangeA = { line: contextA.start?.line || 0, column: contextA.start?.column || 0 };
             const rangeB = { line: contextB.start?.line || 0, column: contextB.start?.column || 0 };
-
-            // console.log(JSON.stringify(rangeA) === JSON.stringify(rangeB));
-            // console.log(`start: ${JSON.stringify((symbolA.context as ParserRuleContext).start)} <--> ${JSON.stringify((symbolB.context as ParserRuleContext).start)}`);
 
             return symbolA.name === symbolB.name &&
                 contextA.ruleIndex === contextB.ruleIndex &&
@@ -485,8 +476,6 @@ export class ContextSymbolTable extends SymbolTable
         function compareScopes(scopeA: BaseSymbol[], scopeB: BaseSymbol[]): IScopeComparer
         {
             const commonPath: BaseSymbol[] = [];
-            // console.log(scopeA);
-            // console.log(scopeB);
             if (scopeA && scopeB) {
                 //common path
                 for (let i = 0; i < Math.min(scopeA.length, scopeB.length); i++) {
@@ -495,12 +484,9 @@ export class ContextSymbolTable extends SymbolTable
                     }
                 }
                 // check the remaining paths
-                // console.log(commonPath);
                 if (commonPath.length > 0) {
                     const subPathA = scopeA.slice(commonPath.length);
                     const subPathB = scopeB.slice(commonPath.length);
-                    // console.log(subPathA);
-                    // console.log(subPathB);
                     return { commonPath, subPathA, subPathB };
 
                 }
@@ -524,16 +510,12 @@ export class ContextSymbolTable extends SymbolTable
             const scopeBdepth = scopeB.length;
 
             // Check if both files have a common root
-            // console.log('possibly siblings');
-            // console.log(`depths: ${scopeAdepth} --- ${scopeBdepth}`);
-
             if (scopeAdepth > 1 && scopeBdepth > 1) {
 
                 const resolveScopes = compareScopes(scopeA, scopeB);
-                // console.log(resolveScopes);
-
                 return resolveScopes.subPathB.length <= 1;
             }
+
             return false;
         }
 
@@ -545,11 +527,10 @@ export class ContextSymbolTable extends SymbolTable
             if (scopeBdepth > scopeAdepth) {
                 return scopeB.slice(0, scopeAdepth).every((symbol, index) => assertSymbols(symbol, scopeA[index]));
             }
-
             /*
             const resolveScopes = compareScopes(symbolA, symbolB);
             if (resolveScopes.commonPath.length > 0) {
-            return resolveScopes.subPathB.length === 0; // symbol should be fully contained in the scope
+                return resolveScopes.subPathB.length === 0; // symbol should be fully contained in the scope
             }
             */
             return false;

@@ -9,8 +9,8 @@ export class mxsReferenceProvider implements ReferenceProvider
     provideReferences(
         document: TextDocument,
         position: Position,
-        context: ReferenceContext,
-        token: CancellationToken): ProviderResult<Location[]>
+        _context: ReferenceContext,
+        _token: CancellationToken): ProviderResult<Location[]>
     {
         return new Promise((resolve) =>
         {
