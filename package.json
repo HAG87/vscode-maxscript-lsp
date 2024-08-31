@@ -264,7 +264,7 @@
           },
           "maxScript.help.provider": {
             "type": "string",
-            "default": "https://help.autodesk.com/view/MAXDEV/2024/ENU/",
+            "default": "https://help.autodesk.com/view/MAXDEV/2025/ENU/",
             "description": "MaxScript help source"
           }
         }

@@ -3,12 +3,9 @@ import
     Parser,
     Token,
     TokenStream,
-    // Lexer,
-    // BufferedTokenStream,
-    // CommonTokenStream,
 } from 'antlr4ng';
+// import MultiChannelTokenStream from './multiChannelTokenStream.js';
 import { mxsParser } from './mxsParser.js';
-import MultiChannelTokenStream from './multiChannelTokenStream.js';
 import { mxsLexer } from './mxsLexer.js';
 
 export abstract class mxsParserBase extends Parser
@@ -17,7 +14,7 @@ export abstract class mxsParserBase extends Parser
     {
         super(input);
     }
-
+    /*
     public enable(channel: number): void
     {
         // console.log('ENABLE CHANNEL: ' + channel);
@@ -33,25 +30,19 @@ export abstract class mxsParserBase extends Parser
             (this.inputStream as MultiChannelTokenStream).disable(channel);
         }
     }
-
+    */
     private nextTokenType(type: number, offset: number = 1)
     {
         let idx = this.getCurrentToken().tokenIndex + offset;
         let token = this.inputStream.get(idx);
-        if (token) {
-            return (token?.type === type);
-        }
-        return true;
+        return token ? token.type === type : true;
     }
 
     private prevTokenType(type: number, offset: number = 1)
     {
         let idx = this.getCurrentToken().tokenIndex - offset;
         let token = this.inputStream.get(idx);
-        if (token) {
-            return (token?.type === type);
-        }
-        return true;
+        return token ? token.type === type : true;
     }
 
     private nextTokenChannel(offset: number = 1)
@@ -122,7 +113,6 @@ export abstract class mxsParserBase extends Parser
         let idx: number = this.getCurrentToken().tokenIndex - 1;
         if (idx < 0) return false;
         let ahead: Token = this.inputStream.get(idx);
-
 
         if (ahead.type === mxsParser.NL || ahead.type === mxsParser.BLOCK_COMMENT) {
             // There is definitely a line terminator ahead.

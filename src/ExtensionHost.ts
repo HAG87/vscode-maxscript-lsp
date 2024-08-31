@@ -1,4 +1,4 @@
-import { ExtensionContext, languages, TextDocument, TextDocumentChangeEvent, window, workspace } from 'vscode';
+import { commands, ExtensionContext, languages, TextDocument, TextDocumentChangeEvent, Uri, window, workspace } from 'vscode';
 import { mxsBackend } from './backend/Backend.js';
 import { Utilities } from './utils.js';
 import { mxsSymbolProvider } from './SymbolProvider.js';
@@ -45,7 +45,7 @@ export class ExtensionHost
         // register providers
         this.registerProviders(ctx);
         // register commands
-        // this.registerCommands(ctx);
+        this.registerCommands(ctx);
 
         // Load interpreter + cache data for each open document, if there's any.
         /*
@@ -121,8 +121,6 @@ export class ExtensionHost
             /*
             window.onDidChangeTextEditorSelection((event: TextEditorSelectionChangeEvent) => {
                 if (FrontendUtils.isGrammarFile(event.textEditor.document)) {
-                    // this.diagramProvider.update(event.textEditor);
-                    // this.atnGraphProvider.update(event.textEditor, false);
                     this.actionsProvider.update(event.textEditor);
                 }
             }),
@@ -132,14 +130,16 @@ export class ExtensionHost
                     this.updateTreeProviders(textEditor.document);
                 }
             }),
-            workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) => {
-                if (event.affectsConfiguration("antlr4")) {
-                    const level = workspace.getConfiguration("antlr4").get<LogLevel>("log") ?? "none";
-                    Log.updateLogLevel(level);
-                }
-            })
-            */
-            //    languages.onDidChangeDiagnostics(() => workspace
+            // */
+            /*
+             workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) => {
+                 if (event.affectsConfiguration("maxScript")) {
+                     const config = workspace.getConfiguration("maxScript");
+                     //...
+                 }
+             })
+             */
+            //  languages.onDidChangeDiagnostics(() => workspace
         );
     }
     // register providers
@@ -183,12 +183,12 @@ export class ExtensionHost
                 mxsSemtoTokensLegend
             ),
             */
-           /*
-            languages.registerDocumentFormattingEditProvider(
-                ExtensionHost.langSelector,
-                new mxsFormattingProvider(this.backend)
-            ),
-            // */
+            /*
+             languages.registerDocumentFormattingEditProvider(
+                 ExtensionHost.langSelector,
+                 new mxsFormattingProvider(this.backend)
+             ),
+             // */
             // /*
             languages.registerDocumentRangeFormattingEditProvider(
                 ExtensionHost.langSelector,
@@ -203,7 +203,89 @@ export class ExtensionHost
     private registerCommands(ctx: ExtensionContext): void
     {
         ctx.subscriptions.push(
+            commands.registerTextEditorCommand('mxs.help',
+                async (editor) =>
+                {
+                    let word =
+                        editor.document.getText(editor.selection);
+
+                    if (word === null || word.match(/^\s*$/) !== null) {
+                        word = editor.document.getText(editor.document.getWordRangeAtPosition(editor.selection.active));
+                    }
+
+                    let uri = Uri.parse(encodeURI(
+                        `${workspace.getConfiguration('MaxScript').get('help.provider')}?query=${word!}`
+                    ));
+                    await commands.executeCommand('vscode.open', uri);
+                }),
             //..
+            /*
+            // minify commands
+            commands.registerCommand('mxs.minify.files',
+                async () =>
+                {
+                    window.showOpenDialog({
+                        canSelectMany: true,
+                        filters: {
+                            'MaxScript': ['ms', 'mcr']
+                        }
+                    }).then(
+                        async uris =>
+                        {
+                            if (!uris) { return; }
+
+                            let params: MinifyDocParams = {
+                                command: 'mxs.minify.files',
+                                uri: uris?.map(x => client.code2ProtocolConverter.asUri(x))
+                            };
+                            await client.sendRequest(MinifyDocRequest.type, params);
+                        }
+                    );
+                }),
+            commands.registerCommand('mxs.minify',
+                async () =>
+                {
+                    let activeEditorUri = window.activeTextEditor?.document.uri;
+
+                    if (!activeEditorUri
+                        || activeEditorUri.scheme !== 'file'
+                        || window.activeTextEditor?.document.isDirty) {
+                        await window.showInformationMessage('MaxScript minify: Save your file first.');
+                        return;
+                    }
+                    let params: MinifyDocParams = {
+                        command: 'mxs.minify',
+                        uri: [client.code2ProtocolConverter.asUri(activeEditorUri)]
+                    };
+                    await client.sendRequest(MinifyDocRequest.type, params);
+                }),
+            commands.registerCommand('mxs.minify.file',
+                async args =>
+                {
+                    let params: MinifyDocParams = {
+                        command: 'mxs.minify.file',
+                        uri: [client.code2ProtocolConverter.asUri(args)]
+                    };
+                    await client.sendRequest(MinifyDocRequest.type, params);
+                }),
+            commands.registerCommand('mxs.prettify',
+                async () =>
+                {
+                    let activeEditorUri = window.activeTextEditor?.document.uri;
+
+                    if (!activeEditorUri
+                        || activeEditorUri.scheme !== 'file'
+                        || window.activeTextEditor?.document.isDirty) {
+                        await window.showInformationMessage('MaxScript prettifier: Save your file first.');
+                        return;
+                    }
+                    let params: PrettifyDocParams = {
+                        command: 'mxs.prettify',
+                        uri: [client.code2ProtocolConverter.asUri(activeEditorUri)]
+                    };
+                    await client.sendRequest(PrettifyDocRequest.type, params);
+                })
+            */
         );
     }
 }

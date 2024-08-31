@@ -1,6 +1,8 @@
 import { CancellationToken, CodeLens, CodeLensProvider, Event, ProviderResult, TextDocument } from "vscode";
 import { mxsBackend } from "./backend/Backend.js";
 
+//TODO: add codeLens for references in structs, functions, declarations, rollouts, etc
+
 export class mxsCodeLensProvider implements CodeLensProvider
 {
     public constructor(private backend: mxsBackend) { }
@@ -9,6 +11,7 @@ export class mxsCodeLensProvider implements CodeLensProvider
     // private documentName: string;
 
     onDidChangeCodeLenses?: Event<void> | undefined;
+
     /*
      public get onDidChangeCodeLenses(): Event<void> {
         return this.changeEvent.event;
@@ -17,7 +20,6 @@ export class mxsCodeLensProvider implements CodeLensProvider
     public refresh(): void {
         this.changeEvent.fire();
     }
-
     */
     
     provideCodeLenses(document: TextDocument, token: CancellationToken): ProviderResult<CodeLens[]>

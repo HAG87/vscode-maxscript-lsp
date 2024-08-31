@@ -1,4 +1,11 @@
-// Settings
+/**
+ * ------------------------------------------------------------------------------------------
+ * The global settings, used when the `workspace/configuration` request is not supported by the client.
+ * Please note that this is not the case when using this server with the client provided in this example
+ * but could happen with other clients.
+ *------------------------------------------------------------------------------------------
+*/
+
 export interface ICodeFormatSettings
 {
     indentChar: string,
@@ -20,6 +27,22 @@ export interface ICodeFormatSettings
     }
 }
 
+export interface IPrettifierSettings
+{
+    keepComments?: boolean,
+    keepEmptyLines?: boolean,
+    indentOnly?: boolean,
+    expressionsToBlock: boolean,
+    filePrefix: string,
+}
+
+export interface IMinifierSettings
+{
+    expressionsToBlock: boolean,
+    removeUnnecessaryScopes: boolean,
+    filePrefix: string,
+}
+
 export interface IMaxScriptSettings
 {
     language?: {
@@ -28,36 +51,19 @@ export interface IMaxScriptSettings
         GoToDefinition: boolean,
         Diagnostics: boolean,
     },
-    // parser: {
-    // 	multiThreading: boolean,
-    // }
     Completions?: {
         dataBaseCompletion: boolean,
         codeCompletion: boolean
     };
+    // parser: {
+    // 	multiThreading: boolean,
+    // }
     formatter: ICodeFormatSettings;
-    prettifier: {
-        keepComments?: boolean,
-        keepEmptyLines?: boolean,
-        indentOnly?: boolean,
-        expressionsToBlock: boolean,
-        filePrefix: string,
-    };
-    minifier: {
-        expressionsToBlock: boolean,
-        removeUnnecessaryScopes: boolean,
-        filePrefix: string,
-    }
+    prettifier: IPrettifierSettings;
+    minifier: IMinifierSettings;
 }
 
-/**
- * ------------------------------------------------------------------------------------------
- * The global settings, used when the `workspace/configuration` request is not supported by the client.
- * Please note that this is not the case when using this server with the client provided in this example
- * but could happen with other clients.
- *------------------------------------------------------------------------------------------
-*/
-// put default settings here
+// default settings
 export const defaultSettings: IMaxScriptSettings = {
     // language: {
     //  SemanticTokens: true,
@@ -65,13 +71,13 @@ export const defaultSettings: IMaxScriptSettings = {
     //  GoToDefinition: true,
     //  Diagnostics: true,
     //},
-    // Completions: {
-    // 	dataBaseCompletion: true,
-    // codeCompletion: boolean
-    // },
     // parser: {
     // 	multiThreading: true,
     // },
+    Completions: {
+        dataBaseCompletion: true,
+        codeCompletion: true
+    },
     formatter: {
         indentChar: '\t',
         newLineChar: '\r\n',
@@ -93,11 +99,11 @@ export const defaultSettings: IMaxScriptSettings = {
     },
     prettifier: {
         filePrefix: 'pretty_',
-        expressionsToBlock: true,        
+        expressionsToBlock: true,
     },
     minifier: {
         filePrefix: 'min_',
         removeUnnecessaryScopes: true,
-        expressionsToBlock: true, 
+        expressionsToBlock: true,
     }
 };

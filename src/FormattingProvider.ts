@@ -17,7 +17,6 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
     {
         if (!options) {
             options = workspace.getConfiguration('maxScript').get('formatter') as ICodeFormatSettings;
-            console.log(options);
         }
     }
 
