@@ -10,6 +10,7 @@ import { symbolTableListener } from "./symbolTableListener.js";
 import { semanticTokenListener } from "./semanticTokenListener.js";
 import { BackendUtils } from "./BackendUtils.js";
 import { IformatterResult, mxsSimpleFormatter } from "./CodeFormatter.js";
+import { ICodeFormatSettings } from "../settings.js";
 
 export interface ICompletionsResult
 {
@@ -785,23 +786,27 @@ export class SourceContext
 
     // format code
     // TODO: formatter that uses the parse tree and a visitor
-    public formatCode(range: ILexicalRange/* , options */): IformatterResult
-    {
-        let contextToFormat = BackendUtils.parseTreeContainingRange(<ParseTree>this.tree, range);
+    public formatCode(range: ILexicalRange, options?: ICodeFormatSettings): IformatterResult
+    public formatCode(range: { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult
 
-        const startToken = contextToFormat.start;
-        const stopToken = contextToFormat.stop;
-        // console.log(startToken);
-        // console.log(stopToken);
+    public formatCode(range: ILexicalRange | { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult
+    {
+        // execute lexer
         this.lexer.reset();
         this.tokenStream.setTokenSource(this.lexer);
         this.tokenStream.fill();
-        // const tokens = this.tokenStream.getTokens(startToken?.tokenIndex, stopToken?.tokenIndex);
         // initialize the formatter
-        const formatter = new mxsSimpleFormatter(this.tokenStream);
+        const formatter = new mxsSimpleFormatter(this.tokenStream, options);
         // format code
-        // console.log(formatter.formatRange());
-        return formatter.formatRange(startToken?.tokenIndex, stopToken?.tokenIndex);
+        if ('stop' in range) {
+            return formatter.formatRange(range.start, range.stop);
+        } else {
+            let contextToFormat = BackendUtils.parseTreeContainingRange(<ParseTree>this.tree, range);
+            return formatter.formatTokenRange(
+                contextToFormat.start?.tokenIndex,
+                contextToFormat.stop?.tokenIndex
+            );
+        }
     }
 
     // prettify

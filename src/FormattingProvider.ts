@@ -5,51 +5,63 @@ import
     FormattingOptions,
     TextDocument, TextEdit,
     ProviderResult, Range,
-    Position,
 } from "vscode";
 import { mxsBackend } from "./backend/Backend.js";
 import { Utilities } from "./utils.js";
+import { ICodeFormatSettings } from "./settings.js";
 
 export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditProvider
 {
-    public constructor(private backend: mxsBackend) { }
+    public constructor(private backend: mxsBackend, private options?: ICodeFormatSettings) { }
 
-    private DocumentRangeFormatting(document: TextDocument, range: Range,): TextEdit[]
+    provideDocumentRangeFormattingEdits(document: TextDocument, range: Range,
+        _options: FormattingOptions, _token: CancellationToken): ProviderResult<TextEdit[]>
     {
-        const { code, start, stop, offset } =
-            this.backend.formatCode(
-                document.uri.toString(),
-                Utilities.rangeToLexicalRange(range)
+        return new Promise<TextEdit[]>((resolve) =>
+        {
+            const { code, start, stop } =
+                this.backend.formatCode(
+                    document.uri.toString(),
+                    Utilities.rangeToLexicalRange(range)
+                );
+            const resultRange = range.with(
+                document.positionAt(start),
+                document.positionAt(stop + 1)
             );
-
-        const resultRange = range.with(
-            document.positionAt(start),
-            document.positionAt(stop + 1)
-        );
-        return [TextEdit.replace(resultRange, code)];
+            resolve([TextEdit.replace(resultRange, code)]);
+        });
     }
-
-    provideDocumentRangeFormattingEdits(document: TextDocument, range: Range, _options: FormattingOptions, _token: CancellationToken): ProviderResult<TextEdit[]>
+    //FIXME: unreilable method
+    provideDocumentRangesFormattingEdits?(document: TextDocument, ranges: Range[],
+        _options: FormattingOptions, _token: CancellationToken): ProviderResult<TextEdit[]>
     {
-        // add options!
-        // const formatOptions = workspace.getConfiguration("maxscript.format");
+        return new Promise<TextEdit[]>((resolve) =>
+        {
+            const results: TextEdit[] = [];
+            ranges.forEach(range =>
+            {
+                const { code, start, stop } =
+                    this.backend.formatCode(
+                        document.uri.toString(),
+                        {
+                            start: document.offsetAt(range.start),
+                            stop: document.offsetAt(range.end) - 1
+                        }
+                    );
+                const resultRange = range.with(
+                    document.positionAt(start),
+                    document.positionAt(stop + 1)
+                );
+                results.push(TextEdit.replace(resultRange, code));
+            });
+            resolve(results);
+        });
 
-        // let _start = document.offsetAt(range.start);
-        // let _end = document.offsetAt(range.end);
-        return this.DocumentRangeFormatting(document, range);
-    }
-
-    provideDocumentRangesFormattingEdits?(document: TextDocument, ranges: Range[], _options: FormattingOptions, _token: CancellationToken): ProviderResult<TextEdit[]>
-    {
-        // let results: TextEdit[] = [];
+        /*
         let formatRange: Range = ranges[0];
-        // TODO: Replace this with a correct implementation that formats each range.
-        // It will need to evaluate a valid parse tree for each range, and compute the edits start and stop
         if (ranges.length > 1) {
             let start: Position = ranges[0].start;
             let end: Position = ranges[ranges.length - 1].end;
-
-            // ranges.forEach()
             for (let i = 1; i <= ranges.length - 1; i++) {
                 if (!start.isBeforeOrEqual(ranges[i].start)) {
                     start = ranges[i].start;
@@ -60,31 +72,46 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
             }
             formatRange = new Range(start, end);
         }
-        return this.DocumentRangeFormatting(document, formatRange);
+        const { code, start, stop } =
+            this.backend.formatCode(
+                document.uri.toString(),
+                {
+                    start: document.offsetAt(range.start),
+                    stop: document.offsetAt(range.end) - 1
+                }
+            );
+        const resultRange = formatRange.with(
+            document.positionAt(start),
+            document.positionAt(stop + 1)
+        );
+        return [TextEdit.replace(resultRange, code)];
+        // */
     }
 }
 
 export class mxsFormattingProvider implements DocumentFormattingEditProvider
 {
-    public constructor(private backend: mxsBackend) { }
+    public constructor(private backend: mxsBackend, private options?: ICodeFormatSettings) { }
 
-    provideDocumentFormattingEdits(document: TextDocument, options: FormattingOptions, token: CancellationToken): ProviderResult<TextEdit[]>
+    provideDocumentFormattingEdits(document: TextDocument,
+        _options: FormattingOptions, _token: CancellationToken): ProviderResult<TextEdit[]>
     {
-        const range = new Range(
-            document.positionAt(0),
-            document.positionAt(document.getText().length)
-        );
-
-        const { code, start, stop, offset } =
-            this.backend.formatCode(
-                document.uri.toString(),
-                Utilities.rangeToLexicalRange(range)
+        return new Promise<TextEdit[]>((resolve) =>
+        {
+            const range = new Range(
+                document.positionAt(0),
+                document.positionAt(document.getText().length)
             );
-
-        const resultRange = range.with(
-            document.positionAt(start),
-            document.positionAt(stop + 1)
-        );
-        return [TextEdit.replace(resultRange, code)];
+            const { code, start, stop } =
+                this.backend.formatCode(
+                    document.uri.toString(),
+                    Utilities.rangeToLexicalRange(range)
+                );
+            const resultRange = range.with(
+                document.positionAt(start),
+                document.positionAt(stop + 1)
+            );
+            resolve([TextEdit.replace(resultRange, code)]);
+        });
     }
 }

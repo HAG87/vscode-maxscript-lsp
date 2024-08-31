@@ -1,13 +1,15 @@
 import { CharStream, CommonTokenStream, Token } from "antlr4ng";
 import { mxsLexer } from "../parser/mxsLexer.js";
 import { ICodeFormatSettings } from "../settings.js";
+import { emit } from "process";
+import { json } from "stream/consumers";
 
 export interface IformatterResult
 {
 	code: string;
 	start: number;
 	stop: number;
-	offset: number;
+	// offset: number;
 }
 
 const defaultFormatSettings: ICodeFormatSettings =
@@ -32,23 +34,197 @@ const defaultFormatSettings: ICodeFormatSettings =
 	}
 }
 
-class blockNode
+enum codeTypes
 {
-	vals: (string | blockNode)[];
-	indent: number;
-	start: string = '';
-	end: string = '';
+	ASSIGN,
+	COMMA,
+	DOT,
+	COLON,
+	ID,
+	KEYWORD,
+	LINE_BREAK,
+	NUMBER,
+	OPERATOR,
+	SHARP,
+	SYMBOL,
+	VALUE,
+	WHITESPACE,
+	LPAREN,
+	RPAREN,
+	LBRACE,
+	RBRACE,
+	LINE_COMMENT,
+	BLOCK_COMMENT,
+	LINE_CONTINUATION,
+}
 
-	constructor(val?: string, indent?: number)
+const tokenToCodeType = new Map<number, codeTypes>([
+	[mxsLexer.BLOCK_COMMENT, codeTypes.BLOCK_COMMENT],
+	[mxsLexer.LINE_COMMENT, codeTypes.LINE_COMMENT],
+	[mxsLexer.STRING, codeTypes.VALUE],
+	[mxsLexer.NUMBER, codeTypes.NUMBER],
+	[mxsLexer.TIMEVAL, codeTypes.NUMBER],
+	[mxsLexer.TRUE, codeTypes.VALUE],
+	[mxsLexer.FALSE, codeTypes.VALUE],
+	[mxsLexer.AND, codeTypes.KEYWORD],
+	[mxsLexer.AS, codeTypes.KEYWORD],
+	[mxsLexer.AT, codeTypes.KEYWORD],
+	[mxsLexer.BY, codeTypes.KEYWORD],
+	[mxsLexer.CASE, codeTypes.KEYWORD],
+	[mxsLexer.CATCH, codeTypes.KEYWORD],
+	[mxsLexer.COLLECT, codeTypes.KEYWORD],
+	[mxsLexer.DO, codeTypes.KEYWORD],
+	[mxsLexer.ELSE, codeTypes.KEYWORD],
+	[mxsLexer.EXIT, codeTypes.KEYWORD],
+	[mxsLexer.FOR, codeTypes.KEYWORD],
+	[mxsLexer.FROM, codeTypes.KEYWORD],
+	[mxsLexer.IF, codeTypes.KEYWORD],
+	[mxsLexer.IN, codeTypes.KEYWORD],
+	[mxsLexer.OF, codeTypes.KEYWORD],
+	[mxsLexer.ON, codeTypes.KEYWORD],
+	[mxsLexer.OFF, codeTypes.KEYWORD],
+	[mxsLexer.OR, codeTypes.KEYWORD],
+	[mxsLexer.RETURN, codeTypes.KEYWORD],
+	[mxsLexer.SET, codeTypes.KEYWORD],
+	[mxsLexer.THEN, codeTypes.KEYWORD],
+	[mxsLexer.TO, codeTypes.KEYWORD],
+	[mxsLexer.TRY, codeTypes.KEYWORD],
+	[mxsLexer.WHEN, codeTypes.KEYWORD],
+	[mxsLexer.WHERE, codeTypes.KEYWORD],
+	[mxsLexer.WHILE, codeTypes.KEYWORD],
+	[mxsLexer.WITH, codeTypes.KEYWORD],
+	[mxsLexer.NOT, codeTypes.KEYWORD],
+	[mxsLexer.PUBLIC, codeTypes.KEYWORD],
+	[mxsLexer.PRIVATE, codeTypes.KEYWORD],
+	[mxsLexer.ABOUT, codeTypes.KEYWORD],
+	[mxsLexer.COORDSYS, codeTypes.KEYWORD],
+	[mxsLexer.LEVEL, codeTypes.KEYWORD],
+	[mxsLexer.TIME, codeTypes.KEYWORD],
+	[mxsLexer.UNDO, codeTypes.KEYWORD],
+	[mxsLexer.CHANGE, codeTypes.KEYWORD],
+	[mxsLexer.DELETED, codeTypes.KEYWORD],
+	[mxsLexer.DefaultAction, codeTypes.KEYWORD],
+	[mxsLexer.ANIMATE, codeTypes.KEYWORD],
+	[mxsLexer.DontRepeatMessages, codeTypes.KEYWORD],
+	[mxsLexer.MacroRecorderEmitterEnabled, codeTypes.KEYWORD],
+	[mxsLexer.MXScallstackCaptureEnabled, codeTypes.KEYWORD],
+	[mxsLexer.PrintAllElements, codeTypes.KEYWORD],
+	[mxsLexer.QUIET, codeTypes.KEYWORD],
+	[mxsLexer.REDRAW, codeTypes.KEYWORD],
+	[mxsLexer.Group, codeTypes.KEYWORD],
+	[mxsLexer.MacroScript, codeTypes.KEYWORD],
+	[mxsLexer.Rollout, codeTypes.KEYWORD],
+	[mxsLexer.Tool, codeTypes.KEYWORD],
+	[mxsLexer.Utility, codeTypes.KEYWORD],
+	[mxsLexer.RCmenu, codeTypes.KEYWORD],
+	[mxsLexer.Parameters, codeTypes.KEYWORD],
+	[mxsLexer.Plugin, codeTypes.KEYWORD],
+	[mxsLexer.Attributes, codeTypes.KEYWORD],
+	[mxsLexer.Angle, codeTypes.ID],
+	[mxsLexer.Bitmap, codeTypes.ID],
+	[mxsLexer.Button, codeTypes.ID],
+	[mxsLexer.CheckBox, codeTypes.ID],
+	[mxsLexer.CheckButton, codeTypes.ID],
+	[mxsLexer.ColorPicker, codeTypes.ID],
+	[mxsLexer.ComboBox, codeTypes.ID],
+	[mxsLexer.CurveControl, codeTypes.ID],
+	[mxsLexer.DotnetControl, codeTypes.ID],
+	[mxsLexer.DropdownList, codeTypes.ID],
+	[mxsLexer.EditText, codeTypes.ID],
+	[mxsLexer.GroupBox, codeTypes.ID],
+	[mxsLexer.Hyperlink, codeTypes.ID],
+	[mxsLexer.ImgTag, codeTypes.ID],
+	[mxsLexer.Label, codeTypes.ID],
+	[mxsLexer.ListBox, codeTypes.ID],
+	[mxsLexer.MapButton, codeTypes.ID],
+	[mxsLexer.MaterialButton, codeTypes.ID],
+	[mxsLexer.MultilistBox, codeTypes.ID],
+	[mxsLexer.PickButton, codeTypes.ID],
+	[mxsLexer.PopupBenu, codeTypes.ID],
+	[mxsLexer.Progressbar, codeTypes.ID],
+	[mxsLexer.RadioButtons, codeTypes.ID],
+	[mxsLexer.Slider, codeTypes.ID],
+	[mxsLexer.Spinner, codeTypes.ID],
+	[mxsLexer.Subrollout, codeTypes.ID],
+	[mxsLexer.Timer, codeTypes.ID],
+	[mxsLexer.Separator, codeTypes.ID],
+	[mxsLexer.MenuItem, codeTypes.ID],
+	[mxsLexer.SubMenu, codeTypes.ID],
+	[mxsLexer.MAPPED, codeTypes.KEYWORD],
+	[mxsLexer.FN, codeTypes.KEYWORD],
+	[mxsLexer.STRUCT, codeTypes.KEYWORD],
+	[mxsLexer.LOCAL, codeTypes.KEYWORD],
+	[mxsLexer.GLOBAL, codeTypes.KEYWORD],
+	[mxsLexer.PERSISTENT, codeTypes.KEYWORD],
+	[mxsLexer.NAME, codeTypes.VALUE],
+	[mxsLexer.PATH, codeTypes.VALUE],
+	[mxsLexer.ID, codeTypes.ID],
+	[mxsLexer.QUOTED_ID, codeTypes.ID],
+	[mxsLexer.RESOURCE, codeTypes.VALUE],
+	[mxsLexer.EQ, codeTypes.ASSIGN],
+	[mxsLexer.COMPARE, codeTypes.OPERATOR],
+	[mxsLexer.ASSIGN, codeTypes.ASSIGN],
+	[mxsLexer.UNARY_MINUS, codeTypes.OPERATOR],
+	[mxsLexer.MINUS, codeTypes.OPERATOR],
+	[mxsLexer.PLUS, codeTypes.OPERATOR],
+	[mxsLexer.PROD, codeTypes.OPERATOR],
+	[mxsLexer.DIV, codeTypes.OPERATOR],
+	[mxsLexer.POW, codeTypes.OPERATOR],
+	[mxsLexer.SHARP, codeTypes.SHARP],
+	[mxsLexer.COMMA, codeTypes.COMMA],
+	[mxsLexer.GLOB, codeTypes.KEYWORD],
+	[mxsLexer.COLON, codeTypes.COLON],
+	[mxsLexer.DOTDOT, codeTypes.OPERATOR],
+	[mxsLexer.DOT, codeTypes.DOT],
+	[mxsLexer.AMP, codeTypes.SYMBOL],
+	[mxsLexer.QUESTION, codeTypes.SYMBOL],
+	[mxsLexer.LPAREN, codeTypes.LPAREN],
+	[mxsLexer.RPAREN, codeTypes.RPAREN],
+	[mxsLexer.LBRACE, codeTypes.LBRACE],
+	[mxsLexer.RBRACE, codeTypes.RBRACE],
+	[mxsLexer.LBRACK, codeTypes.SYMBOL],
+	[mxsLexer.RBRACK, codeTypes.SYMBOL],
+	[mxsLexer.WS, codeTypes.WHITESPACE],
+	[mxsLexer.NL, codeTypes.LINE_BREAK],
+
+]);
+
+class codeToken
+{
+	val: string;
+	type: codeTypes;
+	pos: number;
+	indent?: number;
+
+	constructor(val: string, type: codeTypes, pos: number)
+	{
+		this.val = val;
+		this.type = type;
+		this.pos = pos;
+	}
+	public check(type: codeTypes): boolean
+	{
+		return this.type === type;
+	}
+}
+
+class codeBlock
+{
+	vals: (codeToken | codeBlock)[];
+	indent: number;
+	start?: codeToken;
+	end?: codeToken;
+
+	constructor(val?: codeToken, indent?: number)
 	{
 		this.vals = val ? [val] : [];
 		this.indent = indent ?? 0;
 	}
-	get first(): string | blockNode
+	get first(): codeToken | codeBlock
 	{
 		return this.vals[0];
 	}
-	get last(): string | blockNode
+	get last(): codeToken | codeBlock
 	{
 		return this.vals[this.vals.length - 1];
 	}
@@ -56,11 +232,11 @@ class blockNode
 	{
 		let res = false;
 		for (let val of this.vals) {
-			if (val instanceof blockNode) {
+			if (val instanceof codeBlock) {
 				if (!res) {
 					res = val.hasLineBreaks();
 				}
-			} else if (val === '\r\n') {
+			} else if (val.check(codeTypes.LINE_BREAK)) {
 				res = true;
 			}
 		}
@@ -69,12 +245,12 @@ class blockNode
 
 	public startsWithNL(): boolean
 	{
-		return (typeof this.first === 'string' && this.first?.search(/[\r\n;]+[ \t]*/) >= 0);
+		return (this.first instanceof codeToken && this.first.check(codeTypes.LINE_BREAK));
 	}
 
 	public endsWithNL(): boolean
 	{
-		return (typeof this.last === 'string' && this.last?.search(/[\r\n;]+[ \t]*$/) >= 0);
+		return (this.last instanceof codeToken && this.last.check(codeTypes.LINE_BREAK));
 	}
 
 	public isEmpty(): boolean
@@ -85,94 +261,118 @@ class blockNode
 	{
 		return this.vals.length > 1;
 	}
-	private stringEndsWithNL(val: string): boolean
-	{
-		return val.search(/[\r\n;]+[ \t]*$/) >= 0;
-	}
 
-	public parse(options: ICodeFormatSettings = defaultFormatSettings): string
+	public parse(options: ICodeFormatSettings = defaultFormatSettings): codeToken[]
 	{
-		function dfs(node: blockNode, parent?: blockNode): string
+		function dfs(node: codeBlock, parent?: codeBlock): codeToken[]
 		{
-			let result = '';
+			let result: codeToken[] = [];
 			//-----------------------------------------------------
 			// main loop to visit children
-			for (let i = 0; i < node.vals.length; i++) {
+			for (let i = 0; i <= node.vals.length - 1; i++) {
 				//----------------------------
-				const val = node.vals[i];
+				const item = node.vals[i];
+				const next = i < node.vals.length ? node.vals[i + 1] : null;
+				const prev = i > 0 ? node.vals[i - 1] : null;
 				//----------------------------
-				if (typeof val === 'string') {
-					result += val;
+				if (item instanceof codeToken) {
+					// track indent
+					item.indent = node.indent;
+
+					result.push(item)
 					// indent
-					// if (val === opt.newLineChar) {
-					if (val === options.newLineChar && typeof node.vals[i + 1] === 'string') {
-						result += options.indentChar.repeat(node.indent);
+					if (item.check(codeTypes.LINE_BREAK) && next instanceof codeToken) {
+						result.push(new codeToken(options.indentChar.repeat(node.indent), codeTypes.WHITESPACE, item.pos));
 					}
 				} else {
 					// blockNode
-					let before = '', start = '', end = '', after = '';
-					const hasLinebreaks = val.hasLineBreaks();
-					const inner = dfs(val, node);
+					const hasLinebreaks = item.hasLineBreaks();
+					//----------------------------------
+					const inner = dfs(item, node);
 					// const inner = val.parse(options);
-
-					if (!val.isEmpty()) {
+					//----------------------------------
+					if (!item.isEmpty()) {
 						// block start
 						// look for invalid positions
 						if (
-							!result.endsWith('#') &&
-							!(result.search(/[\r\n;]+[ \t]*$/) >= 0)
+							!result[result.length - 1].check(codeTypes.SHARP) &&
+							!result[result.length - 1].check(codeTypes.LINE_BREAK)
 						) {
 							if (hasLinebreaks && options.codeblock.parensInNewLine) {
-								before += options.newLineChar;
-								// indent
-								// before += 'caca azul';
-								before += options.indentChar.repeat(node.indent);
-							} else if (!result.endsWith(options.whitespaceChar)) {
-								before += options.whitespaceChar;
+								result.push(
+									new codeToken(options.newLineChar, codeTypes.LINE_BREAK, result[result.length - 1].pos),
+									// indent
+									new codeToken(options.indentChar.repeat(node.indent), codeTypes.WHITESPACE, result[result.length - 1].pos)
+								);
+							} else if (!result[result.length - 1].check(codeTypes.WHITESPACE)) {
+								result.push(new codeToken(
+									options.whitespaceChar,
+									codeTypes.WHITESPACE,
+									result[result.length - 1].pos)
+								);
 							}
 						}
 
 						// wrap the content
-						if (val.start && val.end) {
-							if (hasLinebreaks || (val.canBeMultiline() && options.codeblock.newlineAllways)) {
+						if (item.start && item.end) {
+							// start paren
+							//----------------------------------
+							result.push(item.start);
+							//----------------------------------
+							if (hasLinebreaks || (item.canBeMultiline() && options.codeblock.newlineAllways)) {
 								// before inner
-								if (!val.startsWithNL()) {
-									start += options.newLineChar;
+								if (!item.startsWithNL()) {
+									result.push(new codeToken(options.newLineChar, codeTypes.LINE_BREAK, item.start.pos));
+								}
+								//----------------------------------
+								result.push(...inner);
+								//----------------------------------
+								// after inner
+								if (!item.endsWithNL()) {
+									result.push(new codeToken(options.newLineChar, codeTypes.LINE_BREAK, inner[inner.length - 1].pos));
 								}
 								// indent
-								// start += options.indentChar.repeat(val.indent);
-								// after inner
-								if (!val.endsWithNL()) {
-									end += options.newLineChar;
-								}
-								end += options.indentChar.repeat(node.indent);
+								result.push(new codeToken(options.indentChar.repeat(node.indent), codeTypes.WHITESPACE, inner[inner.length - 1].pos));
 							} else {
-								start += options.whitespaceChar;
-								end += options.whitespaceChar;
+								result.push(new codeToken(options.whitespaceChar, codeTypes.WHITESPACE, item.start.pos));
+								//----------------------------------
+								result.push(...inner);
+								//----------------------------------
+								result.push(new codeToken(options.whitespaceChar, codeTypes.WHITESPACE, inner[inner.length - 1].pos));
 							}
+							//----------------------------------
+							result.push(item.end);
+							//----------------------------------
+						} else {
+							//----------------------------------
+							result.push(...inner);
+							//----------------------------------
+						}
+					} else {
+						if (item.start && item.end) {
+							result.push(item.start);
+							result.push(item.end);
 						}
 					}
 					// block end
 					// look for invalid positions
-					const nextToken = node.vals[i + 1];
 					// add ending newlines and indent only when the block is followed by a token,
 					// blockNodes siblings will be addressed on the blockNode start
 					if (
-						typeof nextToken === 'string' &&
-						!(nextToken.startsWith(options.newLineChar) || nextToken.startsWith(options.lineEndChar)) &&
-						!(nextToken.startsWith(',') || nextToken.startsWith('.'))
+						next instanceof codeToken &&
+						!next.check(codeTypes.LINE_BREAK) &&
+						!(next.val.startsWith(',') || next.val.startsWith('.'))
 					) {
 						if (hasLinebreaks) {
-							after += options.newLineChar;
-							after += options.indentChar.repeat(node.indent);
+							result.push(
+								new codeToken(options.newLineChar, codeTypes.LINE_BREAK, result[result.length - 1].pos),
+								// indent
+								new codeToken(options.indentChar.repeat(node.indent), codeTypes.WHITESPACE, result[result.length - 1].pos)
+							);
 						} else {
-							after += options.whitespaceChar;
+							result.push(new codeToken(options.whitespaceChar, codeTypes.WHITESPACE, result[result.length - 1].pos));
 						}
 					}
-
-					// return the child text
-					// result = result.concat(before, val.start, start, inner, end, val.end, after);
-					result += before + val.start + start + inner + end + val.end + after;
 				}
 			}
 			//-----------------------------------------------------
@@ -180,6 +380,81 @@ class blockNode
 		}
 		//---------------------------------------------------------
 		return dfs(this);
+	}
+
+	toString(options: ICodeFormatSettings): string
+	toString(options: ICodeFormatSettings, start: number, stop: number): string
+	toString(options: ICodeFormatSettings = defaultFormatSettings, start?: number, stop?: number): string
+	{
+		let result = this.parse(options)
+
+		if (start && stop && start < stop) {			
+			// rectify positions
+			const startIndex = result.findIndex(item => item.pos >= start);
+			const stopPos = result.slice().reverse().find(item => item.pos <= stop);
+			const stopIndex = result.findIndex(item => item.pos === stopPos!.pos);
+			// get open parens
+			/*
+			let openParens: codeToken[] = [];
+			for (let [index, item] of result.entries()){
+				if (index === startIndex) break;
+				if (item.check(codeTypes.LPAREN)) openParens.push(item);
+				if (item.check(codeTypes.RPAREN)) openParens.pop();
+			}
+			// */
+
+			/*
+			const _start = result[startIndex].pos;
+			const _stop = result[stopIndex].pos;
+			let rectify: number = _start;
+			for (let i = startIndex - 1; i >= 0; i--) {
+				// console.log(result[i]);
+				if (result[i].check(codeTypes.LINE_BREAK) || result[i].check(codeTypes.WHITESPACE)) {
+					rectify = result[i].pos;
+				} else break;
+			}
+			result = result.filter(result => result.pos >= rectify && result.pos <= stop);
+			//	result = result.filter(result => result.pos >= start && result.pos <= stop);
+			// */
+
+			/*
+			let filterResult: codeToken[] = [];
+			for(let item of result) {
+				// if (item.pos < start) { continue; }
+				// filterResult.push(item);
+				// if (item.pos >= stop) { break; }
+
+				if (item.pos >= start && item.pos <= stop) {
+					filterResult.push(item);
+				}
+				if (item.pos >= stop) {
+					// filterResult.push(item);
+					break;
+				}
+			}
+			if (filterResult[0].indent) {
+				filterResult.unshift(
+					new codeToken(
+						options.indentChar.repeat(filterResult[0].indent),
+						codeTypes.WHITESPACE,
+						filterResult[0].pos));
+			}
+			return filterResult.reduce((acc: string, curr: codeToken) => { return acc += curr.val; }, '');	
+			// */
+
+			result = result.slice(startIndex, stopIndex + 1);
+			// /*
+			if (result[0].indent) {
+				result.unshift(
+					new codeToken(
+						options.indentChar.repeat(result[0].indent),
+						codeTypes.WHITESPACE,
+						result[0].pos));
+			}
+			// */
+		}
+
+		return result.reduce((acc: string, curr: codeToken) => { return acc += curr.val; }, '');
 	}
 }
 
@@ -293,7 +568,19 @@ export class mxsSimpleFormatter
 		return count;
 	}
 
-	private formattingTree(tokens: Token[]): blockNode
+	private emmit(token: Token): codeToken
+	private emmit(token: Token, text: string, type: number): codeToken
+
+	private emmit(token: Token, text?: string, type?: number): codeToken
+	{
+		return new codeToken(
+			text ?? token.text!,
+			type ?? tokenToCodeType.get(token.type)!,
+			token.start
+		);
+	}
+
+	private formattingTree(tokens: Token[]): codeBlock
 	{
 		// options
 		const opt = this.options;
@@ -302,8 +589,8 @@ export class mxsSimpleFormatter
 		// statements: { useLineBreaks: true, }
 		const afterKeyword = opt.statements.useLineBreaks;
 		//---------------------------------------------------------
-		let root: blockNode = new blockNode();
-		const stack: blockNode[] = [root];
+		let root: codeBlock = new codeBlock();
+		const stack: codeBlock[] = [root];
 		const cStack = () => stack[stack.length - 1];
 		let indentation = 0;
 		//---------------------------------------------------------
@@ -313,91 +600,15 @@ export class mxsSimpleFormatter
 			const currToken = tokens[i];
 			const prevToken = tokens[i - 1];
 			const nextToken = tokens[i + 1];
-
+			//---------------------------------------------------------
 			if (currToken.type === mxsLexer.EOF) {
 				return root;
 			}
-			// TODO: start values, indent, whitespace, NL, etc for the first token
+			//---------------------------------------------------------
 			if (i === 0) {
 				if (currToken.type === mxsLexer.NL) {
-					// TODO: determine the position?
-					// TODO: determine the indent?
-					// with the token and the tokens before to determine if the indent is right
-					//emmit the token?
-					cStack().vals.push(currToken.text!);
-				} if (currToken.type !== mxsLexer.WS) {
-
+					cStack().vals.push(this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK));
 				}
-
-				let nextRealToken: Token;
-				let prevRealToken: Token | undefined = undefined;
-
-				// set the indentation
-				// tokens ahead
-				for (let j = currToken.tokenIndex; j < tokens.length ; j++) {
-					if (
-						tokens[j].type !== mxsLexer.WS &&
-						tokens[j].type !== mxsLexer.NL
-					) {
-						nextRealToken = tokens[j];
-						break;
-					}					
-				}
-
-				// navigate up till I find a indent context...
-				console.log('--------before------------');
-				let keepSearching = true;
-				for (let j = currToken.tokenIndex; j >= 0 ; j--) {
-					// console.log(this.tokens[j].text!);
-					if (!keepSearching) { break;}
-					switch (this.tokens[j].type) {
-						case mxsLexer.LPAREN:
-						case mxsLexer.THEN:
-						case mxsLexer.ELSE:
-						case mxsLexer.DO:
-						case mxsLexer.COLLECT:
-						case mxsLexer.EQ:
-						case mxsLexer.TRY:
-						case mxsLexer.CATCH:
-							prevRealToken = this.tokens[j];
-							keepSearching = false;
-							break;
-					}
-				}
-				console.log(prevRealToken);
-
-				if (prevRealToken) {
-
-				}
-				// indentation =  currToken.column;
-				// cStack().indent = currToken.column;
-
-
-
-				// cStack().indent = currToken.column;
-				// console.log(JSON.stringify(currToken.text!));
-				// console.log(JSON.stringify(currToken.));
-				// console.log(JSON.stringify(currToken.line));
-				// console.log(JSON.stringify(currToken.column));
-				// if first token is new line...
-
-
-				/*
-				// search the tokens before...
-				
-				
-				*/
-				// console.log('----------current----------');
-				// console.log(currToken);
-
-				// console.log(currToken.tokenIndex);
-				// console.log('--------------------');
-				//---------------------------------------------------------
-				// TODO: disable this!
-				// cStack().vals.push(currToken.text!); 
-				// cStack().vals.push(opt.whitespaceChar);
-				// continue;
-				//---------------------------------------------------------
 
 			}
 			//---------------------------------------------------------
@@ -411,12 +622,12 @@ export class mxsSimpleFormatter
 					case mxsLexer.RPAREN:
 						{
 							indentation--;
-							cStack().end = currToken.text!;
+							cStack().end = this.emmit(currToken);	//new atom(currToken.text!, currToken.type === mxsLexer.RPAREN ? atomTypes.RPAREN : atomTypes.RBRACE, currToken.start);
 							stack.pop();
 						}
 						break;
 					default:
-						cStack().vals.push(currToken.text!);
+						cStack().vals.push(this.emmit(currToken));
 						break;
 				}
 				return root;
@@ -424,13 +635,14 @@ export class mxsSimpleFormatter
 			//---------------------------------------------------------
 			switch (currToken.type) {
 				case mxsLexer.LINE_COMMENT:
-					cStack().vals.push(currToken.text!);
-					cStack().vals.push(opt.newLineChar);
+					cStack().vals.push(this.emmit(currToken));
+					cStack().vals.push(this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK));
 					break;
 				// /*
 				case mxsLexer.BLOCK_COMMENT:
+					cStack().vals.push(this.emmit(currToken));
 					if (nextToken.type === mxsLexer.NL) {
-						cStack().vals.push(opt.newLineChar);
+						cStack().vals.push(this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK));
 					}
 					break;
 				// */
@@ -440,15 +652,15 @@ export class mxsSimpleFormatter
 						//indentation
 						indentation++;
 						// const node = new blockNode(currToken.text!, indentation);
-						const node = new blockNode(undefined, indentation);
-						node.start = currToken.text!;
+						const node = new codeBlock(undefined, indentation);
+						node.start = this.emmit(currToken);
 						cStack().vals.push(node);
 						//-------------------------
 						stack.push(node);
 						//-------------------------
 						// new line after
 						if (nextToken.type === mxsLexer.NL) {
-							cStack().vals.push(opt.newLineChar);
+							cStack().vals.push(this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK));
 						}
 					}
 					break;
@@ -458,7 +670,8 @@ export class mxsSimpleFormatter
 						//indentation
 						indentation--;
 						// cStack().vals.push(currToken.text!);
-						cStack().end = currToken.text!;
+
+						cStack().end = this.emmit(currToken);
 						//-------------------------
 						stack.pop();
 						//-------------------------
@@ -469,7 +682,7 @@ export class mxsSimpleFormatter
 								case mxsLexer.RBRACE:
 									break;
 								default:
-									cStack().vals.push(opt.newLineChar);
+									cStack().vals.push(this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK));
 									break;
 							}
 						}
@@ -488,24 +701,27 @@ export class mxsSimpleFormatter
 				case mxsLexer.WHERE:
 				case mxsLexer.WHILE:
 					{
-						cStack().vals.push(currToken.text!);
+						cStack().vals.push(this.emmit(currToken));
 						if (nextToken.type !== mxsLexer.LPAREN) {
 
 							if (afterKeyword && this.tokensTillEOL(tokens, i) > 1) {
-								cStack().vals.push(opt.newLineChar);
-								cStack().vals.push(opt.indentChar);
+								cStack().vals.push(this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK));
+								cStack().vals.push(new codeToken(opt.indentChar, codeTypes.WHITESPACE, currToken.start));
 							} else {
-								cStack().vals.push(opt.whitespaceChar);
+								cStack().vals.push(this.emmit(currToken, opt.whitespaceChar, codeTypes.WHITESPACE));
 							}
 						}
 					}
 					break;
-				//---------------------------------------------------------				
+				//---------------------------------------------------------
 				case mxsLexer.WS:
 					{
 						// line continuation handling
 						if (currToken.text && currToken.text.includes(opt.lineContinuationChar)) {
-							cStack().vals.push(opt.lineContinuationChar, opt.newLineChar);
+							cStack().vals.push(
+								new codeToken(opt.lineContinuationChar, codeTypes.LINE_CONTINUATION, currToken.start),
+								this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK)
+							);
 						}
 					}
 					break;
@@ -522,7 +738,7 @@ export class mxsSimpleFormatter
 							cStack().vals.push(opt.newLineChar);
 							// cStack().vals.push(opt.indentChar);
 							break;
-					}	
+					}
 					// */
 					break;
 				//---------------------------------------------------------
@@ -534,11 +750,11 @@ export class mxsSimpleFormatter
 				case mxsLexer.SHARP:
 				case mxsLexer.SHARP:
 				case mxsLexer.UNARY_MINUS:
-					cStack().vals.push(currToken.text!);
+					cStack().vals.push(this.emmit(currToken));
 					break;
 				case mxsLexer.PROD:
 					{
-						cStack().vals.push(currToken.text!);
+						cStack().vals.push(this.emmit(currToken));
 						// find the prev token that is not ws..
 						if (prevToken) {
 							switch (prevToken.type) {
@@ -551,7 +767,7 @@ export class mxsSimpleFormatter
 								case mxsLexer.NL:
 									break;
 								default:
-									cStack().vals.push(opt.whitespaceChar);
+									cStack().vals.push(this.emmit(currToken, opt.whitespaceChar, codeTypes.WHITESPACE));
 									break;
 							}
 						}
@@ -561,32 +777,34 @@ export class mxsSimpleFormatter
 				case mxsLexer.ON:
 				case mxsLexer.EQ:
 					{
-						cStack().vals.push(currToken.text!);
+						cStack().vals.push(this.emmit(currToken));
 
 						if (nextToken.type === mxsLexer.NL) {
 							const next = this.nextRealToken(tokens, i + 2);
 							if (next?.type !== mxsLexer.LPAREN) {
-								cStack().vals.push(opt.newLineChar);
+								cStack().vals.push(this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK));
 							}
 						} else {
-							cStack().vals.push(opt.whitespaceChar);
+							cStack().vals.push(this.emmit(currToken, opt.whitespaceChar, codeTypes.WHITESPACE));
 						}
 					}
 					break;
 				case mxsLexer.COMMA:
 					{
-						cStack().vals.push(currToken.text!);
+						cStack().vals.push(this.emmit(currToken));
 						cStack().vals.push(
 							nextToken.type === mxsLexer.NL
-								? opt.newLineChar
-								: afterCommaChar
+								? this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK)
+								: opt.list.useLineBreaks
+									? this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK)
+									: this.emmit(currToken, opt.whitespaceChar, codeTypes.WHITESPACE)
 						);
 					}
 					break;
 				//---------------------------------------------------------
 				default:
 					{
-						cStack().vals.push(currToken.text!);
+						cStack().vals.push(this.emmit(currToken));
 
 						switch (nextToken.type) {
 							case mxsLexer.COMMA:
@@ -601,7 +819,7 @@ export class mxsSimpleFormatter
 							case mxsLexer.COLON:
 								{
 									if (currToken.type === mxsLexer.NUMBER) {
-										cStack().vals.push(opt.whitespaceChar);
+										cStack().vals.push(this.emmit(currToken, opt.whitespaceChar, codeTypes.WHITESPACE));
 									}
 								}
 								break;
@@ -617,7 +835,7 @@ export class mxsSimpleFormatter
 										case mxsLexer.LBRACE:
 											break;
 										default:
-											cStack().vals.push(opt.newLineChar);
+											cStack().vals.push(this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK));
 											break;
 									}
 									// */
@@ -626,11 +844,15 @@ export class mxsSimpleFormatter
 							case mxsLexer.ELSE:
 							case mxsLexer.WHERE:
 							case mxsLexer.WHILE:
-								cStack().vals.push(afterKeyword ? opt.newLineChar : opt.whitespaceChar);
+								cStack().vals.push(
+									afterKeyword
+										? this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK)
+										: this.emmit(currToken, opt.whitespaceChar, codeTypes.WHITESPACE)
+								);
 								break;
 							default:
 								// mandatory whitespace
-								cStack().vals.push(opt.whitespaceChar);
+								cStack().vals.push(this.emmit(currToken, opt.whitespaceChar, codeTypes.WHITESPACE));
 								break;
 						}
 					}
@@ -640,128 +862,41 @@ export class mxsSimpleFormatter
 		return root;
 	}
 
-	private codeFromTree(root: blockNode): string
+	// get tokens within range
+	public formatRange(start: number, stop: number): IformatterResult
 	{
-		// options
-		const opt = this.options;
-		//---------------------------------------------------------
-		function dfs(node: blockNode, parent?: blockNode)
-		{
-			let result = '';
-			// main loop to visit children
-			for (let i = 0; i < node.vals.length; i++) {
-				const val = node.vals[i];
+		// format the entire doc
+		let activeTokens = this.tokens.filter(token => token.type !== mxsLexer.WS);
+		// produce the tree
+		const codeTree = this.formattingTree(activeTokens);
+		// derive the code TODO: limit range
+		const code: string = codeTree.toString(this.options, start, stop);
+		console.log('---------------------------');
+		console.log(JSON.stringify(code));
+		// new offset
+		/*
+		const startPos = activeTokens[0].start;
+		const stopPos = activeTokens[activeTokens.length - 1].stop;
+		const offset = startPos + (code.length - 1);
 
-				if (typeof val === 'string') {
-
-					result += val;
-					// TODO: indent
-					// if (val === opt.newLineChar) {
-					if (val === opt.newLineChar && typeof node.vals[i + 1] === 'string') {
-						result += opt.indentChar.repeat(node.indent);
-					}
-				} else {
-					const inner = dfs(<blockNode>val, node);
-
-					let before = ''; let after = '';
-					let innerBefore = ''; let innerAfter = '';
-					// add linebreaks or whitespace?
-					const linebreak = val.hasLineBreaks();
-					const nextToken = node.vals[i + 1];
-
-					if (inner.length > 0) {
-
-						if (
-							!result.endsWith('#') &&
-							!(result.endsWith(opt.newLineChar) || result.endsWith(opt.lineEndChar))
-						) {
-
-							if (linebreak && opt.codeblock.parensInNewLine) {
-								before += opt.newLineChar;
-								//TODO: PROBLEM AT THE START OF STRUCT WITH INDENT!!!
-								before += opt.indentChar.repeat(node.indent);
-							} else if (!result.endsWith(opt.whitespaceChar)) {
-								before = opt.whitespaceChar;
-							}
-						}
-
-						if (
-							typeof nextToken === 'string' &&
-							!(nextToken.endsWith(opt.newLineChar) || nextToken.endsWith(opt.lineEndChar)) &&
-							!(nextToken.endsWith(',') || nextToken.endsWith('.'))
-						) {
-							if (linebreak) {
-								after = opt.newLineChar;
-								after += opt.indentChar.repeat(node.indent);
-							} else {
-								after = opt.whitespaceChar;
-							}
-						}
-
-						if (val.start.length > 0 && val.end.length > 0) {
-							if (linebreak || opt.codeblock.newlineAllways) {
-								if (!inner.startsWith(opt.newLineChar) || !inner.startsWith(opt.newLineChar + opt.indentChar)) {
-									innerBefore = opt.newLineChar
-								}
-								innerBefore += opt.indentChar.repeat(val.indent);
-								if (!inner.endsWith(opt.newLineChar) || !inner.endsWith(opt.newLineChar + opt.indentChar)) {
-									innerAfter = opt.newLineChar;
-								}
-								innerAfter += opt.indentChar.repeat(node.indent);
-
-							} else if (opt.codeblock.spaced) {
-								innerBefore = opt.whitespaceChar;
-								innerAfter = opt.whitespaceChar;
-							}
-						}
-					}
-					result += `${before}${val.start}${innerBefore}${inner}${innerAfter}${val.end}${after}`;
-				}
-			}
-			return result;
-		}
-		//---------------------------------------------------------
-		return dfs(root);
+		return { code, start: startPos, stop: stopPos, offset };
+		*/
+		return { code, start, stop };
 	}
 
-	// get tokens within range
-	public formatRange(start?: number, stop?: number): IformatterResult
+	public formatTokenRange(start?: number, stop?: number): IformatterResult
 	{
-		// console.log(`range: ${start} -- ${stop}`);
-		// /*
-		// const startIndex = start ? this.tokenFromIndex(start, false) : 0;
-		// const stopIndex = stop ? this.tokenFromIndex(stop, false) : this.tokens.length - 1;
 		let activeTokens = this.tokenStream.getTokens(start, stop);
 		activeTokens = activeTokens.filter(token => token.type !== mxsLexer.WS);
 		// produce the tree
 		const codeTree = this.formattingTree(activeTokens);
-		// derive the code
-		const code = codeTree.parse(this.options);
-		// const code = this.codeFromTree(codeTree);
+		// derive the code TODO: limit range
+		const code: string = codeTree.toString(this.options);
 		// new offset
 		const startPos = activeTokens[0].start;
 		const stopPos = activeTokens[activeTokens.length - 1].stop;
-		// */
-		/*
-		if (start && stop) {
-			//limit the tokens to the range
-			this.tokens = this.tokenStream.getTokens(start, stop);
-		}
-		//filter WS tokens...
-		this.tokens = this.tokens.filter(token => token.type !== mxsLexer.WS);
-		// produce the tree		
-		const codeTree = this.formattingTree(this.tokens);
-		// derive the code
-		// const code = this.codeFromTree(codeTree);
-		const code = codeTree.parse(this.options);		
-		// new offset
-		const startPos = this.tokens[0].start;
-		const stopPos = this.tokens[this.tokens.length - 1].stop;
-		// */
-		const offset = startPos + (code.length - 1);
+		// const offset = startPos + (code.length - 1);
 
-		//return
-		return { code, start: startPos, stop: stopPos, offset };
+		return { code, start: startPos, stop: stopPos };
 	}
-
 }

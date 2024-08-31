@@ -4,6 +4,7 @@ import { ICompletionsResult, SourceContext } from './SourceContext.js';
 import { ILexicalRange, ISemanticToken, ISymbolInfo } from '../types.js';
 import { BaseSymbol } from 'antlr4-c3';
 import { IformatterResult } from './CodeFormatter.js';
+import { ICodeFormatSettings } from '../settings.js';
 
 export interface IContextEntry
 {
@@ -74,7 +75,7 @@ export class mxsBackend
     {
         return fs.readFileSync(Uri.parse(uri).fsPath, "utf8");
     }
-    
+
     /**
      * Call this to refresh the internal input stream as a preparation to a reparse call
      * or for code completion
@@ -198,13 +199,14 @@ export class mxsBackend
      */
     public getSymbolOccurrences(uri: string, symbolName: string): ISymbolInfo[]
     {
-        
+
         const context = this.getContext(uri);
-        
+
         const result = context.symbolTable.getSymbolOccurrences(symbolName, false);
         // /*
         // Sort result by kind. This way rule definitions appear before rule references and are re-parsed first.
-        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => {
+        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) =>
+        {
             return lhs.kind - rhs.kind;
         });
         // */
@@ -218,12 +220,13 @@ export class mxsBackend
     {
         const context = this.getContext(uri);
         const symbol = context.symbolTable.getSymbolAtPosition(line, character);
-       
+
         if (!symbol) { return undefined; }
-        
+
         const result = context.symbolTable.getScopedSymbolOccurrences(symbol);
 
-        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => {
+        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) =>
+        {
             return lhs.kind - rhs.kind;
         });
     }
@@ -249,12 +252,12 @@ export class mxsBackend
     }
 
     // semantic tokens
-    
+
     public getDocumentSemanticTokens(uri: string): ISemanticToken[]
     {
         return this.getContext(uri).getSemanticTokens;
     }
-    
+
     // references
     /**
      * Count how many times a symbol has been referenced. The given file must contain the definition of this symbol.
@@ -267,12 +270,18 @@ export class mxsBackend
     {
         // return this.getContext(uri).getReferenceCount(symbol);
     }
+
     // formatting
-    
-    public formatCode(uri: string,/*  options: IFormattingOptions, */ range: ILexicalRange): IformatterResult
+    public formatCode(uri: string, range: ILexicalRange, options?: ICodeFormatSettings): IformatterResult
+    public formatCode(uri: string, range: { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult
+    public formatCode(uri: string, range: ILexicalRange | { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult
     {
-        return this.getContext(uri).formatCode(/* options, */ range);
+        if ('stop' in range) {
+            return this.getContext(uri).formatCode(range, options);
+        }
+        return this.getContext(uri).formatCode(range, options);
     }
+
     // prettify
     // minify    
 }
