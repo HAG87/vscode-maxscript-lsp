@@ -1,16 +1,54 @@
-import { BailErrorStrategy, CharStream, CommonTokenStream, DefaultErrorStrategy, ParseCancellationException, ParserRuleContext, ParseTree, ParseTreeWalker, PredictionMode, TerminalNode, Token } from "antlr4ng";
-import { BaseSymbol, CodeCompletionCore, ScopedSymbol, SymbolTable, IScopedSymbol, SymbolConstructor, ICandidateRule } from "antlr4-c3";
+import { BailErrorStrategy, CharStream, CommonTokenStream, DefaultErrorStrategy, ParseCancellationException,
+    ParserRuleContext, ParseTree, ParseTreeWalker, PredictionMode, TerminalNode, Token } from "antlr4ng";
+import { BaseSymbol, CodeCompletionCore, SymbolTable } from "antlr4-c3";
 import { mxsLexer } from "../parser/mxsLexer.js";
 import { mxsParser } from "../parser/mxsParser.js";
 import { ContextLexerErrorListener } from "./ContextLexerErrorListener.js";
 import { ContextErrorListener } from "./ContextErrorListener.js";
 import { DiagnosticType, IDefinition, IDiagnosticEntry, ILexicalRange, ISemanticToken, ISymbolInfo, SymbolKind } from "../types.js";
-import { ContextSymbolTable, ExprSymbol, fnArgsSymbol, FnDefinitionSymbol, fnParamsSymbol, IdentifierSymbol, StructDefinitionSymbol, StructMemberSymbol, SymbolSupport, VariableDeclSymbol } from "./ContextSymbolTable.js";
+import {
+    AssignmentExpressionSymbol,
+    AttributesDefSymbol,
+    ContextSymbolTable, 
+    RolloutControlSymbol, 
+    EventHandlerClauseSymbol, 
+    ExprSymbol,
+    fnArgsSymbol,
+    FnDefinitionSymbol,
+    fnParamsSymbol,
+    IdentifierSymbol,
+    MacroScriptDefinitionSymbol,
+    PluginDefinitionSymbol,
+    RolloutDefinitionSymbol,
+    StructDefinitionSymbol,
+    StructMemberSymbol,   
+    ToolDefinitionSymbol,
+    UtilityDefinitionSymbol,
+    VariableDeclSymbol,
+    
+} from "./ContextSymbolTable.js";
 import { symbolTableListener } from "./symbolTableListener.js";
 import { semanticTokenListener } from "./semanticTokenListener.js";
 import { BackendUtils } from "./BackendUtils.js";
 import { IformatterResult, mxsSimpleFormatter } from "./CodeFormatter.js";
 import { ICodeFormatSettings } from "../settings.js";
+
+export const symbolToKindMap: Map<new () => BaseSymbol, SymbolKind> = new Map([
+    [PluginDefinitionSymbol, SymbolKind.Plugin],
+    [MacroScriptDefinitionSymbol, SymbolKind.MacroScript],
+    [AttributesDefSymbol, SymbolKind.Attributes],
+    [ToolDefinitionSymbol, SymbolKind.Tool],
+    [UtilityDefinitionSymbol, SymbolKind.Rollout],
+    [RolloutDefinitionSymbol, SymbolKind.Rollout],
+    [StructDefinitionSymbol, SymbolKind.Struct],
+    [StructMemberSymbol, SymbolKind.Identifier],
+    [EventHandlerClauseSymbol, SymbolKind.Event],
+    //...
+    [FnDefinitionSymbol, SymbolKind.Function],
+    [VariableDeclSymbol, SymbolKind.Declaration],
+    [AssignmentExpressionSymbol, SymbolKind.Identifier],
+    [IdentifierSymbol, SymbolKind.Identifier],
+]);
 
 export interface ICompletionsResult
 {
@@ -195,7 +233,7 @@ export class SourceContext
 
     public static getKindFromSymbol(symbol: BaseSymbol): SymbolKind
     {
-        return SymbolSupport.symbolToKindMap.get(symbol.constructor as typeof BaseSymbol) || SymbolKind.Null;
+        return symbolToKindMap.get(symbol.constructor as typeof BaseSymbol) || SymbolKind.Null;
     }
 
     /**
@@ -485,6 +523,8 @@ export class SourceContext
             mxsParser.RULE_path,
             mxsParser.RULE_name,
             mxsParser.RULE_property,
+            mxsParser.RULE_rolloutControl,
+            mxsParser.RULE_rcmenuControl,
             mxsParser.RULE_struct_member,
             //...
         ]);
@@ -567,6 +607,7 @@ export class SourceContext
                             entrySymbol.getAllSymbols(fnParamsSymbol),
                             entrySymbol.getAllSymbols(StructDefinitionSymbol),
                             entrySymbol.getAllSymbols(StructMemberSymbol),
+                            entrySymbol.getAllSymbols(RolloutControlSymbol),
                         );
 
                         // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, IdentifierSymbol));

@@ -1,12 +1,23 @@
-import { VariableSymbol, LiteralSymbol, /* BlockSymbol ,*/ BaseSymbol, ISymbolTableOptions, SymbolTable, SymbolConstructor, IScopedSymbol, ScopedSymbol } from "antlr4-c3";
+import { BaseSymbol, ISymbolTableOptions, SymbolTable, SymbolConstructor, IScopedSymbol, ScopedSymbol } from "antlr4-c3";
 import { ParserRuleContext, ParseTree, TerminalNode } from "antlr4ng";
 import { SourceContext } from "./SourceContext.js";
-import { ISymbolInfo, SymbolKind } from "../types.js";
+import { ISymbolInfo } from "../types.js";
 import { BackendUtils } from "./BackendUtils.js";
 import { mxsParser } from "../parser/mxsParser.js";
-// import { BinaryLifting } from "./symbolSearch.js";
-// import assert from "assert";
-// import path from "path";
+
+interface IScopeComparer
+{
+    commonPath: BaseSymbol[];
+    subPathA: BaseSymbol[];
+    subPathB: BaseSymbol[];
+}
+
+interface IDefinitionResult
+{
+    definition: BaseSymbol | undefined;
+    results: BaseSymbol[];
+    candidates: BaseSymbol[];
+}
 
 export interface IExprSymbol extends IScopedSymbol
 {
@@ -35,6 +46,14 @@ export class ExprSymbol extends ScopedSymbol implements IExprSymbol
     public getScope(): BaseSymbol[]
     {
         return this.symbolPath.filter(symbol =>
+            symbol instanceof PluginDefinitionSymbol ||
+            symbol instanceof AttributesDefSymbol ||
+            symbol instanceof ParamsDefSymbol ||
+            symbol instanceof MacroScriptDefinitionSymbol ||
+            symbol instanceof ToolDefinitionSymbol ||
+            symbol instanceof UtilityDefinitionSymbol ||
+            symbol instanceof RolloutDefinitionSymbol ||
+
             symbol instanceof StructDefinitionSymbol ||
             symbol instanceof StructMemberSymbol ||
             symbol instanceof FnDefinitionSymbol ||
@@ -76,7 +95,30 @@ export class MacroScriptDefinitionSymbol extends ExprSymbol { }
 export class ToolDefinitionSymbol extends ExprSymbol { }
 export class UtilityDefinitionSymbol extends ExprSymbol { }
 export class RolloutDefinitionSymbol extends ExprSymbol { }
+export class rolloutGroupSymbol extends ExprSymbol { }
 export class RcMenuDefinitionSymbol extends ExprSymbol { }
+export class RolloutControlSymbol extends ExprSymbol
+{
+    type?: string;
+    constructor(name?: string, type?: string)
+    {
+        super(name);
+        this.type = type;
+    }
+}
+export class RcControlSymbol extends ExprSymbol
+{
+    type?: string;
+    constructor(name?: string, type?: string)
+    {
+        super(name);
+        this.type = type;
+    }
+}
+// export class ControlDefinition extends BaseSymbol { }
+export class AttributesDefSymbol extends ExprSymbol { }
+export class ParamsDefSymbol extends ExprSymbol { }
+export class ParamDefSymbol extends ExprSymbol { }
 
 export class StructDefinitionSymbol extends ExprSymbol { }
 export class StructMemberSymbol extends ExprSymbol { }
@@ -85,7 +127,7 @@ export class EventHandlerClauseSymbol extends ExprSymbol { }
 export class FnDefinitionSymbol extends ExprSymbol { }
 export class fnArgsSymbol extends ExprSymbol { }
 export class fnParamsSymbol extends ExprSymbol { }
-export class ControlDefinition extends BaseSymbol { }
+// export class fnReturnStatementSymbol extends ScopedSymbol {}
 export class VariableDeclSymbol extends ExprSymbol
 {
     declarationScope?: string;
@@ -95,8 +137,26 @@ export class VariableDeclSymbol extends ExprSymbol
         this.pathIndex = pathIndex;
     }
 }
+// export class caseExpressionSymbol extends ScopedSymbol {}
+// export class tryExpressionSymbol extends ScopedSymbol {}
+// export class whileLoopExpressionSymbol extends ScopedSymbol {}
+// export class doLoopExpressionSymbol extends ScopedSymbol {}
+// export class caseExpressionSymbol extends ScopedSymbol {}
+// export class tryExpressionSymbol extends ScopedSymbol {}
+
+// export class TypecastExprSymbol extends ExprSymbol { }
+// export class UnaryExprSymbol extends ExprSymbol { }
+// export class ExponentExprSymbol extends ExprSymbol { }
+// export class ProductExprSymbol extends ExprSymbol { }
+// export class AdditionExprSymbol extends ExprSymbol { }
+// export class ComparisonExprSymbol extends ExprSymbol { }
+// export class LogicNOTExprSymbol extends ExprSymbol { }
+// export class LogicExprSymbol extends ExprSymbol { }
+
 export class AssignmentExpressionSymbol extends ExprSymbol { }
+// export class forLoopExpressionSymbol extends ScopedSymbol {}
 export class forBodySymbol extends ExprSymbol { }
+// export class loopExitStatementSymbol extends ScopedSymbol {}
 // export class AssignmentSymbol extends ExprSymbol { }
 export class FnCallSymbol extends ExprSymbol { }
 export class ExpSeqSymbol extends ExprSymbol { }
@@ -106,103 +166,86 @@ export class IdentifierSymbol extends BaseSymbol { }
 // export class PathSymbol extends BaseSymbol { }
 
 /*
-export class simpleExpressionSymbol extends ScopedSymbol {}
-export class assignmentOpExpressionSymbol extends ScopedSymbol {}
-export class whileLoopExpressionSymbol extends ScopedSymbol {}
-export class doLoopExpressionSymbol extends ScopedSymbol {}
-export class forLoopExpressionSymbol extends ScopedSymbol {}
-export class loopExitStatementSymbol extends ScopedSymbol {}
-export class caseExpressionSymbol extends ScopedSymbol {}
-export class tryExpressionSymbol extends ScopedSymbol {}
-export class fnReturnStatementSymbol extends ScopedSymbol {}
-
-export class contextExpressionSymbol extends ScopedSymbol {}
-
-export class attributesDefinitionSymbol extends ScopedSymbol {}
-
-export class whenStatementSymbol extends ScopedSymbol {}
-
-rolloutControl, rcmenuControl
-export class controlSymbol extends ExprSymbol {}
-rolloutGroup
+whenStatement
+when_predicate
 
 
-eventHandlerClause
+export class contextExpressionSymbol extends ExprSymbol {}
+contextExpression
+ctx_cascading
+ctx_set
+ctx_predicate
+ctx_keyword
 
-paramsDefinition
 
-TypecastExpr
-
-ExprOperandSymbol
+export class whenStatementSymbol extends ExprSymbol {}
 
 deRefSymbol
 
 OperandExprSymbol
+
 accessorSymbol
 
-export class BooleanSymbol extends BaseSymbol {}
-export class StringSymbol extends BaseSymbol {}
-export class PathSymbol extends BaseSymbol {}
-export class NameSymbol extends BaseSymbol {}
-export class NumberSymbol extends BaseSymbol {}
-export class TimeSymbol extends BaseSymbol {}
-export class QuestionMarkSymbol extends BaseSymbol {}
-
-export class arraySymbol extends ExprSymbol {}
-export class bitArraySymbol extends ExprSymbol {}
-export class point3Symbol extends ExprSymbol {}
-export class point2Symbol extends ExprSymbol {}
-export class box2Symbol extends ExprSymbol {}
 */
 
+// export class BooleanSymbol extends BaseSymbol {}
+// export class StringSymbol extends BaseSymbol {}
+// export class PathSymbol extends BaseSymbol {}
+// export class NameSymbol extends BaseSymbol {}
+// export class NumberSymbol extends BaseSymbol {}
+// export class TimeSymbol extends BaseSymbol {}
+// export class QuestionMarkSymbol extends BaseSymbol {}
 
-interface IScopeComparer
-{
-    commonPath: BaseSymbol[];
-    subPathA: BaseSymbol[];
-    subPathB: BaseSymbol[];
-}
+// export class arraySymbol extends ExprSymbol {}
+// export class bitArraySymbol extends ExprSymbol {}
+// export class point3Symbol extends ExprSymbol {}
+// export class point2Symbol extends ExprSymbol {}
+// export class box2Symbol extends ExprSymbol {}
 
-interface IDefinitionResult
-{
-    definition: BaseSymbol | undefined;
-    results: BaseSymbol[];
-    candidates: BaseSymbol[];
-}
 
-export class SymbolSupport
-{
-    public static symbolToKindMap: Map<new () => BaseSymbol, SymbolKind> = new Map([
-        [StructDefinitionSymbol, SymbolKind.Struct],
-        [StructMemberSymbol, SymbolKind.Identifier],
-        [EventHandlerClauseSymbol, SymbolKind.Event],
-        //...
-        [FnDefinitionSymbol, SymbolKind.Function],
-        [VariableDeclSymbol, SymbolKind.Declaration],
-        [AssignmentExpressionSymbol, SymbolKind.Identifier],
-        [IdentifierSymbol, SymbolKind.Identifier],
-    ]);
+/* export const symbolToKindMap: Map<new () => BaseSymbol, SymbolKind> = new Map([
+    [PluginDefinitionSymbol, SymbolKind.Plugin],
+    [MacroScriptDefinitionSymbol, SymbolKind.MacroScript],
+    [AttributesDefSymbol, SymbolKind.Attributes],
+    [ToolDefinitionSymbol, SymbolKind.Tool],
+    [UtilityDefinitionSymbol, SymbolKind.Rollout],
+    [RolloutDefinitionSymbol, SymbolKind.Rollout],
+    [StructDefinitionSymbol, SymbolKind.Struct],
+    [StructMemberSymbol, SymbolKind.Identifier],
+    [EventHandlerClauseSymbol, SymbolKind.Event],
+    //...
+    [FnDefinitionSymbol, SymbolKind.Function],
+    [VariableDeclSymbol, SymbolKind.Declaration],
+    [AssignmentExpressionSymbol, SymbolKind.Identifier],
+    [IdentifierSymbol, SymbolKind.Identifier],
+]); */
 
-    public static topLevelSymbolsType: Array<new () => BaseSymbol> = new Array(
-        StructDefinitionSymbol,
-        StructMemberSymbol,
-        FnDefinitionSymbol,
-        VariableDeclSymbol,
-        ExpSeqSymbol,
-        //...
-    )
+export const topLevelSymbolsType: Array<new () => BaseSymbol> = new Array(
 
-    public static declRules: Set<number> = new Set([
-        mxsParser.RULE_pluginDefinition,
-        mxsParser.RULE_macroscriptDefinition,
-        mxsParser.RULE_utilityDefinition,
-        mxsParser.RULE_rolloutDefinition,
-        //...
-        mxsParser.RULE_structDefinition,
-        mxsParser.RULE_fnDefinition,
-        mxsParser.RULE_variableDeclaration,
-    ]);
-}
+    PluginDefinitionSymbol,
+    MacroScriptDefinitionSymbol,
+    AttributesDefSymbol,
+    ToolDefinitionSymbol,
+    UtilityDefinitionSymbol,
+    RolloutDefinitionSymbol,
+    StructDefinitionSymbol,
+    StructMemberSymbol,
+    FnDefinitionSymbol,
+    VariableDeclSymbol,
+    ExpSeqSymbol
+);
+
+export const declRules: Set<number> = new Set([
+    mxsParser.RULE_pluginDefinition,
+    mxsParser.RULE_attributesDefinition,
+    mxsParser.RULE_macroscriptDefinition,
+    mxsParser.RULE_utilityDefinition,
+    mxsParser.RULE_rolloutDefinition,
+    //...
+    mxsParser.RULE_structDefinition,
+    mxsParser.RULE_fnDefinition,
+    mxsParser.RULE_variableDeclaration,
+]);
 
 export class ContextSymbolTable extends SymbolTable
 {
@@ -247,7 +290,7 @@ export class ContextSymbolTable extends SymbolTable
     //--------------------------------------------------------------------------
     private static isType(symbol: any): symbol is BaseSymbol | ExprSymbol
     {
-        return SymbolSupport.topLevelSymbolsType.some(t => symbol instanceof t);
+        return topLevelSymbolsType.some(t => symbol instanceof t);
     }
 
     /**
@@ -430,7 +473,7 @@ export class ContextSymbolTable extends SymbolTable
 
     public symbolInfoTopLevel(localOnly: boolean): ISymbolInfo[]
     {
-        return (SymbolSupport.topLevelSymbolsType.map(t =>
+        return (topLevelSymbolsType.map(t =>
             this.symbolInfoOfType(t as typeof ExprSymbol, localOnly)).flat());
     }
 
@@ -692,7 +735,7 @@ export class ContextSymbolTable extends SymbolTable
                         if (node.parent && node.parent.context) {
                             const parentRule = node.parent.context as ParserRuleContext;
 
-                            if (SymbolSupport.declRules.has(parentRule.ruleIndex)) {
+                            if (declRules.has(parentRule.ruleIndex)) {
                                 // console.log('we are at the defintion, just return now');
                                 result.push(node);
                                 return node.parent;
@@ -857,7 +900,7 @@ export class ContextSymbolTable extends SymbolTable
                             const rule = (ctx as ParserRuleContext).ruleIndex;
                             // console.log(`${rule} ---> ${SymbolSupport.declRules.has(rule)}`);
                             // results.add(child);
-                            if (SymbolSupport.declRules.has(rule)) {
+                            if (declRules.has(rule)) {
                                 // definition here, stop! 
                                 // console.log(child);
                                 // console.log('stop now!');

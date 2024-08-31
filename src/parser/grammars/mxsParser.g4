@@ -51,7 +51,7 @@ expr
 	;
 //-------------------------------------- MACROSCRIPT_DEF
 macroscriptDefinition
-	: MacroScript NL* identifier ( NL* param )* NL*
+	: MacroScript NL* macro_name = identifier ( NL* param )* NL*
     lp
         (macroscript_clause (NL* macroscript_clause)*)?
     rp
@@ -62,7 +62,7 @@ macroscript_clause: expr | eventHandlerClause
 
 //-------------------------------------- UTILITY_DEF
 utilityDefinition
-	: Utility NL* identifier NL* operand (NL* param)* NL*
+	: Utility NL* utility_name = identifier NL* operand (NL* param)* NL*
     lp
         ( rollout_clause (NL* rollout_clause)* )?
     rp
@@ -70,7 +70,7 @@ utilityDefinition
 
 //-------------------------------------- ROLLOUT_DEF
 rolloutDefinition
-	: Rollout NL* identifier NL* operand (NL* param)* NL*
+	: Rollout NL* rollout_name = identifier NL* operand (NL* param)* NL*
     lp
         ( rollout_clause (NL* rollout_clause)* )?
     rp
@@ -88,7 +88,7 @@ rollout_clause
 	;
 
 rolloutGroup
-	: Group NL* STRING? NL*
+	: Group NL* group_name = STRING? NL*
     lp
         ( rolloutControl (NL* rolloutControl)* )?
     rp
@@ -128,7 +128,7 @@ rolloutControlType
 	;
 //-------------------------------------- TOOL_DEF
 toolDefinition
-	: Tool NL* identifier (NL* param)* NL*
+	: Tool NL* tool_name = identifier (NL* param)* NL*
     lp
         tool_clause (NL* tool_clause)+
     rp
@@ -139,11 +139,11 @@ tool_clause: declarationExpression | fnDefinition | structDefinition | eventHand
 
 //-------------------------------------- RCMENU_DEF
 rcmenuDefinition
-	: RCmenu NL* identifier NL* lp (rc_clause (NL* rc_clause)*)? rp
+	: RCmenu NL* rc_name = identifier NL* lp (rc_clause (NL* rc_clause)*)? rp
 	;
 
 rc_submenu
-	: SubMenu NL* STRING (NL* param)* NL*
+	: SubMenu NL* submenu_name = STRING (NL* param)* NL*
     lp
         ( rc_clause (NL* rc_clause)* )?
     rp
@@ -165,7 +165,7 @@ rcmenuControl
 
 //-------------------------------------- PLUGIN_DEF
 pluginDefinition
-	: Plugin NL* identifier NL* identifier (NL* param)* NL*
+	: Plugin NL* plugin_name = identifier NL* identifier (NL* param)* NL*
     lp
         plugin_clause (NL* plugin_clause)*
     rp
