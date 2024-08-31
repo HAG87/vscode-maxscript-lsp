@@ -1,4 +1,5 @@
-import { BaseSymbol, ISymbolTableOptions, SymbolTable, SymbolConstructor, IScopedSymbol, ScopedSymbol } from "antlr4-c3";
+import { BaseSymbol, ISymbolTableOptions, SymbolTable, SymbolConstructor,
+    IScopedSymbol, ScopedSymbol } from "antlr4-c3";
 import { ParserRuleContext, ParseTree, TerminalNode } from "antlr4ng";
 import { SourceContext } from "./SourceContext.js";
 import { ISymbolInfo } from "../types.js";
@@ -127,7 +128,7 @@ export class EventHandlerClauseSymbol extends ExprSymbol { }
 export class FnDefinitionSymbol extends ExprSymbol { }
 export class fnArgsSymbol extends ExprSymbol { }
 export class fnParamsSymbol extends ExprSymbol { }
-// export class fnReturnStatementSymbol extends ScopedSymbol {}
+// export class fnReturnStatementSymbol extends ScopedSymbol { }
 export class VariableDeclSymbol extends ExprSymbol
 {
     declarationScope?: string;
@@ -137,12 +138,15 @@ export class VariableDeclSymbol extends ExprSymbol
         this.pathIndex = pathIndex;
     }
 }
-// export class caseExpressionSymbol extends ScopedSymbol {}
-// export class tryExpressionSymbol extends ScopedSymbol {}
-// export class whileLoopExpressionSymbol extends ScopedSymbol {}
-// export class doLoopExpressionSymbol extends ScopedSymbol {}
-// export class caseExpressionSymbol extends ScopedSymbol {}
-// export class tryExpressionSymbol extends ScopedSymbol {}
+// export class whenStatementSymbol extends ExprSymbol { }
+// export class contextExpressionSymbol extends ExprSymbol { }
+
+// export class caseExpressionSymbol extends ScopedSymbol { }
+// export class tryExpressionSymbol extends ScopedSymbol { }
+// export class whileLoopExpressionSymbol extends ScopedSymbol { }
+// export class doLoopExpressionSymbol extends ScopedSymbol { }
+// export class caseExpressionSymbol extends ScopedSymbol { }
+// export class tryExpressionSymbol extends ScopedSymbol { }
 
 // export class TypecastExprSymbol extends ExprSymbol { }
 // export class UnaryExprSymbol extends ExprSymbol { }
@@ -154,71 +158,32 @@ export class VariableDeclSymbol extends ExprSymbol
 // export class LogicExprSymbol extends ExprSymbol { }
 
 export class AssignmentExpressionSymbol extends ExprSymbol { }
-// export class forLoopExpressionSymbol extends ScopedSymbol {}
+// export class forLoopExpressionSymbol extends ScopedSymbol { }
 export class forBodySymbol extends ExprSymbol { }
-// export class loopExitStatementSymbol extends ScopedSymbol {}
+// export class loopExitStatementSymbol extends ScopedSymbol { }
 // export class AssignmentSymbol extends ExprSymbol { }
 export class FnCallSymbol extends ExprSymbol { }
 export class ExpSeqSymbol extends ExprSymbol { }
 export class ParamSymbol extends ExprSymbol { }
+// export class IndexAccessSymbol extends ExprSymbol { }
+// export class propertyAccessSymbol extends BaseSymbol { }
 // export class refSymbol extends ExprSymbol { }
 export class IdentifierSymbol extends BaseSymbol { }
 // export class PathSymbol extends BaseSymbol { }
 
-/*
-whenStatement
-when_predicate
+// export class BooleanSymbol extends BaseSymbol { }
+// export class StringSymbol extends BaseSymbol { }
+// export class PathSymbol extends BaseSymbol { }
+// export class NameSymbol extends BaseSymbol { }
+// export class NumberSymbol extends BaseSymbol { }
+// export class TimeSymbol extends BaseSymbol { }
+// export class QuestionMarkSymbol extends BaseSymbol { }
 
-
-export class contextExpressionSymbol extends ExprSymbol {}
-contextExpression
-ctx_cascading
-ctx_set
-ctx_predicate
-ctx_keyword
-
-
-export class whenStatementSymbol extends ExprSymbol {}
-
-deRefSymbol
-
-OperandExprSymbol
-
-accessorSymbol
-
-*/
-
-// export class BooleanSymbol extends BaseSymbol {}
-// export class StringSymbol extends BaseSymbol {}
-// export class PathSymbol extends BaseSymbol {}
-// export class NameSymbol extends BaseSymbol {}
-// export class NumberSymbol extends BaseSymbol {}
-// export class TimeSymbol extends BaseSymbol {}
-// export class QuestionMarkSymbol extends BaseSymbol {}
-
-// export class arraySymbol extends ExprSymbol {}
-// export class bitArraySymbol extends ExprSymbol {}
-// export class point3Symbol extends ExprSymbol {}
-// export class point2Symbol extends ExprSymbol {}
-// export class box2Symbol extends ExprSymbol {}
-
-
-/* export const symbolToKindMap: Map<new () => BaseSymbol, SymbolKind> = new Map([
-    [PluginDefinitionSymbol, SymbolKind.Plugin],
-    [MacroScriptDefinitionSymbol, SymbolKind.MacroScript],
-    [AttributesDefSymbol, SymbolKind.Attributes],
-    [ToolDefinitionSymbol, SymbolKind.Tool],
-    [UtilityDefinitionSymbol, SymbolKind.Rollout],
-    [RolloutDefinitionSymbol, SymbolKind.Rollout],
-    [StructDefinitionSymbol, SymbolKind.Struct],
-    [StructMemberSymbol, SymbolKind.Identifier],
-    [EventHandlerClauseSymbol, SymbolKind.Event],
-    //...
-    [FnDefinitionSymbol, SymbolKind.Function],
-    [VariableDeclSymbol, SymbolKind.Declaration],
-    [AssignmentExpressionSymbol, SymbolKind.Identifier],
-    [IdentifierSymbol, SymbolKind.Identifier],
-]); */
+// export class arraySymbol extends ExprSymbol { }
+// export class bitArraySymbol extends ExprSymbol { }
+// export class point3Symbol extends ExprSymbol { }
+// export class point2Symbol extends ExprSymbol { }
+// export class box2Symbol extends ExprSymbol { }
 
 export const topLevelSymbolsType: Array<new () => BaseSymbol> = new Array(
 

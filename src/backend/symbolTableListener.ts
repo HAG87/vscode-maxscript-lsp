@@ -40,6 +40,8 @@ import
     ToolDefinitionContext,
     UtilityDefinitionContext,
     VariableDeclarationContext,
+    // WhenStatementContext,
+    // IndexContext
 } from "../parser/mxsParser.js";
 import
 {
@@ -171,7 +173,6 @@ export class symbolTableListener extends mxsParserListener
     }
     // */
     // Plugin
-    // /*
     public override enterPluginDefinition = (ctx: PluginDefinitionContext): void =>
     {
         this.pushScope(
@@ -305,6 +306,13 @@ export class symbolTableListener extends mxsParserListener
         this.pushNewSymbol(ParamsDefSymbol, ctx, ctx.identifier().getText())
     }
     public override exitParamDefinition = (ctx: ParamDefinitionContext): void => { this.popSymbol(); }
+    // when statement
+    /*
+    public override enterWhenStatement = (ctx: WhenStatementContext): void =>
+    {
+        this.pushNewSymbol(whenStatementSymbol, ctx)
+    }
+    public override exitWhenStatement = (ctx: WhenStatementContext): void => { this.popSymbol(); }
     // */
     // struct definition
     public override enterStructDefinition = (ctx: StructDefinitionContext): void =>
