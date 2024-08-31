@@ -276,6 +276,7 @@ class codeBlock
 				const prev = i > 0 ? node.vals[i - 1] : null;
 				//----------------------------
 				if (item instanceof codeToken) {
+
 					// track indent
 					item.indent = node.indent;
 
@@ -292,12 +293,15 @@ class codeBlock
 					// const inner = val.parse(options);
 					//----------------------------------
 					if (!item.isEmpty()) {
+
 						// block start
 						// look for invalid positions
 						if (
-							!result[result.length - 1].check(codeTypes.SHARP) &&
-							!result[result.length - 1].check(codeTypes.LINE_BREAK)
+							result[result.length - 1] &&
+							!result[result.length - 1]?.check(codeTypes.SHARP) &&
+							!result[result.length - 1]?.check(codeTypes.LINE_BREAK)
 						) {
+
 							if (hasLinebreaks && options.codeblock.parensInNewLine) {
 								result.push(
 									new codeToken(options.newLineChar, codeTypes.LINE_BREAK, result[result.length - 1].pos),
@@ -312,13 +316,12 @@ class codeBlock
 								);
 							}
 						}
-
 						// wrap the content
-						if (item.start && item.end) {
+						if (item.start && item.end && inner[inner.length - 1]) {
 							// start paren
 							//----------------------------------
 							result.push(item.start);
-							//----------------------------------
+							//----------------------------------						
 							if (hasLinebreaks || (item.canBeMultiline() && options.codeblock.newlineAllways)) {
 								// before inner
 								if (!item.startsWithNL()) {
@@ -357,7 +360,7 @@ class codeBlock
 					// block end
 					// look for invalid positions
 					// add ending newlines and indent only when the block is followed by a token,
-					// blockNodes siblings will be addressed on the blockNode start
+					// blockNodes siblings will be addressed on the blockNode start				
 					if (
 						next instanceof codeToken &&
 						!next.check(codeTypes.LINE_BREAK) &&
@@ -376,6 +379,7 @@ class codeBlock
 				}
 			}
 			//-----------------------------------------------------
+			// console.log(result);
 			return result;
 		}
 		//---------------------------------------------------------
@@ -388,7 +392,7 @@ class codeBlock
 	{
 		let result = this.parse(options)
 
-		if (start && stop && start < stop) {			
+		if (start && stop && start < stop) {
 			// rectify positions
 			const startIndex = result.findIndex(item => item.pos >= start);
 			const stopPos = result.slice().reverse().find(item => item.pos <= stop);
@@ -453,7 +457,6 @@ class codeBlock
 			}
 			// */
 		}
-
 		return result.reduce((acc: string, curr: codeToken) => { return acc += curr.val; }, '');
 	}
 }
@@ -871,8 +874,8 @@ export class mxsSimpleFormatter
 		const codeTree = this.formattingTree(activeTokens);
 		// derive the code TODO: limit range
 		const code: string = codeTree.toString(this.options, start, stop);
-		console.log('---------------------------');
-		console.log(JSON.stringify(code));
+		// console.log('---------------------------');
+		// console.log(JSON.stringify(code));
 		// new offset
 		/*
 		const startPos = activeTokens[0].start;
@@ -892,11 +895,11 @@ export class mxsSimpleFormatter
 		const codeTree = this.formattingTree(activeTokens);
 		// derive the code TODO: limit range
 		const code: string = codeTree.toString(this.options);
+		// console.log(JSON.stringify(code));
 		// new offset
 		const startPos = activeTokens[0].start;
 		const stopPos = activeTokens[activeTokens.length - 1].stop;
 		// const offset = startPos + (code.length - 1);
-
 		return { code, start: startPos, stop: stopPos };
 	}
 }

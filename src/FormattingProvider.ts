@@ -24,6 +24,7 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
     provideDocumentRangeFormattingEdits(document: TextDocument, range: Range,
         _options: FormattingOptions, _token: CancellationToken): ProviderResult<TextEdit[]>
     {
+        // /*
         return new Promise<TextEdit[]>((resolve) =>
         {
             const { code, start, stop } =
@@ -38,6 +39,20 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
             );
             resolve([TextEdit.replace(resultRange, code)]);
         });
+        // */
+       /*
+        const { code, start, stop } =
+            this.backend.formatCode(
+                document.uri.toString(),
+                Utilities.rangeToLexicalRange(range),
+                this.options
+            );
+        const resultRange = range.with(
+            document.positionAt(start),
+            document.positionAt(stop + 1)
+        );
+        return [TextEdit.replace(resultRange, code)];
+        */
     }
     //FIXME: unreilable method
     provideDocumentRangesFormattingEdits?(document: TextDocument, ranges: Range[],
