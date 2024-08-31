@@ -249,7 +249,8 @@ COMPARE: ('==' | '<' | '>' | '<=' | '>=' | '!=')
 ASSIGN: ('+=' | '-=' | '*=' | '/=')
 	;
 UNARY_MINUS
-		: {!this.noWsOrEqualBefore()}? '-' {this.noWsOrEqualNext()}?
+		: '-' {this.noWsOrEqualNext()}?
+		// : {!this.noWsOrEqualBefore()}? '-' {this.noWsOrEqualNext()}?
 		// : {!this.noWsOrEqualBefore()}? '-' | '-' {this.noWsOrEqualNext()}?
 	;
 MINUS: '-'
