@@ -22,7 +22,7 @@ options {
 
 /*GRAMMAR RULES*/
 
-program: NL* expr (NL+ expr)* NL* EOF
+program: NL* expr (lbk expr)* NL* EOF
 	;
 
 expr
@@ -49,11 +49,12 @@ expr
 	| macroscriptDefinition
 	| pluginDefinition
 	;
+
 //-------------------------------------- MACROSCRIPT_DEF
 macroscriptDefinition
 	: MacroScript NL* macro_name = identifier ( NL* param )* NL*
     lp
-        (macroscript_clause (NL* macroscript_clause)*)?
+        (macroscript_clause (lbk? macroscript_clause)*)?
     rp
 	;
 
@@ -64,7 +65,7 @@ macroscript_clause: expr | eventHandlerClause
 utilityDefinition
 	: Utility NL* utility_name = identifier NL* operand (NL* param)* NL*
     lp
-        ( rollout_clause (NL* rollout_clause)* )?
+        ( rollout_clause (lbk? rollout_clause)* )?
     rp
 	;
 
@@ -72,7 +73,7 @@ utilityDefinition
 rolloutDefinition
 	: Rollout NL* rollout_name = identifier NL* operand (NL* param)* NL*
     lp
-        ( rollout_clause (NL* rollout_clause)* )?
+        ( rollout_clause (lbk? rollout_clause)* )?
     rp
 	;
 
@@ -90,7 +91,7 @@ rollout_clause
 rolloutGroup
 	: Group NL* group_name = STRING? NL*
     lp
-        ( rolloutControl (NL* rolloutControl)* )?
+        ( rolloutControl (lbk? rolloutControl)* )?
     rp
 	;
 
@@ -126,11 +127,12 @@ rolloutControlType
 	| Subrollout
 	| Timer
 	;
+
 //-------------------------------------- TOOL_DEF
 toolDefinition
 	: Tool NL* tool_name = identifier (NL* param)* NL*
     lp
-        tool_clause (NL* tool_clause)+
+        tool_clause (lbk? tool_clause)+
     rp
 	;
 
@@ -145,7 +147,7 @@ rcmenuDefinition
 rc_submenu
 	: SubMenu NL* submenu_name = STRING (NL* param)* NL*
     lp
-        ( rc_clause (NL* rc_clause)* )?
+        ( rc_clause (lbk? rc_clause)* )?
     rp
 	;
 
@@ -167,7 +169,7 @@ rcmenuControl
 pluginDefinition
 	: Plugin NL* plugin_name = identifier NL* identifier (NL* param)* NL*
     lp
-        plugin_clause (NL* plugin_clause)*
+        plugin_clause (lbk? plugin_clause)*
     rp
 	;
 
@@ -194,50 +196,6 @@ when_predicate
 	;
 
 //-------------------------------------- CONTEXT_EXPR
-/*The full syntax for <context_expr> is:
- 
- <context> { , <context> } <expr>
- where <context> is
- one
- of:
- 
- at level <node>
- at time <time>
- about <center_spec>
- in <node>
- [ in ] coordsys
- <coordsys>
- [ with ] animate <boolean>
- [ with ] undo <boolean>
- [ with ] redraw <boolean>
- [ with
- ] quiet
- <boolean>
- [ with ] redraw <boolean>
- [ with ] printAllElements <boolean>
- [ with ]
- defaultAction
- <action>
- [ with ] MXSCallstackCaptureEnabled <boolean>
- [ with ]
- dontRepeatMessages
- <boolean>
- [
- with ] macroRecorderEmitterEnabled <boolean>
- 
- set <context> 
- Where, <context> is
- one of the
- MAXScript context prefixes: 
- animate,
- time,
- in,
- coordsys,
- about,
- level,
- undo
- */
-
 contextExpression: ctx_cascading | ctx_set
 	;
 
@@ -274,7 +232,7 @@ ctx_keyword
 paramsDefinition
 	: Parameters NL* identifier (NL* param)* NL*
     lp
-        ( param_clause (NL+ param_clause)* )?
+        ( param_clause (lbk param_clause)* )?
     rp
 	;
 
@@ -282,13 +240,14 @@ param_clause: paramDefinition | eventHandlerClause
 	;
 paramDefinition: identifier (NL* param)*
 	;
+
 //-------------------------------------- ATTRIBUTES DEFINITION attributes <name> [version:n]
 // [silentErrors:t/f] [initialRollupState:0xnnnnn] [remap:#(<old_param_names_array>,
 // <new_param_names_array>)]
 attributesDefinition
 	: Attributes NL* identifier (NL* param)* NL*
     lp
-        attributes_clause ( NL+ attributes_clause )*
+        attributes_clause ( lbk attributes_clause )*
     rp
 	;
 
@@ -397,7 +356,7 @@ tryExpression: TRY NL* expr NL* CATCH NL* expr
 
 //---------------------------------------- CASE-EXPR
 caseExpression
-	: CASE NL* expr? NL* OF NL* lp case_item (NL+ case_item)* rp
+	: CASE NL* expr? NL* OF NL* lp case_item (lbk case_item)* rp
 	;
 
 // This will produce errors at compile time...
@@ -408,7 +367,7 @@ case_item: factor COLON NL* expr
  // this is not correct, because if should work for 5:(a), buuuut.....
 case_item
     :{!this.colonBeNext()}? (NUMBER | TIMEVAL) COLON NL* expr;
-    | (NUMBER | TIMEVAL) COLON (NL+ | {!this.noSpaces()}?) expr
+    | (NUMBER | TIMEVAL) COLON (lbk | {!this.noSpaces()}?) expr
     | factor NL* COLON NL* expr
     ;
 
@@ -493,6 +452,7 @@ variableDeclaration: identifier assignment?
 	;
 decl_scope: ( LOCAL | GLOBAL | PERSISTENT NL* GLOBAL)
 	;
+
 //---------------------------------------- ASSIGNMENT EXPRESSION
 assignmentExpression
 	: destination (ASSIGN | EQ) NL* expr
@@ -503,6 +463,7 @@ assignment: EQ NL* expr
 
 destination: accessor | de_ref | identifier | path
 	;
+
 //---------------------------------------- SIMPLE_EXPR
 /*
 simple_expr : logic ;
@@ -654,7 +615,7 @@ factor
 
 //---------------------------------------- EXPR_SEQ <expr_seq> ::= ( <expr> { ( ; | <eol>) <expr> }
 expr_seq
-	: lp (expr (NL+ expr)*)? rp //| LPAREN NL* RPAREN
+	: lp (expr (lbk expr)*)? rp //| LPAREN NL* RPAREN
 	;
 
 //---------------------------------------- TYPES
@@ -714,52 +675,43 @@ bool: (TRUE | FALSE | OFF | ON)
 // identifiers outside the context...
 kw_reserved
 	: rolloutControlType |
-	(
-		  CHANGE
-		| DELETED
-		| Group
-		| LEVEL
-		| MenuItem
-		| Separator
-		| SET
-		| SubMenu
-		| TIME
-		| PrintAllElements
-	)
+	( CHANGE
+	| DELETED
+	| Group
+	| LEVEL
+	| MenuItem
+	| Separator
+	| SET
+	| SubMenu
+	| TIME
+	| PrintAllElements )
 	;
 
 kw_override
-	: (
-		  Attributes
-		| Parameters
-		| Plugin
-		| RCmenu
-		| RETURN
-		| Rollout
-		| Tool
-		| TO
-		| ON
-	)
+	: ( Attributes
+	| Parameters
+	| Plugin
+	| RCmenu
+	| RETURN
+	| Rollout
+	| Tool
+	| TO
+	| ON )
 	;
-
 //---------------------------------------- NEWLINE RESOLVING
+lbk: NL+
+	;
 lp: LPAREN NL*
 	;
-
 rp: NL* RPAREN
 	;
-
 lb: LBRACK NL*
 	;
-
 rb: RBRACK
 	;
-
 lc: LBRACE NL*
 	;
-
 rc: NL* RBRACE
 	;
-
 comma: NL* COMMA NL*
 	;
