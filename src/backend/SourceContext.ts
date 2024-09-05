@@ -1,17 +1,21 @@
-import { BailErrorStrategy, CharStream, CommonTokenStream, DefaultErrorStrategy, ParseCancellationException,
-    ParserRuleContext, ParseTree, ParseTreeWalker, PredictionMode, TerminalNode, Token } from "antlr4ng";
+import
+{
+    BailErrorStrategy, CharStream, CommonTokenStream, DefaultErrorStrategy, ParseCancellationException,
+    ParserRuleContext, ParseTree, ParseTreeWalker, PredictionMode, TerminalNode, Token
+} from "antlr4ng";
 import { BaseSymbol, CodeCompletionCore, SymbolTable } from "antlr4-c3";
 import { mxsLexer } from "../parser/mxsLexer.js";
 import { mxsParser } from "../parser/mxsParser.js";
 import { ContextLexerErrorListener } from "./ContextLexerErrorListener.js";
 import { ContextErrorListener } from "./ContextErrorListener.js";
 import { DiagnosticType, IDefinition, IDiagnosticEntry, ILexicalRange, ISemanticToken, ISymbolInfo, SymbolKind } from "../types.js";
-import {
+import
+{
     AssignmentExpressionSymbol,
     AttributesDefSymbol,
-    ContextSymbolTable, 
-    RolloutControlSymbol, 
-    EventHandlerClauseSymbol, 
+    ContextSymbolTable,
+    RolloutControlSymbol,
+    EventHandlerClauseSymbol,
     ExprSymbol,
     fnArgsSymbol,
     FnDefinitionSymbol,
@@ -21,17 +25,18 @@ import {
     PluginDefinitionSymbol,
     RolloutDefinitionSymbol,
     StructDefinitionSymbol,
-    StructMemberSymbol,   
+    StructMemberSymbol,
     ToolDefinitionSymbol,
     UtilityDefinitionSymbol,
     VariableDeclSymbol,
-    
+
 } from "./ContextSymbolTable.js";
 import { symbolTableListener } from "./symbolTableListener.js";
 import { semanticTokenListener } from "./semanticTokenListener.js";
 import { BackendUtils } from "./BackendUtils.js";
 import { IformatterResult, mxsSimpleFormatter } from "./CodeFormatter.js";
 import { ICodeFormatSettings } from "../settings.js";
+import { mxsParserVisitorFormatter } from "./mxsParserVisitorFormatter.js";
 
 export const symbolToKindMap: Map<new () => BaseSymbol, SymbolKind> = new Map([
     [PluginDefinitionSymbol, SymbolKind.Plugin],
@@ -275,7 +280,7 @@ export class SourceContext
                     row: stop.line,
                     column: stop.column
                 }
-            }
+            };
             // console.log(result.range);  
             const inputStream = ctx.start?.tokenSource?.inputStream;
 
@@ -301,7 +306,7 @@ export class SourceContext
                     row: ctx.symbol!.line,
                     column: ctx.symbol!.column + result.text.length
                 }
-            }
+            };
         }
 
         if (keepQuotes || result.text.length < 2) {
@@ -764,12 +769,12 @@ export class SourceContext
         }
     }
     */
-    
+
     /**
      * Add this context to the list of referencing contexts in the given context.
      *
      * @param context The context to add.
-     */     
+     */
     /*  public addAsReferenceTo(context: SourceContext): void
     {
         // Check for mutual inclusion. References are organized like a mesh.
@@ -818,11 +823,11 @@ export class SourceContext
         return result;
     }
     */
-   
+
     // -------------------------------------------------format code
     // TODO: formatter that uses the parse tree and a visitor
-    public formatCode(range: ILexicalRange, options?: ICodeFormatSettings): IformatterResult
-    public formatCode(range: { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult
+    public formatCode(range: ILexicalRange, options?: ICodeFormatSettings): IformatterResult;
+    public formatCode(range: { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult;
 
     public formatCode(range: ILexicalRange | { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult
     {

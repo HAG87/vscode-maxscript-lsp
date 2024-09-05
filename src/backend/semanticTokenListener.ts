@@ -45,7 +45,6 @@ export class semanticTokenListener extends mxsParserListener
     public override enterProperty = (ctx: PropertyContext): void => { this.symbolStack.push(ctx); }
     public override exitProperty = (ctx: PropertyContext): void => { this.symbolStack.pop(); }
     */
-
     public override exitIdentifier = (ctx: IdentifierContext): void =>
     {
         if (!ctx.start) { return };
@@ -120,7 +119,7 @@ export class semanticTokenListener extends mxsParserListener
                 return;
             }
         }
-            */
+        */
     }
 
     private addToken(line: number, startCharacter: number, length: number, tokenType: string, tokenModifiers: string[]): void
