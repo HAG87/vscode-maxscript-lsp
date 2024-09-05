@@ -853,6 +853,10 @@ export class SourceContext
     public prettyfiCode() { }
 
     // minify
-    public minifyCode() { }
+    public minifyCode(): string | null
+    {
+        const visitor = new mxsParserVisitorFormatter();
+        return visitor.visit(this.tree as ParseTree);
+    }
     //...
 }

@@ -269,7 +269,11 @@ export class mxsBackend
         }
         return this.getContext(uri).formatCode(range, options);
     }
-
+    // minify
+    public minifyCode(uri: string): string | null
+    {
+        return this.getContext(uri).minifyCode()
+    }
     // prettify
-    // minify    
+    
 }

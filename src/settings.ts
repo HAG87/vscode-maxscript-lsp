@@ -29,18 +29,17 @@ export interface ICodeFormatSettings
 
 export interface IPrettifierSettings
 {
+    filePrefix?: string,
     keepComments?: boolean,
     keepEmptyLines?: boolean,
-    indentOnly?: boolean,
     expressionsToBlock: boolean,
-    filePrefix: string,
 }
 
 export interface IMinifierSettings
 {
-    expressionsToBlock: boolean,
+    filePrefix?: string,
+    condenseWhitespace: boolean,
     removeUnnecessaryScopes: boolean,
-    filePrefix: string,
 }
 
 export interface IMaxScriptSettings
@@ -104,6 +103,6 @@ export const defaultSettings: IMaxScriptSettings = {
     minifier: {
         filePrefix: 'min_',
         removeUnnecessaryScopes: true,
-        expressionsToBlock: true,
+        condenseWhitespace: true,
     }
 };

@@ -219,31 +219,10 @@ export class ExtensionHost
                     await commands.executeCommand('vscode.open', uri)
                 }),
             // minify commands
-            commands.registerCommand('mxs.minify.files',
-                async () =>
-                {
-                    window.showOpenDialog({
-                        canSelectMany: true,
-                        filters: {
-                            'MaxScript': ['ms', 'mcr']
-                        }
-                    }).then(
-                        async uris =>
-                        {
-                            if (!uris) { return; }
-
-                            let params: MinifyDocParams = {
-                                command: 'mxs.minify.files',
-                                uri: uris?.map(x => client.code2ProtocolConverter.asUri(x))
-                            };
-                            await client.sendRequest(MinifyDocRequest.type, params);
-                        }
-                    );
-                }),
             commands.registerCommand('mxs.minify',
                 async () =>
                 {
-                    let activeEditorUri = window.activeTextEditor?.document.uri;
+                    const activeEditorUri = window.activeTextEditor?.document.uri;
 
                     if (!activeEditorUri
                         || activeEditorUri.scheme !== 'file'
@@ -251,21 +230,51 @@ export class ExtensionHost
                         await window.showInformationMessage('MaxScript minify: Save your file first.');
                         return;
                     }
-                    let params: MinifyDocParams = {
+                    console.log(this.backend.minifyCode(activeEditorUri.toString()))
+
+                    /*let params: MinifyDocParams = {
                         command: 'mxs.minify',
                         uri: [client.code2ProtocolConverter.asUri(activeEditorUri)]
                     };
-                    await client.sendRequest(MinifyDocRequest.type, params);
+                    await client.sendRequest(MinifyDocRequest.type, params); */
                 }),
             commands.registerCommand('mxs.minify.file',
                 async args =>
                 {
-                    let params: MinifyDocParams = {
+                    // get or create source context!
+
+                    /* let params: MinifyDocParams = {
                         command: 'mxs.minify.file',
                         uri: [client.code2ProtocolConverter.asUri(args)]
                     };
-                    await client.sendRequest(MinifyDocRequest.type, params);
+                    
+                    await client.sendRequest(MinifyDocRequest.type, params); */
                 }),
+            commands.registerCommand('mxs.minify.files', async () =>
+            {
+                window.showOpenDialog({
+                    canSelectMany: true,
+                    filters: {
+                        'MaxScript': ['ms', 'mcr']
+                    }
+                }).then(
+                    async uris =>
+                    {
+                        // get or create source context!
+                        /*
+                            if (!uris) { return; }
+    
+                            let params: MinifyDocParams = {
+                                command: 'mxs.minify.files',
+                                uri: uris?.map(x => client.code2ProtocolConverter.asUri(x))
+                            };
+                            await client.sendRequest(MinifyDocRequest.type, params);
+                            */
+                    }
+                )
+            }),
+            //..
+            /*           
             commands.registerCommand('mxs.prettify',
                 async () =>
                 {
@@ -284,6 +293,6 @@ export class ExtensionHost
                     await client.sendRequest(PrettifyDocRequest.type, params);
                 })
             */
-        );
+        )
     }
 }
