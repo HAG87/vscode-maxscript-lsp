@@ -2,6 +2,10 @@
 
 All notable changes to the "language-maxscript" extension will be documented in this file.
 
+## [1.30.0]
+
+- Several optimizations done to the parser.
+
 ## [1.25.0]
 
 - Added support for new optional variables in for loop (3ds Max 2021)
