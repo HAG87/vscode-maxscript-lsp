@@ -1,14 +1,11 @@
 import
 {
-	Definition,
-	DefinitionLink,
 	Location,
 	LocationLink,
 	Range,
 	Position,
 	SymbolInformation,
 	DocumentSymbol,
-	CancellationToken,
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 //------------------------------------------------------------------------------------------

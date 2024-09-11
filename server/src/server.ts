@@ -20,7 +20,8 @@ import
 	CompletionItem
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import * as Path from 'path';
+import { basename } from 'path';
+import { PathLike } from 'fs';
 import { URI } from 'vscode-uri';
 //------------------------------------------------------------------------------------------
 import { MaxScriptSettings, defaultSettings } from './settings';
@@ -33,17 +34,13 @@ import * as mxsCompletion from './mxsCompletions';
 import { DocumentSymbolProvider, ParserSymbols } from './mxsOutline';
 import * as mxsDefinitions from './mxsDefinitions';
 import { SemanticTokensProvider } from './mxsSemantics';
-import * as mxsMinify from './mxsMin';
 import * as mxsFormatter from './mxsFormatter';
 import * as mxsSimpleFormatter from './mxsSimpleFormatter';
 
 import { DocumentSymbolProviderThreaded } from './mxsOutlineThreaded';
 import * as mxsCompletionThreaded from './mxsCompletionsThreaded';
-import * as mxsMinifyThreaded from './mxsMinThreaded';
 import * as mxsFormatterThreaded from './mxsFormatterThreaded';
-import { PathLike } from 'fs';
 import { MinifyDocRequest, PrettifyDocRequest } from './mxsCommands';
-
 //------------------------------------------------------------------------------------------
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -79,16 +76,22 @@ function diagnoseDocument(uri: string, diagnose: Diagnostic[])
 	});
 }
 /*
-function shallowComparison(obj1: any, obj2: any): boolean
-{
-	return Object.keys(obj1).length === Object.keys(obj2).length &&
-		(Object.keys(obj1) as (keyof typeof obj1)[]).every((key) =>
-		{
-			return (
-				Object.prototype.hasOwnProperty.call(obj2, key) && obj1[key] === obj2[key]
-			);
-		});
-}
+connection.languages.diagnostics.on(async (params) => {
+	const document = documents.get(params.textDocument.uri);
+	if (document !== undefined) {
+		return {
+			kind: DocumentDiagnosticReportKind.Full,
+			items: await validateTextDocument(document)
+		} satisfies DocumentDiagnosticReport;
+	} else {
+		// We don't know the document. We can either try to read it from disk
+		// or we don't report problems for it.
+		return {
+			kind: DocumentDiagnosticReportKind.Full,
+			items: []
+		} satisfies DocumentDiagnosticReport;
+	}
+});
 */
 //------------------------------------------------------------------------------------------
 /* Initialize the server */
@@ -298,8 +301,8 @@ connection.onDocumentSymbol((params, token) =>
 				threading = result.parser.multiThreading;
 			});
 
-		// mxsDocumentSymbols = !threading ? new DocumentSymbolProvider() : new DocumentSymbolProviderThreaded() ;
-		mxsDocumentSymbols = new DocumentSymbolProviderThreaded();
+		mxsDocumentSymbols = !threading ? new DocumentSymbolProvider() : new DocumentSymbolProviderThreaded();
+		// mxsDocumentSymbols = new DocumentSymbolProviderThreaded();
 		//----------------------------------------------
 		// mxsDocumentSymbols = new DocumentSymbolProvider();
 		//----------------------------------------------
@@ -323,7 +326,7 @@ connection.onDocumentSymbol((params, token) =>
 					threading
 						? mxsCompletionThreaded.CodeCompletionItems(JSON.parse(result.cst))
 						: mxsCompletion.CodeCompletionItems(JSON.parse(result.cst));
-						
+
 				completionItemsCache.then((result: CompletionItem[]) =>
 				// */
 				// mxsCompletion.CodeCompletionItems(JSON.parse(result.cst)).then((result: CompletionItem[]) =>
@@ -359,32 +362,33 @@ connection.onCompletion(async (params, token) =>
 	if (!(await getDocumentSettings(params.textDocument.uri)).Completions) { return []; }
 
 	// settings
-	let Completions = (await getDocumentSettings(params.textDocument.uri)).Completions ?? defaultSettings.Completions;
+	const CompletionOptions = (await getDocumentSettings(params.textDocument.uri)).Completions ?? defaultSettings.Completions;
 
-	let CompletionItems = new Set<CompletionItem>();
+	const CompletionItems = new Set<CompletionItem>();
 
 	// database completions
-	if (Completions.dataBaseCompletion) {
+	if (CompletionOptions.dataBaseCompletion) {
 		mxsCompletion.CompletionItems(
 			documents.get(params.textDocument.uri)!,
 			params.position
 		).forEach((item) => CompletionItems.add(item));
 	}
-	
+
 	// document symbols completion
-	if (Completions.Definitions) {
+	if (CompletionOptions.Definitions) {
 		mxsCompletion.InDocumentCompletionItems(<DocumentSymbol[]>currentDocumentSymbols.get(params.textDocument.uri))
-		.forEach((item) => CompletionItems.add(item));
+			.forEach((item) => CompletionItems.add(item));
 	}
 	// document parse tree completion
-	if (Completions.Identifiers) {
+	if (CompletionOptions.Identifiers) {
 		if (currentDocumentParseTree.has(params.textDocument.uri)) {
 			[...currentDocumentParseTree.get(params.textDocument.uri)]
-			.forEach((item :CompletionItem) => CompletionItems.add(item));
+				.forEach((item: CompletionItem) => CompletionItems.add(item));
 		}
 	}
 
-	const arr = Array.from(CompletionItems).filter((obj, pos, arr) => {
+	const arr = Array.from(CompletionItems).filter((obj, pos, arr) =>
+	{
 		return arr.map(mapObj => mapObj["label"]).indexOf(obj["label"]) === pos
 	})
 	return arr;
@@ -442,7 +446,7 @@ async function minifyDocuments(uris: string[], prefix: string, formatter: Functi
 	let path: string,
 		newPath: PathLike,
 		document: string;
-	
+
 	for (let i = 0; i < uris.length; i++) {
 		path = URI.parse(uris[i]).fsPath;
 		newPath = prefixFile(path, prefix);
@@ -450,7 +454,7 @@ async function minifyDocuments(uris: string[], prefix: string, formatter: Functi
 		//console.log(doc);
 		if (!document) {
 			connection.window.showWarningMessage(
-				`MaxScript minify: Failed at ${Path.basename(path)}. Reason: Can't read the file`
+				`MaxScript minify: Failed at ${basename(path)}. Reason: Can't read the file`
 			);
 			continue;
 		}
@@ -458,11 +462,11 @@ async function minifyDocuments(uris: string[], prefix: string, formatter: Functi
 			await formatter(document, newPath, settings);
 
 			connection.window.showInformationMessage(
-				`MaxScript minify: Document saved as ${Path.basename(newPath)}`
+				`MaxScript minify: Document saved as ${basename(newPath)}`
 			);
 		} catch (e: any) {
 			connection.window.showErrorMessage(
-				`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${e.message}`
+				`MaxScript minify: Failed at ${basename(path)}. Reason: ${e.message}`
 			);
 		}
 	}
@@ -471,7 +475,7 @@ async function minifyDocuments(uris: string[], prefix: string, formatter: Functi
 async function minifyFiles(uris: string[], prefix: string, formatter: Function, settings: any)
 {
 	let path: string,
-	newPath: string;
+		newPath: string;
 
 	for (let i = 0; i < uris.length; i++) {
 		path = URI.parse(uris[i]).fsPath;
@@ -481,11 +485,11 @@ async function minifyFiles(uris: string[], prefix: string, formatter: Function, 
 			await formatter(path, newPath, settings);
 
 			connection.window.showInformationMessage(
-				`MaxScript minify: Document saved as ${Path.basename(newPath)}`
+				`MaxScript minify: Document saved as ${basename(newPath)}`
 			);
 		} catch (e: any) {
 			connection.window.showErrorMessage(
-				`MaxScript minify: Failed at ${Path.basename(path)}. Reason: ${e.message}`
+				`MaxScript minify: Failed at ${basename(path)}. Reason: ${e.message}`
 			);
 		}
 	}
@@ -496,21 +500,14 @@ connection.onRequest(MinifyDocRequest.type, async params =>
 	let settings = await getDocumentSettings(params.uri[0]) ?? defaultSettings;
 	switch (params.command) {
 		case 'mxs.minify':
-			// /*
 			settings.parser.multiThreading
-			? await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsMinifyThreaded.MinifyDoc, mxsMinify.minifyOptions)
-			: await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsMinify.MinifyDoc, mxsMinify.minifyOptions);
-			// */
-			// await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsMinifyThreaded.MinifyDoc, mxsMinify.minifyOptions);
-
+				? await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatterThreaded.MinifyDoc, mxsFormatter.minifyOptions)
+				: await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.MinifyDoc, mxsFormatter.minifyOptions);
 			break;
 		case 'mxs.minify.file':
-			// /*
 			settings.parser.multiThreading
-			? await minifyFiles(params.uri, settings.MinifyFilePrefix, mxsMinifyThreaded.MinifyFile, mxsMinify.minifyOptions)
-			: await minifyFiles(params.uri, settings.MinifyFilePrefix, mxsMinify.MinifyFile, mxsMinify.minifyOptions);
-			// */
-			// await minifyDocuments(params.uri, settings.MinifyFilePrefix, mxsFormatter.FormatFile, mxsMinify.minifyOptions);
+				? await minifyFiles(params.uri, settings.MinifyFilePrefix, mxsFormatterThreaded.MinifyFile, mxsFormatter.minifyOptions)
+				: await minifyFiles(params.uri, settings.MinifyFilePrefix, mxsFormatter.MinifyFile, mxsFormatter.minifyOptions);
 	}
 	return [];
 });
@@ -530,31 +527,31 @@ connection.onRequest(PrettifyDocRequest.type, async params =>
 		let doc = documents.get(uri);
 		if (!doc) {
 			connection.window.showWarningMessage(
-				`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: Can't read the file`
+				`MaxScript prettifier: Failed at ${basename(path)}. Reason: Can't read the file`
 			);
 			return;
 		}
 		try {
 			let formattedData =
 				settings.parser.multiThreading
-				? await mxsFormatterThreaded.FormatData(doc.getText(), settings.prettifier)
-				: mxsFormatter.FormatData(doc.getText(), settings.prettifier);
-				// mxsFormatter.FormatData(doc.getText(), settings.prettifier);
+					? await mxsFormatterThreaded.FormatData(doc.getText(), settings.prettifier)
+					: mxsFormatter.FormatData(doc.getText(), settings.prettifier);
+			// mxsFormatter.FormatData(doc.getText(), settings.prettifier);
 
 			let reply = await replaceText.call(connection, doc, formattedData)
 			if (reply.applied) {
 				connection.window.showInformationMessage(
-					`MaxScript prettifier sucess: ${Path.basename(path)}`
+					`MaxScript prettifier sucess: ${basename(path)}`
 				);
 			}
 			if (reply.failedChange) {
 				connection.window.showWarningMessage(
-					`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: ${reply.failureReason}`
+					`MaxScript prettifier: Failed at ${basename(path)}. Reason: ${reply.failureReason}`
 				);
 			}
 		} catch (e: any) {
 			connection.window.showErrorMessage(
-				`MaxScript prettifier: Failed at ${Path.basename(path)}. Reason: ${e.message}`
+				`MaxScript prettifier: Failed at ${basename(path)}. Reason: ${e.message}`
 			);
 		}
 	});

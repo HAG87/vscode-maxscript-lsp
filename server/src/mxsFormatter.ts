@@ -51,3 +51,27 @@ export async function FormatFile(src: PathLike, dest: PathLike, settings?: Parti
 		FormatData((await readFile(src)).toString(), settings)
 	);
 }
+//--------------------------------------------------------------------------------
+export const minifyOptions: Partial<reflowOptions> = {
+	indent: '',
+	linebreak: ';',
+	spacer: '',
+	codeblock: {
+		newlineAtParens: false,
+		spaced: false,
+		newlineAllways: false,
+	},
+	elements: { useLineBreaks: false },
+	statements: { optionalWhitespace: true },
+};
+//--------------------------------------------------------------------------------
+/** Minify and save document */
+export async function MinifyDoc(data: unknown[] | string, dest: PathLike)
+{
+	await FormatDoc(data, dest, minifyOptions);
+}
+/** Open, minify and save document */
+export async function MinifyFile(src: PathLike, dest: PathLike)
+{
+	await FormatFile(src, dest, minifyOptions);
+}

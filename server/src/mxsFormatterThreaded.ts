@@ -1,8 +1,9 @@
 import { spawn, Thread, Worker } from 'threads';
+import { PathLike } from 'fs';
 import { readFile, writeFile } from 'fs/promises';
 //--------------------------------------------------------------------------------
 import { reflowOptions } from './backend/mxsReflow';
-import { PathLike } from 'fs';
+import { minifyOptions } from './mxsFormatter';
 //@ts-ignore
 // import workerURL from 'threads-plugin/dist/loader?name=reflow.worker!./workers/reflow.worker.ts';
 //--------------------------------------------------------------------------------
@@ -44,4 +45,15 @@ export async function FormatFile(src: PathLike, dest: PathLike, settings?: Parti
 		dest,
 		await FormatData((await readFile(src)).toString(), settings)
 	);
+}
+//--------------------------------------------------------------------------------
+/** Minify and save document - threaded */
+export async function MinifyDoc(data: unknown[] | string, dest: PathLike)
+{
+	await FormatDoc(data, dest, minifyOptions);
+}
+/** Open, minify and save document - threaded */
+export async function MinifyFile(src: PathLike, dest: PathLike)
+{
+	await FormatFile(src, dest, minifyOptions);
 }

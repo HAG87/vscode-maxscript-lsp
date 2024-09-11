@@ -2,7 +2,8 @@ import
 {
 	SemanticTokensBuilder,
 	SemanticTokensLegend,
-	SemanticTokensClientCapabilities
+	SemanticTokensClientCapabilities,
+	SemanticTokens
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 //-------------------------------------------------------------------------------------------------------------
@@ -11,7 +12,8 @@ import maxAPI from './schema/mxsAPI';
 import { mxsFormatterLexer } from './backend/mooTokenize-formatter';
 //-------------------------------------------------------------------------------------------------------------
 // This is a simplified ruleset of the parser tokenizer
-let lexer = mxsFormatterLexer(maxAPI);
+// this feeds keywords to the tokenizer
+const lexer = mxsFormatterLexer(maxAPI);
 //-------------------------------------------------------------------------------------------------------------
 enum TokenTypes
 {
@@ -92,6 +94,7 @@ export class SemanticTokensProvider
 			}
 			return result;
 		};
+
 		let tokenType = (val: string) =>
 		{
 			switch (true) {
@@ -167,7 +170,7 @@ export class SemanticTokensProvider
 		return result;
 	}
 
-	provideSemanticTokens(document: TextDocument)
+	provideSemanticTokens(document: TextDocument): SemanticTokens
 	{
 		const builder = this.getTokenBuilder(document);
 		// if (!this.legend) { return;}

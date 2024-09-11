@@ -1,19 +1,14 @@
-import
-{
-	Position,
-	Range
-} from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
-
 import * as Path from 'path';
 import { statSync } from 'fs';
+import { Position, Range } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 //--------------------------------------------------------------------------------
 /**
  * Check if a file exists in source.
  * @param filePath File path
  */
-export const fileExists = (filePath: string) => statSync(filePath).isFile(); // (await fs.promises.stat(path)).isFile();
+export const fileExists = (filePath: string) => statSync(filePath).isFile();
 /**
  * Prefix a filename providing the full file path
  * @param path Original path
@@ -39,7 +34,7 @@ export function balancedPairs(src: string, char = '\"')
 export function precWord(src: string)
 {
 	const pattern = /(\w+)\.$/g;
-	let wordmatches = pattern.exec(src);
+	const wordmatches = pattern.exec(src);
 	return wordmatches?.[wordmatches.length - 1];
 }
 /**
@@ -65,8 +60,8 @@ export function getWordAtPosition(document: TextDocument, position: Position, sk
 
 	if (start === null && end === null) { return; }
 
-	let a = start && start[0] ? start[0] : '';
-	let b = end && end[0] ? end[0] : '';
+	const a = start && start[0] ? start[0] : '';
+	const b = end && end[0] ? end[0] : '';
 
 	return a + b;
 }
@@ -103,11 +98,8 @@ export const getWordRange =
  * Return a path string from URI object
  * @param stringUri 
  */
-export function uriToPath(stringUri: string)
+export const uriToPath = (stringUri: string) =>
 {
-	let uri = URI.parse(stringUri);
-	if (uri.scheme !== 'file') {
-		return;
-	}
-	return uri.fsPath;
+	const uri = URI.parse(stringUri);
+	return uri.scheme === 'file' ? uri.fsPath : undefined;
 }

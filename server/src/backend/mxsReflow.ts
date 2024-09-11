@@ -139,9 +139,8 @@ class Statement
 				}
 			});
 			return res;
-		} else {
-			return optionalWS(this.value);
 		}
+		return optionalWS(this.value);		
 	}
 
 	add(...value: any)
@@ -235,9 +234,8 @@ class Elements
 				res = res.replace(options.indentAt, `${options.linebreak}${options.indent}`);
 			}
 			return res;
-		} else {
-			return this.value.join(',' + options.spacer);
 		}
+		return this.value.join(',' + options.spacer);		
 	}
 
 	add(...value: any)
@@ -315,7 +313,7 @@ function removeNode(node, parent, key, index) {
  */
 function derive(this: any, tree: any, callbackMap: any)
 {
-	let _visit = (node: any, parent: any, key: string | null, level: number, index: number | null) =>
+	const _visit = (node: any, parent: any, key: string | null, level: number, index: number | null) =>
 	{
 		const nodeType = getNodeType(node);
 		// get the node keys

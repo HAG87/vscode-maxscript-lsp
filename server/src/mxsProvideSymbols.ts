@@ -61,55 +61,28 @@ export function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyF
 		children: []
 	};
 
-	function _visit(node: any, parent: any | null)
+	function _visit(node: any, result: any | null)
 	{
 		// if (!node) { return []; }
-		let _node: DocumentSymbol;
-
 		if (isNode(node) && node.hasOwnProperty(keyFilter)) {
-			/*
-			if (isNode(node)) {
-				if (keyFilter in node) {
-			*/
 			// only constructs like functions, structs and so on have an ID property
 			// the node 'id' value is a moo token with the node identifier
 			const token: Token = node[keyFilter].value;
 			// if node doesnt have a location, infer it from the token AND adjust line and char difference !
 			const loc = rangeRemap(node.range || tokenRange(token));
-			_node = {
+
+			const docSymbol: DocumentSymbol = {
 				name: token.text,
 				detail: node.type || 'unknown',
 				kind: node.type != null ? (SymbolKindMatch[node.type] || SymbolKind.Method) : SymbolKind.Method,
 				range: loc,
 				selectionRange: loc
 			};
+
 			// Push the node in the parent child collection
-			parent.children != null ? parent.children.push(_node) : parent.children = [_node];
-			/*
-			} else if ('value' in node && isNode(node.value)) {
-				const token: Token = node.value;
-				// if node doesnt have a location, infer it from the token AND adjust line and char difference !
-				if (token.hasOwnProperty('text') && token.text) {
-					const loc = rangeRemap(node.range || tokenRange(token));
-					_node = {
-						name: token.text,
-						detail: node.type || 'unknown',
-						kind: node.type != null ? (SymbolKindMatch[node.type] || SymbolKind.Method) : SymbolKind.Method,
-						range: loc,
-						selectionRange: loc
-					};
-					parent.children != null ? parent.children.push(_node) : parent.children = [_node];
-				}
-				else {
-					_node = parent;
-				}
-			} else {
-				// console.log(node);
-				_node = parent;
-			}
-			*/
-		} else {
-			_node = parent;
+			result.children != null ? result.children.push(docSymbol) : result.children = [docSymbol];
+			
+			result = docSymbol;
 		}
 		//--------------------------------------------------------
 		// get the node keys
@@ -118,18 +91,17 @@ export function deriveSymbolsTree(nodes: any | any[], documentRange: Range, keyF
 		for (let i = 0; i < keys.length; i++) {
 			// child is the value of each key
 			let key = keys[i];
-			const child = node[key];
+			const member = node[key];
+
 			// could be an array of nodes or just an object
-			if (Array.isArray(child)) {
-				// value is an array, visit each item
-				for (let j = 0; j < child.length; j++) {
-					// visit each node in the array
-					if (isNode(child[j])) {
-						_visit(child[j], _node);
+			if (Array.isArray(member)) {
+				for (const child of member) {
+					if (isNode(child)) {
+						_visit(child, result);
 					}
 				}
-			} else if (isNode(child)) {
-				_visit(child, _node);
+			} else if (isNode(member)) {
+				_visit(member, result);
 			}
 		}
 	}
