@@ -35,7 +35,7 @@ import { symbolTableListener } from "./symbolTableListener.js";
 import { semanticTokenListener } from "./semanticTokenListener.js";
 import { BackendUtils } from "./BackendUtils.js";
 import { IformatterResult, mxsSimpleFormatter } from "./CodeFormatter.js";
-import { ICodeFormatSettings } from "../settings.js";
+import { ICodeFormatSettings, IMinifierSettings } from "../settings.js";
 import { mxsParserVisitorFormatter } from "./mxsParserVisitorFormatter.js";
 
 export const symbolToKindMap: Map<new () => BaseSymbol, SymbolKind> = new Map([
@@ -853,7 +853,7 @@ export class SourceContext
     public prettyfiCode() { }
 
     // minify
-    public minifyCode(): string | null
+    public minifyCode(options?: IMinifierSettings): string | null
     {
         const visitor = new mxsParserVisitorFormatter();
         return visitor.visit(this.tree as ParseTree);

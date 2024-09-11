@@ -1,6 +1,7 @@
 import { Position, Range, TextDocument } from "vscode";
 import { ExtensionHost } from "./ExtensionHost.js";
 import { ILexicalRange, ISymbolInfo } from "./types.js";
+import * as Path from 'path';
 
 export class Utilities
 {
@@ -46,4 +47,7 @@ export class Utilities
             symbol.definition!.range.start.column + symbol.name.length,
         );
     }
+
+    public static prefixFile = (path: string, prefix: string): string => Path.join(path, '..', prefix + Path.basename(path));
+
 }

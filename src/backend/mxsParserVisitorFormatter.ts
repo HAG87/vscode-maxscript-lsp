@@ -34,8 +34,8 @@ const options: ICodeFormatSettings & IMinifierSettings = {
     list: {
         useLineBreaks: false
     },
-    removeUnnecessaryScopes: true,
     condenseWhitespace: true,
+    removeUnnecessaryScopes: false,
 }
 
 export class mxsParserVisitorFormatter extends mxsParserVisitor<string>

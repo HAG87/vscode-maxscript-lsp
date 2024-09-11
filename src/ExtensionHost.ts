@@ -1,4 +1,4 @@
-import { commands, ExtensionContext, languages, TextDocument, TextDocumentChangeEvent, Uri, window, workspace } from 'vscode'
+import { commands, ExtensionContext, languages, ProgressLocation, TextDocument, TextDocumentChangeEvent, Uri, window, workspace } from 'vscode'
 import { mxsBackend } from './backend/Backend.js'
 import { Utilities } from './utils.js'
 import { mxsSymbolProvider } from './SymbolProvider.js'
@@ -10,11 +10,12 @@ import { mxsHoverProvider } from './HoverProvider.js'
 import { mxsCompletionProvider } from './CompletionItemProvider.js'
 import { mxsRangeSemanticTokensProvider, mxsSemanticTokensProvider, mxsSemtoTokensLegend } from './SemanticTokensProvider.js'
 import { mxsFormattingProvider, mxsRangeFormattingProvider } from './FormattingProvider.js'
-
+import { readFile, writeFile } from 'fs/promises';
+import { basename } from 'path'
+// import { ProgressIndicator } from './ProgressIndicator.js'
 export class ExtensionHost
 {
     private changeTimers = new Map<string, ReturnType<typeof setTimeout>>();
-
     public static readonly langSelector = { language: 'maxscript', scheme: 'file' }
     private readonly backend: mxsBackend
 
@@ -25,7 +26,6 @@ export class ExtensionHost
     {
         // start backend
         this.backend = new mxsBackend()
-
         // process active open document, if any.
         // /*
         const editor = window.activeTextEditor
@@ -101,7 +101,6 @@ export class ExtensionHost
                             event.document.uri,
                             diagnosticAdapter(this.backend.getDiagnostics(event.document.uri.toString()))
                         )
-
                         // this.codeLensProvider.refresh();
                     }, 300))
                 }
@@ -206,8 +205,7 @@ export class ExtensionHost
             commands.registerTextEditorCommand('mxs.help',
                 async (editor) =>
                 {
-                    let word =
-                        editor.document.getText(editor.selection)
+                    let word = editor.document.getText(editor.selection)
 
                     if (!word || /^\s*$/.test(word)) {
                         word = editor.document.getText(editor.document.getWordRangeAtPosition(editor.selection.active))
@@ -219,37 +217,57 @@ export class ExtensionHost
                     await commands.executeCommand('vscode.open', uri)
                 }),
             // minify commands
+            /*
+            function setOptions(settings?: Partial<reflowOptions>)
+            {
+                options.reset();
+                if (settings) {
+                    Object.assign(options, settings);
+                }
+            }
+            */
             commands.registerCommand('mxs.minify',
-                async () =>
+                (uri) =>
                 {
-                    const activeEditorUri = window.activeTextEditor?.document.uri;
-
-                    if (!activeEditorUri
-                        || activeEditorUri.scheme !== 'file'
-                        || window.activeTextEditor?.document.isDirty) {
-                        await window.showInformationMessage('MaxScript minify: Save your file first.');
-                        return;
-                    }
-                    console.log(this.backend.minifyCode(activeEditorUri.toString()))
-
-                    /*let params: MinifyDocParams = {
-                        command: 'mxs.minify',
-                        uri: [client.code2ProtocolConverter.asUri(activeEditorUri)]
-                    };
-                    await client.sendRequest(MinifyDocRequest.type, params); */
+                    window.withProgress(
+                        {
+                            location: ProgressLocation.Window,
+                            title: 'Minify open document',
+                        },
+                        async (_progress, _token) =>
+                        {
+                            if (!uri
+                                || uri.scheme !== 'file'
+                                || window.activeTextEditor?.document.isDirty) {
+                                window.showInformationMessage('MaxScript minify: Save your file first.');
+                                return;
+                            }
+                            return this.minifyFile(
+                                uri,
+                                false,
+                                workspace.getConfiguration('MaxScript').get('minifier.filePrefix')
+                            )
+                        }
+                    )
                 }),
             commands.registerCommand('mxs.minify.file',
-                async args =>
+                (uri: Uri) =>
                 {
-                    // get or create source context!
-
-                    /* let params: MinifyDocParams = {
-                        command: 'mxs.minify.file',
-                        uri: [client.code2ProtocolConverter.asUri(args)]
-                    };
-                    
-                    await client.sendRequest(MinifyDocRequest.type, params); */
-                }),
+                    // this.minifyFile(uri)
+                    window.withProgress(
+                        {
+                            location: ProgressLocation.Window,
+                            title: 'Minify file',
+                        },
+                        (_progress, _token) =>
+                        {
+                            return this.minifyFile(uri, true,
+                                workspace.getConfiguration('MaxScript').get('minifier.filePrefix')
+                            )
+                        }
+                    )
+                }
+            ),
             commands.registerCommand('mxs.minify.files', async () =>
             {
                 window.showOpenDialog({
@@ -258,18 +276,14 @@ export class ExtensionHost
                         'MaxScript': ['ms', 'mcr']
                     }
                 }).then(
-                    async uris =>
+                    async (uris: Uri[] | undefined) =>
                     {
-                        // get or create source context!
-                        /*
-                            if (!uris) { return; }
-    
-                            let params: MinifyDocParams = {
-                                command: 'mxs.minify.files',
-                                uri: uris?.map(x => client.code2ProtocolConverter.asUri(x))
-                            };
-                            await client.sendRequest(MinifyDocRequest.type, params);
-                            */
+                        if (!uris) { return; }
+                        for (let uri of uris) {
+                            this.minifyFile(uri, true,
+                                workspace.getConfiguration('MaxScript').get('minifier.filePrefix')
+                            )
+                        }
                     }
                 )
             }),
@@ -294,5 +308,39 @@ export class ExtensionHost
                 })
             */
         )
+    }
+
+    private minifyFile(uri: Uri, shouldUnload: boolean = false, prefix: string = 'min_')
+    {
+        return new Promise<void>((resolve, reject) =>
+        {
+            // minify
+            const minResult = this.backend.minifyCode(uri.toString())
+            // minify done, dispose context
+            if (shouldUnload) {
+                this.backend.unloadDocument(uri.toString())
+            }
+            // result ok
+            if (minResult) {
+                //save file
+                const filename = Utilities.prefixFile(uri.fsPath, prefix)
+                writeFile(filename, minResult)
+                    .then(
+                        () =>
+                        {
+                            window.showInformationMessage(`MaxScript minify: Document saved as ${basename(filename)}`)
+                            resolve()
+                        },
+                        (reason) =>
+                        {
+                            window.showErrorMessage(`MaxScript minify: Failed at ${basename(uri.fsPath)}. Reason: ${reason}`)
+                            reject()
+                        }
+                    )
+            } else {
+                window.showErrorMessage(`MaxScript minify: Failed at ${basename(uri.fsPath)}. Unable to parse the code`)
+                reject()
+            }
+        });
     }
 }

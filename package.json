@@ -205,39 +205,24 @@
         }
       },
       {
-        "title": "Prettifier",
+        "title": "General",
         "properties": {
-          "maxScript.prettifier.keepComments": {
+          "maxScript.parser.multiThreading": {
             "type": "boolean",
-            "default": true,
-            "description": ""
+            "default": false,
+            "description": "Enable multithreading. This feature can be unstable. Disable it if you encounter too many crashes using the extension."
           },
-          "maxScript.prettifier.keepEmptyLines": {
-            "type": "boolean",
-            "default": true,
-            "description": ""
-          },
-          "maxScript.prettifier.indentOnly": {
-            "type": "boolean",
-            "default": true,
-            "description": ""
-          },
-          "maxScript.prettifier.expressionsToBlock": {
-            "type": "boolean",
-            "default": true,
-            "description": ""
-          },
-          "maxScript.prettifier.filePrefix": {
+          "maxScript.help.provider": {
             "type": "string",
-            "default": "pretty_",
-            "description": "Prefix for code prettyfier output"
+            "default": "https://help.autodesk.com/view/MAXDEV/2025/ENU/",
+            "description": "MaxScript help source"
           }
         }
       },
       {
         "title": "Minifier",
         "properties": {
-          "maxScript.minifier.expressionsToBlock": {
+          "maxScript.minifier.condenseWhitespace": {
             "type": "boolean",
             "default": true,
             "description": ""
@@ -255,17 +240,17 @@
         }
       },
       {
-        "title": "General",
+        "title": "Prettifier",
         "properties": {
-          "maxScript.parser.multiThreading": {
+          "maxScript.prettifier.expressionsToBlock": {
             "type": "boolean",
-            "default": false,
-            "description": "Enable multithreading. This feature can be unstable. Disable it if you encounter too many crashes using the extension."
+            "default": true,
+            "description": ""
           },
-          "maxScript.help.provider": {
+          "maxScript.prettifier.filePrefix": {
             "type": "string",
-            "default": "https://help.autodesk.com/view/MAXDEV/2025/ENU/",
-            "description": "MaxScript help source"
+            "default": "pretty_",
+            "description": "Prefix for code prettyfier output"
           }
         }
       }
@@ -312,7 +297,6 @@
   },
   "dependencies": {
     "antlr4-c3": "^3.4.1",
-    "antlr4ng": "^3.0.4",
-    "moo": "^0.5.2"
+    "antlr4ng": "^3.0.4"
   }
 }

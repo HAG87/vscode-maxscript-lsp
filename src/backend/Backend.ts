@@ -4,7 +4,7 @@ import { ICompletionsResult, SourceContext } from './SourceContext.js';
 import { ILexicalRange, ISemanticToken, ISymbolInfo } from '../types.js';
 import { BaseSymbol } from 'antlr4-c3';
 import { IformatterResult } from './CodeFormatter.js';
-import { ICodeFormatSettings } from '../settings.js';
+import { ICodeFormatSettings, IMinifierSettings } from '../settings.js';
 
 export interface IContextEntry
 {
@@ -270,10 +270,10 @@ export class mxsBackend
         return this.getContext(uri).formatCode(range, options);
     }
     // minify
-    public minifyCode(uri: string): string | null
+    public minifyCode(uri: string, options?: IMinifierSettings): string | null
     {
-        return this.getContext(uri).minifyCode()
+        return this.getContext(uri).minifyCode(options)
     }
-    // prettify
+    // TODO: prettify
     
 }
