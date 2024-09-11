@@ -1,4 +1,6 @@
 import { commands, ExtensionContext, languages, ProgressLocation, TextDocument, TextDocumentChangeEvent, Uri, window, workspace } from 'vscode'
+import { readFile, writeFile } from 'fs/promises';
+import { basename } from 'path'
 import { mxsBackend } from './backend/Backend.js'
 import { Utilities } from './utils.js'
 import { mxsSymbolProvider } from './SymbolProvider.js'
@@ -10,9 +12,7 @@ import { mxsHoverProvider } from './HoverProvider.js'
 import { mxsCompletionProvider } from './CompletionItemProvider.js'
 import { mxsRangeSemanticTokensProvider, mxsSemanticTokensProvider, mxsSemtoTokensLegend } from './SemanticTokensProvider.js'
 import { mxsFormattingProvider, mxsRangeFormattingProvider } from './FormattingProvider.js'
-import { readFile, writeFile } from 'fs/promises';
-import { basename } from 'path'
-// import { ProgressIndicator } from './ProgressIndicator.js'
+
 export class ExtensionHost
 {
     private changeTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -27,30 +27,28 @@ export class ExtensionHost
         // start backend
         this.backend = new mxsBackend()
         // process active open document, if any.
-        // /*
         const editor = window.activeTextEditor
         if (editor && Utilities.isLanguageFile(editor.document)) {
             const document = editor.document
             this.backend.loadDocument(document.uri.toString(), document.getText())
-
-            // this.regenerateBackgroundData(document);
+            // TODO:
+            //  this.regenerateBackgroundData(document);
             this.diagnosticCollection.set(
                 document.uri,
                 diagnosticAdapter(this.backend.getDiagnostics(document.uri.toString()))
             )
         }
-        // */
         //register eventHandlers
         this.registerEventHandlers(ctx)
         // register providers
         this.registerProviders(ctx)
         // register commands
         this.registerCommands(ctx)
-
-        // Load interpreter + cache data for each open document, if there's any.
+        // TODO: Load interpreter + cache data for each open document, if there's any.
         /*
         for (const document of workspace.textDocuments) {
             this.processDiagnostic(document);
+            //..
         }
         */
     }
@@ -63,7 +61,7 @@ export class ExtensionHost
             {
                 if (Utilities.isLanguageFile(document)) {
                     this.backend.loadDocument(document.uri.toString(), document.getText())
-
+                    //TODO:
                     // this.regenerateBackgroundData(document);
                     this.diagnosticCollection.set(
                         document.uri,
@@ -81,7 +79,6 @@ export class ExtensionHost
             }),
             workspace.onDidChangeTextDocument((event: TextDocumentChangeEvent) =>
             {
-                // /*
                 // check for content changes
                 if (event.contentChanges.length > 0 && Utilities.isLanguageFile(event.document)) {
                     this.backend.setText(event.document.uri.toString(), event.document.getText())
@@ -95,12 +92,13 @@ export class ExtensionHost
                     {
                         this.changeTimers.delete(fileName)
                         this.backend.reparse(event.document.uri)
-
+                        //TODO:
                         // this.processDiagnostic(event.document);
                         this.diagnosticCollection.set(
                             event.document.uri,
                             diagnosticAdapter(this.backend.getDiagnostics(event.document.uri.toString()))
                         )
+                        //TODO:
                         // this.codeLensProvider.refresh();
                     }, 300))
                 }
@@ -113,16 +111,19 @@ export class ExtensionHost
                     if (timer) {
                         clearTimeout(timer)
                     }
+                    //TODO:
                     // use this method to update data, like the tree providers
                     // this.regenerateBackgroundData(document);
                 }
             }),
             /*
+            //TODO:
             window.onDidChangeTextEditorSelection((event: TextEditorSelectionChangeEvent) => {
                 if (FrontendUtils.isGrammarFile(event.textEditor.document)) {
                     this.actionsProvider.update(event.textEditor);
                 }
             }),
+            //TODO:
            window.onDidChangeActiveTextEditor((textEditor: TextEditor | undefined) => {
                 if (textEditor) {
                     FrontendUtils.updateVsCodeContext(this.backend, textEditor.document);
@@ -130,15 +131,17 @@ export class ExtensionHost
                 }
             }),
             // */
+            //TODO:
             /*
              workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) => {
                  if (event.affectsConfiguration("maxScript")) {
                      const config = workspace.getConfiguration("maxScript");
                      //...
                  }
-             })
+             }),
+             //TODO:
+             languages.onDidChangeDiagnostics(() => workspace
              */
-            //  languages.onDidChangeDiagnostics(() => workspace
         )
     }
     // register providers
@@ -188,12 +191,10 @@ export class ExtensionHost
                  new mxsFormattingProvider(this.backend)
              ),
              // */
-            // /*
             languages.registerDocumentRangeFormattingEditProvider(
                 ExtensionHost.langSelector,
                 new mxsRangeFormattingProvider(this.backend)
             )
-            // */
             // languages.
             //...
         )

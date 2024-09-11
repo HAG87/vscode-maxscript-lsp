@@ -855,7 +855,7 @@ export class SourceContext
     // minify
     public minifyCode(options?: IMinifierSettings): string | null
     {
-        const visitor = new mxsParserVisitorFormatter();
+        const visitor = new mxsParserVisitorFormatter(options);
         return visitor.visit(this.tree as ParseTree);
     }
     //...
