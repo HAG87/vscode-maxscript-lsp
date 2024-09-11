@@ -11,17 +11,17 @@ export const mxsSemtoTokensLegend = new SemanticTokensLegend(semTokenTypes, semT
 export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider 
 {
     // private tokensBuilder: SemanticTokensBuilder;
-    private currentTokens: ISemanticToken[] = [];
-
+    // private currentTokens: ISemanticToken[] = [];
     // private documentTokenBuilder: Map<string,SemanticTokensBuilder> = new Map<string,SemanticTokensBuilder>();
 
     constructor(private backend: mxsBackend) { }
 
     onDidChangeSemanticTokens?: Event<void> | undefined;
 
-    provideDocumentSemanticTokens(document: TextDocument, token: CancellationToken): ProviderResult<SemanticTokens>
+    provideDocumentSemanticTokens(document: TextDocument, _token: CancellationToken): ProviderResult<SemanticTokens>
     {
         /*
+        // note: seems that SemanticTokensBuilder cant be reused...
         const uri = document.uri.toString();
         let tokensBuilder: SemanticTokensBuilder;
         if (this.documentTokenBuilder.has(uri)) {
@@ -31,10 +31,12 @@ export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider
             this.documentTokenBuilder.set(uri, tokensBuilder);
         }
         */
-        // if no parse tree is available, fallback to Apply and regex method?
-        return new Promise((resolve) =>
+       
+       return new Promise((resolve) =>
         {
+            // TODO: if no parse tree is available, fallback to simple method
             const tokens = this.backend.getDocumentSemanticTokens(document.uri.toString());
+
             // some optimizations to recompute the tokens only if they have changed...
             if (tokens && tokens.length > 0) {
                 const tokensBuilder = new SemanticTokensBuilder(mxsSemtoTokensLegend);
@@ -61,7 +63,7 @@ export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider
 export class mxsRangeSemanticTokensProvider implements DocumentRangeSemanticTokensProvider
 {
 
-    constructor(private backend: mxsBackend) { }
+    constructor(/* private backend: mxsBackend */) { }
 
     /**
      * Provides all tokens of a document range.
@@ -71,7 +73,7 @@ export class mxsRangeSemanticTokensProvider implements DocumentRangeSemanticToke
      */
     provideDocumentRangeSemanticTokens(document: TextDocument, range: Range, token: CancellationToken): ProviderResult<SemanticTokens>
     {
-        console.log(range);
+        // console.log(range);
         throw new Error("Method not implemented.");
     }
 }

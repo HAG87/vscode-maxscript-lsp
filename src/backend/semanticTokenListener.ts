@@ -1,5 +1,5 @@
 import { ParserRuleContext } from "antlr4ng";
-import { FunctionCallContext, IdentifierContext, mxsParser, PropertyContext, VariableDeclarationContext } from "../parser/mxsParser.js";
+import { FunctionCallContext, IdentifierContext } from "../parser/mxsParser.js";
 import { mxsParserListener } from "../parser/mxsParserListener.js";
 import { ISemanticToken } from "../types.js";
 import { maxAPI } from "./schemas/mxsAPI.js";
@@ -12,7 +12,6 @@ export class semanticTokenListener extends mxsParserListener
     public constructor(private tokenStack: ISemanticToken[])
     {
         // clear the token list
-        // console.log('recompute semtokens');
         tokenStack.length = 0;
         super();
     }
@@ -21,7 +20,7 @@ export class semanticTokenListener extends mxsParserListener
     {
         this.symbolStack.push(ctx);
     }
-    public override exitFunctionCall = (ctx: FunctionCallContext): void =>
+    public override exitFunctionCall = (_ctx: FunctionCallContext): void =>
     {
         /*
         if (ctx._caller && ctx._caller.start && ctx._caller.ruleIndex !== mxsParser.RULE_expr_seq) {

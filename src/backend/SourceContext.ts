@@ -131,23 +131,20 @@ export class SourceContext
         this.tree = undefined;
         // Rewind the input stream for a new parse run.
         this.lexer.reset();
-
         this.tokenStream.setTokenSource(this.lexer);
-
         this.parser.reset();
         this.parser.errorHandler = new BailErrorStrategy();
         this.parser.interpreter.predictionMode = PredictionMode.SLL;
-
-        //TODO: semantic tokens
+        //---------------------------------------------------------------
+        //TODO: semantic tokens while parsing...
         // this.parser.addParseListener();
         // this.info.imports.length = 0;
         // this.semanticAnalysisDone = false;
-
+        //---------------------------------------------------------------
         this.diagnostics.length = 0;
-
         this.symbolTable.clear();
         // TODO: this.symbolTable.addDependencies(SourceContext.globalSymbols);
-
+        //---------------------------------------------------------------
         try {
             this.tree = this.parser.program();
         } catch (e) {
@@ -166,25 +163,22 @@ export class SourceContext
                 throw e;
             }
         }
-
+        //---------------------------------------------------------------
         // semantic tokens!
         const semanticListener = new semanticTokenListener(this.semanticTokens);
         ParseTreeWalker.DEFAULT.walk(semanticListener, this.tree);
-
+        //---------------------------------------------------------------
         // load symbols!
         this.symbolTable.tree = this.tree;
-
-        // carefully copy this!
         const symbolsListener = new symbolTableListener(this.symbolTable);
         // const listener = new DetailsListener(this.symbolTable, this.info.imports);
         ParseTreeWalker.DEFAULT.walk(symbolsListener, this.tree);
-
+        //---------------------------------------------------------------
         // TODO: this.info.unreferencedRules = this.symbolTable.getUnreferencedSymbols();
         // return this.info.imports;
     }
 
     // TODO: semantic analysis
-    // TODO: integrate here the methods for semantic tokens...
     private runSemanticAnalysisIfNeeded()
     {
         /*
@@ -235,7 +229,6 @@ export class SourceContext
         return 0;
     }
     //------------------------------------------------- SYMBOLS
-
     public static getKindFromSymbol(symbol: BaseSymbol): SymbolKind
     {
         return symbolToKindMap.get(symbol.constructor as typeof BaseSymbol) || SymbolKind.Null;
@@ -249,9 +242,7 @@ export class SourceContext
     */
     public static definitionForContext(ctx: ParseTree | undefined, keepQuotes: boolean): IDefinition | undefined
     {
-        if (!ctx) {
-            return undefined;
-        }
+        if (!ctx) { return undefined; }
 
         const result: IDefinition = {
             text: "",
@@ -321,7 +312,12 @@ export class SourceContext
 
         return result;
     }
-
+    /**
+     * Gets the symbol at the specified position
+     * @param row position line number
+     * @param column position column number
+     * @returns ISymbolInfo symbol or undefined
+     */
     public symbolAtPosition(row: number, column: number): ISymbolInfo | undefined
     {
         if (!this.tree) return undefined;
@@ -329,7 +325,13 @@ export class SourceContext
         const symbol = this.symbolTable.getSymbolAtPosition(row, column);
         return symbol ? this.symbolTable.getSymbolInfo(symbol) : undefined;
     }
-
+    /**
+     * Returns the symbol definition
+     * TODO: Add references in the symbol table to speed up things!
+     * @param row position line number
+     * @param column column position column number
+     * @returns ISymbolInfo located at the definition of the current symbol.
+     */
     public symbolDefinition(row: number, column: number): ISymbolInfo | undefined
     {
         if (!this.tree) return undefined;
@@ -340,7 +342,6 @@ export class SourceContext
             this.symbolTable.getSymbolDefinition(symbol!);
         return definition ? this.symbolTable.getSymbolInfo(definition) : undefined;
     }
-
     /**
      * Returns the symbol at the given position or one of its outer scopes.
      *
@@ -355,10 +356,7 @@ export class SourceContext
         column: number,
         ruleScope: boolean): ISymbolInfo | undefined
     {
-
-        if (!this.tree) {
-            return;
-        }
+        if (!this.tree) { return; }
 
         let context = BackendUtils.parseTreeFromPosition(this.tree, row, column);
 
@@ -402,10 +400,9 @@ export class SourceContext
 
     public async getAllSymbols(recursive: boolean): Promise<BaseSymbol[]>
     {
+        /*
         // The symbol table returns symbols of itself and those it depends on (if recursive is true).
         const result = await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
-
-        /*
         // Add also symbols from contexts referencing us, this time not recursive
         // as we have added our content already.
         for (const reference of this.references) {
@@ -414,9 +411,9 @@ export class SourceContext
                 result.push(value);
             });
         }
-        */
-
         return result;
+        */
+       return await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
     }
     public getSymbolInfo(symbol: string | BaseSymbol): ISymbolInfo | undefined
     {
@@ -848,15 +845,13 @@ export class SourceContext
             );
         }
     }
-
-    // prettify
-    public prettyfiCode() { }
-
     // minify
     public minifyCode(options?: IMinifierSettings): string | null
     {
         const visitor = new mxsParserVisitorFormatter(options);
         return visitor.visit(this.tree as ParseTree);
     }
+    // prettify
+    public prettyfiCode() { }
     //...
 }

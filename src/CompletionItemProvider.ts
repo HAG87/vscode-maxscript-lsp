@@ -29,7 +29,6 @@ export class mxsCompletionProvider implements CompletionItemProvider
 
         if (context.triggerKind === 1 && context.triggerCharacter === '.') {
             const parent = mxsLanguageCompletions.has(wordAtPos);
-            // console.log(parent);
             if (parent) {
                 switch (parent.kind) {
                     case CompletionItemKind.Class:

@@ -1,0 +1,1 @@
+//TODO: Add support for workspace symbols. Use references in the symboltable for this.

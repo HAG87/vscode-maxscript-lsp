@@ -13,7 +13,6 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
         function dfs(currentSymbol: ISymbolInfo): DocumentSymbol    
         {
             // if (!currentSymbol.definition) { return; }
-
             const range = Utilities.lexicalRangeToRange(currentSymbol.definition!.range);
 
             const info = new DocumentSymbol(
@@ -26,7 +25,6 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
 
             if (currentSymbol.children?.length) {
                 info.children = currentSymbol.children
-
                     .filter(child => 'name' in child && 'definition' in child)
                     .map(child => dfs(child))
             }
@@ -35,7 +33,7 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
         return dfs(symbol);
     }
 
-    provideDocumentSymbols(document: TextDocument, token: CancellationToken):
+    provideDocumentSymbols(document: TextDocument, _token: CancellationToken):
         ProviderResult<SymbolInformation[] | DocumentSymbol[]>
     {
         return new Promise((resolve) =>
@@ -47,34 +45,20 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
                 if (!symbol.definition || !symbol.name) {
                     continue;
                 }
-                let result: DocumentSymbol;
-
                 if (symbol.children?.length) {
                     // childrens
-                    result = this.collectAllChildren(symbol);
+                    symbolsList.push(this.collectAllChildren(symbol));
                 } else {
                     // range
                     const range = Utilities.lexicalRangeToRange(symbol.definition.range);
-                    // const location = new Location( document.uri, range );
-                    result = new DocumentSymbol(
+                    symbolsList.push(new DocumentSymbol(
                         symbol.name,
                         symbolDescriptionFromEnum(symbol.kind),
                         translateSymbolKind(symbol.kind),
                         range,
                         range // TODO: selectionRange
-                    );
+                    ));
                 }
-                symbolsList.push(result);
-                /*
-                const totalTextLength = symbol.name.length + description.length + 1;
-                if (symbol.kind === SymbolKind.LexerMode && totalTextLength < 80) {
-                    // Add a marker to show parts which belong to a particular lexer mode.
-                    // Not 100% perfect (i.e. right aligned, as symbol and description use different fonts),
-                    // but good enough.
-                    const markerWidth = 80 - totalTextLength;
-                    description += " " + "-".repeat(markerWidth);
-                }
-                */
             }
             resolve(symbolsList);
         });

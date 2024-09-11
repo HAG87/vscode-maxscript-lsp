@@ -33,7 +33,9 @@ export class mxsReferenceProvider implements ReferenceProvider
                     }
                 }
                 resolve(result);
-            } else resolve(undefined);
+            } else {
+                resolve(undefined);
+            }
         });
     }
 }

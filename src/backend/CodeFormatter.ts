@@ -588,7 +588,7 @@ export class mxsSimpleFormatter
 		// options
 		const opt = this.options;
 		// list: { useLineBreaks: true }
-		const afterCommaChar = opt.list.useLineBreaks ? opt.newLineChar : opt.whitespaceChar;
+		// const afterCommaChar = opt.list.useLineBreaks ? opt.newLineChar : opt.whitespaceChar;
 		// statements: { useLineBreaks: true, }
 		const afterKeyword = opt.statements.useLineBreaks;
 		//---------------------------------------------------------
@@ -612,7 +612,6 @@ export class mxsSimpleFormatter
 				if (currToken.type === mxsLexer.NL) {
 					cStack().vals.push(this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK));
 				}
-
 			}
 			//---------------------------------------------------------
 			// last token
@@ -625,7 +624,8 @@ export class mxsSimpleFormatter
 					case mxsLexer.RPAREN:
 						{
 							indentation--;
-							cStack().end = this.emmit(currToken);	//new atom(currToken.text!, currToken.type === mxsLexer.RPAREN ? atomTypes.RPAREN : atomTypes.RBRACE, currToken.start);
+							cStack().end = this.emmit(currToken);
+							//new atom(currToken.text!, currToken.type === mxsLexer.RPAREN ? atomTypes.RPAREN : atomTypes.RBRACE, currToken.start);
 							stack.pop();
 						}
 						break;
@@ -673,7 +673,6 @@ export class mxsSimpleFormatter
 						//indentation
 						indentation--;
 						// cStack().vals.push(currToken.text!);
-
 						cStack().end = this.emmit(currToken);
 						//-------------------------
 						stack.pop();
@@ -881,7 +880,6 @@ export class mxsSimpleFormatter
 		const startPos = activeTokens[0].start;
 		const stopPos = activeTokens[activeTokens.length - 1].stop;
 		const offset = startPos + (code.length - 1);
-
 		return { code, start: startPos, stop: stopPos, offset };
 		*/
 		return { code, start, stop };

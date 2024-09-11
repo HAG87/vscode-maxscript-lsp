@@ -10,7 +10,7 @@ export class mxsRenameProvider implements RenameProvider
         document: TextDocument,
         position: Position,
         newName: string,
-        token: CancellationToken): ProviderResult<WorkspaceEdit>
+        _token: CancellationToken): ProviderResult<WorkspaceEdit>
     {
         return new Promise((resolve) =>
         {
@@ -32,7 +32,9 @@ export class mxsRenameProvider implements RenameProvider
                     }
                 }
                 resolve(result);
-            } else { resolve(undefined); }
+            } else {
+                resolve(undefined);
+            }
         });
     }
 }
