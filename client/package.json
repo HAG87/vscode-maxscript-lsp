@@ -17,11 +17,7 @@
 		"vscode-languageclient": "^9.0.1"
 	},
 	"devDependencies": {
-		"@types/glob": "^7.2.0",
-		"@types/mocha": "^9.1.1",
 		"@types/vscode": "^1.63.1",
-		"glob": "^7.2.0",
-		"mocha": "^9.2.0",
 		"vscode-test": "^1.6.1"
 	}
 }
