@@ -95,11 +95,11 @@ rolloutGroup
     rp
 	;
 
-rolloutControl: rolloutControlType NL* controlName = identifier (NL* operand)* (NL* param)*
+rolloutControl: rolloutControlType NL* controlName = identifier (NL* operand)? (NL* param)*
 	;
 
 rolloutControlType
-	: Angle
+	: ( Angle
 	| Bitmap
 	| Button
 	| CheckBox
@@ -125,7 +125,7 @@ rolloutControlType
 	| Slider
 	| Spinner
 	| Subrollout
-	| Timer
+	| Timer )
 	;
 
 //-------------------------------------- TOOL_DEF
