@@ -2,11 +2,12 @@
  * Copyright (c) Mike Lischke. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
 */
+
 export interface ICodeFormatSettings
 {
     indentChar: string,
     newLineChar: string,
-    lineEndChar: string,
+    exprEndChar: string,
     lineContinuationChar: string,
     whitespaceChar: string,
     codeblock: {
@@ -44,6 +45,7 @@ export interface IMaxScriptSettings
         SemanticTokens: boolean,
         GoToSymbol: boolean,
         GoToDefinition: boolean,
+        GoToReferences: boolean,
         Diagnostics: boolean,
     },
     Completions?: {
@@ -53,9 +55,9 @@ export interface IMaxScriptSettings
     // parser: {
     // 	multiThreading: boolean,
     // }
-    formatter: ICodeFormatSettings;
-    prettifier: IPrettifierSettings;
-    minifier: IMinifierSettings;
+    formatter: Partial<ICodeFormatSettings>;
+    prettifier: Partial<IPrettifierSettings>;
+    minifier: Partial<IMinifierSettings>;
 }
 
 export const semTokenTypes =

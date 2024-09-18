@@ -15,7 +15,7 @@ const defaultFormatSettings: ICodeFormatSettings =
 {
 	indentChar: '\t',
 	newLineChar: '\r\n',
-	lineEndChar: ';',
+	exprEndChar: ';',
 	lineContinuationChar: '\\',
 	whitespaceChar: ' ',
 

@@ -8,13 +8,14 @@
 
 import {
   ICodeFormatSettings, IMaxScriptSettings, IMinifierSettings,
+  IPrettifierSettings,
 } from './types.js';
 
-export const minifierSettings: ICodeFormatSettings & IMinifierSettings = {
+export const minifierSettings: ICodeFormatSettings & IMinifierSettings & IPrettifierSettings = {
     whitespaceChar: ' ',
     newLineChar: ';',
     indentChar: '',
-    lineEndChar: ';',
+    exprEndChar: ';',
     lineContinuationChar: '',
     statements: {
         useLineBreaks: true,
@@ -29,7 +30,31 @@ export const minifierSettings: ICodeFormatSettings & IMinifierSettings = {
         useLineBreaks: false
     },
     condenseWhitespace: true,
-    removeUnnecessaryScopes: false,
+    removeUnnecessaryScopes: true, //TODO:
+    expressionsToBlock: false,
+}
+
+export const prettifyOptions: ICodeFormatSettings & IMinifierSettings & IPrettifierSettings = {
+    whitespaceChar: ' ',
+    newLineChar: '\n\r',
+    indentChar: '  ',
+    exprEndChar: '\n\r',
+    lineContinuationChar: '\\',
+    codeblock: {
+        newlineAllways: true, //ok
+        parensInNewLine: true, //ok
+        spaced: true, //ok
+    },
+    list: {
+        useLineBreaks: false //ok
+    },
+    statements: {
+        useLineBreaks: false, //TODO:
+        optionalWhitespace: false //TODO:
+    },
+    removeUnnecessaryScopes: false, //TODO:
+    condenseWhitespace: false, //ok
+    expressionsToBlock: true, //TODO:
 }
 
 // default settings
@@ -50,7 +75,7 @@ export const defaultSettings: IMaxScriptSettings = {
     formatter: {
         indentChar: '\t',
         newLineChar: '\r\n',
-        lineEndChar: ';',
+        exprEndChar: ';',
         lineContinuationChar: '\\',
         whitespaceChar: ' ',
         codeblock: {
