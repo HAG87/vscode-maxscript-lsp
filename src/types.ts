@@ -2,6 +2,61 @@
  * Copyright (c) Mike Lischke. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
 */
+export interface ICodeFormatSettings
+{
+    indentChar: string,
+    newLineChar: string,
+    lineEndChar: string,
+    lineContinuationChar: string,
+    whitespaceChar: string,
+    codeblock: {
+        parensInNewLine: boolean,
+        newlineAllways: boolean,
+        spaced: boolean,
+    },
+    statements: {
+        useLineBreaks: boolean,
+        optionalWhitespace: boolean
+    },
+    list: {
+        useLineBreaks: boolean
+    }
+}
+
+export interface IPrettifierSettings
+{
+    filePrefix?: string,
+    keepComments?: boolean,
+    keepEmptyLines?: boolean,
+    expressionsToBlock: boolean,
+}
+
+export interface IMinifierSettings
+{
+    filePrefix?: string,
+    condenseWhitespace: boolean,
+    removeUnnecessaryScopes: boolean,
+}
+
+export interface IMaxScriptSettings
+{
+    language?: {
+        SemanticTokens: boolean,
+        GoToSymbol: boolean,
+        GoToDefinition: boolean,
+        Diagnostics: boolean,
+    },
+    Completions?: {
+        dataBaseCompletion: boolean,
+        codeCompletion: boolean
+    };
+    // parser: {
+    // 	multiThreading: boolean,
+    // }
+    formatter: ICodeFormatSettings;
+    prettifier: IPrettifierSettings;
+    minifier: IMinifierSettings;
+}
 
 export const semTokenTypes =
     [

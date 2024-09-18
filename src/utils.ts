@@ -1,7 +1,8 @@
-import { Position, Range, TextDocument } from "vscode";
-import { ExtensionHost } from "./ExtensionHost.js";
-import { ILexicalRange, ISymbolInfo } from "./types.js";
 import * as Path from 'path';
+import { Position, Range, TextDocument } from 'vscode';
+
+import { ExtensionHost } from './ExtensionHost.js';
+import { ILexicalRange, ISymbolInfo } from './types.js';
 
 export class Utilities
 {

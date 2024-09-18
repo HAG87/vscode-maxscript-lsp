@@ -1,8 +1,12 @@
-import { CancellationToken, DocumentSymbol, DocumentSymbolProvider, ProviderResult, SymbolInformation, TextDocument } from "vscode";
-import { mxsBackend } from "./backend/Backend.js";
-import { Utilities } from "./utils.js";
-import { ISymbolInfo } from "./types.js";
-import { symbolDescriptionFromEnum, translateSymbolKind } from "./Symbol.js";
+import {
+  CancellationToken, DocumentSymbol, DocumentSymbolProvider, ProviderResult,
+  SymbolInformation, TextDocument,
+} from 'vscode';
+
+import { mxsBackend } from './backend/Backend.js';
+import { symbolDescriptionFromEnum, translateSymbolKind } from './Symbol.js';
+import { ISymbolInfo } from './types.js';
+import { Utilities } from './utils.js';
 
 export class mxsSymbolProvider implements DocumentSymbolProvider
 {

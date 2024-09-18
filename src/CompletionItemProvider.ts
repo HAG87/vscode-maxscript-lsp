@@ -1,10 +1,21 @@
-import { CancellationToken, CompletionContext, CompletionItem, CompletionItemKind, CompletionItemProvider, CompletionList, Position, ProviderResult, Range, TextDocument } from "vscode";
-import { mxsBackend } from "./backend/Backend.js";
-import { mxsLanguageCompletions, maxCompletions } from "./backend/schemas/mxsCompletions-base.js";
-import { mxClassMembers } from "./backend/schemas/mxsCompletions-clases.js";
-import { mxStructsMembers } from "./backend/schemas/mxsCompletions-structs.js";
-import { mxInterfaceMembers } from "./backend/schemas/mxsCompletions-interfaces.js";
-import { symbolDescriptionFromEnum, translateCompletionKind } from "./Symbol.js";
+import {
+  CancellationToken, CompletionContext, CompletionItem, CompletionItemKind,
+  CompletionItemProvider, CompletionList, Position, ProviderResult,
+  Range, TextDocument,
+} from 'vscode';
+
+import { mxsBackend } from './backend/Backend.js';
+import {
+  maxCompletions, mxsLanguageCompletions,
+} from './backend/schemas/mxsCompletions-base.js';
+import { mxClassMembers } from './backend/schemas/mxsCompletions-clases.js';
+import {
+  mxInterfaceMembers,
+} from './backend/schemas/mxsCompletions-interfaces.js';
+import { mxStructsMembers } from './backend/schemas/mxsCompletions-structs.js';
+import {
+  symbolDescriptionFromEnum, translateCompletionKind,
+} from './Symbol.js';
 
 export class mxsCompletionProvider implements CompletionItemProvider
 {

@@ -1,6 +1,10 @@
-import { CancellationToken, Location, Position, ProviderResult, ReferenceContext, ReferenceProvider, TextDocument, Uri } from "vscode";
-import { mxsBackend } from "./backend/Backend.js";
-import { Utilities } from "./utils.js";
+import {
+  CancellationToken, Location, Position, ProviderResult,
+  ReferenceContext, ReferenceProvider, TextDocument, Uri,
+} from 'vscode';
+
+import { mxsBackend } from './backend/Backend.js';
+import { Utilities } from './utils.js';
 
 export class mxsReferenceProvider implements ReferenceProvider
 {

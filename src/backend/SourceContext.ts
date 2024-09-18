@@ -1,42 +1,32 @@
-import
-{
-    BailErrorStrategy, CharStream, CommonTokenStream, DefaultErrorStrategy, ParseCancellationException,
-    ParserRuleContext, ParseTree, ParseTreeWalker, PredictionMode, TerminalNode, Token
-} from "antlr4ng";
-import { BaseSymbol, CodeCompletionCore, SymbolTable } from "antlr4-c3";
-import { mxsLexer } from "../parser/mxsLexer.js";
-import { mxsParser } from "../parser/mxsParser.js";
-import { ContextLexerErrorListener } from "./ContextLexerErrorListener.js";
-import { ContextErrorListener } from "./ContextErrorListener.js";
-import { DiagnosticType, IDefinition, IDiagnosticEntry, ILexicalRange, ISemanticToken, ISymbolInfo, SymbolKind } from "../types.js";
-import
-{
-    AssignmentExpressionSymbol,
-    AttributesDefSymbol,
-    ContextSymbolTable,
-    RolloutControlSymbol,
-    EventHandlerClauseSymbol,
-    ExprSymbol,
-    fnArgsSymbol,
-    FnDefinitionSymbol,
-    fnParamsSymbol,
-    IdentifierSymbol,
-    MacroScriptDefinitionSymbol,
-    PluginDefinitionSymbol,
-    RolloutDefinitionSymbol,
-    StructDefinitionSymbol,
-    StructMemberSymbol,
-    ToolDefinitionSymbol,
-    UtilityDefinitionSymbol,
-    VariableDeclSymbol,
+import { BaseSymbol, CodeCompletionCore, SymbolTable } from 'antlr4-c3';
+import {
+  BailErrorStrategy, CharStream, CommonTokenStream, DefaultErrorStrategy,
+  ParseCancellationException, ParserRuleContext, ParseTree, ParseTreeWalker,
+  PredictionMode, TerminalNode, Token,
+} from 'antlr4ng';
 
-} from "./ContextSymbolTable.js";
-import { symbolTableListener } from "./symbolTableListener.js";
-import { semanticTokenListener } from "./semanticTokenListener.js";
-import { BackendUtils } from "./BackendUtils.js";
-import { IformatterResult, mxsSimpleFormatter } from "./CodeFormatter.js";
-import { ICodeFormatSettings, IMinifierSettings } from "../settings.js";
-import { mxsParserVisitorFormatter } from "./mxsParserVisitorFormatter.js";
+import { mxsLexer } from '../parser/mxsLexer.js';
+import { mxsParser } from '../parser/mxsParser.js';
+import {
+  DiagnosticType, ICodeFormatSettings, IDefinition, IDiagnosticEntry,
+  ILexicalRange, IMinifierSettings, ISemanticToken, ISymbolInfo,
+  SymbolKind,
+} from '../types.js';
+import { BackendUtils } from './BackendUtils.js';
+import { IformatterResult, mxsSimpleFormatter } from './CodeFormatter.js';
+import { ContextErrorListener } from './ContextErrorListener.js';
+import { ContextLexerErrorListener } from './ContextLexerErrorListener.js';
+import {
+  AssignmentExpressionSymbol, AttributesDefSymbol, ContextSymbolTable,
+  EventHandlerClauseSymbol, ExprSymbol, fnArgsSymbol, FnDefinitionSymbol,
+  fnParamsSymbol, IdentifierSymbol, MacroScriptDefinitionSymbol,
+  PluginDefinitionSymbol, RolloutControlSymbol, RolloutDefinitionSymbol,
+  StructDefinitionSymbol, StructMemberSymbol, ToolDefinitionSymbol,
+  UtilityDefinitionSymbol, VariableDeclSymbol,
+} from './ContextSymbolTable.js';
+import { mxsParserVisitorFormatter } from './mxsParserVisitorFormatter.js';
+import { semanticTokenListener } from './semanticTokenListener.js';
+import { symbolTableListener } from './symbolTableListener.js';
 
 export const symbolToKindMap: Map<new () => BaseSymbol, SymbolKind> = new Map([
     [PluginDefinitionSymbol, SymbolKind.Plugin],
@@ -846,7 +836,7 @@ export class SourceContext
         }
     }
     // minify
-    public minifyCode(options?: IMinifierSettings): string | null
+    public minifyCode(options: ICodeFormatSettings & IMinifierSettings): string | null
     {
         const visitor = new mxsParserVisitorFormatter(options);
         return visitor.visit(this.tree as ParseTree);

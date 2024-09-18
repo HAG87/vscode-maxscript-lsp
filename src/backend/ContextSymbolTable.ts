@@ -1,10 +1,13 @@
-import { BaseSymbol, ISymbolTableOptions, SymbolTable, SymbolConstructor,
-    IScopedSymbol, ScopedSymbol } from "antlr4-c3";
-import { ParserRuleContext, ParseTree, TerminalNode } from "antlr4ng";
-import { SourceContext } from "./SourceContext.js";
-import { ISymbolInfo } from "../types.js";
-import { BackendUtils } from "./BackendUtils.js";
-import { mxsParser } from "../parser/mxsParser.js";
+import {
+  BaseSymbol, IScopedSymbol, ISymbolTableOptions, ScopedSymbol,
+  SymbolConstructor, SymbolTable,
+} from 'antlr4-c3';
+import { ParserRuleContext, ParseTree, TerminalNode } from 'antlr4ng';
+
+import { mxsParser } from '../parser/mxsParser.js';
+import { ISymbolInfo } from '../types.js';
+import { BackendUtils } from './BackendUtils.js';
+import { SourceContext } from './SourceContext.js';
 
 interface IScopeComparer
 {

@@ -1,8 +1,7 @@
-import { CharStream, CommonTokenStream, Token } from "antlr4ng";
-import { mxsLexer } from "../parser/mxsLexer.js";
-import { ICodeFormatSettings } from "../settings.js";
-import { emit } from "process";
-import { json } from "stream/consumers";
+import { CharStream, CommonTokenStream, Token } from 'antlr4ng';
+
+import { mxsLexer } from '../parser/mxsLexer.js';
+import { ICodeFormatSettings } from '../types.js';
 
 export interface IformatterResult
 {

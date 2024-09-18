@@ -1,9 +1,9 @@
-import { ParserRuleContext } from "antlr4ng";
-import { FunctionCallContext, IdentifierContext } from "../parser/mxsParser.js";
-import { mxsParserListener } from "../parser/mxsParserListener.js";
-import { ISemanticToken } from "../types.js";
-import { maxAPI } from "./schemas/mxsAPI.js";
+import { ParserRuleContext } from 'antlr4ng';
 
+import { FunctionCallContext, IdentifierContext } from '../parser/mxsParser.js';
+import { mxsParserListener } from '../parser/mxsParserListener.js';
+import { ISemanticToken } from '../types.js';
+import { maxAPI } from './schemas/mxsAPI.js';
 
 export class semanticTokenListener extends mxsParserListener
 {

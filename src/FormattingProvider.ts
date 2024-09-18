@@ -1,15 +1,12 @@
-import
-{
-    CancellationToken, DocumentFormattingEditProvider,
-    DocumentRangeFormattingEditProvider,
-    FormattingOptions,
-    TextDocument, TextEdit,
-    ProviderResult, Range,
-    workspace,
-} from "vscode";
-import { mxsBackend } from "./backend/Backend.js";
-import { Utilities } from "./utils.js";
-import { ICodeFormatSettings } from "./settings.js";
+import {
+  CancellationToken, DocumentFormattingEditProvider,
+  DocumentRangeFormattingEditProvider, FormattingOptions, ProviderResult, Range,
+  TextDocument, TextEdit, workspace,
+} from 'vscode';
+
+import { mxsBackend } from './backend/Backend.js';
+import { ICodeFormatSettings } from './types.js';
+import { Utilities } from './utils.js';
 
 export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditProvider
 {

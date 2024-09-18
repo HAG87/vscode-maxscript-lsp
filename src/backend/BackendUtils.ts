@@ -2,14 +2,10 @@
  * Copyright (c) Mike Lischke. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
  */
-import
-{
-    ParseTree,
-    ParserRuleContext,
-    TerminalNode,
-} from "antlr4ng";
-import { ILexicalRange } from "../types.js";
-import { mxsParser } from "../parser/mxsParser.js";
+import { ParserRuleContext, ParseTree, TerminalNode } from 'antlr4ng';
+
+import { mxsParser } from '../parser/mxsParser.js';
+import { ILexicalRange } from '../types.js';
 
 export class BackendUtils
 {

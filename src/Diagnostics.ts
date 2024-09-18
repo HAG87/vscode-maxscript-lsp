@@ -1,8 +1,9 @@
 /* convert diagnostics information to vcode Diagnostic
 */
-import { Diagnostic, DiagnosticSeverity } from "vscode";
-import { DiagnosticType, IDiagnosticEntry } from "./types.js";
-import { Utilities } from "./utils.js";
+import { Diagnostic, DiagnosticSeverity } from 'vscode';
+
+import { DiagnosticType, IDiagnosticEntry } from './types.js';
+import { Utilities } from './utils.js';
 
 const diagnosticTypeMap = new Map<DiagnosticType, DiagnosticSeverity>();
 

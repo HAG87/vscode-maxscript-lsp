@@ -6,60 +6,30 @@
  *------------------------------------------------------------------------------------------
 */
 
-export interface ICodeFormatSettings
-{
-    indentChar: string,
-    newLineChar: string,
-    lineEndChar: string,
-    lineContinuationChar: string,
-    whitespaceChar: string,
-    codeblock: {
-        parensInNewLine: boolean,
-        newlineAllways: boolean,
-        spaced: boolean,
-    },
+import {
+  ICodeFormatSettings, IMaxScriptSettings, IMinifierSettings,
+} from './types.js';
+
+export const minifierSettings: ICodeFormatSettings & IMinifierSettings = {
+    whitespaceChar: ' ',
+    newLineChar: ';',
+    indentChar: '',
+    lineEndChar: ';',
+    lineContinuationChar: '',
     statements: {
-        useLineBreaks: boolean,
-        optionalWhitespace: boolean
+        useLineBreaks: true,
+        optionalWhitespace: false
+    },
+    codeblock: {
+        parensInNewLine: false,
+        newlineAllways: false,
+        spaced: false,
     },
     list: {
-        useLineBreaks: boolean
-    }
-}
-
-export interface IPrettifierSettings
-{
-    filePrefix?: string,
-    keepComments?: boolean,
-    keepEmptyLines?: boolean,
-    expressionsToBlock: boolean,
-}
-
-export interface IMinifierSettings
-{
-    filePrefix?: string,
-    condenseWhitespace: boolean,
-    removeUnnecessaryScopes: boolean,
-}
-
-export interface IMaxScriptSettings
-{
-    language?: {
-        SemanticTokens: boolean,
-        GoToSymbol: boolean,
-        GoToDefinition: boolean,
-        Diagnostics: boolean,
+        useLineBreaks: false
     },
-    Completions?: {
-        dataBaseCompletion: boolean,
-        codeCompletion: boolean
-    };
-    // parser: {
-    // 	multiThreading: boolean,
-    // }
-    formatter: ICodeFormatSettings;
-    prettifier: IPrettifierSettings;
-    minifier: IMinifierSettings;
+    condenseWhitespace: true,
+    removeUnnecessaryScopes: false,
 }
 
 // default settings

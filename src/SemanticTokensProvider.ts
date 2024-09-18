@@ -1,7 +1,11 @@
-import { CancellationToken, DocumentRangeSemanticTokensProvider, DocumentSemanticTokensProvider, Event, Position, ProviderResult, Range, SemanticTokens, SemanticTokensBuilder, SemanticTokensEdits, SemanticTokensLegend, TextDocument, Uri } from "vscode";
-import { mxsBackend } from "./backend/Backend.js";
-import { ISemanticToken, semTokenModifiers, semTokenTypes } from "./types.js";
+import {
+  CancellationToken, DocumentRangeSemanticTokensProvider,
+  DocumentSemanticTokensProvider, Event, ProviderResult, Range,
+  SemanticTokens, SemanticTokensBuilder, SemanticTokensLegend, TextDocument,
+} from 'vscode';
 
+import { mxsBackend } from './backend/Backend.js';
+import { semTokenModifiers, semTokenTypes } from './types.js';
 
 export const mxsSemtoTokensLegend = new SemanticTokensLegend(semTokenTypes, semTokenModifiers);
 

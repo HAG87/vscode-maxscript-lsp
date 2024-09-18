@@ -1,17 +1,25 @@
-import { commands, ExtensionContext, languages, ProgressLocation, TextDocument, TextDocumentChangeEvent, Uri, window, workspace } from 'vscode'
-import { readFile, writeFile } from 'fs/promises';
-import { basename } from 'path'
-import { mxsBackend } from './backend/Backend.js'
-import { Utilities } from './utils.js'
-import { mxsSymbolProvider } from './SymbolProvider.js'
-import { diagnosticAdapter } from './Diagnostics.js'
-import { mxsReferenceProvider } from './ReferenceProvider.js'
-import { mxsDefinitionProvider } from './DefinitionProvider.js'
-import { mxsRenameProvider } from './RenameProvider.js'
-import { mxsHoverProvider } from './HoverProvider.js'
-import { mxsCompletionProvider } from './CompletionItemProvider.js'
-import { mxsRangeSemanticTokensProvider, mxsSemanticTokensProvider, mxsSemtoTokensLegend } from './SemanticTokensProvider.js'
-import { mxsFormattingProvider, mxsRangeFormattingProvider } from './FormattingProvider.js'
+import { writeFile } from 'fs/promises';
+import { basename } from 'path';
+import {
+  commands, ExtensionContext, languages, ProgressLocation,
+  TextDocument, TextDocumentChangeEvent, Uri, window,
+  workspace,
+} from 'vscode';
+
+import { mxsBackend } from './backend/Backend.js';
+import { mxsCompletionProvider } from './CompletionItemProvider.js';
+import { mxsDefinitionProvider } from './DefinitionProvider.js';
+import { diagnosticAdapter } from './Diagnostics.js';
+import { mxsRangeFormattingProvider } from './FormattingProvider.js';
+import { mxsHoverProvider } from './HoverProvider.js';
+import { mxsReferenceProvider } from './ReferenceProvider.js';
+import { mxsRenameProvider } from './RenameProvider.js';
+import {
+  mxsSemanticTokensProvider, mxsSemtoTokensLegend,
+} from './SemanticTokensProvider.js';
+import { minifierSettings } from './settings.js';
+import { mxsSymbolProvider } from './SymbolProvider.js';
+import { Utilities } from './utils.js';
 
 export class ExtensionHost
 {
@@ -316,7 +324,7 @@ export class ExtensionHost
         return new Promise<void>((resolve, reject) =>
         {
             // minify
-            const minResult = this.backend.minifyCode(uri.toString())
+            const minResult = this.backend.minifyCode(uri.toString(), minifierSettings)
             // minify done, dispose context
             if (shouldUnload) {
                 this.backend.unloadDocument(uri.toString())

@@ -1,5 +1,9 @@
-import { CancellationToken, CodeLens, CodeLensProvider, Event, ProviderResult, TextDocument } from "vscode";
-import { mxsBackend } from "./backend/Backend.js";
+import {
+  CancellationToken, CodeLens, CodeLensProvider, Event,
+  ProviderResult, TextDocument,
+} from 'vscode';
+
+import { mxsBackend } from './backend/Backend.js';
 
 //TODO: add codeLens for references in structs, functions, declarations, rollouts, etc
 

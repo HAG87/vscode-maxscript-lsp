@@ -1,4 +1,4 @@
-import { BaseSymbol, ScopedSymbol } from "antlr4-c3";
+import { BaseSymbol, ScopedSymbol } from 'antlr4-c3';
 
 export class BinaryLifting {
     private up: (BaseSymbol | null)[][] = [];

@@ -1,46 +1,28 @@
-import { ParserRuleContext, TerminalNode } from "antlr4ng"
-import { mxsLexer } from "../parser/mxsLexer.js"
-import
-{
-    AccessorContext, AssignmentContext, AttributesDefinitionContext, Case_itemContext,
-    CommaContext, ContextExpressionContext, DoLoopExpressionContext, EventHandlerClauseContext, Expr_operandContext, Expr_seqContext,
-    ExprContext, FactorContext, FnDefinitionContext, FnReturnStatementContext, ForLoopExpressionContext, FunctionCallContext,
-    IdentifierContext, IfExpressionContext, IndexContext, LbContext, LbkContext, LcContext, LpContext,
-    MacroscriptDefinitionContext, OperandContext, Param_nameContext,
-    ParamContext, ParamsDefinitionContext, Paren_pairContext, PluginDefinitionContext, ProgramContext,
-    PropertyContext, RbContext, Rc_submenuContext, RcContext, RcmenuControlContext, RcmenuDefinitionContext,
-    RolloutControlContext, RolloutDefinitionContext, RolloutGroupContext, RpContext, SimpleExpressionContext,
-    Struct_bodyContext, StructDefinitionContext, ToolDefinitionContext, TryExpressionContext, UtilityDefinitionContext,
-    WhenStatementContext, WhileLoopExpressionContext
-} from "../parser/mxsParser.js"
-import { mxsParserVisitor } from "../parser/mxsParserVisitor.js"
-import { ICodeFormatSettings, IMinifierSettings } from "../settings.js"
+import { ParserRuleContext, TerminalNode } from 'antlr4ng';
+
+import { mxsLexer } from '../parser/mxsLexer.js';
+import {
+  AccessorContext, AssignmentContext, AttributesDefinitionContext,
+  Case_itemContext, CommaContext, ContextExpressionContext,
+  DoLoopExpressionContext, EventHandlerClauseContext, Expr_operandContext,
+  Expr_seqContext, ExprContext, FactorContext, FnDefinitionContext,
+  FnReturnStatementContext, ForLoopExpressionContext, FunctionCallContext,
+  IdentifierContext, IfExpressionContext, IndexContext, LbContext,
+  LbkContext, LcContext, LpContext, MacroscriptDefinitionContext,
+  OperandContext, Param_nameContext, ParamContext, ParamsDefinitionContext,
+  Paren_pairContext, PluginDefinitionContext, ProgramContext, PropertyContext,
+  RbContext, Rc_submenuContext, RcContext, RcmenuControlContext,
+  RcmenuDefinitionContext, RolloutControlContext, RolloutDefinitionContext,
+  RolloutGroupContext, RpContext, SimpleExpressionContext, Struct_bodyContext,
+  StructDefinitionContext, ToolDefinitionContext, TryExpressionContext,
+  UtilityDefinitionContext, WhenStatementContext, WhileLoopExpressionContext,
+} from '../parser/mxsParser.js';
+import { mxsParserVisitor } from '../parser/mxsParserVisitor.js';
+import { ICodeFormatSettings, IMinifierSettings } from '../types.js';
 
 export class mxsParserVisitorFormatter extends mxsParserVisitor<string>
 {
-    private options: ICodeFormatSettings & IMinifierSettings = {
-        whitespaceChar: ' ',
-        newLineChar: ';',
-        indentChar: '',
-        lineEndChar: ';',
-        lineContinuationChar: '',
-        statements: {
-            useLineBreaks: true,
-            optionalWhitespace: false
-        },
-        codeblock: {
-            parensInNewLine: false,
-            newlineAllways: false,
-            spaced: false,
-        },
-        list: {
-            useLineBreaks: false
-        },
-        condenseWhitespace: true,
-        removeUnnecessaryScopes: false,
-    }
-
-    constructor(options?: IMinifierSettings)
+    constructor(private options: ICodeFormatSettings & IMinifierSettings)
     {
         super()
 

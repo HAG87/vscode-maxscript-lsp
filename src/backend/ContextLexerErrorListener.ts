@@ -3,12 +3,15 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  */
 
-import { ATNSimulator, BaseErrorListener, RecognitionException, Recognizer, Token } from "antlr4ng";
-import { DiagnosticType, IDiagnosticEntry } from "../types.js";
+import {
+  ATNSimulator, BaseErrorListener, RecognitionException, Recognizer,
+  Token,
+} from 'antlr4ng';
+
+import { DiagnosticType, IDiagnosticEntry } from '../types.js';
 
 export class ContextLexerErrorListener extends BaseErrorListener
 {
-
     public constructor(private errorList: IDiagnosticEntry[])
     {
         super();

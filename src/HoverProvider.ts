@@ -1,12 +1,18 @@
-import { CancellationToken, Hover, HoverProvider, Position, ProviderResult, TextDocument } from "vscode";
-import { mxsBackend } from "./backend/Backend.js";
-import { mxsLanguageCompletions } from "./backend/schemas/mxsCompletions-base.js";
+import {
+  CancellationToken, Hover, HoverProvider, Position,
+  ProviderResult, TextDocument,
+} from 'vscode';
+
+import { mxsBackend } from './backend/Backend.js';
+import {
+  mxsLanguageCompletions,
+} from './backend/schemas/mxsCompletions-base.js';
 
 export class mxsHoverProvider implements HoverProvider
 {
     public constructor(private backend: mxsBackend) { }
 
-    provideHover(document: TextDocument, position: Position, token: CancellationToken): ProviderResult<Hover>
+    provideHover(document: TextDocument, position: Position, _token: CancellationToken): ProviderResult<Hover>
     {
         // throw new Error("Method not implemented.");
         return new Promise((resolve) =>

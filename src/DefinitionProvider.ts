@@ -1,6 +1,11 @@
-import { CancellationToken, Definition, DefinitionLink, DefinitionProvider, Location, Position, ProviderResult, TextDocument, Uri } from "vscode";
-import { mxsBackend } from "./backend/Backend.js";
-import { Utilities } from "./utils.js";
+import {
+  CancellationToken, Definition, DefinitionLink, DefinitionProvider,
+  Location, Position, ProviderResult, TextDocument,
+  Uri,
+} from 'vscode';
+
+import { mxsBackend } from './backend/Backend.js';
+import { Utilities } from './utils.js';
 
 export class mxsDefinitionProvider implements DefinitionProvider
 {

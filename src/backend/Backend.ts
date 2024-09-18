@@ -1,10 +1,12 @@
+import * as fs from 'fs';
 import { Uri } from 'vscode';
-import * as fs from "fs";
-import { ICompletionsResult, SourceContext } from './SourceContext.js';
-import { ILexicalRange, ISemanticToken, ISymbolInfo } from '../types.js';
-import { BaseSymbol } from 'antlr4-c3';
+
+import {
+  ICodeFormatSettings, ILexicalRange, IMinifierSettings, ISemanticToken,
+  ISymbolInfo,
+} from '../types.js';
 import { IformatterResult } from './CodeFormatter.js';
-import { ICodeFormatSettings, IMinifierSettings } from '../settings.js';
+import { ICompletionsResult, SourceContext } from './SourceContext.js';
 
 export interface IContextEntry
 {
@@ -270,7 +272,7 @@ export class mxsBackend
         return this.getContext(uri).formatCode(range, options);
     }
     // minify
-    public minifyCode(uri: string, options?: IMinifierSettings): string | null
+    public minifyCode(uri: string, options: ICodeFormatSettings & IMinifierSettings): string | null
     {
         return this.getContext(uri).minifyCode(options)
     }
