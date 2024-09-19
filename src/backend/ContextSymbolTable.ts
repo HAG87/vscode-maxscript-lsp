@@ -196,11 +196,12 @@ export const topLevelSymbolsType: Array<new () => BaseSymbol> = new Array(
     ToolDefinitionSymbol,
     UtilityDefinitionSymbol,
     RolloutDefinitionSymbol,
+    EventHandlerClauseSymbol,
     StructDefinitionSymbol,
     StructMemberSymbol,
     FnDefinitionSymbol,
     VariableDeclSymbol,
-    ExpSeqSymbol
+    ExpSeqSymbol,
 );
 
 export const declRules: Set<number> = new Set([
