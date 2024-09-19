@@ -36,9 +36,9 @@ export const minifierSettings: ICodeFormatSettings & IMinifierSettings & IPretti
 
 export const prettifyOptions: ICodeFormatSettings & IMinifierSettings & IPrettifierSettings = {
     whitespaceChar: ' ',
-    newLineChar: '\n\r',
-    indentChar: '  ',
-    exprEndChar: '\n\r',
+    newLineChar: '\r\n',
+    indentChar: '\t',
+    exprEndChar: '\r\n',
     lineContinuationChar: '\\',
     codeblock: {
         newlineAllways: true, //ok

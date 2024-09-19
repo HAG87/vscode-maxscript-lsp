@@ -9,8 +9,8 @@ import { mxsLexer } from '../parser/mxsLexer.js';
 import { mxsParser } from '../parser/mxsParser.js';
 import {
   DiagnosticType, ICodeFormatSettings, IDefinition, IDiagnosticEntry,
-  ILexicalRange, IMinifierSettings, ISemanticToken, ISymbolInfo,
-  SymbolKind,
+  ILexicalRange, IMinifierSettings, IPrettifierSettings, ISemanticToken,
+  ISymbolInfo, SymbolKind,
 } from '../types.js';
 import { BackendUtils } from './BackendUtils.js';
 import { IformatterResult, mxsSimpleFormatter } from './CodeFormatter.js';
@@ -24,7 +24,10 @@ import {
   StructDefinitionSymbol, StructMemberSymbol, ToolDefinitionSymbol,
   UtilityDefinitionSymbol, VariableDeclSymbol,
 } from './ContextSymbolTable.js';
-import { mxsParserVisitorFormatter } from './mxsParserVisitorFormatter.js';
+import {
+  codeBlock, mxsParserVisitorFormatter,
+} from './mxsParserVisitorFormatter.js';
+import { mxsParserVisitorMinifier } from './mxsParserVisitorMinifier.js';
 import { semanticTokenListener } from './semanticTokenListener.js';
 import { symbolTableListener } from './symbolTableListener.js';
 
@@ -403,7 +406,7 @@ export class SourceContext
         }
         return result;
         */
-       return await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
+        return await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
     }
     public getSymbolInfo(symbol: string | BaseSymbol): ISymbolInfo | undefined
     {
@@ -560,7 +563,7 @@ export class SourceContext
                     const value = this.parser?.vocabulary.getDisplayName(type) ?? "";
                     result.push({
                         kind: SymbolKind.Keyword,
-                        name: prettyValue(value),   //value[0] === "'" ? value.substring(1, value.length - 1) : value, // Remove quotes.
+                        name: prettyValue(value),   // value[0] === "'" ? value.substring(1, value.length - 1) : value, // Remove quotes.
                         //description: "Rule alt separator",
                         source: this.sourceUri,
                     });
@@ -742,6 +745,7 @@ export class SourceContext
     {
         return this.semanticTokens;
     }
+    //-------------------------------------------------refereences
 
     // TODO: references
     // TODO: dependencies
@@ -836,12 +840,32 @@ export class SourceContext
         }
     }
     // minify
-    public minifyCode(options: ICodeFormatSettings & IMinifierSettings): string | null
+    public minifyCode(options: ICodeFormatSettings & IMinifierSettings & IPrettifierSettings, enhanced: boolean = false): string | null
     {
-        const visitor = new mxsParserVisitorFormatter(options);
-        return visitor.visit(this.tree as ParseTree);
+        let result: string | null = null;
+        if (!enhanced) {
+            const visitor = new mxsParserVisitorMinifier(options);
+            result = visitor.visit(this.tree as ParseTree);
+        } else {
+            //...
+            const visitor = new mxsParserVisitorFormatter(options);
+            const derive = visitor.visit(this.tree as ParseTree);
+            if (!Array.isArray(derive) && derive instanceof codeBlock) {
+                result = derive.toString(options)
+            }
+        }
+        return result
     }
     // prettify
-    public prettyfiCode() { }
+    public prettifyCode(options: ICodeFormatSettings & IMinifierSettings & IPrettifierSettings)
+    {
+        let result: string | null = null;
+        const visitor = new mxsParserVisitorFormatter(options);
+        const derive = visitor.visit(this.tree as ParseTree);
+        if (!Array.isArray(derive) && derive instanceof codeBlock) {
+            result = derive.toString(options)
+        }
+        return result
+    }
     //...
 }

@@ -52,31 +52,35 @@ expr
 
 //-------------------------------------- MACROSCRIPT_DEF
 macroscriptDefinition
-	: MacroScript NL* macro_name = identifier ( NL* param )* NL*
+	: macroscript_predicate NL*
     lp
         (macroscript_clause (lbk? macroscript_clause)*)?
     rp
 	;
-
+macroscript_predicate: MacroScript NL* macro_name = identifier ( NL* param )*
+	;
 macroscript_clause: expr | eventHandlerClause
 	;
 
 //-------------------------------------- UTILITY_DEF
 utilityDefinition
-	: Utility NL* utility_name = identifier NL* operand (NL* param)* NL*
+	: utility_predicate NL*
     lp
         ( rollout_clause (lbk? rollout_clause)* )?
     rp
 	;
-
+utility_predicate: Utility NL* utility_name = identifier NL* operand (NL* param)*
+	;
 //-------------------------------------- ROLLOUT_DEF
 rolloutDefinition
-	: Rollout NL* rollout_name = identifier NL* operand (NL* param)* NL*
+	: rollout_predicate NL*
     lp
         ( rollout_clause (lbk? rollout_clause)* )?
     rp
 	;
 
+rollout_predicate: Rollout NL* rollout_name = identifier NL* operand (NL* param)*
+	;
 rollout_clause
 	: declarationExpression
 	| rolloutControl
@@ -89,10 +93,12 @@ rollout_clause
 	;
 
 rolloutGroup
-	: Group NL* group_name = STRING? NL*
+	: group_predicate NL*
     lp
         ( rolloutControl (lbk? rolloutControl)* )?
     rp
+	;
+group_predicate: Group NL* group_name = STRING?
 	;
 
 rolloutControl: rolloutControlType NL* controlName = identifier (NL* operand)? (NL* param)*
@@ -130,27 +136,33 @@ rolloutControlType
 
 //-------------------------------------- TOOL_DEF
 toolDefinition
-	: Tool NL* tool_name = identifier (NL* param)* NL*
+	: tool_predicate NL*
     lp
         tool_clause (lbk? tool_clause)+
     rp
 	;
-
+tool_predicate: Tool NL* tool_name = identifier (NL* param)*
+	;
 tool_clause: declarationExpression | fnDefinition | structDefinition | eventHandlerClause
 	;
 
 //-------------------------------------- RCMENU_DEF
 rcmenuDefinition
-	: RCmenu NL* rc_name = identifier NL* lp (rc_clause (NL* rc_clause)*)? rp
+	: rcmenu_predicate NL*
+	lp
+		(rc_clause (NL* rc_clause)*)?
+	rp
 	;
-
+rcmenu_predicate: RCmenu NL* rc_name = identifier
+	;
 rc_submenu
-	: SubMenu NL* submenu_name = STRING (NL* param)* NL*
+	: submenu_predicate NL*
     lp
         ( rc_clause (lbk? rc_clause)* )?
     rp
 	;
-
+submenu_predicate: SubMenu NL* submenu_name = STRING (NL* param)*
+	;
 rc_clause
 	: declarationExpression
 	| fnDefinition
@@ -167,12 +179,13 @@ rcmenuControl
 
 //-------------------------------------- PLUGIN_DEF
 pluginDefinition
-	: Plugin NL* plugin_name = identifier NL* identifier (NL* param)* NL*
+	: plugin_predicate NL*
     lp
         plugin_clause (lbk? plugin_clause)*
     rp
 	;
-
+plugin_predicate: Plugin NL* plugin_kind = identifier NL* plugin_name = identifier (NL* param)*
+	;
 plugin_clause
 	: declarationExpression
 	| fnDefinition
@@ -230,13 +243,16 @@ ctx_keyword
 
 //-------------------------------------- PARAMETER DEF
 paramsDefinition
-	: Parameters NL* identifier (NL* param)* NL*
+	: params_predicate NL*
     lp
-        ( param_clause (lbk param_clause)* )?
+        ( params_clause (lbk params_clause)* )?
     rp
 	;
-
-param_clause: paramDefinition | eventHandlerClause
+params_predicate: Parameters NL* identifier (NL* param)*
+	;
+params_clause
+	: paramDefinition
+	| eventHandlerClause
 	;
 paramDefinition: identifier (NL* param)*
 	;
@@ -245,12 +261,13 @@ paramDefinition: identifier (NL* param)*
 // [silentErrors:t/f] [initialRollupState:0xnnnnn] [remap:#(<old_param_names_array>,
 // <new_param_names_array>)]
 attributesDefinition
-	: Attributes NL* identifier (NL* param)* NL*
+	: attributes_predicate NL*
     lp
         attributes_clause ( lbk attributes_clause )*
     rp
 	;
-
+attributes_predicate: Attributes NL* identifier (NL* param)*
+	;
 attributes_clause
 	: declarationExpression
 	| eventHandlerClause
@@ -279,14 +296,14 @@ structDefinition
 
 struct_body: (struct_access NL*)? struct_members ( comma (struct_access NL*)? struct_members )*
 	;
+
 struct_members
 	: struct_member
 	| fnDefinition
 	| eventHandlerClause	
 	;
 
-struct_member: identifier assignment? // | ids
-	;
+struct_member: identifier assignment? ;
 
 struct_access: PUBLIC | PRIVATE
 	;
@@ -296,11 +313,11 @@ fnDefinition
 	: fn_mod = MAPPED? NL* fn_decl = FN NL* fn_name = identifier NL*
 		( NL* fn_args )*
 		(NL* fn_params)*
-		NL* assignment
+		NL* fn_body
 	;
 
 fn_body
-	: expr
+	: EQ NL* expr
 	;
 fn_args
 	: identifier
@@ -356,9 +373,13 @@ tryExpression: TRY NL* expr NL* CATCH NL* expr
 
 //---------------------------------------- CASE-EXPR
 caseExpression
-	: CASE NL* expr? NL* OF NL* lp case_item (lbk case_item)* rp
+	: case_predicate NL*
+	lp
+		case_item (lbk case_item)*
+	rp
 	;
-
+case_predicate: CASE NL* expr? NL* OF
+	;
 // This will produce errors at compile time...
 case_item: factor COLON NL* expr
 	;
@@ -607,7 +628,6 @@ factor
 	| point3
 	| point2
 	| box2
-	// | unary_minus //UNARY MINUS
 	| expr_seq //EXPRESSION SEQUENCE
 	;
 

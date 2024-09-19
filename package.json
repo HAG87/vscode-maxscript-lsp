@@ -114,9 +114,14 @@
       },
       {
         "command": "mxs.prettify",
-        "title": "Prettify document",
+        "title": "Prettify open document",
         "category": "MaxScript",
         "icon": "$(pencil)"
+      },
+      {
+        "command": "mxs.prettify.file",
+        "title": "Prettify file",
+        "category": "MaxScript"
       }
     ],
     "menus": {
@@ -133,6 +138,11 @@
       "explorer/context": [
         {
           "command": "mxs.minify.file",
+          "when": "resourceExtname == .ms || resourceExtname == .mcr",
+          "group": "1_modification@1"
+        },
+        {
+          "command": "mxs.prettify.file",
           "when": "resourceExtname == .ms || resourceExtname == .mcr",
           "group": "1_modification@1"
         }

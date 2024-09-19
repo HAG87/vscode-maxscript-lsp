@@ -1,8 +1,9 @@
 import { writeFile } from 'fs/promises';
 import { basename } from 'path';
 import {
-  commands, ExtensionContext, languages, ProgressLocation,
-  TextDocument, TextDocumentChangeEvent, Uri, window,
+  commands, ExtensionContext, languages, Position,
+  ProgressLocation, Range, TextDocument, TextDocumentChangeEvent,
+  TextEditor, TextEditorEdit, Uri, window,
   workspace,
 } from 'vscode';
 
@@ -17,7 +18,7 @@ import { mxsRenameProvider } from './RenameProvider.js';
 import {
   mxsSemanticTokensProvider, mxsSemtoTokensLegend,
 } from './SemanticTokensProvider.js';
-import { minifierSettings } from './settings.js';
+import { minifierSettings, prettifyOptions } from './settings.js';
 import { mxsSymbolProvider } from './SymbolProvider.js';
 import { Utilities } from './utils.js';
 
@@ -297,38 +298,103 @@ export class ExtensionHost
                 )
             }),
             //..
-            /*           
+            // /*
             commands.registerCommand('mxs.prettify',
-                async () =>
+                (uri) =>
                 {
-                    let activeEditorUri = window.activeTextEditor?.document.uri;
-
-                    if (!activeEditorUri
-                        || activeEditorUri.scheme !== 'file'
-                        || window.activeTextEditor?.document.isDirty) {
-                        await window.showInformationMessage('MaxScript prettifier: Save your file first.');
-                        return;
-                    }
-                    let params: PrettifyDocParams = {
-                        command: 'mxs.prettify',
-                        uri: [client.code2ProtocolConverter.asUri(activeEditorUri)]
-                    };
-                    await client.sendRequest(PrettifyDocRequest.type, params);
-                })
-            */
+                    window.withProgress(
+                        {
+                            location: ProgressLocation.Window,
+                            title: 'Prettify open document',
+                        },
+                        async (_progress, _token) =>
+                        {
+                            if (!uri
+                                || uri.scheme !== 'file'
+                                || window.activeTextEditor?.document.isDirty) {
+                                window.showInformationMessage('MaxScript prettifier: Save your file first.');
+                                return;
+                            }
+                            // console.log(this.prettifyDocument(uri, false))
+                            window.activeTextEditor?.edit((builder: TextEditorEdit) =>
+                            {
+                                const text: string = window.activeTextEditor?.document.getText()!
+                                const range: Range = new Range(
+                                    window.activeTextEditor?.document.positionAt(0)!,
+                                    window.activeTextEditor?.document.positionAt(text.length)!
+                                );
+                                const prettyResult = this.prettifyDocument(uri, false)
+                                console.log(JSON.stringify(prettyResult))
+                                if (prettyResult) {
+                                    // builder.replace(range, 'prettyResult')
+                                    builder.replace(range, prettyResult)
+                                }
+                            })
+                        }
+                    )
+                }),
+            commands.registerCommand('mxs.prettify.file',
+                (uri) =>
+                {
+                    window.withProgress(
+                        {
+                            location: ProgressLocation.Window,
+                            title: 'Prettify file',
+                        },
+                        async (_progress, _token) =>
+                        {
+                            if (!uri
+                                || uri.scheme !== 'file'
+                                || window.activeTextEditor?.document.isDirty) {
+                                window.showInformationMessage('MaxScript prettifier: Save your file first.');
+                                return;
+                            }
+                            return this.prettifyFile(
+                                uri,
+                                false,
+                                workspace.getConfiguration('MaxScript').get('minifier.filePrefix')
+                            )
+                        }
+                    )
+                }),
+            //...
         )
+    }
+
+    private async replaceText(editor: TextEditor, action: Function, ...args: any[])
+    {
+        return editor.edit((builder: TextEditorEdit) =>
+        {
+            const text: string = window.activeTextEditor?.document.getText()!
+            const range: Range = new Range(
+                editor.document.positionAt(0)!,
+                editor.document.positionAt(text.length - 1)!
+            );
+
+            // const result = this.prettifyDocument(editor.document.uri, false)
+            const result = action(editor.document.uri, ...args)
+            if (result) {
+                builder.replace(range, result)
+            }
+        })
+    }
+    
+    private minifyDocument(uri: Uri, shouldUnload: boolean = false, enhanced: boolean = false): string | null
+    {
+        // minify
+        const minResult = this.backend.minifyCode(uri.toString(), minifierSettings, enhanced)
+        // minify done, dispose context
+        if (shouldUnload) {
+            this.backend.unloadDocument(uri.toString())
+        }
+        return minResult
     }
 
     private minifyFile(uri: Uri, shouldUnload: boolean = false, prefix: string = 'min_')
     {
         return new Promise<void>((resolve, reject) =>
         {
-            // minify
-            const minResult = this.backend.minifyCode(uri.toString(), minifierSettings)
-            // minify done, dispose context
-            if (shouldUnload) {
-                this.backend.unloadDocument(uri.toString())
-            }
+            const minResult = this.minifyDocument(uri, shouldUnload, false)
             // result ok
             if (minResult) {
                 //save file
@@ -348,6 +414,45 @@ export class ExtensionHost
                     )
             } else {
                 window.showErrorMessage(`MaxScript minify: Failed at ${basename(uri.fsPath)}. Unable to parse the code`)
+                reject()
+            }
+        });
+    }
+
+    private prettifyDocument(uri: Uri, shouldUnload: boolean = false): string | null
+    {
+        const prettyResult = this.backend.prettifyCode(uri.toString(), prettifyOptions)
+        // done, dispose context
+        if (shouldUnload) {
+            this.backend.unloadDocument(uri.toString())
+        }
+        return prettyResult
+    }
+
+    private prettifyFile(uri: Uri, shouldUnload: boolean = false, prefix: string = 'pretty_')
+    {
+        return new Promise<void>((resolve, reject) =>
+        {
+            const prettyResult = this.prettifyDocument(uri, shouldUnload)
+            // result ok
+            if (prettyResult) {
+                //save file
+                const filename = Utilities.prefixFile(uri.fsPath, prefix)
+                writeFile(filename, prettyResult)
+                    .then(
+                        () =>
+                        {
+                            window.showInformationMessage(`MaxScript prettify: Document saved as ${basename(filename)}`)
+                            resolve()
+                        },
+                        (reason) =>
+                        {
+                            window.showErrorMessage(`MaxScript prettify: Failed at ${basename(uri.fsPath)}. Reason: ${reason}`)
+                            reject()
+                        }
+                    )
+            } else {
+                window.showErrorMessage(`MaxScript prettify: Failed at ${basename(uri.fsPath)}. Unable to parse the code`)
                 reject()
             }
         });

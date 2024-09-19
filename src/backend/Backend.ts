@@ -2,8 +2,8 @@ import * as fs from 'fs';
 import { Uri } from 'vscode';
 
 import {
-  ICodeFormatSettings, ILexicalRange, IMinifierSettings, ISemanticToken,
-  ISymbolInfo,
+  ICodeFormatSettings, ILexicalRange, IMinifierSettings, IPrettifierSettings,
+  ISemanticToken, ISymbolInfo,
 } from '../types.js';
 import { IformatterResult } from './CodeFormatter.js';
 import { ICompletionsResult, SourceContext } from './SourceContext.js';
@@ -13,6 +13,7 @@ export interface IContextEntry
     context: SourceContext;
     // this holds a counter to check the references to this ctx
     refCount: number;
+    //TODO:
     // dependencies: string[]
     //...
 }
@@ -41,7 +42,7 @@ export class mxsBackend
     private parseContent(contextEntry: IContextEntry): void
     {
         contextEntry.context.parse();
-        /*
+        /* //TODO:
             const oldDependencies = contextEntry.dependencies;
             contextEntry.dependencies = [];
             const newDependencies = contextEntry.context.parse();
@@ -242,13 +243,12 @@ export class mxsBackend
     }
 
     // semantic tokens
-
     public getDocumentSemanticTokens(uri: string): ISemanticToken[]
     {
         return this.getContext(uri).getSemanticTokens;
     }
 
-    // references
+    // TODO: references
     /**
      * Count how many times a symbol has been referenced. The given file must contain the definition of this symbol.
      *
@@ -272,10 +272,13 @@ export class mxsBackend
         return this.getContext(uri).formatCode(range, options);
     }
     // minify
-    public minifyCode(uri: string, options: ICodeFormatSettings & IMinifierSettings): string | null
+    public minifyCode(uri: string, options: ICodeFormatSettings & IMinifierSettings & IPrettifierSettings, enhanced: boolean = false): string | null
     {
-        return this.getContext(uri).minifyCode(options)
+        return this.getContext(uri).minifyCode(options, enhanced)
     }
     // TODO: prettify
-    
+    public prettifyCode(uri: string, options: ICodeFormatSettings & IMinifierSettings & IPrettifierSettings): string | null
+    {
+        return this.getContext(uri).prettifyCode(options)
+    }
 }
