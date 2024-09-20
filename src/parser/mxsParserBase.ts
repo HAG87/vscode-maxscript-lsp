@@ -1,12 +1,8 @@
-import
-{
-    Parser,
-    Token,
-    TokenStream,
-} from 'antlr4ng';
+import { Parser, Token, TokenStream } from 'antlr4ng';
+
+import { mxsLexer } from './mxsLexer.js';
 // import MultiChannelTokenStream from './multiChannelTokenStream.js';
 import { mxsParser } from './mxsParser.js';
-import { mxsLexer } from './mxsLexer.js';
 
 export abstract class mxsParserBase extends Parser
 {
@@ -33,22 +29,22 @@ export abstract class mxsParserBase extends Parser
     */
     private nextTokenType(type: number, offset: number = 1)
     {
-        let idx = this.getCurrentToken().tokenIndex + offset;
-        let token = this.inputStream.get(idx);
+        const idx = this.getCurrentToken().tokenIndex + offset;
+        const token = this.inputStream.get(idx);
         return token ? token.type === type : true;
     }
 
     private prevTokenType(type: number, offset: number = 1)
     {
-        let idx = this.getCurrentToken().tokenIndex - offset;
-        let token = this.inputStream.get(idx);
+        const idx = this.getCurrentToken().tokenIndex - offset;
+        const token = this.inputStream.get(idx);
         return token ? token.type === type : true;
     }
 
     private nextTokenChannel(offset: number = 1)
     {
-        let idx = this.getCurrentToken().tokenIndex + offset;
-        let token = this.inputStream.get(idx);
+        const idx = this.getCurrentToken().tokenIndex + offset;
+        const token = this.inputStream.get(idx);
         if (token) {
             return (token?.channel === mxsLexer.DEFAULT_TOKEN_CHANNEL);
         }
@@ -57,8 +53,8 @@ export abstract class mxsParserBase extends Parser
 
     private prevTokenChannel(offset: number = 1)
     {
-        let idx = this.getCurrentToken().tokenIndex - offset;
-        let token = this.inputStream.get(idx);
+        const idx = this.getCurrentToken().tokenIndex - offset;
+        const token = this.inputStream.get(idx);
         if (token) {
             return (token?.channel === mxsLexer.DEFAULT_TOKEN_CHANNEL);
         }

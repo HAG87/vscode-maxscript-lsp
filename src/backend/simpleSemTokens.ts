@@ -43,7 +43,7 @@ export class mxsSimpleSemTokensProvider
             this.tokens = this.getTokens()
         }
 
-        for (let token of this.tokens) {
+        for (const token of this.tokens) {
 
             const txt = token.text ?? '';
 

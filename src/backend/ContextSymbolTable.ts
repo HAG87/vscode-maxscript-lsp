@@ -188,8 +188,7 @@ export class IdentifierSymbol extends BaseSymbol { }
 // export class point2Symbol extends ExprSymbol { }
 // export class box2Symbol extends ExprSymbol { }
 
-export const topLevelSymbolsType: Array<new () => BaseSymbol> = new Array(
-
+export const topLevelSymbolsType: Array<new () => BaseSymbol> = [
     PluginDefinitionSymbol,
     MacroScriptDefinitionSymbol,
     AttributesDefSymbol,
@@ -202,7 +201,7 @@ export const topLevelSymbolsType: Array<new () => BaseSymbol> = new Array(
     FnDefinitionSymbol,
     VariableDeclSymbol,
     ExpSeqSymbol,
-);
+];
 
 export const declRules: Set<number> = new Set([
     mxsParser.RULE_pluginDefinition,
@@ -257,7 +256,7 @@ export class ContextSymbolTable extends SymbolTable
         return result;
     }
     //--------------------------------------------------------------------------
-    private static isType(symbol: any): symbol is BaseSymbol | ExprSymbol
+    private static isType(symbol: unknown): symbol is BaseSymbol | ExprSymbol
     {
         return topLevelSymbolsType.some(t => symbol instanceof t);
     }
@@ -428,7 +427,7 @@ export class ContextSymbolTable extends SymbolTable
 
         for (const symbol of filtered) {
             if (symbol.children.length > 0) {
-                let res = this.symbolInfoTree(symbol);
+                const res = this.symbolInfoTree(symbol);
 
                 if (res.length === 0) {
                     result.push(this.getSymbolInfo(symbol)!);
@@ -692,20 +691,16 @@ export class ContextSymbolTable extends SymbolTable
                 // we can filter the search for the symbol
                 if (node.name === entry.name && node instanceof IdentifierSymbol) {
                     if (!found && (nodeIndex === entryIndex)) {
-                        // console.log('---FOUND IT---');
-                        // console.log('something collected?');
                         // check scope inclusion of the previously collected symbols
                         if (candidates.length > 0) {
                             const foundScope = ((node.parent as ExprSymbol).getScope());
                             filterByScope(foundScope, candidates);
                         }
-                        // console.log('--------------');
                         // test first if we are at the definition, works when we have a parent context
                         if (node.parent && node.parent.context) {
                             const parentRule = node.parent.context as ParserRuleContext;
 
                             if (declRules.has(parentRule.ruleIndex)) {
-                                // console.log('we are at the defintion, just return now');
                                 result.push(node);
                                 return node.parent;
                             }
@@ -715,12 +710,8 @@ export class ContextSymbolTable extends SymbolTable
 
                     // moving this above find routine will skip checking the found symbol.
                     if (found) {
-                        let res = checkDefinition(found, node, result, candidates);
-                        // resultSymbol = res;
-                        return res;
+                        return checkDefinition(found, node, result, candidates);
                     } else {
-                        // console.log('symbol before found');
-                        // console.log((node.context as ParserRuleContext).start?.line);
                         candidates.push(node);
                     }
                 }
@@ -773,7 +764,9 @@ export class ContextSymbolTable extends SymbolTable
         }
         // accelerator: handle some known cases
         // topmost parent that its not _ContextSymbolTable
-        // const ancestor = symbol.symbolPath[symbol.symbolPath.length - 2] as ContextSymbolTable;        
+        // const ancestor = symbol.symbolPath[symbol.symbolPath.length - 2] as ContextSymbolTable;
+
+        // eslint-disable-next-line prefer-const
         let ancestor = symbol.root as ContextSymbolTable;
         // in symbol scope
         const prospects: BaseSymbol[] = ancestor.getAllNestedSymbolsSync(symbol.name);
@@ -804,14 +797,14 @@ export class ContextSymbolTable extends SymbolTable
         // candidates for implicit declaration
         if (searchDefinition.candidates.length > 0) {
             return searchDefinition.candidates[searchDefinition.candidates.length - 1];
-        };
+        }
         // /*
         // seach in top-level symbols as last chance, unreilable
         if (ancestor.parent) {
             let topScope = ancestor.parent;
             while (topScope) {
                 // let siblings = topScope.getAllSymbolsSync(BaseSymbol, true);
-                let sibling = topScope.resolveSync(symbol.name, true);
+                const sibling = topScope.resolveSync(symbol.name, true);
                 if (sibling) {
                     prospect = sibling;
                     break;
@@ -845,7 +838,7 @@ export class ContextSymbolTable extends SymbolTable
         // problems: it gets incorrent siblings, fails when the parent is the TableSymbol, 
         // try to use parent instead of scope to limit the search?
         // search on the same scope or in parent scope, NOT on childs of siblings
-        let scopeSearch = (parent: ScopedSymbol): BaseSymbol[] =>
+        const scopeSearch = (parent: ScopedSymbol): BaseSymbol[] =>
         {
             const results: Set<BaseSymbol> = new Set([]);
 
@@ -860,7 +853,7 @@ export class ContextSymbolTable extends SymbolTable
                     const children = (current as ScopedSymbol).getAllNestedSymbolsSync(symbol.name).filter(child => child instanceof IdentifierSymbol).reverse();
                     // console.log('listing children');
                     // console.log(children);
-                    for (let child of children) {
+                    for (const child of children) {
                         // console.log(child);
                         const ctx = child instanceof IdentifierSymbol && child.parent
                             ? child.parent.context
@@ -977,13 +970,11 @@ export class ContextSymbolTable extends SymbolTable
                 } else {
                     // symbol has context and name matches the search...
                     if (symbol.context && symbol.name === symbolName) {
-                        let context = symbol.context;
-
                         result.push({
                             kind: SourceContext.getKindFromSymbol(symbol),
                             name: symbolName,
                             source: owner.sourceUri.toString(),
-                            definition: SourceContext.definitionForContext(context, true),
+                            definition: SourceContext.definitionForContext(symbol.context, true),
                             // description: undefined,
                         });
 

@@ -230,7 +230,7 @@ class codeBlock
 	public hasLineBreaks(): boolean
 	{
 		let res = false;
-		for (let val of this.vals) {
+		for (const val of this.vals) {
 			if (val instanceof codeBlock) {
 				if (!res) {
 					res = val.hasLineBreaks();
@@ -265,7 +265,7 @@ class codeBlock
 	{
 		function dfs(node: codeBlock, parent?: codeBlock): codeToken[]
 		{
-			let result: codeToken[] = [];
+			const result: codeToken[] = [];
 			//-----------------------------------------------------
 			// main loop to visit children
 			for (let i = 0; i <= node.vals.length - 1; i++) {
@@ -591,7 +591,7 @@ export class mxsSimpleFormatter
 		// statements: { useLineBreaks: true, }
 		const afterKeyword = opt.statements.useLineBreaks;
 		//---------------------------------------------------------
-		let root: codeBlock = new codeBlock();
+		const root: codeBlock = new codeBlock();
 		const stack: codeBlock[] = [root];
 		const cStack = () => stack[stack.length - 1];
 		let indentation = 0;
@@ -749,7 +749,6 @@ export class mxsSimpleFormatter
 				case mxsLexer.GLOB:
 				case mxsLexer.LBRACK:
 				case mxsLexer.SHARP:
-				case mxsLexer.SHARP:
 				case mxsLexer.UNARY_MINUS:
 					cStack().vals.push(this.emmit(currToken));
 					break;
@@ -867,7 +866,7 @@ export class mxsSimpleFormatter
 	public formatRange(start: number, stop: number): IformatterResult
 	{
 		// format the entire doc
-		let activeTokens = this.tokens.filter(token => token.type !== mxsLexer.WS);
+		const activeTokens = this.tokens.filter(token => token.type !== mxsLexer.WS);
 		// produce the tree
 		const codeTree = this.formattingTree(activeTokens);
 		// derive the code TODO: limit range

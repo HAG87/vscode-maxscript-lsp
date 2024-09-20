@@ -46,7 +46,7 @@ export class semanticTokenListener extends mxsParserListener
     */
     public override exitIdentifier = (ctx: IdentifierContext): void =>
     {
-        if (!ctx.start) { return };
+        if (!ctx.start) { return }
 
         const txt = ctx.getText();
 

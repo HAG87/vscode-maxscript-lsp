@@ -102,7 +102,8 @@ export class BackendUtils
                 let parent = ctx.parent;
                 while (parent && run) {
                     if (parent.stop) {
-                        if (run = !(stopEnd <= parent.stop.tokenIndex)) {
+                        run = !(stopEnd <= parent.stop.tokenIndex);
+                        if (run) {
                             // console.log(`${parent.start?.tokenIndex} - ${parent.stop.tokenIndex} :: ${stopEnd} :: ${stopEnd <= parent.stop.tokenIndex}}`);
                             parent = parent.parent;
                         }

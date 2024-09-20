@@ -36,7 +36,7 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
             resolve([TextEdit.replace(resultRange, code)]);
         });
         // */
-       /*
+        /*
         const { code, start, stop } =
             this.backend.formatCode(
                 document.uri.toString(),

@@ -179,7 +179,7 @@ export class symbolTableListener extends mxsParserListener
 
     public override enterRolloutGroup = (ctx: RolloutGroupContext): void =>
     {
-        this.pushNewSymbol(rolloutGroupSymbol, ctx, ctx.group_predicate()._group_name?.text!);
+        this.pushNewSymbol(rolloutGroupSymbol, ctx, ctx.group_predicate()._group_name?.text);
     }
     public override exitRolloutGroup = (ctx: RolloutGroupContext): void => { this.popSymbol() }
 
@@ -209,7 +209,7 @@ export class symbolTableListener extends mxsParserListener
     }
     public override enterRc_submenu = (ctx: Rc_submenuContext): void =>
     {
-        this.pushNewSymbol(AttributesDefSymbol, ctx, ctx.submenu_predicate()._submenu_name?.text!);
+        this.pushNewSymbol(AttributesDefSymbol, ctx, ctx.submenu_predicate()._submenu_name?.text);
     }
     public override exitRc_submenu = (ctx: Rc_submenuContext): void => { this.popSymbol(); }
 

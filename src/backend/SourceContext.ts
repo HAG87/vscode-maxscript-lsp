@@ -832,7 +832,7 @@ export class SourceContext
         if ('stop' in range) {
             return formatter.formatRange(range.start, range.stop);
         } else {
-            let contextToFormat = BackendUtils.parseTreeContainingRange(<ParseTree>this.tree, range);
+            const contextToFormat = BackendUtils.parseTreeContainingRange(<ParseTree>this.tree, range);
             return formatter.formatTokenRange(
                 contextToFormat.start?.tokenIndex,
                 contextToFormat.stop?.tokenIndex

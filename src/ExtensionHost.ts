@@ -1,10 +1,9 @@
 import { writeFile } from 'fs/promises';
 import { basename } from 'path';
 import {
-  commands, ExtensionContext, languages, Position,
-  ProgressLocation, Range, TextDocument, TextDocumentChangeEvent,
-  TextEditor, TextEditorEdit, Uri, window,
-  workspace,
+  commands, ExtensionContext, languages, ProgressLocation,
+  Range, TextDocument, TextDocumentChangeEvent, TextEditorEdit,
+  Uri, window, workspace,
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
@@ -289,7 +288,7 @@ export class ExtensionHost
                     async (uris: Uri[] | undefined) =>
                     {
                         if (!uris) { return; }
-                        for (let uri of uris) {
+                        for (const uri of uris) {
                             this.minifyFile(uri, true,
                                 workspace.getConfiguration('MaxScript').get('minifier.filePrefix')
                             )
@@ -299,6 +298,7 @@ export class ExtensionHost
             }),
             //..
             // /*
+            //TODO: settings - references (workspace symbols semtokens, references and completions)
             commands.registerCommand('mxs.prettify',
                 (uri) =>
                 {
@@ -309,27 +309,27 @@ export class ExtensionHost
                         },
                         async (_progress, _token) =>
                         {
-                            if (!uri
-                                || uri.scheme !== 'file'
-                                || window.activeTextEditor?.document.isDirty) {
-                                window.showInformationMessage('MaxScript prettifier: Save your file first.');
-                                return;
-                            }
-                            // console.log(this.prettifyDocument(uri, false))
-                            window.activeTextEditor?.edit((builder: TextEditorEdit) =>
-                            {
-                                const text: string = window.activeTextEditor?.document.getText()!
-                                const range: Range = new Range(
-                                    window.activeTextEditor?.document.positionAt(0)!,
-                                    window.activeTextEditor?.document.positionAt(text.length)!
-                                );
-                                const prettyResult = this.prettifyDocument(uri, false)
-                                console.log(JSON.stringify(prettyResult))
-                                if (prettyResult) {
-                                    // builder.replace(range, 'prettyResult')
-                                    builder.replace(range, prettyResult)
+                            if (window.activeTextEditor) {
+                                const editor = window.activeTextEditor
+                                if (!uri
+                                    || uri.scheme !== 'file'
+                                    || window.activeTextEditor?.document.isDirty) {
+                                    window.showInformationMessage('MaxScript prettifier: Save your file first.');
+                                    return;
                                 }
-                            })
+                                editor.edit((builder: TextEditorEdit) =>
+                                {
+                                    const text: string = editor.document.getText()!
+                                    const range: Range = new Range(
+                                        editor.document.positionAt(0)!,
+                                        editor.document.positionAt(text.length)!
+                                    );
+                                    const prettyResult = this.prettifyDocument(uri, false)
+                                    if (prettyResult) {
+                                        builder.replace(range, prettyResult)
+                                    }
+                                })
+                            }
                         }
                     )
                 }),
@@ -360,25 +360,7 @@ export class ExtensionHost
             //...
         )
     }
-
-    private async replaceText(editor: TextEditor, action: Function, ...args: any[])
-    {
-        return editor.edit((builder: TextEditorEdit) =>
-        {
-            const text: string = window.activeTextEditor?.document.getText()!
-            const range: Range = new Range(
-                editor.document.positionAt(0)!,
-                editor.document.positionAt(text.length - 1)!
-            );
-
-            // const result = this.prettifyDocument(editor.document.uri, false)
-            const result = action(editor.document.uri, ...args)
-            if (result) {
-                builder.replace(range, result)
-            }
-        })
-    }
-    
+    // commands support
     private minifyDocument(uri: Uri, shouldUnload: boolean = false, enhanced: boolean = false): string | null
     {
         // minify
