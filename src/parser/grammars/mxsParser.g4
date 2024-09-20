@@ -225,10 +225,10 @@ ctx_predicate
 	: AT NL* (LEVEL | TIME) NL* operand
 	| IN NL* operand
 	| ABOUT NL* (COORDSYS | operand)
-	| IN? NL* COORDSYS NL* (LOCAL | operand)
-	| WITH? NL* UNDO NL* (STRING | param | identifier)? NL* simpleExpression
-	| WITH? NL* DefaultAction NL* name
-	| WITH? NL* ctx_keyword NL* simpleExpression
+	| (IN NL*)? COORDSYS NL* (LOCAL | operand)
+	| (WITH NL*)? UNDO NL* (STRING | param | identifier)? NL* simpleExpression
+	| (WITH NL*)? DefaultAction NL* name
+	| (WITH NL*)? ctx_keyword NL* simpleExpression
 	;
 
 ctx_keyword
@@ -310,7 +310,7 @@ struct_access: PUBLIC | PRIVATE
 
 //---------------------------------------- FUNCTION DEF
 fnDefinition
-	: fn_mod = MAPPED? NL* fn_decl = FN NL* fn_name = identifier NL*
+	: (fn_mod = MAPPED NL* fn_decl = FN | fn_decl = FN) NL* fn_name = identifier NL*
 		( NL* fn_args )*
 		(NL* fn_params)*
 		NL* fn_body
@@ -378,7 +378,7 @@ caseExpression
 		case_item (lbk case_item)*
 	rp
 	;
-case_predicate: CASE NL* expr? NL* OF
+case_predicate: CASE (NL* expr)? NL* OF
 	;
 // This will produce errors at compile time...
 case_item: factor COLON NL* expr
@@ -631,11 +631,11 @@ factor
 	| expr_seq //EXPRESSION SEQUENCE
 	;
 
-//---------------------------------------- UNARY_MINUS unary_minus : (MINUS NL*| UNARY_MINUS) expr ;
-
 //---------------------------------------- EXPR_SEQ <expr_seq> ::= ( <expr> { ( ; | <eol>) <expr> }
-expr_seq
-	: lp (expr (lbk expr)*)? rp //| LPAREN NL* RPAREN
+expr_seq:
+	lp
+		(expr (lbk expr)*)?
+	rp
 	;
 
 //---------------------------------------- TYPES
@@ -658,19 +658,25 @@ point2:
 	;
 
 // BitArray
+// bitArray: SHARP NL* lc (bitexpr ( comma bitexpr)*)? rc
 bitArray: SHARP NL* lc bitList? rc
 	;
-bitList: bitexpr ( comma bitexpr)*
-	;
+bitList: bitexpr ( comma bitexpr)* ;
+
 bitexpr: expr NL* DOTDOT NL* expr | expr
 	;
+
 // Array
+// array: SHARP NL* lp (expr ( comma expr)*)? rp
 array: SHARP NL* lp arrayList? rp
 	;
-arrayList: expr ( comma expr)*
-	;
+arrayList: expr ( comma expr)* ;
+
 // Identifiers
-identifier: GLOB? ids | {this.noWSBeNext()}? AMP ids
+identifier
+	: GLOB ids
+	| {this.noWSBeNext()}? AMP ids
+	| ids
 	;
 
 ids: (ID | QUOTED_ID | kw_reserved)
@@ -684,9 +690,9 @@ path
 name: NAME
 	;
 
-// by_ref: {this.noWSBeNext()}? AMP (ids | path) ;
 de_ref: {this.noWSBeNext()}? PROD (accessor | ids | path)
 	;
+// by_ref: {this.noWSBeNext()}? AMP (ids | path) ;
 
 // Boolean
 bool: (TRUE | FALSE | OFF | ON)
