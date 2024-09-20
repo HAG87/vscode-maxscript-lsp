@@ -1,12 +1,13 @@
 import {
-  CancellationToken, Hover, HoverProvider, Position,
-  ProviderResult, TextDocument,
+  CancellationToken, Hover, HoverProvider, MarkdownString,
+  Position, ProviderResult, TextDocument,
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
 import {
   mxsLanguageCompletions,
 } from './backend/schemas/mxsCompletions-base.js';
+import { symbolDescriptionFromEnum } from './Symbol.js';
 
 export class mxsHoverProvider implements HoverProvider
 {
@@ -14,7 +15,6 @@ export class mxsHoverProvider implements HoverProvider
 
     provideHover(document: TextDocument, position: Position, _token: CancellationToken): ProviderResult<Hover>
     {
-        // throw new Error("Method not implemented.");
         return new Promise((resolve) =>
         {
             const info = this.backend.symbolInfoAtPosition(
@@ -24,6 +24,7 @@ export class mxsHoverProvider implements HoverProvider
             );
             // console.log(info);
             if (info) {
+                // provide hover for API definitions
                 const mxsReference = mxsLanguageCompletions.has(info.name);
 
                 if (mxsReference) {
@@ -32,15 +33,19 @@ export class mxsHoverProvider implements HoverProvider
                         `3ds MaxAPI | ${mxsReference.detail}`,
                     ]));
                 } else {
-                    resolve(undefined);
+                    // provide symbol definition
+                    const info = this.backend.symbolInfoDefinition(
+                        document.uri.toString(),
+                        position.line + 1,
+                        position.character);
+                    if (info && info.definition) {
+                        const markedStr: MarkdownString = new MarkdownString(`**${symbolDescriptionFromEnum(info.kind)}**\n`)
+                        markedStr.appendCodeblock(info.definition.text, 'maxscript')
+                        resolve(new Hover([
+                            markedStr
+                        ]));
+                    } else resolve(undefined);
                 }
-                /*
-                const description = symbolDescriptionFromEnum(info.kind);                    
-                resolve(new Hover([
-                    "**" + description + "**\ndefined in: " + path.basename(info.source),
-                    { language: "antlr", value: (info.definition ? info.definition.text : "") },
-                    ]));                        
-                */
             } else {
                 resolve(undefined);
             }
