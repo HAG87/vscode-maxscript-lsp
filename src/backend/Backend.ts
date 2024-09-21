@@ -2,11 +2,11 @@ import * as fs from 'fs';
 import { Uri } from 'vscode';
 
 import {
-  ICodeFormatSettings, ILexicalRange, IMinifierSettings, IPrettifierSettings,
+  ICodeFormatSettings, ILexicalRange, IMinifySettings, IPrettifySettings,
   ISemanticToken, ISymbolInfo,
 } from '../types.js';
 import { IformatterResult } from './CodeFormatter.js';
-import { ICompletionsResult, SourceContext } from './SourceContext.js';
+import { SourceContext } from './SourceContext.js';
 
 export interface IContextEntry
 {
@@ -226,7 +226,7 @@ export class mxsBackend
     public async getCodeCompletionCandidates(
         uri: string,
         line: number,
-        character: number): Promise<ICompletionsResult>
+        character: number): Promise<ISymbolInfo[]>
     {
         return this.getContext(uri).getCodeCompletionCandidates(line, character);
     }
@@ -272,12 +272,12 @@ export class mxsBackend
         return this.getContext(uri).formatCode(range, options);
     }
     // minify
-    public minifyCode(uri: string, options: ICodeFormatSettings & IMinifierSettings & IPrettifierSettings, enhanced: boolean = false): string | null
+    public minifyCode(uri: string, options: ICodeFormatSettings & IMinifySettings & IPrettifySettings, enhanced: boolean = false): string | null
     {
         return this.getContext(uri).minifyCode(options, enhanced)
     }
     // TODO: prettify
-    public prettifyCode(uri: string, options: ICodeFormatSettings & IMinifierSettings & IPrettifierSettings): string | null
+    public prettifyCode(uri: string, options: ICodeFormatSettings & IMinifySettings & IPrettifySettings): string | null
     {
         return this.getContext(uri).prettifyCode(options)
     }

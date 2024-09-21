@@ -24,7 +24,7 @@ export interface ICodeFormatSettings
     }
 }
 
-export interface IPrettifierSettings
+export interface IPrettifySettings
 {
     filePrefix?: string,
     keepComments?: boolean,
@@ -32,7 +32,7 @@ export interface IPrettifierSettings
     expressionsToBlock: boolean,
 }
 
-export interface IMinifierSettings
+export interface IMinifySettings
 {
     filePrefix?: string,
     condenseWhitespace: boolean,
@@ -48,16 +48,16 @@ export interface IMaxScriptSettings
         GoToReferences: boolean,
         Diagnostics: boolean,
     },
-    Completions?: {
+    completions: {
         dataBaseCompletion: boolean,
         codeCompletion: boolean
     };
     // parser: {
     // 	multiThreading: boolean,
     // }
-    formatter: Partial<ICodeFormatSettings>;
-    prettifier: Partial<IPrettifierSettings>;
-    minifier: Partial<IMinifierSettings>;
+    formatter: ICodeFormatSettings;
+    prettifier: Partial<IPrettifySettings>;
+    minifier: Partial<IMinifySettings>;
 }
 
 export const semTokenTypes =

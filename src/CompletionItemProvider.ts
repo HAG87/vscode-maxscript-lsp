@@ -16,12 +16,13 @@ import { mxStructsMembers } from './backend/schemas/mxsCompletions-structs.js';
 import {
   symbolDescriptionFromEnum, translateCompletionKind,
 } from './Symbol.js';
+import { IMaxScriptSettings } from './types.js';
 
 export class mxsCompletionProvider implements CompletionItemProvider
 {
     private wordPattern: RegExp = /\b(\p{L}[\p{L}0-9]*)\b(?:[ \t\r\n]*[.]?)$/u;
 
-    public constructor(private backend: mxsBackend) { }
+    public constructor(private backend: mxsBackend, private options: IMaxScriptSettings) { }
 
     private completionsFromAPI(document: TextDocument, position: Position, context: CompletionContext): CompletionItem[]
     {
@@ -63,7 +64,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
     }
 
     provideCompletionItems(
-        document: TextDocument, position: Position, token: CancellationToken, context: CompletionContext
+        document: TextDocument, position: Position, _token: CancellationToken, context: CompletionContext
     ): ProviderResult<CompletionItem[] | CompletionList<CompletionItem>>
     {
         return new Promise((resolve, reject) =>
@@ -76,7 +77,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
 
             // antlr-c3 used to provide code completion items
             this.backend.getCodeCompletionCandidates(document.uri.toString(), position.line + 1, position.character)
-                .then(({ completions: candidates, provideLanguageCompletions }) =>
+                .then((candidates) =>
                 {
                     candidates.forEach((info) =>
                     {
@@ -85,7 +86,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
                         item.detail = info.description || symbolDescriptionFromEnum(info.kind);
                         completionList.push(item);
                     });
-                    if (provideLanguageCompletions) {
+                    if (this.options.completions.dataBaseCompletion) {
                         completionList.push(...this.completionsFromAPI(document, position, context));
                     }
                     resolve(new CompletionList(completionList, false));

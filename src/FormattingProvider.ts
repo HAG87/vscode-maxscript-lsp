@@ -10,12 +10,7 @@ import { Utilities } from './utils.js';
 
 export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditProvider
 {
-    public constructor(private backend: mxsBackend, private options?: ICodeFormatSettings)
-    {
-        if (!options) {
-            options = workspace.getConfiguration('maxScript').get('formatter') as ICodeFormatSettings;
-        }
-    }
+    public constructor(private backend: mxsBackend, private options: ICodeFormatSettings) { }
 
     provideDocumentRangeFormattingEdits(document: TextDocument, range: Range,
         _options: FormattingOptions, _token: CancellationToken): ProviderResult<TextEdit[]>

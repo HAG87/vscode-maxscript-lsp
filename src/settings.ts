@@ -7,11 +7,10 @@
 */
 
 import {
-  ICodeFormatSettings, IMaxScriptSettings, IMinifierSettings,
-  IPrettifierSettings,
+  ICodeFormatSettings, IMaxScriptSettings, IMinifySettings, IPrettifySettings,
 } from './types.js';
 
-export const minifierSettings: ICodeFormatSettings & IMinifierSettings & IPrettifierSettings = {
+export const minifySettings: ICodeFormatSettings & IMinifySettings & IPrettifySettings = {
     whitespaceChar: ' ',
     newLineChar: ';',
     indentChar: '',
@@ -34,7 +33,7 @@ export const minifierSettings: ICodeFormatSettings & IMinifierSettings & IPretti
     expressionsToBlock: false,
 }
 
-export const prettifyOptions: ICodeFormatSettings & IMinifierSettings & IPrettifierSettings = {
+export const prettifyOptions: ICodeFormatSettings & IMinifySettings & IPrettifySettings = {
     whitespaceChar: ' ',
     newLineChar: '\r\n',
     indentChar: '\t',
@@ -68,7 +67,7 @@ export const defaultSettings: IMaxScriptSettings = {
     // parser: {
     // 	multiThreading: true,
     // },
-    Completions: {
+    completions: {
         dataBaseCompletion: true,
         codeCompletion: true
     },

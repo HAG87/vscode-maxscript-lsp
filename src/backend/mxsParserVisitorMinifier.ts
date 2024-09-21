@@ -18,11 +18,11 @@ import {
   UtilityDefinitionContext, WhenStatementContext, WhileLoopExpressionContext,
 } from '../parser/mxsParser.js';
 import { mxsParserVisitor } from '../parser/mxsParserVisitor.js';
-import { ICodeFormatSettings, IMinifierSettings } from '../types.js';
+import { ICodeFormatSettings, IMinifySettings } from '../types.js';
 
 export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
 {
-    constructor(private options: ICodeFormatSettings & IMinifierSettings)
+    constructor(private options: ICodeFormatSettings & IMinifySettings)
     {
         super()
         // if (options) { Object.assign(this.options, options) }

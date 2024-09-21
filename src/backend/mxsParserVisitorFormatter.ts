@@ -24,7 +24,7 @@ import {
 } from '../parser/mxsParser.js';
 import { mxsParserVisitor } from '../parser/mxsParserVisitor.js';
 import {
-  ICodeFormatSettings, IMinifierSettings, IPrettifierSettings,
+  ICodeFormatSettings, IMinifySettings, IPrettifySettings,
 } from '../types.js';
 
 type R = codeToken | codeBlock
@@ -464,7 +464,7 @@ export class codeBlock
     // toString(options: ICodeFormatSettings): string
     // toString(options: ICodeFormatSettings, start: number, stop: number): string
     // toString(options: ICodeFormatSettings = defaultFormatSettings, start?: number, stop?: number): string
-    toString(options: ICodeFormatSettings & IMinifierSettings & IPrettifierSettings): string
+    toString(options: ICodeFormatSettings & IMinifySettings & IPrettifySettings): string
     {
         const result = this.flatten(options)
         let acc = ''
@@ -550,7 +550,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
 {
     private indentLevel = 0;
 
-    constructor(private options: ICodeFormatSettings & IMinifierSettings)
+    constructor(private options: ICodeFormatSettings & IMinifySettings)
     {
         super()
     }

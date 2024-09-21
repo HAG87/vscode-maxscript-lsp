@@ -217,10 +217,15 @@
       {
         "title": "General",
         "properties": {
-          "maxScript.parser.multiThreading": {
+          "maxscript.completions.dataBaseCompletion": {
             "type": "boolean",
-            "default": false,
-            "description": "Enable multithreading. This feature can be unstable. Disable it if you encounter too many crashes using the extension."
+            "default": true,
+            "description": "Enable completions for build-in Classes, Methods, Structs and Interfaces"
+          },
+          "maxscript.completions.codeCompletion": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable suggestions provided by the current code"
           },
           "maxScript.help.provider": {
             "type": "string",

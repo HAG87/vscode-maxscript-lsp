@@ -9,7 +9,7 @@ import { mxsLexer } from '../parser/mxsLexer.js';
 import { mxsParser } from '../parser/mxsParser.js';
 import {
   DiagnosticType, ICodeFormatSettings, IDefinition, IDiagnosticEntry,
-  ILexicalRange, IMinifierSettings, IPrettifierSettings, ISemanticToken,
+  ILexicalRange, IMinifySettings, IPrettifySettings, ISemanticToken,
   ISymbolInfo, SymbolKind,
 } from '../types.js';
 import { BackendUtils } from './BackendUtils.js';
@@ -48,11 +48,6 @@ export const symbolToKindMap: Map<new () => BaseSymbol, SymbolKind> = new Map([
     [IdentifierSymbol, SymbolKind.Identifier],
 ]);
 
-export interface ICompletionsResult
-{
-    completions: ISymbolInfo[];
-    provideLanguageCompletions: boolean;
-}
 // One context for each valid document
 export class SourceContext
 {
@@ -436,13 +431,9 @@ export class SourceContext
         return await dfs(context);
     }
 
-    public async getCodeCompletionCandidates(
-        row: number, column: number,
-        languageCompletions: boolean = false): Promise<ICompletionsResult>
+    public async getCodeCompletionCandidates(row: number, column: number): Promise<ISymbolInfo[]>
     {
-        if (!this.parser) {
-            return { completions: [], provideLanguageCompletions: true };
-        }
+        if (!this.parser) { return []; }
 
         const prettyValue = (id: string): string =>
         {
@@ -576,45 +567,45 @@ export class SourceContext
         candidates.rules.forEach((candidateRule, key) =>
         {
             switch (key) {
-                case mxsParser.RULE_identifier: {
-                    languageCompletions = true;
-                    const context = BackendUtils.parseTreeFromPosition(<ParseTree>this.tree, row, column);
+                case mxsParser.RULE_identifier:
+                    {
+                        const context = BackendUtils.parseTreeFromPosition(<ParseTree>this.tree, row, column);
 
-                    if (!context) { return; }
+                        if (!context) { return; }
 
-                    const currentSymbol = this.symbolTable.symbolContainingContext(context);
+                        const currentSymbol = this.symbolTable.symbolContainingContext(context);
 
-                    if (currentSymbol && currentSymbol.parent) {
-                        const entrySymbol =
-                            currentSymbol instanceof IdentifierSymbol && currentSymbol.parent
-                                ? currentSymbol.parent as ExprSymbol
-                                : currentSymbol as ExprSymbol;
+                        if (currentSymbol && currentSymbol.parent) {
+                            const entrySymbol =
+                                currentSymbol instanceof IdentifierSymbol && currentSymbol.parent
+                                    ? currentSymbol.parent as ExprSymbol
+                                    : currentSymbol as ExprSymbol;
 
-                        // entrySymbol.getAllSymbols(IdentifierSymbol, true).then((symbols) => symbols.forEach(symbol => console.log(symbol.name)));
-                        // promises.push(entrySymbol.getAllSymbols(BaseSymbol));
-                        // promises.push(entrySymbol.getAllSymbols(ScopedSymbol));
+                            // entrySymbol.getAllSymbols(IdentifierSymbol, true).then((symbols) => symbols.forEach(symbol => console.log(symbol.name)));
+                            // promises.push(entrySymbol.getAllSymbols(BaseSymbol));
+                            // promises.push(entrySymbol.getAllSymbols(ScopedSymbol));
 
-                        promises.push(
-                            entrySymbol.getAllSymbols(IdentifierSymbol),
-                            entrySymbol.getAllSymbols(VariableDeclSymbol),
-                            entrySymbol.getAllSymbols(FnDefinitionSymbol),
-                            entrySymbol.getAllSymbols(fnArgsSymbol),
-                            entrySymbol.getAllSymbols(fnParamsSymbol),
-                            entrySymbol.getAllSymbols(StructDefinitionSymbol),
-                            entrySymbol.getAllSymbols(StructMemberSymbol),
-                            entrySymbol.getAllSymbols(RolloutControlSymbol),
-                        );
+                            promises.push(
+                                entrySymbol.getAllSymbols(IdentifierSymbol),
+                                entrySymbol.getAllSymbols(VariableDeclSymbol),
+                                entrySymbol.getAllSymbols(FnDefinitionSymbol),
+                                entrySymbol.getAllSymbols(fnArgsSymbol),
+                                entrySymbol.getAllSymbols(fnParamsSymbol),
+                                entrySymbol.getAllSymbols(StructDefinitionSymbol),
+                                entrySymbol.getAllSymbols(StructMemberSymbol),
+                                entrySymbol.getAllSymbols(RolloutControlSymbol),
+                            );
 
-                        // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, IdentifierSymbol));
-                        // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, VariableDeclSymbol));
-                        // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, FnDefinitionSymbol));
-                        // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, fnArgsSymbol));
-                        // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, fnParamsSymbol));
-                        // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, StructDefinitionSymbol));
-                        // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, StructMemberSymbol));                
+                            // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, IdentifierSymbol));
+                            // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, VariableDeclSymbol));
+                            // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, FnDefinitionSymbol));
+                            // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, fnArgsSymbol));
+                            // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, fnParamsSymbol));
+                            // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, StructDefinitionSymbol));
+                            // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, StructMemberSymbol));                
+                        }
+                        break;
                     }
-                    break;
-                }
                 case mxsParser.RULE_struct_member: {
                     result.push(
                         {
@@ -713,10 +704,7 @@ export class SourceContext
             }
         });
 
-        return {
-            completions: result,
-            provideLanguageCompletions: languageCompletions
-        };
+        return result;
     }
 
     //-------------------------------------------------diagnostics
@@ -840,7 +828,7 @@ export class SourceContext
         }
     }
     // minify
-    public minifyCode(options: ICodeFormatSettings & IMinifierSettings & IPrettifierSettings, enhanced: boolean = false): string | null
+    public minifyCode(options: ICodeFormatSettings & IMinifySettings & IPrettifySettings, enhanced: boolean = false): string | null
     {
         let result: string | null = null;
         if (!enhanced) {
@@ -857,7 +845,7 @@ export class SourceContext
         return result
     }
     // prettify
-    public prettifyCode(options: ICodeFormatSettings & IMinifierSettings & IPrettifierSettings)
+    public prettifyCode(options: ICodeFormatSettings & IMinifySettings & IPrettifySettings)
     {
         let result: string | null = null;
         const visitor = new mxsParserVisitorFormatter(options);

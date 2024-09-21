@@ -1,9 +1,9 @@
 import { writeFile } from 'fs/promises';
 import { basename } from 'path';
 import {
-  commands, ExtensionContext, languages, ProgressLocation,
-  Range, TextDocument, TextDocumentChangeEvent, TextEditorEdit,
-  Uri, window, workspace,
+  commands, ConfigurationChangeEvent, ExtensionContext, languages,
+  ProgressLocation, Range, TextDocument, TextDocumentChangeEvent,
+  TextEditorEdit, Uri, window, workspace,
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
@@ -17,9 +17,14 @@ import { mxsRenameProvider } from './RenameProvider.js';
 import {
   mxsSemanticTokensProvider, mxsSemtoTokensLegend,
 } from './SemanticTokensProvider.js';
-import { minifierSettings, prettifyOptions } from './settings.js';
+import {
+  defaultSettings, minifySettings, prettifyOptions,
+} from './settings.js';
 import { mxsSymbolProvider } from './SymbolProvider.js';
+import { ICodeFormatSettings } from './types.js';
 import { Utilities } from './utils.js';
+
+//TODO: settings - references (workspace symbols semtokens, references and completions)
 
 export class ExtensionHost
 {
@@ -34,6 +39,12 @@ export class ExtensionHost
     {
         // start backend
         this.backend = new mxsBackend()
+
+        // load settings
+        const savedSettings = workspace.getConfiguration('maxScript')
+        Object.assign(defaultSettings, savedSettings)
+        Object.assign(minifySettings, savedSettings.get('minifier'))
+        Object.assign(prettifyOptions, savedSettings.get('prettifier'))
         // process active open document, if any.
         const editor = window.activeTextEditor
         if (editor && Utilities.isLanguageFile(editor.document)) {
@@ -178,7 +189,7 @@ export class ExtensionHost
             ),
             languages.registerCompletionItemProvider(
                 ExtensionHost.langSelector,
-                new mxsCompletionProvider(this.backend),
+                new mxsCompletionProvider(this.backend, defaultSettings),
                 " ", ".", "="
             ),
             languages.registerDocumentSemanticTokensProvider(
@@ -201,9 +212,11 @@ export class ExtensionHost
              // */
             languages.registerDocumentRangeFormattingEditProvider(
                 ExtensionHost.langSelector,
-                new mxsRangeFormattingProvider(this.backend)
+                new mxsRangeFormattingProvider(
+                    this.backend,
+                    defaultSettings.formatter
+                )
             )
-            // languages.
             //...
         )
     }
@@ -364,7 +377,7 @@ export class ExtensionHost
     private minifyDocument(uri: Uri, shouldUnload: boolean = false, enhanced: boolean = false): string | null
     {
         // minify
-        const minResult = this.backend.minifyCode(uri.toString(), minifierSettings, enhanced)
+        const minResult = this.backend.minifyCode(uri.toString(), minifySettings, enhanced)
         // minify done, dispose context
         if (shouldUnload) {
             this.backend.unloadDocument(uri.toString())
