@@ -11,6 +11,7 @@ import { SourceContext } from './SourceContext.js';
 export interface IContextEntry
 {
     context: SourceContext;
+    //TODO:
     // this holds a counter to check the references to this ctx
     refCount: number;
     //TODO:
@@ -39,7 +40,7 @@ export class mxsBackend
      * Parse the current source set for the document
      * @param contextEntry 
      */
-    private parseContent(contextEntry: IContextEntry): void
+    private parseDocument(contextEntry: IContextEntry): void
     {
         contextEntry.context.parse();
         /* //TODO:
@@ -58,7 +59,7 @@ export class mxsBackend
             // not been ref-counted by the above dependency loading (or which are not used by other
             // grammars).
             for (const dep of oldDependencies) {
-                this.releaseGrammar(dep);
+                this.unloadDocument(dep);
             }
         */
     }
@@ -71,7 +72,7 @@ export class mxsBackend
     {
         const ctxEntry = this.sourceContexts.get(uri.toString());
         if (ctxEntry) {
-            this.parseContent(ctxEntry);
+            this.parseDocument(ctxEntry);
         }
     }
 
@@ -117,9 +118,8 @@ export class mxsBackend
 
             // set ctx text
             ctx.setText(source ?? this.getDocumentText(uri));
-
             // do an initial parse run
-            this.parseContent(ctxEntry);
+            this.parseDocument(ctxEntry);
         }
         // count this as a referency
         ctxEntry!.refCount++;
@@ -148,7 +148,7 @@ export class mxsBackend
             }
         }
     }
-
+    //------------------------------------------------------------------
     // get symbols -- for mxsDefinitionProvider
     public symbolInfoAtPosition(
         uri: string,
@@ -248,19 +248,6 @@ export class mxsBackend
         return this.getContext(uri).getSemanticTokens;
     }
 
-    // TODO: references
-    /**
-     * Count how many times a symbol has been referenced. The given file must contain the definition of this symbol.
-     *
-     * @param fileName The grammar file name.
-     * @param symbol The symbol for which to determine the reference count.
-     * @returns The reference count.
-     */
-    public countReferences(uri: string, symbol: string)
-    {
-        // return this.getContext(uri).getReferenceCount(symbol);
-    }
-
     // formatting
     public formatCode(uri: string, range: ILexicalRange, options?: ICodeFormatSettings): IformatterResult
     public formatCode(uri: string, range: { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult
@@ -271,12 +258,14 @@ export class mxsBackend
         }
         return this.getContext(uri).formatCode(range, options);
     }
+
     // minify
     public minifyCode(uri: string, options: ICodeFormatSettings & IMinifySettings & IPrettifySettings, enhanced: boolean = false): string | null
     {
         return this.getContext(uri).minifyCode(options, enhanced)
     }
-    // TODO: prettify
+
+    // prettify
     public prettifyCode(uri: string, options: ICodeFormatSettings & IMinifySettings & IPrettifySettings): string | null
     {
         return this.getContext(uri).prettifyCode(options)

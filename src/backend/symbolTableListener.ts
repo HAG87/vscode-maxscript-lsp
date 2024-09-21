@@ -101,19 +101,6 @@ export class symbolTableListener extends mxsParserListener
         this.scopeStack.pop();
     }
 
-    /**
-     * The symbol stack usually contains entries beginning with a rule context, followed by a number of blocks and alts
-     * as well as additional parts like actions or predicates.
-     * This function returns the name of the first symbol, which represents the rule (parser/lexer) which we are
-     * currently walking over.
-     *
-     * @returns The rule name from the start symbol.
-     */
-    private get ruleName(): string
-    {
-        return this.symbolStack.length === 0 ? "" : this.symbolStack[0].name;
-    }
-
     //====================================LISTENERS=======================================//
     /*
     public override enterExpr = (ctx: ExprContext): void => {
@@ -286,11 +273,6 @@ export class symbolTableListener extends mxsParserListener
             if (rule.ruleIndex === mxsParser.RULE_identifier) { }
         }
         */
-        // const member = ctx.identifier()
-        // if (member) {
-            // this.pushNewSymbol(StructMemberSymbol, ctx, member.getText());
-        // }
-        
         this.pushNewSymbol(StructMemberSymbol, ctx, ctx.identifier().getText());
     }
     public override exitStruct_member = (ctx: Struct_memberContext): void => { this.popSymbol(); }
@@ -403,7 +385,6 @@ export class symbolTableListener extends mxsParserListener
     }
     public override exitParam = (ctx: ParamContext): void => { this.popSymbol(); }
 
-
     /*
     public override enterAssignmentExpression = (ctx: AssignmentExpressionContext): void =>
     {
@@ -411,11 +392,13 @@ export class symbolTableListener extends mxsParserListener
         this.pushNewSymbol(AssignmentExpressionSymbol, ctx, ctx.destination().getText());
     }
     public override exitAssignmentExpression = (ctx: AssignmentExpressionContext): void => { this.popSymbol(); }
-    */
+    // */
+
     /*
     public override enterAssignment = (ctx: AssignmentContext): void => { this.pushNewSymbol(AssignmentSymbol, ctx); }
     public override exitAssignment = (ctx: AssignmentContext): void => { this.popSymbol(); }
     //*/
+
     /*
     public override exitExprOperand = (ctx: ExprOperandContext): void =>
     {
@@ -429,11 +412,6 @@ export class symbolTableListener extends mxsParserListener
         }
     }
     public override exitExpr_operand = (ctx: Expr_operandContext): void => { this.popSymbol(); }
-
-    public override exitFactor = (ctx: FactorContext): void =>
-    {
-        if (ctx.identifier()) { this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText()); }
-    }
     // */
 
     // Identifiers
@@ -456,9 +434,9 @@ export class symbolTableListener extends mxsParserListener
     // by-ref: emmiting an identifier token here...
     // public override exitBy_ref = (ctx: By_refContext): void => { this.addNewSymbol(IdentifierSymbol, ctx, ctx.ids()?.getText() ?? ctx.path()?.getText()); }
 
+    /*
     public override visitTerminal = (node: TerminalNode): void =>
     {
-        /*
         switch (node.symbol.type) {
             case mxsLexer.PATH:
                 this.addNewSymbol(IdentifierSymbol,node, node.getText())
@@ -466,6 +444,6 @@ export class symbolTableListener extends mxsParserListener
             //operators
             //...
         }
-        */
     }
+    */
 }

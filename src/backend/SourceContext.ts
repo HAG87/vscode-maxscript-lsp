@@ -116,22 +116,22 @@ export class SourceContext
     //----------------------------------------------------------------parser
     public parse(): void
     {
-        this.tree = undefined;
         // Rewind the input stream for a new parse run.
         this.lexer.reset();
         this.tokenStream.setTokenSource(this.lexer);
         this.parser.reset();
         this.parser.errorHandler = new BailErrorStrategy();
         this.parser.interpreter.predictionMode = PredictionMode.SLL;
+        this.tree = undefined;
         //---------------------------------------------------------------
         //TODO: semantic tokens while parsing...
         // this.parser.addParseListener();
-        // this.info.imports.length = 0;
-        // this.semanticAnalysisDone = false;
         //---------------------------------------------------------------
+        // this.semanticAnalysisDone = false;
         this.diagnostics.length = 0;
         this.symbolTable.clear();
-        // TODO: this.symbolTable.addDependencies(SourceContext.globalSymbols);
+        // TODO: add Global symbols here
+        //this.symbolTable.addDependencies(SourceContext.globalSymbols);
         //---------------------------------------------------------------
         try {
             this.tree = this.parser.program();
@@ -158,63 +158,12 @@ export class SourceContext
         //---------------------------------------------------------------
         // load symbols!
         this.symbolTable.tree = this.tree;
-        const symbolsListener = new symbolTableListener(this.symbolTable);
-        // const listener = new DetailsListener(this.symbolTable, this.info.imports);
+        const symbolsListener = new symbolTableListener(this.symbolTable/*, this.info.imports*/);
         ParseTreeWalker.DEFAULT.walk(symbolsListener, this.tree);
         //---------------------------------------------------------------
         // TODO: this.info.unreferencedRules = this.symbolTable.getUnreferencedSymbols();
+        // TODO: this can be used to add dependencies... imports come from the listener
         // return this.info.imports;
-    }
-
-    // TODO: semantic analysis
-    private runSemanticAnalysisIfNeeded()
-    {
-        /*
-        if (!this.semanticAnalysisDone && this.tree) {
-            this.semanticAnalysisDone = true;
-            //this.diagnostics.length = 0; Don't, we would lose our syntax errors from last parse run.
-
-            const semanticListener = new SemanticListener(this.diagnostics, this.symbolTable);
-            ParseTreeWalker.DEFAULT.walk(semanticListener, this.tree);
-        }
-        */
-    }
-
-    // TODO: references
-    public addAsReferenceTo(context: SourceContext): void
-    {
-        /*
-        // Check for mutual inclusion. References are organized like a mesh.
-        const pipeline: SourceContext[] = [context];
-        while (pipeline.length > 0) {
-            const current = pipeline.shift();
-            if (!current) {
-                continue;
-            }
-
-            if (current.references.indexOf(this) > -1) {
-                return; // Already in the list.
-            }
-
-            pipeline.push(...current.references);
-        }
-        context.references.push(this);
-        this.symbolTable.addDependencies(context.symbolTable);
-        */
-    }
-    public getReferenceCount(symbol: string): number
-    {
-        /*
-        this.runSemanticAnalysisIfNeeded();
-
-        let result = this.symbolTable.getReferenceCount(symbol);
-
-        for (const reference of this.references) {
-            result += reference.getReferenceCount(symbol);
-        }
-        return result;
-        // */
-        return 0;
     }
     //------------------------------------------------- SYMBOLS
     public static getKindFromSymbol(symbol: BaseSymbol): SymbolKind
@@ -733,76 +682,6 @@ export class SourceContext
     {
         return this.semanticTokens;
     }
-    //-------------------------------------------------refereences
-
-    // TODO: references
-    // TODO: dependencies
-    /*
-    private runSemanticAnalysisIfNeeded() {
-        if (!this.semanticAnalysisDone && this.tree) {
-            this.semanticAnalysisDone = true;
-            //this.diagnostics.length = 0; Don't, we would lose our syntax errors from last parse run.
-
-            const semanticListener = new SemanticListener(this.diagnostics, this.symbolTable);
-            ParseTreeWalker.DEFAULT.walk(semanticListener, this.tree);
-        }
-    }
-    */
-
-    /**
-     * Add this context to the list of referencing contexts in the given context.
-     *
-     * @param context The context to add.
-     */
-    /*  public addAsReferenceTo(context: SourceContext): void
-    {
-        // Check for mutual inclusion. References are organized like a mesh.
-        const pipeline: SourceContext[] = [context];
-        while (pipeline.length > 0) {
-            const current = pipeline.shift();
-            if (!current) {
-                continue;
-            }
-
-            if (current.references.indexOf(this) > -1) {
-                return; // Already in the list.
-            }
-
-            pipeline.push(...current.references);
-        }
-        context.references.push(this);
-        this.symbolTable.addDependencies(context.symbolTable);
-    }
-    */
-
-    /**
-     * Remove the given context from our list of dependencies.
-     *
-     * @param context The context to remove.
-     */
-    /*
-    public removeDependency(context: SourceContext): void {
-        const index = context.references.indexOf(this);
-        if (index > -1) {
-            context.references.splice(index, 1);
-        }
-        this.symbolTable.removeDependency(context.symbolTable);
-    }
-    */
-    /*
-    public getReferenceCount(symbol: string): number {
-        this.runSemanticAnalysisIfNeeded();
-
-        let result = this.symbolTable.getReferenceCount(symbol);
-
-        for (const reference of this.references) {
-            result += reference.getReferenceCount(symbol);
-        }
-
-        return result;
-    }
-    */
-
     // -------------------------------------------------format code
     // TODO: formatter that uses the parse tree and a visitor
     public formatCode(range: ILexicalRange, options?: ICodeFormatSettings): IformatterResult;

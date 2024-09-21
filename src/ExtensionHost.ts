@@ -45,7 +45,9 @@ export class ExtensionHost
         Object.assign(defaultSettings, savedSettings)
         Object.assign(minifySettings, savedSettings.get('minifier'))
         Object.assign(prettifyOptions, savedSettings.get('prettifier'))
+
         // process active open document, if any.
+        /*
         const editor = window.activeTextEditor
         if (editor && Utilities.isLanguageFile(editor.document)) {
             const document = editor.document
@@ -57,19 +59,26 @@ export class ExtensionHost
                 diagnosticAdapter(this.backend.getDiagnostics(document.uri.toString()))
             )
         }
+        // */
+        // Pre-load interpreter + cache data for each open document, if there's any.
+        // /*
+        for (const document of workspace.textDocuments) {
+            if (Utilities.isLanguageFile(document)) {
+                console.log('preload')
+                this.backend.loadDocument(document.uri.toString(), document.getText())
+                this.diagnosticCollection.set(
+                    document.uri,
+                    diagnosticAdapter(this.backend.getDiagnostics(document.uri.toString()))
+                )
+            }
+        }
+        // */
         //register eventHandlers
         this.registerEventHandlers(ctx)
         // register providers
         this.registerProviders(ctx)
         // register commands
         this.registerCommands(ctx)
-        // TODO: Load interpreter + cache data for each open document, if there's any.
-        /*
-        for (const document of workspace.textDocuments) {
-            this.processDiagnostic(document);
-            //..
-        }
-        */
     }
 
     //register eventHandlers
@@ -80,8 +89,6 @@ export class ExtensionHost
             {
                 if (Utilities.isLanguageFile(document)) {
                     this.backend.loadDocument(document.uri.toString(), document.getText())
-                    //TODO:
-                    // this.regenerateBackgroundData(document);
                     this.diagnosticCollection.set(
                         document.uri,
                         diagnosticAdapter(this.backend.getDiagnostics(document.uri.toString()))
@@ -111,8 +118,7 @@ export class ExtensionHost
                     {
                         this.changeTimers.delete(fileName)
                         this.backend.reparse(event.document.uri)
-                        //TODO:
-                        // this.processDiagnostic(event.document);
+
                         this.diagnosticCollection.set(
                             event.document.uri,
                             diagnosticAdapter(this.backend.getDiagnostics(event.document.uri.toString()))
@@ -151,13 +157,16 @@ export class ExtensionHost
             }),
             // */
             //TODO:
+            workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) => {
+                if (event.affectsConfiguration("maxScript")) {
+                    const savedSettings = workspace.getConfiguration('maxScript')
+                    Object.assign(defaultSettings, savedSettings)
+                    Object.assign(minifySettings, savedSettings.get('minifier'))
+                    Object.assign(prettifyOptions, savedSettings.get('prettifier'))
+                    //...
+                }
+            }),
             /*
-             workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) => {
-                 if (event.affectsConfiguration("maxScript")) {
-                     const config = workspace.getConfiguration("maxScript");
-                     //...
-                 }
-             }),
              //TODO:
              languages.onDidChangeDiagnostics(() => workspace
              */
@@ -167,6 +176,7 @@ export class ExtensionHost
     private registerProviders(ctx: ExtensionContext): void
     {
         ctx.subscriptions.push(
+            
             languages.registerDocumentSymbolProvider(
                 ExtensionHost.langSelector,
                 new mxsSymbolProvider(this.backend)
@@ -239,15 +249,6 @@ export class ExtensionHost
                     await commands.executeCommand('vscode.open', uri)
                 }),
             // minify commands
-            /*
-            function setOptions(settings?: Partial<reflowOptions>)
-            {
-                options.reset();
-                if (settings) {
-                    Object.assign(options, settings);
-                }
-            }
-            */
             commands.registerCommand('mxs.minify',
                 (uri) =>
                 {
@@ -275,7 +276,6 @@ export class ExtensionHost
             commands.registerCommand('mxs.minify.file',
                 (uri: Uri) =>
                 {
-                    // this.minifyFile(uri)
                     window.withProgress(
                         {
                             location: ProgressLocation.Window,
@@ -309,9 +309,6 @@ export class ExtensionHost
                     }
                 )
             }),
-            //..
-            // /*
-            //TODO: settings - references (workspace symbols semtokens, references and completions)
             commands.registerCommand('mxs.prettify',
                 (uri) =>
                 {

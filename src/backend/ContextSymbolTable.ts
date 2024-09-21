@@ -1,6 +1,6 @@
 import {
-  BaseSymbol, IScopedSymbol, ISymbolTableOptions, ScopedSymbol,
-  SymbolConstructor, SymbolTable,
+  BaseSymbol, ISymbolTableOptions, ScopedSymbol, SymbolConstructor,
+  SymbolTable,
 } from 'antlr4-c3';
 import { ParserRuleContext, ParseTree, TerminalNode } from 'antlr4ng';
 
@@ -23,30 +23,23 @@ interface IDefinitionResult
     candidates: BaseSymbol[];
 }
 
-export interface IExprSymbol extends IScopedSymbol
+export class ExprSymbol extends ScopedSymbol
 {
-    pathIndex?: number[];
-}
-
-export class ExprSymbol extends ScopedSymbol implements IExprSymbol
-{
-    pathIndex?: number[];
+    // pathIndex: number[];
     scope?: BaseSymbol[];
 
-    constructor(name?: string, pathIndex: number[] = [0])
+    constructor(name?: string/* , pathIndex: number[] = [0] */)
     {
         super(name);
-        this.pathIndex = pathIndex;
+        // this.pathIndex = pathIndex;
     }
-
+    /*
     public override addSymbol(symbol: BaseSymbol, pathIndex?: number[]): void
     {
         super.addSymbol(symbol);
-        if (this.pathIndex) {
-            (symbol as ExprSymbol).pathIndex = [...this.pathIndex, this.children.length];
-        }
+        if (symbol instanceof ExprSymbol) {(symbol as ExprSymbol).pathIndex = [...this.pathIndex, this.children.length];}
     }
-
+    */
     public getScope(): BaseSymbol[]
     {
         return this.symbolPath.filter(symbol =>
@@ -57,7 +50,6 @@ export class ExprSymbol extends ScopedSymbol implements IExprSymbol
             symbol instanceof ToolDefinitionSymbol ||
             symbol instanceof UtilityDefinitionSymbol ||
             symbol instanceof RolloutDefinitionSymbol ||
-
             symbol instanceof StructDefinitionSymbol ||
             symbol instanceof StructMemberSymbol ||
             symbol instanceof FnDefinitionSymbol ||
@@ -119,15 +111,12 @@ export class RcControlSymbol extends ExprSymbol
         this.type = type;
     }
 }
-// export class ControlDefinition extends BaseSymbol { }
 export class AttributesDefSymbol extends ExprSymbol { }
 export class ParamsDefSymbol extends ExprSymbol { }
 export class ParamDefSymbol extends ExprSymbol { }
-
 export class StructDefinitionSymbol extends ExprSymbol { }
 export class StructMemberSymbol extends ExprSymbol { }
 export class EventHandlerClauseSymbol extends ExprSymbol { }
-
 export class FnDefinitionSymbol extends ExprSymbol { }
 export class fnArgsSymbol extends ExprSymbol { }
 export class fnParamsSymbol extends ExprSymbol { }
@@ -135,10 +124,9 @@ export class fnParamsSymbol extends ExprSymbol { }
 export class VariableDeclSymbol extends ExprSymbol
 {
     declarationScope?: string;
-    constructor(name?: string, pathIndex: number[] = [0])
+    constructor(name?: string/* , public pathIndex: number[] = [0] */)
     {
         super(name);
-        this.pathIndex = pathIndex;
     }
 }
 // export class whenStatementSymbol extends ExprSymbol { }
@@ -172,8 +160,13 @@ export class ParamSymbol extends ExprSymbol { }
 // export class propertyAccessSymbol extends BaseSymbol { }
 // export class refSymbol extends ExprSymbol { }
 export class IdentifierSymbol extends BaseSymbol { }
-// export class PathSymbol extends BaseSymbol { }
 
+// export class arraySymbol extends ExprSymbol { }
+// export class bitArraySymbol extends ExprSymbol { }
+// export class point3Symbol extends ExprSymbol { }
+// export class point2Symbol extends ExprSymbol { }
+// export class box2Symbol extends ExprSymbol { }
+// export class PathSymbol extends BaseSymbol { }
 // export class BooleanSymbol extends BaseSymbol { }
 // export class StringSymbol extends BaseSymbol { }
 // export class PathSymbol extends BaseSymbol { }
@@ -181,12 +174,6 @@ export class IdentifierSymbol extends BaseSymbol { }
 // export class NumberSymbol extends BaseSymbol { }
 // export class TimeSymbol extends BaseSymbol { }
 // export class QuestionMarkSymbol extends BaseSymbol { }
-
-// export class arraySymbol extends ExprSymbol { }
-// export class bitArraySymbol extends ExprSymbol { }
-// export class point3Symbol extends ExprSymbol { }
-// export class point2Symbol extends ExprSymbol { }
-// export class box2Symbol extends ExprSymbol { }
 
 export const topLevelSymbolsType: Array<new () => BaseSymbol> = [
     PluginDefinitionSymbol,
@@ -227,21 +214,12 @@ export class ContextSymbolTable extends SymbolTable
         // TODO: OPTIONS!
         options: ISymbolTableOptions,
         public owner?: SourceContext,
-        pathIndex: number[] = [0]
     )
     {
         super(name, options);
-        this.pathIndex = pathIndex;
     }
 
-    public override addSymbol(symbol: BaseSymbol): void
-    {
-        super.addSymbol(symbol);
-        if (this.pathIndex) {
-            (symbol as ExprSymbol).pathIndex = [...this.pathIndex, this.children.length];
-        }
-    }
-
+    /*
     public override addNewSymbolOfType<T extends BaseSymbol, Args extends unknown[]>
         (t: SymbolConstructor<T, Args>, parent: ScopedSymbol | undefined, ...args: Args): T
     {
@@ -252,9 +230,9 @@ export class ContextSymbolTable extends SymbolTable
         } else {
             (parent as ExprSymbol).addSymbol(result, (parent as ExprSymbol).pathIndex);
         }
-        // return super.addNewSymbolOfType(t, parent, ...args);
         return result;
     }
+    */
     //--------------------------------------------------------------------------
     private static isType(symbol: unknown): symbol is BaseSymbol | ExprSymbol
     {
@@ -291,11 +269,14 @@ export class ContextSymbolTable extends SymbolTable
 
         return findRecursive(this);
     }
-
-    private deepFind(
-        root: BaseSymbol,
-        searchSymbol: BaseSymbol,
-        targetName: string): BaseSymbol | undefined
+    /**
+     * Does a bfs search for the given node, looking for searchSymbol on his children
+     * @param root 
+     * @param searchSymbol 
+     * @param targetName 
+     * @returns 
+     */
+    private deepFind( root: BaseSymbol, searchSymbol: BaseSymbol): BaseSymbol | undefined
     {
         // Queue for BFS
         const queue: BaseSymbol[] = [root];
@@ -306,8 +287,8 @@ export class ContextSymbolTable extends SymbolTable
 
             const nodePos = (symbol.context as ParserRuleContext)?.start?.tokenIndex ?? 0;
 
-            if (symbol.name === targetName &&
-                symbol instanceof IdentifierSymbol &&
+            if (symbol.name === searchSymbol.name &&
+                typeof symbol === typeof searchSymbol &&
                 nodePos === symbolPos
             ) {
                 return symbol;
@@ -381,11 +362,9 @@ export class ContextSymbolTable extends SymbolTable
                 description: undefined,
             });
         }
-
         return result;
     }
     */
-
     private symbolInfoTree(symbol: BaseSymbol): ISymbolInfo[]
     {
         const symbolTable = symbol.symbolTable as ContextSymbolTable;
@@ -445,17 +424,13 @@ export class ContextSymbolTable extends SymbolTable
             this.symbolInfoOfType(t as typeof ExprSymbol, localOnly)).flat());
     }
 
-    // TODO: ScopedSymbol???
     public getSymbolInfo(symbol: string | BaseSymbol): ISymbolInfo | undefined
     {
         if (!(symbol instanceof BaseSymbol)) {
             const temp = this.resolveSync(symbol);
-            if (!temp) {
-                return undefined;
-            }
+            if (!temp) { return; }
             symbol = temp;
         }
-
         const symbolTable = symbol.symbolTable as ContextSymbolTable;
 
         return {
@@ -466,8 +441,14 @@ export class ContextSymbolTable extends SymbolTable
             description: undefined,
         };
     }
-
-    private seachSymbolDefinition(root: BaseSymbol, entry: BaseSymbol, identifiersOnly = false): IDefinitionResult
+    /**
+     * Find the symbol that can be considered the definition of the entry symbol
+     * @param root 
+     * @param entry 
+     * @param identifiersOnly 
+     * @returns The symbol that represents the definition referenced by entry symbol
+     */
+    private findSymbolInstances(root: BaseSymbol, entry: BaseSymbol, identifiersOnly = false): IDefinitionResult
     {
         const entryIndex = (entry.context as ParserRuleContext).start?.tokenIndex;
 
@@ -729,16 +710,7 @@ export class ContextSymbolTable extends SymbolTable
             results,
             candidates
         };
-        /*
-        console.log('-----------x------------');
-        console.log('returned!');
-        console.log(definitionResult);
-        let test = definitionResult.candidates;
-        test.push(...definitionResult.results);
-        for (let def of definitionResult.candidates) {
-            console.log((def.context as ParserRuleContext).start?.line);
-        }
-        // */
+
         return definitionResult;
     }
 
@@ -792,13 +764,13 @@ export class ContextSymbolTable extends SymbolTable
 
         // walk the tree, starting from the symbol, going up parents...
         // console.log('---DFS---');
-        const searchDefinition = this.seachSymbolDefinition(this, symbol);
+        const searchDefinition = this.findSymbolInstances(this, symbol);
         if (searchDefinition.definition) return searchDefinition.definition;
         // candidates for implicit declaration
         if (searchDefinition.candidates.length > 0) {
             return searchDefinition.candidates[searchDefinition.candidates.length - 1];
         }
-        // /*
+
         // seach in top-level symbols as last chance, unreilable
         if (ancestor.parent) {
             let topScope = ancestor.parent;
@@ -814,7 +786,6 @@ export class ContextSymbolTable extends SymbolTable
                 } else break;
             }
         }
-        // */
         /*
         // option: seach for a common ancestor
         let ancestor = this.symbolTable;
@@ -835,63 +806,12 @@ export class ContextSymbolTable extends SymbolTable
 
     public getScopedSymbolOccurrences(symbol: BaseSymbol)
     {
-        // problems: it gets incorrent siblings, fails when the parent is the TableSymbol, 
-        // try to use parent instead of scope to limit the search?
         // search on the same scope or in parent scope, NOT on childs of siblings
-        const scopeSearch = (parent: ScopedSymbol): BaseSymbol[] =>
-        {
-            const results: Set<BaseSymbol> = new Set([]);
-
-            if (parent instanceof ExprSymbol && parent.scope) {
-                let shouldStop = false;
-                const scopeStack = [...(parent.scope)];
-
-                while (scopeStack.length > 0 && !shouldStop) {
-                    const current = scopeStack.pop();
-                    // console.log(`current`);
-                    // console.log(current);
-                    const children = (current as ScopedSymbol).getAllNestedSymbolsSync(symbol.name).filter(child => child instanceof IdentifierSymbol).reverse();
-                    // console.log('listing children');
-                    // console.log(children);
-                    for (const child of children) {
-                        // console.log(child);
-                        const ctx = child instanceof IdentifierSymbol && child.parent
-                            ? child.parent.context
-                            : child.context;
-                        if (ctx) {
-                            const rule = (ctx as ParserRuleContext).ruleIndex;
-                            // console.log(`${rule} ---> ${SymbolSupport.declRules.has(rule)}`);
-                            // results.add(child);
-                            if (declRules.has(rule)) {
-                                // definition here, stop! 
-                                // console.log(child);
-                                // console.log('stop now!');
-                                // console.log(results);                          
-                                shouldStop = true;
-                                break;
-                            }
-                        }
-
-                    }
-                    // console.log('----------');
-                }
-            }
-            return Array.from(results);
-        };
-
         //search on the root
-        // const root = symbol.root || this;
-        // const parent = symbol.parent as ScopedSymbol;
-        // let table = (root as ScopedSymbol).getAllNestedSymbolsSync(symbol.name);
-        // let table = this.deepFind((root.parent || root), symbol, symbol.name);
         let table = [symbol];
-
-        // unreilable fast method, disable until a better solution is implemented
-        // table = scopeSearch(parent);
-
         // dfs search        
-        const searchDefinition = this.seachSymbolDefinition(this, symbol, true);
-        // console.log(searchDefinition.candidates);
+        const searchDefinition =
+            this.findSymbolInstances(this, symbol, true);
         if (searchDefinition.candidates.length > 0) {
             if (searchDefinition.definition) {
                 table = [searchDefinition.definition];
