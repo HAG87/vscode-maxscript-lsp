@@ -337,20 +337,21 @@ export class SourceContext
 
     public async getAllSymbols(recursive: boolean): Promise<BaseSymbol[]>
     {
-        /*
+        // /*
         // The symbol table returns symbols of itself and those it depends on (if recursive is true).
         const result = await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
         // Add also symbols from contexts referencing us, this time not recursive
         // as we have added our content already.
         for (const reference of this.references) {
             const symbols = await reference.symbolTable.getAllSymbols(BaseSymbol, true);
-            symbols.forEach((value) => {
+            symbols.forEach((value) =>
+            {
                 result.push(value);
             });
         }
         return result;
-        */
-        return await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
+        // */
+        // return await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
     }
     public getSymbolInfo(symbol: string | BaseSymbol): ISymbolInfo | undefined
     {
@@ -733,6 +734,72 @@ export class SourceContext
             result = derive.toString(options)
         }
         return result
+    }
+    //-------------------------------------------------references
+
+    // TODO: semantic analysis
+    // TODO: references
+    // TODO: dependencies
+    private runSemanticAnalysisIfNeeded()
+    {
+        /*
+        if (!this.semanticAnalysisDone && this.tree) {
+            this.semanticAnalysisDone = true;
+            //this.diagnostics.length = 0; Don't, we would lose our syntax errors from last parse run.
+
+            const semanticListener = new SemanticListener(this.diagnostics, this.symbolTable);
+            ParseTreeWalker.DEFAULT.walk(semanticListener, this.tree);
+        }
+        */
+    }
+    /**
+     * Add this context to the list of referencing contexts in the given context.
+     *
+     * @param context The context to add.
+     */
+    public addAsReferenceTo(context: SourceContext): void
+    {
+        // Check for mutual inclusion. References are organized like a mesh.
+        const pipeline: SourceContext[] = [context];
+        while (pipeline.length > 0) {
+            const current = pipeline.shift();
+            if (!current) {
+                continue;
+            }
+
+            if (current.references.indexOf(this) > -1) {
+                return; // Already in the list.
+            }
+
+            pipeline.push(...current.references);
+        }
+        context.references.push(this);
+        this.symbolTable.addDependencies(context.symbolTable);
+    }
+    /**
+     * Remove the given context from our list of dependencies.
+     *
+     * @param context The context to remove.
+     */
+    public removeDependency(context: SourceContext): void
+    {
+        const index = context.references.indexOf(this);
+        if (index > -1) {
+            context.references.splice(index, 1);
+        }
+        this.symbolTable.removeDependency(context.symbolTable);
+    }
+    public getReferenceCount(symbol: string): number
+    {
+        this.runSemanticAnalysisIfNeeded();
+
+        let result = this.symbolTable.getReferenceCount(symbol);
+
+        for (const reference of this.references) {
+            result += reference.getReferenceCount(symbol);
+        }
+
+        return result;
     }
     //...
 }

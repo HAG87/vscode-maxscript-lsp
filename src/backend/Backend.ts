@@ -14,9 +14,8 @@ export interface IContextEntry
     //TODO:
     // this holds a counter to check the references to this ctx
     refCount: number;
-    //TODO:
-    // dependencies: string[]
-    //...
+    dependencies: string[]
+    // grammar: string
 }
 
 export class mxsBackend
@@ -111,7 +110,7 @@ export class mxsBackend
             ctxEntry = {
                 context: ctx,
                 refCount: 0,
-                // dependencies: []
+                dependencies: []
             };
             // add to SourceContexts
             this.sourceContexts.set(uri, ctxEntry);
@@ -138,13 +137,15 @@ export class mxsBackend
             if (referencing) {
                 // If a referencing context is given remove this one from the reference's dependencies list,
                 // which in turn will remove the referencing context from the dependency's referencing list.
-                // referencing.context.removeDependency(ctxEntry.context);
+                referencing.context.removeDependency(ctxEntry.context);
             }
             ctxEntry.refCount--;
             if (ctxEntry.refCount === 0) {
-                // release all dependencies
-                // for (const dep of ctxEntry.dependencies) { this.unloadDocument(dep, contextEntry); }
                 this.sourceContexts.delete(uri);
+                // release also all dependencies
+                for (const dep of ctxEntry.dependencies) {
+                    this.unloadDocument(dep, ctxEntry);
+                }
             }
         }
     }
@@ -269,5 +270,43 @@ export class mxsBackend
     public prettifyCode(uri: string, options: ICodeFormatSettings & IMinifySettings & IPrettifySettings): string | null
     {
         return this.getContext(uri).prettifyCode(options)
+    }
+
+    // TODO: references
+    /**
+     * Count how many times a symbol has been referenced. The given file must contain the definition of this symbol.
+     *
+     * @param uri The grammar file name.
+     * @param symbol The symbol for which to determine the reference count.
+     * @returns The reference count.
+     */
+    public countReferences(uri: string, symbol: string)
+    {
+        return this.getContext(uri).getReferenceCount(symbol);
+    }
+    public getDependencies(uri: string): string[] {
+        const entry = this.sourceContexts.get(uri);
+        if (!entry) {
+            return [];
+        }
+        const dependencies: Set<SourceContext> = new Set();
+        this.pushDependencyFiles(entry, dependencies);
+
+        const result: string[] = [];
+        for (const dep of dependencies) {
+            result.push(dep.sourceUri);
+        }
+
+        return result;
+    }
+    private pushDependencyFiles(entry: IContextEntry, contexts: Set<SourceContext>) {
+        // Using a set for the context list here, to automatically exclude duplicates.
+        for (const dep of entry.dependencies) {
+            const depEntry = this.sourceContexts.get(dep);
+            if (depEntry && !contexts.has(depEntry.context)) {
+                contexts.add(depEntry.context);
+                this.pushDependencyFiles(depEntry, contexts);
+            }
+        }
     }
 }

@@ -205,13 +205,10 @@ export const declRules: Set<number> = new Set([
 export class ContextSymbolTable extends SymbolTable
 {
     public tree?: ParserRuleContext;
-    public pathIndex: number[];
-    // Caches with reverse lookup for indexed symbols.
-    //...
+    private symbolReferences = new Map<string, number>();
 
     public constructor(
         name: string,
-        // TODO: OPTIONS!
         options: ISymbolTableOptions,
         public owner?: SourceContext,
     )
@@ -219,6 +216,21 @@ export class ContextSymbolTable extends SymbolTable
         super(name, options);
     }
 
+    public override clear(): void {
+        // Before clearing the dependencies make sure the owners are updated.
+        /*
+        if (this.owner) {
+            for (const dep of this.dependencies) {
+                if (dep instanceof ContextSymbolTable && dep.owner) {
+                    this.owner.removeDependency(dep.owner);
+                }
+            }
+        }
+        */
+        this.symbolReferences.clear();
+
+        super.clear();
+    }
     /*
     public override addNewSymbolOfType<T extends BaseSymbol, Args extends unknown[]>
         (t: SymbolConstructor<T, Args>, parent: ScopedSymbol | undefined, ...args: Args): T
@@ -904,5 +916,34 @@ export class ContextSymbolTable extends SymbolTable
         }
 
         return result;
+    }
+    //---------------------------------------------------------------
+    public getReferenceCount(symbolName: string): number {
+        const reference = this.symbolReferences.get(symbolName);
+        if (reference) {
+            return reference;
+        } else {
+            return 0;
+        }
+    }
+
+    public getUnreferencedSymbols(): string[] {
+        const result: string[] = [];
+        for (const entry of this.symbolReferences) {
+            if (entry[1] === 0) {
+                result.push(entry[0]);
+            }
+        }
+
+        return result;
+    }
+
+    public incrementSymbolRefCount(symbolName: string): void {
+        const reference = this.symbolReferences.get(symbolName);
+        if (reference) {
+            this.symbolReferences.set(symbolName, reference + 1);
+        } else {
+            this.symbolReferences.set(symbolName, 1);
+        }
     }
 }
