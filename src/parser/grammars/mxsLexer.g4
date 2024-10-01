@@ -324,7 +324,7 @@ fragment Float
 	;
 fragment Cnot: ( [eEdD] ([+-]? Int+)? | [LP] )
 	;
-fragment Hex: '0' [xX] (Int | [aAfF])+
+fragment Hex: '0' [xX] (Int | [a-fA-F])+
 	;
 
 fragment String_regular: '"' (~["\r\n] | '\\"')* '"'

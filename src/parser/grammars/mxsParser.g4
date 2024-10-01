@@ -719,6 +719,7 @@ kw_override
 	| Plugin
 	| RCmenu
 	| RETURN
+	| REDRAW
 	| Rollout
 	| Tool
 	| TO
