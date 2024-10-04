@@ -50,5 +50,4 @@ export class Utilities
     }
 
     public static prefixFile = (path: string, prefix: string): string => Path.join(path, '..', prefix + Path.basename(path));
-
 }

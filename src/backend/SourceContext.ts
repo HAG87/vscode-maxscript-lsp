@@ -113,7 +113,12 @@ export class SourceContext
     {
         this.lexer.inputStream = CharStream.fromString(source);
     }
+    public changedText(source: string): boolean
+    {
+        return source === this.lexer.text
+    }
     //----------------------------------------------------------------parser
+    // get getTokenStream() { return this.tokenStream; }
     public parse(): void
     {
         // Rewind the input stream for a new parse run.

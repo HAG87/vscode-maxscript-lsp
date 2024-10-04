@@ -28,13 +28,16 @@ export class mxsBackend
     // get the context
     public getContext(uri: string, source?: string): SourceContext
     {
-        const cxtEntry = this.sourceContexts.get(uri);
-        if (!cxtEntry) {
-            return this.loadDocument(uri, source);
-        }
-        return cxtEntry.context;
+        return this.loadDocument(uri, source);
     }
-
+    public preloadContext(uri: string, source?: string): SourceContext
+    {
+        return this.preloadDocument(uri, source);;
+    }
+    public releaseContext(uri: string)
+    {
+        this.unloadDocument(uri)
+    }
     /**
      * Parse the current source set for the document
      * @param contextEntry 
@@ -101,7 +104,35 @@ export class mxsBackend
      * @param source the document text
      * @returns 
      */
-    public loadDocument(uri: string, source?: string): SourceContext
+    private loadDocument(uri: string, source?: string): SourceContext
+    {
+        let ctxEntry = this.sourceContexts.get(uri);
+        if (!ctxEntry) {
+            // new context
+            const ctx = new SourceContext(uri);
+            // set ctx text            
+            ctx.setText(source ?? this.getDocumentText(uri));
+            ctxEntry = {
+                context: ctx,
+                refCount: 0,
+                dependencies: []
+            };
+            // add to SourceContexts
+            this.sourceContexts.set(uri, ctxEntry);            
+            // do an initial parse run
+            this.parseDocument(ctxEntry);
+        }
+        /*
+        if (!ctxEntry.context.compareText(source ?? this.getDocumentText(uri)))
+        {
+            this.parseDocument(ctxEntry);
+        }
+        */
+        // count this as a referency
+        ctxEntry!.refCount++;
+        return ctxEntry.context;
+    }
+    private preloadDocument(uri: string, source?: string): SourceContext
     {
         let ctxEntry = this.sourceContexts.get(uri);
         if (!ctxEntry) {
@@ -112,16 +143,13 @@ export class mxsBackend
                 refCount: 0,
                 dependencies: []
             };
-            // add to SourceContexts
-            this.sourceContexts.set(uri, ctxEntry);
-
             // set ctx text
             ctx.setText(source ?? this.getDocumentText(uri));
-            // do an initial parse run
-            this.parseDocument(ctxEntry);
+            // add to SourceContexts
+            this.sourceContexts.set(uri, ctxEntry);            
         }
         // count this as a referency
-        ctxEntry!.refCount++;
+        // ctxEntry!.refCount++;
         return ctxEntry.context;
     }
 
@@ -130,7 +158,7 @@ export class mxsBackend
      * @param uri 
      * @param referencing 
      */
-    public unloadDocument(uri: string, referencing?: IContextEntry): void
+    private unloadDocument(uri: string, referencing?: IContextEntry): void
     {
         const ctxEntry = this.sourceContexts.get(uri);
         if (ctxEntry) {
