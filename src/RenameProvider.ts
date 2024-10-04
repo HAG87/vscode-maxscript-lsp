@@ -27,13 +27,13 @@ export class mxsRenameProvider implements RenameProvider
             if (occurrences) {
                 const result = new WorkspaceEdit();
                 for (const symbol of occurrences) {
-                    if (symbol.definition) {
+                    // if (symbol.definition) {
                         result.replace(
                             Uri.parse(symbol.source),
                             Utilities.symbolNameRange(symbol),
                             newName
                         );
-                    }
+                    // }
                 }
                 resolve(result);
             } else {
