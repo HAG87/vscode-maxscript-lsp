@@ -1,9 +1,10 @@
 import { writeFile } from 'fs/promises';
 import { basename } from 'path';
 import {
-  commands, ConfigurationChangeEvent, ExtensionContext, languages,
-  ProgressLocation, Range, TextDocument, TextDocumentChangeEvent,
-  TextEditorEdit, Uri, window, workspace,
+  commands, ConfigurationChangeEvent, ExtensionContext, FileSystemWatcher,
+  languages, ProgressLocation, Range, TextDocument,
+  TextDocumentChangeEvent, TextEditorEdit, Uri, window,
+  workspace,
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
@@ -21,25 +22,32 @@ import {
   defaultSettings, minifySettings, prettifyOptions,
 } from './settings.js';
 import { mxsSymbolProvider } from './SymbolProvider.js';
-import { ICodeFormatSettings } from './types.js';
 import { Utilities } from './utils.js';
+import { mxsWorkspaceSymbolProvider } from './workspaceSymbolProvider.js';
 
-//TODO: settings - references (workspace symbols semtokens, references and completions)
+// import { ICodeFormatSettings } from './types.js';
 
 export class ExtensionHost
 {
     private changeTimers = new Map<string, ReturnType<typeof setTimeout>>();
     public static readonly langSelector = { language: 'maxscript', scheme: 'file' }
     private readonly backend: mxsBackend
-
+    //----------------------------------------------------------------
+    // this will hold a global collection of workspace symbols, provided in a simple manner,
+    // these symbols does not hold much info, and does not follow code scopes
+    private workspaceSymbolProvider: mxsWorkspaceSymbolProvider
     // diagnostics for the extension
     private readonly diagnosticCollection = languages.createDiagnosticCollection('maxscript');
-
+    //----------------------------------------------------------------
+    public updateProviders(uri: string)
+    {
+        this.workspaceSymbolProvider.updateWorkspaceSymbols(uri)
+    }
+    //----------------------------------------------------------------
     public constructor(ctx: ExtensionContext)
     {
         // start backend
         this.backend = new mxsBackend()
-
         // load settings
         const savedSettings = workspace.getConfiguration('maxScript')
         Object.assign(defaultSettings, savedSettings)
@@ -64,8 +72,7 @@ export class ExtensionHost
         // /*
         for (const document of workspace.textDocuments) {
             if (Utilities.isLanguageFile(document)) {
-                console.log('preload')
-                this.backend.loadDocument(document.uri.toString(), document.getText())
+                this.backend.getContext(document.uri.toString(), document.getText())
                 this.diagnosticCollection.set(
                     document.uri,
                     diagnosticAdapter(this.backend.getDiagnostics(document.uri.toString()))
@@ -73,14 +80,28 @@ export class ExtensionHost
             }
         }
         // */
+        // workspace symbols
+        this.workspaceSymbolProvider = new mxsWorkspaceSymbolProvider(this.backend)
         //register eventHandlers
         this.registerEventHandlers(ctx)
         // register providers
         this.registerProviders(ctx)
         // register commands
         this.registerCommands(ctx)
+        // watch files
+        // this.registerFileWatcher(ctx)
     }
 
+    // watch files for changes and update providers
+    private registerFileWatcher(ctx: ExtensionContext): void
+    {
+        const watchFiles = workspace.createFileSystemWatcher('**/*.{ms,mcr}')
+        watchFiles.onDidChange((uri) =>
+        {
+            this.updateProviders(uri.toString());
+        })
+        ctx.subscriptions.push(watchFiles)
+    }
     //register eventHandlers
     private registerEventHandlers(ctx: ExtensionContext): void
     {
@@ -88,7 +109,7 @@ export class ExtensionHost
             workspace.onDidOpenTextDocument((document: TextDocument) =>
             {
                 if (Utilities.isLanguageFile(document)) {
-                    this.backend.loadDocument(document.uri.toString(), document.getText())
+                    this.backend.getContext(document.uri.toString(), document.getText())
                     this.diagnosticCollection.set(
                         document.uri,
                         diagnosticAdapter(this.backend.getDiagnostics(document.uri.toString()))
@@ -98,7 +119,7 @@ export class ExtensionHost
             workspace.onDidCloseTextDocument((document: TextDocument) =>
             {
                 if (Utilities.isLanguageFile(document)) {
-                    this.backend.unloadDocument(document.uri.toString())
+                    this.backend.releaseContext(document.uri.toString())
                     // clear diagnostics for the document
                     this.diagnosticCollection.set(document.uri, [])
                 }
@@ -125,6 +146,7 @@ export class ExtensionHost
                         )
                         //TODO:
                         // this.codeLensProvider.refresh();
+                        // this.updateProviders(event.document.uri.toString())
                     }, 300))
                 }
                 // */
@@ -137,8 +159,8 @@ export class ExtensionHost
                         clearTimeout(timer)
                     }
                     //TODO:
-                    // use this method to update data, like the tree providers
-                    // this.regenerateBackgroundData(document);
+                    // use this method to update data
+                    this.updateProviders(document.uri.toString())
                 }
             }),
             /*
@@ -157,7 +179,8 @@ export class ExtensionHost
             }),
             // */
             //TODO:
-            workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) => {
+            workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) =>
+            {
                 if (event.affectsConfiguration("maxScript")) {
                     const savedSettings = workspace.getConfiguration('maxScript')
                     Object.assign(defaultSettings, savedSettings)
@@ -176,7 +199,6 @@ export class ExtensionHost
     private registerProviders(ctx: ExtensionContext): void
     {
         ctx.subscriptions.push(
-            
             languages.registerDocumentSymbolProvider(
                 ExtensionHost.langSelector,
                 new mxsSymbolProvider(this.backend)
@@ -226,7 +248,12 @@ export class ExtensionHost
                     this.backend,
                     defaultSettings.formatter
                 )
+            ),
+            // /*
+            languages.registerWorkspaceSymbolProvider(
+                this.workspaceSymbolProvider
             )
+            // */
             //...
         )
     }
@@ -377,7 +404,7 @@ export class ExtensionHost
         const minResult = this.backend.minifyCode(uri.toString(), minifySettings, enhanced)
         // minify done, dispose context
         if (shouldUnload) {
-            this.backend.unloadDocument(uri.toString())
+            this.backend.releaseContext(uri.toString())
         }
         return minResult
     }
@@ -416,7 +443,7 @@ export class ExtensionHost
         const prettyResult = this.backend.prettifyCode(uri.toString(), prettifyOptions)
         // done, dispose context
         if (shouldUnload) {
-            this.backend.unloadDocument(uri.toString())
+            this.backend.releaseContext(uri.toString())
         }
         return prettyResult
     }
