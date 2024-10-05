@@ -1,14 +1,17 @@
 import { ParserRuleContext } from 'antlr4ng';
 
-import { FunctionCallContext, IdentifierContext } from '../parser/mxsParser.js';
+import {
+  FunctionCallContext, IdentifierContext, Param_nameContext,
+} from '../parser/mxsParser.js';
 import { mxsParserListener } from '../parser/mxsParserListener.js';
 import { ISemanticToken } from '../types.js';
 import { maxAPI } from './schemas/mxsAPI.js';
 
 export class semanticTokenListener extends mxsParserListener
 {
-    private symbolStack: ParserRuleContext[] = [];
-    // private symbolStack
+    // private symbolStack: ParserRuleContext[] = [];
+
+    private collect: boolean = true
     public constructor(private tokenStack: ISemanticToken[])
     {
         // clear the token list
@@ -16,39 +19,23 @@ export class semanticTokenListener extends mxsParserListener
         super();
     }
 
-    public override enterFunctionCall = (ctx: FunctionCallContext): void =>
-    {
-        this.symbolStack.push(ctx);
-    }
-    public override exitFunctionCall = (_ctx: FunctionCallContext): void =>
-    {
-        /*
-        if (ctx._caller && ctx._caller.start && ctx._caller.ruleIndex !== mxsParser.RULE_expr_seq) {
-            const txt = ctx._caller.getText();
-            this.addToken(ctx._caller.start.line, ctx._caller.start.column, txt.length,
-                'method',
-                ['modification']
-            );
-            return;
-        }
-        // */
-        this.symbolStack.pop();
-    }
-    /*
-    public override enterFunctionCall = (ctx: FunctionCallContext): void => { this.symbolStack.push(ctx); }
-    public override exitFunctionCall = (ctx: FunctionCallContext): void => { this.symbolStack.pop(); }
+    // public override enterFunctionCall = (ctx: FunctionCallContext): void => { this.symbolStack.push(ctx); }
+    // public override exitFunctionCall = (_ctx: FunctionCallContext): void => { this.symbolStack.pop(); }
 
+    /*
     public override enterVariableDeclaration = (ctx: VariableDeclarationContext): void => { this.symbolStack.push(ctx); }
     public override exitVariableDeclaration = (ctx: VariableDeclarationContext): void => { this.symbolStack.pop(); }
 
     public override enterProperty = (ctx: PropertyContext): void => { this.symbolStack.push(ctx); }
     public override exitProperty = (ctx: PropertyContext): void => { this.symbolStack.pop(); }
     */
+   public override enterParam_name = (_ctx: Param_nameContext): void => {this.collect = false;}
+   public override exitParam_name = (_ctx: Param_nameContext): void => {this.collect = true;}
     public override exitIdentifier = (ctx: IdentifierContext): void =>
     {
-        if (!ctx.start) { return }
+        if (!ctx.start || !this.collect) { return }
 
-        const txt = ctx.getText();
+        const txt = ctx.getText().toLowerCase();
 
         if (maxAPI.class.has(txt)) {
             this.addToken(ctx.start.line, ctx.start.column, txt.length,
