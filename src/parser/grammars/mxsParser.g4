@@ -618,6 +618,7 @@ factor
 	: identifier
 	| bool
 	| STRING
+	| RESOURCE
 	| path
 	| name
 	| NUMBER
