@@ -139,7 +139,7 @@ export class ExtensionHost
                     {
                         this.changeTimers.delete(fileName)
                         this.backend.reparse(event.document.uri)
-
+                        
                         this.diagnosticCollection.set(
                             event.document.uri,
                             diagnosticAdapter(this.backend.getDiagnostics(event.document.uri.toString()))
@@ -437,7 +437,6 @@ export class ExtensionHost
             }
         });
     }
-
     private prettifyDocument(uri: Uri, shouldUnload: boolean = false): string | null
     {
         const prettyResult = this.backend.prettifyCode(uri.toString(), prettifyOptions)
