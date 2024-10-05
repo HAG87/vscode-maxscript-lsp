@@ -5,16 +5,19 @@ Autodesk 3ds Max Scripting language (MaxScript) support.
 ## Features
 
 - Syntax highlight.
-- Grammar Error checking
+- Grammar error checking
 - Semantic syntax highlight
-- Code autocompletion for keywords, primitives, generic functions, structs, interfaces and classes.
-- Snippets for most used code blocks.
-- Go to Symbol in document (Basic support, somewhat buggy).
-- Go to Definition and peek definition in document.
+- Code autocompletion
+- Outline symbols
+- Go to definition and peek definition in document
+- Workspace symbols
+- Find all references
+- Rename symbol
 - Code formatter
 - Code minify
 - Code prettifier
-- Help command (*MaxScript help. Accessible from the right-click menu.*): Select a keyword and open related online documentation.
+- Code online documentation
+- Snippets
 
 ![feature X](./images/feature-1.png)
 
@@ -36,6 +39,30 @@ None.
   "maxscript.gotodefinition": true | false,
   "maxscript.semantics": true | false,
   "maxscript.helpprovider": string,
+
+  "maxscript.completions.dataBaseCompletion": true | false,
+  "maxscript.completions.codeCompletion": true | false,
+  "maxscript.formatter.codeblock": {
+      "parensInNewLine": true | false,
+      "newlineAllways": false | false,
+      "spaced": true | false,
+  },
+  "maxscript.formatter.statements": {
+      "useLineBreaks": true | false,
+      "optionalWhitespace": false | false
+  },
+  "maxscript.formatter.list": {
+      "useLineBreaks": false | false
+  },    
+  "maxscript.prettifier": {
+      "filePrefix": "string",
+      "expressionsToBlock": true | false,
+  },
+  "maxscript.minifier": {
+      "filePrefix": "string",
+      "removeUnnecessaryScopes": true | false,
+      "condenseWhitespace": true | false,
+  }
 ```
 
 ## Syntax Highlight inside comments

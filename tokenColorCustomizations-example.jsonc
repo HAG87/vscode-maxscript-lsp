@@ -1,0 +1,141 @@
+// Syntax highlight options for language maxscript
+{
+"editor.tokenColorCustomizations": {
+    "textMateRules": [
+      // Extras
+      {
+        "name": "Todo",
+        "scope": "documentation.todo.mxs",
+        "settings": { "foreground": "#4bd621", "fontStyle": "bold" }
+      },
+      {
+        "name": "Fixme",
+        "scope": "documentation.fixme.mxs",
+        "settings": { "foreground": "#ce55d3", "fontStyle": "bold" }
+      },
+      {
+        "name": "Plain text",
+        "scope": "documentation.plain.mxs",
+        "settings": { "foreground": "#cecece", "fontStyle": "" }
+      },
+      {
+        "name": "Bold text",
+        "scope": "documentation.bold.mxs",
+        "settings": { "fontStyle": "bold" }
+      },
+      {
+        "name": "Underline text",
+        "scope": "documentation.underline.mxs",
+        "settings": { "fontStyle": "underline" }
+      },
+      // Characters
+      {
+        "name": "Linebreak",
+        "scope": "keyword.operator.linebreak.mxs",
+        "settings": { "foreground": "#6d6d6d", "fontStyle": "bold" }
+      },
+      {
+        "name": "byReference keyword",
+        "scope": "keyword.operator.byref.mxs",
+        "settings": { "foreground": "#78C28E", "fontStyle": "italic" }
+      },
+      // Values
+      {
+        "name": "Verbatim string",
+        "scope": "string.quoted.double.verbatim.mxs",
+        "settings": { "fontStyle": "italic" }
+      },
+      {
+        "name": "Localized resources",
+        "scope": "string.quoted.other.mxs",
+        "settings": { "foreground": "#8f724a" }
+      },
+      // Misc
+      {
+        "name": "Event target",
+        "scope": "entity.target",
+        "settings": { "foreground": "#E6B52E", "fontStyle": "italic" }
+      },
+      // Variables
+      {
+        "name": "Path names",
+        "scope": "variable.other.pathname.mxs",
+        "settings": { "foreground": "#7A9F4D" }
+      },
+      {
+        "name": "Quoted identifiers",
+        "scope": "variable.other.name.quoted.mxs",
+        "settings": { "foreground": "#4d899f" }
+      },
+      // Declaration
+      {
+        "name": "Declaration",
+        "scope": "storage.type.declaration.mxs",
+        "settings": { "fontStyle": "" }
+      },
+      // Keywords
+      {
+        "name": "mxs keyword operator",
+        "scope": "keyword.operator.logical.mxs",
+        "settings": { "foreground": "#78BEC2" }
+      },
+      {
+        "name": "Keyword other",
+        "scope": "keyword.other.mxs",
+        "settings": { "foreground": "#78C28E" }
+      },
+      {
+        "name": "mxs constant",
+        "scope": "constant.language, variable.language.mxs",
+        "settings": { "foreground": "#528BFF" }
+      },
+      // Types
+      {
+        "name": "mxs array",
+        "scope": "storage.type.array.mxs, storage.type.bitarray.mxs",
+        "settings": { "foreground": "#E5CB82", "fontStyle": "" }
+      },
+      // support
+      {
+        "name": "Types",
+        "scope": "support.type.primitive.mxs",
+        "settings": { "foreground": "#477FB0" }
+      },
+      {
+        "name": "Objectset",
+        "scope": "support.variable.objectset.mxs",
+        "settings": { "foreground": "#E6B52E" }
+      },
+      {
+        "name": "Interfaces",
+        "scope": "support.type.interface.mxs",
+        "settings": { "foreground": "#759FD1" }
+      },
+      {
+        "name": "Class",
+        "scope": "support.class.mxs",
+        "settings": { "foreground": "#A875D1" }
+      },
+      {
+        "name": "Structs",
+        "scope": "storage.type.struct.mxs",
+        "settings": { "foreground": "#7b6ccd" }
+      },
+      {
+        "name": "Constant",
+        "scope": "support.constant.mxs",
+        "settings": { "foreground": "#c56038" }
+      },
+      {
+        "name": "Superclass",
+        "scope": "support.superclass.mxs",
+        "settings": { "foreground": "#6c7bcd" }
+      },
+      {
+        "name": "Variables",
+        "scope": "support.variable.system.mxs",
+        "settings": { "foreground": "#cda06c" }
+      }
+    ]
+  }
+}
