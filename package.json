@@ -217,12 +217,12 @@
       {
         "title": "General",
         "properties": {
-          "maxscript.completions.dataBaseCompletion": {
+          "maxScript.completions.dataBaseCompletion": {
             "type": "boolean",
             "default": true,
             "description": "Enable completions for build-in Classes, Methods, Structs and Interfaces"
           },
-          "maxscript.completions.codeCompletion": {
+          "maxScript.completions.codeCompletion": {
             "type": "boolean",
             "default": true,
             "description": "Enable suggestions provided by the current code"

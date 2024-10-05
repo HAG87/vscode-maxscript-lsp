@@ -50,10 +50,10 @@ export class ExtensionHost
         this.backend = new mxsBackend()
         // load settings
         const savedSettings = workspace.getConfiguration('maxScript')
-        Object.assign(defaultSettings, savedSettings)
+        Object.assign(defaultSettings, savedSettings.get('formatter'))
+        Object.assign(defaultSettings, savedSettings.get('completions'))
         Object.assign(minifySettings, savedSettings.get('minifier'))
         Object.assign(prettifyOptions, savedSettings.get('prettifier'))
-
         // process active open document, if any.
         /*
         const editor = window.activeTextEditor
