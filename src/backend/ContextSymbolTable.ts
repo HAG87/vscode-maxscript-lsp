@@ -527,9 +527,15 @@ export class ContextSymbolTable extends SymbolTable
         {
             const scopeAdepth = scopeA.length;
             const scopeBdepth = scopeB.length;
-
+            
+            // console.log(scopeA)
+            // console.log(scopeB)
             if (scopeBdepth > scopeAdepth) {
+                // console.log(scopeB.slice(0, scopeAdepth))
+                // console.log('---')
                 return scopeB.slice(0, scopeAdepth).every((symbol, index) => assertSymbols(symbol, scopeA[index]));
+            } else {
+                return scopeA.some((symbol, index) => assertSymbols(symbol, scopeB[index]));
             }
             /*
             const resolveScopes = compareScopes(symbolA, symbolB);
@@ -537,7 +543,7 @@ export class ContextSymbolTable extends SymbolTable
                 return resolveScopes.subPathB.length === 0; // symbol should be fully contained in the scope
             }
             */
-            return false;
+            // return false;
         }
 
         function checkDefinition(foundSymbol: BaseSymbol, symbol: BaseSymbol, result: BaseSymbol[], candidates: BaseSymbol[]): BaseSymbol | undefined
@@ -573,16 +579,18 @@ export class ContextSymbolTable extends SymbolTable
                 case mxsParser.RULE_for_body:
                 case mxsParser.RULE_fn_args:
                 case mxsParser.RULE_fn_params:
-                    // console.log('   + is fn_arg?');
+                    // console.log('   + is fn_arg?');           
                     if (isScopeChild(scopeA, scopeB)) {
-                        result.push(symbol);
-                        return symbol;
+                        // console.log('yes it is')
+                        // result.push(symbol);
+                        // return symbol;
+                        // console.log(returnValue())
+                        result.push(returnValue());
+                        return returnValue();
                     }
                     break;
                 case mxsParser.RULE_variableDeclaration:
                     // console.log('   + Is variable declaration?');
-                    // console.log(scopeA);
-                    // console.log(scopeB);
                     //TODO: global variable
                     // console.log(`siblings?: ${isScopeSibling(scopeA, scopeB)}`);
                     if (isScopeSibling(scopeA, scopeB)) {
@@ -598,8 +606,6 @@ export class ContextSymbolTable extends SymbolTable
                 // if symbol stand alone, ...
                 case mxsParser.RULE_expr_seq:
                     // console.log('   + implicit declaration? - exp_seq scope');
-                    // check scope
-                    // console.log(symbol);
                     // if (testScopePertenence(foundSymbol, symbol)) {
                     if (isScopeSibling(scopeA, scopeB)) {
                         // console.log('symbol added');
@@ -616,12 +622,10 @@ export class ContextSymbolTable extends SymbolTable
                     console.log(resolveScopes);
                     */
                     // candidates.push(symbol);
-                    // return;
                     break;
                 //...
                 default:
                     // console.log('   + implicit declaration? - everything else - unknown scope');
-                    // console.log(symbol);
                     /*
                     const resolveScopes = compareScopes(foundSymbol, symbol);
                     const nodeIndex1 = (foundSymbol.context as ParserRuleContext).start?.tokenIndex || 0;
@@ -632,13 +636,8 @@ export class ContextSymbolTable extends SymbolTable
                     // */
                     // check scope
                     if (isScopeChild(scopeA, scopeB) || isScopeSibling(scopeA, scopeB)) {
-                        // stop = true;
-                        // return node.parent;
                         candidates.push(symbol);
-                        // return symbol;
                     }
-                    // return node;
-                    // return;
                     break;
             }
             return;

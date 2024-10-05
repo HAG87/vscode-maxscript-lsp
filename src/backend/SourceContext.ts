@@ -6,7 +6,9 @@ import {
 } from 'antlr4ng';
 
 import { mxsLexer } from '../parser/mxsLexer.js';
-import { mxsParser } from '../parser/mxsParser.js';
+import {
+  Fn_argsContext, Fn_paramsContext, mxsParser,
+} from '../parser/mxsParser.js';
 import {
   DiagnosticType, ICodeFormatSettings, IDefinition, IDiagnosticEntry,
   ILexicalRange, IMinifySettings, IPrettifySettings, ISemanticToken,
@@ -43,6 +45,8 @@ export const symbolToKindMap: Map<new () => BaseSymbol, SymbolKind> = new Map([
     [EventHandlerClauseSymbol, SymbolKind.Event],
     //...
     [FnDefinitionSymbol, SymbolKind.Function],
+    [fnArgsSymbol, SymbolKind.Argument],
+    [fnParamsSymbol, SymbolKind.Parameter],
     [VariableDeclSymbol, SymbolKind.Declaration],
     [AssignmentExpressionSymbol, SymbolKind.Identifier],
     [IdentifierSymbol, SymbolKind.Identifier],

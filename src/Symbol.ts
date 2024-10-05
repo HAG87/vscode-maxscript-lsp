@@ -49,6 +49,8 @@ const symbolDescriptionMap = new Map<SymbolKind, string>([
 	[SymbolKind.Call,        'Call'],
 	[SymbolKind.Property,    'Property'],
 	[SymbolKind.Accessor,    'Accessor'],
+	[SymbolKind.Argument,    'Function argument'],
+	[SymbolKind.Parameter,   'Function parameter'],
 	[SymbolKind.Identifier,  'Identifier'],
 	[SymbolKind.Operator,    'Operator'],
 	[SymbolKind.Keyword,     'Keyword'],

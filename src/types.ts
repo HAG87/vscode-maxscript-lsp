@@ -124,7 +124,8 @@ export enum SymbolKind
 	Call,
 	Property,
 	Accessor,
-
+    Argument,
+    Parameter,
 	Identifier,
 	Operator,
 	Keyword,
