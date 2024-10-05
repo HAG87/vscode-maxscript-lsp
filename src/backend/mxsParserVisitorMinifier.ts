@@ -25,6 +25,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     constructor(private options: ICodeFormatSettings & IMinifySettings)
     {
         super()
+        // console.log(JSON.stringify(options.condenseWhitespace))
         // if (options) { Object.assign(this.options, options) }
     }
     /* options:
@@ -34,58 +35,58 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     */
     //-------------------------------------------------------
     visitProgram = (ctx: ProgramContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitExpr = (ctx: ExprContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     //-------------------------------------------------------
     visitPluginDefinition = (ctx: PluginDefinitionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitParamsDefinition = (ctx: ParamsDefinitionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     //-------------------------------------------------------
     visitToolDefinition = (ctx: ToolDefinitionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
-    // visitTool_predicate = (ctx: Tool_predicateContext): string => { return this.visitChildren(ctx, this.aggregateResult)! }
-    // visitTool_body = (ctx: Tool_bodyContext): string => { return this.visitChildren(ctx, this.aggregateResult)! }
+        this.visitChildren(ctx)!
+    // visitTool_predicate = (ctx: Tool_predicateContext): string => { return this.visitChildren(ctx)! }
+    // visitTool_body = (ctx: Tool_bodyContext): string => { return this.visitChildren(ctx)! }
     //-------------------------------------------------------
     visitMacroscriptDefinition = (ctx: MacroscriptDefinitionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
-    // visitMacropscript_predicate = (ctx: Macropscript_predicateContext): string => { return this.visitChildren(ctx, this.aggregateResult)! }
-    // visitMacroscript_body = (ctx: Macroscript_bodyContext): string => { return this.visitChildren(ctx, this.aggregateResult)! }
+        this.visitChildren(ctx)!
+    // visitMacropscript_predicate = (ctx: Macropscript_predicateContext): string => { return this.visitChildren(ctx)! }
+    // visitMacroscript_body = (ctx: Macroscript_bodyContext): string => { return this.visitChildren(ctx)! }
     //-------------------------------------------------------
     visitUtilityDefinition = (ctx: UtilityDefinitionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitRolloutDefinition = (ctx: RolloutDefinitionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
-    // visitRollout_predicate = (ctx: Rollout_predicateContext): string => { return this.visitChildren(ctx, this.aggregateResult)! }
-    // visitRollout_body = (ctx: Rollout_bodyContext): string => { return this.visitChildren(ctx, this.aggregateResult)! }
+        this.visitChildren(ctx)!
+    // visitRollout_predicate = (ctx: Rollout_predicateContext): string => { return this.visitChildren(ctx)! }
+    // visitRollout_body = (ctx: Rollout_bodyContext): string => { return this.visitChildren(ctx)! }
     visitRolloutGroup = (ctx: RolloutGroupContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitRolloutControl = (ctx: RolloutControlContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     //-------------------------------------------------------
     visitRcmenuDefinition = (ctx: RcmenuDefinitionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitRcmenuControl = (ctx: RcmenuControlContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitRc_submenu = (ctx: Rc_submenuContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     //-------------------------------------------------------
     visitAttributesDefinition = (ctx: AttributesDefinitionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitWhenStatement = (ctx: WhenStatementContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     //-------------------------------------------------------
     visitStructDefinition = (ctx: StructDefinitionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitStruct_body = (ctx: Struct_bodyContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitEventHandlerClause = (ctx: EventHandlerClauseContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitFnDefinition = (ctx: FnDefinitionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitFnReturnStatement = (ctx: FnReturnStatementContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     //-------------------------------------------------------
     // case item
     visitCase_item = (ctx: Case_itemContext): string =>
@@ -99,17 +100,17 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         return factor + right + this.visit(ctx.COLON())! + left + expr
     }
     visitIfExpression = (ctx: IfExpressionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitDoLoopExpression = (ctx: DoLoopExpressionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitWhileLoopExpression = (ctx: WhileLoopExpressionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitForLoopExpression = (ctx: ForLoopExpressionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitTryExpression = (ctx: TryExpressionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitContextExpression = (ctx: ContextExpressionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     //-------------------------------------------------------
     visitExpr_seq = (ctx: Expr_seqContext): string =>
     {
@@ -117,33 +118,33 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         if (expressions.length === 1 && this.options.removeUnnecessaryScopes) {
             return this.visit(expressions[0])!
         } else {
-            return this.visitChildren(ctx, this.aggregateResult)!
+            return this.visitChildren(ctx)!
         }
     }
     //-------------------------------------------------------
     visitSimpleExpression = (ctx: SimpleExpressionContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitExpr_operand = (ctx: Expr_operandContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     //-------------------------------------------------------    
     visitAssignment = (ctx: AssignmentContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitOperand = (ctx: OperandContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     //accessor
     visitAccessor = (ctx: AccessorContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitProperty = (ctx: PropertyContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitIndex = (ctx: IndexContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitFactor = (ctx: FactorContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     //-------------------------------------------------------
     visitFunctionCall = (ctx: FunctionCallContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     visitParam = (ctx: ParamContext): string =>
-        this.visitChildren(ctx, this.aggregateResult)!
+        this.visitChildren(ctx)!
     // visitOperand_arg = (ctx: Operand_argContext): ParseTree => { return ctx.children[0] }
     visitParam_name = (ctx: Param_nameContext): string => { return ctx.getText() }
     //-------------------------------------------------------
@@ -192,7 +193,6 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     {
         if (aggregate) {
             if (nextResult) {
-
                 if (this.options.condenseWhitespace) {
                     const end = /[$0-9_\p{L}]$/u.test(aggregate)
                     const start = /^[0-9_\p{L}]/u.test(nextResult)
@@ -215,9 +215,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     protected defaultResult(): string { return '' }
 
     protected shouldVisitNextChild(_node: ParserRuleContext, _currentResult: string | null): boolean { return true }
-    visitChildren(node: ParserRuleContext,
-        aggregator: (a: string | null, b: string | null) => string | null = this.aggregateResult,
-        filterTerminal?: number): string
+    visitChildren(node: ParserRuleContext, filterTerminal?: number): string
     {
         let result = this.defaultResult()
         const n2 = node.getChildCount()
@@ -235,7 +233,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
                 }
                 const childResult = c.accept(this)
                 // eval strings
-                result = aggregator(result, childResult) ?? result
+                result = this.aggregateResult(result, childResult) ?? result
             }
         }
         return result
