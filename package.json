@@ -244,7 +244,7 @@
           },
           "maxScript.minifier.removeUnnecessaryScopes": {
             "type": "boolean",
-            "default": true,
+            "default": false,
             "description": "Simplify single expressions wrapped in parentheses"
           },
           "maxScript.minifier.filePrefix": {

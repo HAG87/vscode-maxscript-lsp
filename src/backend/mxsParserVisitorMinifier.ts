@@ -3,17 +3,18 @@ import { ParserRuleContext, TerminalNode } from 'antlr4ng';
 import { mxsLexer } from '../parser/mxsLexer.js';
 import {
   AccessorContext, AssignmentContext, AttributesDefinitionContext,
-  Case_itemContext, CommaContext, ContextExpressionContext,
-  DoLoopExpressionContext, EventHandlerClauseContext, Expr_operandContext,
-  Expr_seqContext, ExprContext, FactorContext, FnDefinitionContext,
-  FnReturnStatementContext, ForLoopExpressionContext, FunctionCallContext,
-  IdentifierContext, IfExpressionContext, IndexContext, LbContext,
-  LbkContext, LcContext, LpContext, MacroscriptDefinitionContext,
-  OperandContext, Param_nameContext, ParamContext, ParamsDefinitionContext,
-  Paren_pairContext, PluginDefinitionContext, ProgramContext, PropertyContext,
-  RbContext, Rc_submenuContext, RcContext, RcmenuControlContext,
-  RcmenuDefinitionContext, RolloutControlContext, RolloutDefinitionContext,
-  RolloutGroupContext, RpContext, SimpleExpressionContext, Struct_bodyContext,
+  Case_itemContext, CaseExpressionContext, CommaContext,
+  ContextExpressionContext, DoLoopExpressionContext, EventHandlerClauseContext,
+  Expr_operandContext, Expr_seqContext, ExprContext, FactorContext,
+  FnDefinitionContext, FnReturnStatementContext, ForLoopExpressionContext,
+  FunctionCallContext, IdentifierContext, IfExpressionContext, IndexContext,
+  LbContext, LbkContext, LcContext, LpContext,
+  MacroscriptDefinitionContext, mxsParser, OperandContext, Param_nameContext,
+  ParamContext, ParamsDefinitionContext, Paren_pairContext,
+  PluginDefinitionContext, ProgramContext, PropertyContext, RbContext,
+  Rc_submenuContext, RcContext, RcmenuControlContext, RcmenuDefinitionContext,
+  RolloutControlContext, RolloutDefinitionContext, RolloutGroupContext,
+  RpContext, SimpleExpressionContext, Struct_bodyContext,
   StructDefinitionContext, ToolDefinitionContext, TryExpressionContext,
   UtilityDefinitionContext, WhenStatementContext, WhileLoopExpressionContext,
 } from '../parser/mxsParser.js';
@@ -88,6 +89,19 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     visitFnReturnStatement = (ctx: FnReturnStatementContext): string =>
         this.visitChildren(ctx)!
     //-------------------------------------------------------
+    visitCaseExpression = (ctx: CaseExpressionContext): string =>
+    {
+        /*
+        console.log(ctx.case_item())
+        let result = ''
+        for (const child of ctx.children) {
+            let res = this.aggregateResult(result, this.visit(child))
+            console.log(res)
+        }
+        console.log(result)
+        */
+        return (this.visitChildren(ctx)! + this.options.newLineChar)
+    }
     // case item
     visitCase_item = (ctx: Case_itemContext): string =>
     {
@@ -95,7 +109,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         const expr = this.visit(ctx.expr())!
         // add spaces for numbers to avoid timeval problem
         const right = /[0-9]$/.test(factor) ? this.options.whitespaceChar : this.defaultResult()
-        const left = /^[-+0-9]/.test(expr) ? this.options.whitespaceChar : this.defaultResult()
+        const left = /^[-+:0-9]/.test(expr) ? this.options.whitespaceChar : this.defaultResult()
 
         return factor + right + this.visit(ctx.COLON())! + left + expr
     }
@@ -114,12 +128,38 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     //-------------------------------------------------------
     visitExpr_seq = (ctx: Expr_seqContext): string =>
     {
+
+        // /*
         const expressions = ctx.expr()
         if (expressions.length === 1 && this.options.removeUnnecessaryScopes) {
-            return this.visit(expressions[0])!
-        } else {
-            return this.visitChildren(ctx)!
+            if (ctx.parent) {
+
+                let parent = ctx.parent
+                while (parent.parent && (
+                    parent.ruleIndex === mxsParser.RULE_factor ||
+                    parent.ruleIndex === mxsParser.RULE_operand
+                )) {
+                    parent = parent.parent
+                }
+                const parentRule = parent.ruleIndex
+
+                if (
+                    parentRule !== mxsParser.RULE_accessor &&
+                    parentRule !== mxsParser.RULE_fn_args &&
+                    parentRule !== mxsParser.RULE_fn_caller &&
+                    parentRule !== mxsParser.RULE_operand_arg
+                ) {
+                    // console.log(parent)
+                    // console.log(ctx.getText())
+                    return this.visit(expressions[0])!
+                }
+            }
         }
+        // */
+        // let res = this.visitChildren(ctx)!
+        // console.log(res)
+        // return res
+        return this.visitChildren(ctx)!
     }
     //-------------------------------------------------------
     visitSimpleExpression = (ctx: SimpleExpressionContext): string =>
@@ -174,7 +214,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     visitRb = (_ctx: RbContext): string => ']'
     visitComma = (_ctx: CommaContext): string => ','
     //-------------------------------------------------------
-    visitLbk = (_ctx: LbkContext): string => { return this.options.newLineChar }
+    visitLbk = (_ctx: LbkContext): string => { return this.options.exprEndChar }
     visitTerminal = (node: TerminalNode): string =>
     {
         switch (node.symbol.type) {
@@ -193,20 +233,32 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     {
         if (aggregate) {
             if (nextResult) {
+                // filter duplicate exprEndChar
+                if (
+                    aggregate.endsWith(this.options.exprEndChar) &&
+                    nextResult.startsWith(this.options.exprEndChar
+                    )) {
+                    return aggregate;
+                }
                 if (this.options.condenseWhitespace) {
+                    // special cases
                     const end = /[$0-9_\p{L}]$/u.test(aggregate)
-                    const start = /^[0-9_\p{L}]/u.test(nextResult)
+                    const start = /^([0-9_\p{L}]|[:]{2})/u.test(nextResult)
 
                     const minusEnd = aggregate.endsWith('-')
                     const minusStart = nextResult.startsWith('-')
 
-                    if (start && end || (minusStart && minusEnd)) {
+                    const ddotEnd = aggregate.endsWith(':')
+                    const ddotStart = nextResult.startsWith(':') || nextResult.startsWith('=')
+
+                    if (start && end || (minusStart && minusEnd) || (ddotStart && ddotEnd)) {
                         aggregate += this.options.whitespaceChar
                     }
                 } else {
                     aggregate += this.options.whitespaceChar
                 }
                 return aggregate + nextResult
+
             }
             return aggregate
         }
