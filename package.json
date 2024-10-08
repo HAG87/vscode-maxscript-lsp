@@ -240,12 +240,12 @@
           "maxScript.minifier.condenseWhitespace": {
             "type": "boolean",
             "default": true,
-            "description": ""
+            "description": "Remova all non essential whitespace"
           },
           "maxScript.minifier.removeUnnecessaryScopes": {
             "type": "boolean",
             "default": true,
-            "description": ""
+            "description": "Simplify single expressions wrapped in parentheses"
           },
           "maxScript.minifier.filePrefix": {
             "type": "string",
@@ -260,7 +260,7 @@
           "maxScript.prettifier.expressionsToBlock": {
             "type": "boolean",
             "default": true,
-            "description": ""
+            "description": "Convert all expressions to expression blocks"
           },
           "maxScript.prettifier.filePrefix": {
             "type": "string",

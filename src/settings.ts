@@ -33,7 +33,7 @@ export const minifySettings: ICodeFormatSettings & IMinifySettings & IPrettifySe
     expressionsToBlock: false,
 }
 
-export const prettifyOptions: ICodeFormatSettings & IMinifySettings & IPrettifySettings = {
+export const prettifySettings: ICodeFormatSettings & IMinifySettings & IPrettifySettings = {
     whitespaceChar: ' ',
     newLineChar: '\r\n',
     indentChar: '\t',
@@ -96,7 +96,7 @@ export const defaultSettings: IMaxScriptSettings = {
     },
     minifier: {
         filePrefix: 'min_',
-        removeUnnecessaryScopes: true,
+        removeUnnecessaryScopes: false,
         condenseWhitespace: true,
     }
 };

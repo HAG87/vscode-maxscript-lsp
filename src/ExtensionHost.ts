@@ -1,10 +1,10 @@
 import { writeFile } from 'fs/promises';
 import { basename } from 'path';
 import {
-  commands, ConfigurationChangeEvent, ExtensionContext, FileSystemWatcher,
-  languages, ProgressLocation, Range, TextDocument,
-  TextDocumentChangeEvent, TextEditorEdit, Uri, window,
-  workspace,
+  commands, ConfigurationChangeEvent, DiagnosticChangeEvent, ExtensionContext,
+  FileSystemWatcher, languages, ProgressLocation, Range,
+  TextDocument, TextDocumentChangeEvent, TextEditorEdit, Uri,
+  window, workspace,
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
@@ -19,7 +19,7 @@ import {
   mxsSemanticTokensProvider, mxsSemtoTokensLegend,
 } from './SemanticTokensProvider.js';
 import {
-  defaultSettings, minifySettings, prettifyOptions,
+  defaultSettings, minifySettings, prettifySettings,
 } from './settings.js';
 import { mxsSymbolProvider } from './SymbolProvider.js';
 import { Utilities } from './utils.js';
@@ -53,7 +53,7 @@ export class ExtensionHost
         Object.assign(defaultSettings, savedSettings.get('formatter'))
         Object.assign(defaultSettings, savedSettings.get('completions'))
         Object.assign(minifySettings, savedSettings.get('minifier'))
-        Object.assign(prettifyOptions, savedSettings.get('prettifier'))
+        Object.assign(prettifySettings, savedSettings.get('prettifier'))
         // process active open document, if any.
         /*
         const editor = window.activeTextEditor
@@ -171,7 +171,7 @@ export class ExtensionHost
                 }
             }),
             //TODO:
-           window.onDidChangeActiveTextEditor((textEditor: TextEditor | undefined) => {
+            window.onDidChangeActiveTextEditor((textEditor: TextEditor | undefined) => {
                 if (textEditor) {
                     FrontendUtils.updateVsCodeContext(this.backend, textEditor.document);
                     this.updateTreeProviders(textEditor.document);
@@ -181,18 +181,23 @@ export class ExtensionHost
             //TODO:
             workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) =>
             {
+                // console.log('Configuration changed, reloading')
                 if (event.affectsConfiguration("maxScript")) {
                     const savedSettings = workspace.getConfiguration('maxScript')
-                    Object.assign(defaultSettings, savedSettings)
+                    Object.assign(defaultSettings, savedSettings.get('formatter'))
+                    Object.assign(defaultSettings, savedSettings.get('completions'))
                     Object.assign(minifySettings, savedSettings.get('minifier'))
-                    Object.assign(prettifyOptions, savedSettings.get('prettifier'))
+                    Object.assign(prettifySettings, savedSettings.get('prettifier'))
                     //...
+                    // console.log(JSON.stringify(prettifyOptions))
                 }
             }),
             /*
-             //TODO:
-             languages.onDidChangeDiagnostics(() => workspace
-             */
+            //TODO: clean diagnostics
+            languages.onDidChangeDiagnostics((event:DiagnosticChangeEvent) => {
+                console.log(event.uris)
+            }),
+            //  */
         )
     }
     // register providers
@@ -271,7 +276,7 @@ export class ExtensionHost
                     }
 
                     const uri = Uri.parse(encodeURI(
-                        `${workspace.getConfiguration('MaxScript').get('help.provider')}?query=${word!}`
+                        `${workspace.getConfiguration('maxScript').get('help.provider')}?query=${word!}`
                     ))
                     await commands.executeCommand('vscode.open', uri)
                 }),
@@ -295,7 +300,7 @@ export class ExtensionHost
                             return this.minifyFile(
                                 uri,
                                 false,
-                                workspace.getConfiguration('MaxScript').get('minifier.filePrefix')
+                                minifySettings.filePrefix
                             )
                         }
                     )
@@ -311,7 +316,7 @@ export class ExtensionHost
                         (_progress, _token) =>
                         {
                             return this.minifyFile(uri, true,
-                                workspace.getConfiguration('MaxScript').get('minifier.filePrefix')
+                                minifySettings.filePrefix
                             )
                         }
                     )
@@ -330,7 +335,7 @@ export class ExtensionHost
                         if (!uris) { return; }
                         for (const uri of uris) {
                             this.minifyFile(uri, true,
-                                workspace.getConfiguration('MaxScript').get('minifier.filePrefix')
+                                minifySettings.filePrefix
                             )
                         }
                     }
@@ -389,7 +394,7 @@ export class ExtensionHost
                             return this.prettifyFile(
                                 uri,
                                 false,
-                                workspace.getConfiguration('MaxScript').get('minifier.filePrefix')
+                                prettifySettings.filePrefix
                             )
                         }
                     )
@@ -418,6 +423,9 @@ export class ExtensionHost
             if (minResult) {
                 //save file
                 const filename = Utilities.prefixFile(uri.fsPath, prefix)
+                
+                // console.log(prefix)
+
                 writeFile(filename, minResult)
                     .then(
                         () =>
@@ -439,7 +447,7 @@ export class ExtensionHost
     }
     private prettifyDocument(uri: Uri, shouldUnload: boolean = false): string | null
     {
-        const prettyResult = this.backend.prettifyCode(uri.toString(), prettifyOptions)
+        const prettyResult = this.backend.prettifyCode(uri.toString(), prettifySettings)
         // done, dispose context
         if (shouldUnload) {
             this.backend.releaseContext(uri.toString())
