@@ -204,6 +204,10 @@ const mandatoryWS: Set<number> = new Set([
     codeTypes.KEYWORD,
     // codeTypes.UNARY
 ])
+const mandatoryCases: Set<[number, number]> = new Set([
+    [codeTypes.COLON, codeTypes.ASSIGN],
+    [codeTypes.COLON, codeTypes.OPERATOR],
+])
 const shouldSkip: Set<number> = new Set([
     codeTypes.WHITESPACE,
     codeTypes.LINE_BREAK,
@@ -239,7 +243,7 @@ export class codeToken
     type: codeTypes
     pos?: number
     indent?: number
-    public isPrefix = false
+    public hasPrefix = false
     constructor(val: string, type: codeTypes, pos?: number)
     {
         this.val = val
@@ -513,11 +517,13 @@ export class codeBlock
             if (next) {
                 // add whitespace
                 if (options.condenseWhitespace) {
-                    //mandatory whitespace
+                    //TODO: mandatory whitespace
                     if (
                         (mandatoryWS.has(current.type) &&
                             mandatoryWS.has(next.type)) ||
-                        next.type === codeTypes.UNARY || next.isPrefix
+                        next.type === codeTypes.UNARY ||
+                        next.hasPrefix ||
+                        mandatoryCases.has([current.type, next.type])
                     ) {
                         acc += options.whitespaceChar
                     }
@@ -525,7 +531,7 @@ export class codeBlock
                     // all whitespace
                     const invalidWs = shouldSkip.has(current.type) || shouldSkipNext.has(next.type)
 
-                    if (!invalidWs && !current.isPrefix) {
+                    if (!invalidWs && !current.hasPrefix) {
                         if (options.codeblock.spaced) {
                             acc += options.whitespaceChar
                         } else if (
@@ -1110,7 +1116,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel--;
         //--------------------------------------------
         return new codeBlock(
-            [...vals, this.emmitLineBreak(), clause],
+            [...vals, this.emmitLineBreak(), clause, this.emmitLineBreak(true)],
             this.indentLevel,
             undefined, undefined,
             blockTypes.EXPR
@@ -1533,7 +1539,13 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         return vals
     }
     visitIdentifier = (ctx: IdentifierContext): codeToken =>
-        new codeToken(ctx.getText(), codeTypes.ID, ctx.start?.start)
+        {
+            const token = new codeToken(ctx.getText(), codeTypes.ID, ctx.start?.start)
+            if (ctx.AMP() || ctx.GLOB()) {
+                token.hasPrefix = true;
+            }
+            return token
+        }
     //-------------------------------------------------------
     visitArray = (ctx: ArrayContext): codeBlock =>
     {
@@ -1618,7 +1630,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             case mxsLexer.UNARY_MINUS:
                 {
                     const token = new codeToken(node.getText(), codeTypes.UNARY, node.symbol.start)
-                    token.isPrefix = true
+                    token.hasPrefix = true
                     return token
                 }
             case mxsLexer.NL:
