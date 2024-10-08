@@ -261,7 +261,7 @@ class codeBlock
 		return this.vals.length > 1;
 	}
 
-	public parse(options: ICodeFormatSettings = defaultFormatSettings): codeToken[]
+	public flatten(options: ICodeFormatSettings = defaultFormatSettings): codeToken[]
 	{
 		function dfs(node: codeBlock, parent?: codeBlock): codeToken[]
 		{
@@ -389,7 +389,7 @@ class codeBlock
 	toString(options: ICodeFormatSettings, start: number, stop: number): string
 	toString(options: ICodeFormatSettings = defaultFormatSettings, start?: number, stop?: number): string
 	{
-		let result = this.parse(options)
+		let result = this.flatten(options)
 
 		if (start && stop && start < stop) {
 			// rectify positions
