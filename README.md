@@ -19,6 +19,14 @@ Autodesk 3ds Max Scripting language (MaxScript) support.
 - Code online documentation
 - Snippets
 
+### Known limitations
+
+Implementing a solution for these limitations will require a full interpreter:
+
+- Renaming a parameter in a function definition, will not rename the parameter on function calls
+- Parameters in a function call that have the same name that a parameter in a containing function will refer to that parameter instead of the caller function
+- Functions and struct members with the same name will not be properly matched when requesting the definition, references and rename from a property access or call
+
 ![feature X](./images/feature-1.png)
 
 ![feature X](./images/feature-2.gif)

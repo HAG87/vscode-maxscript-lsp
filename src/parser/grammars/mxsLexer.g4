@@ -238,7 +238,7 @@ ID: Alphanum
 	;
 QUOTED_ID: Quoted
 	;
-RESOURCE: '~' Alphanum '~'
+RESOURCE: '~' Latinchars+ '~'
 	;
 //--------------------------------------------------------------//
 //OPERATORS
@@ -341,9 +341,11 @@ fragment Void
 	| O K
 	;
 // BASIC FRAGMENTS
-fragment Alpha: [_\p{L}]
+fragment Latinchars: [a-zA-Z_0-9]
 	;
 fragment Alphanum: Alpha (Alpha | Int)*
+	;
+fragment Alpha: [_\p{L}]
 	;
 fragment Int: [0-9]
 	;

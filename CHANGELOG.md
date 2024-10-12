@@ -5,7 +5,7 @@ All notable changes to the "language-maxscript" extension will be documented in 
 ## [2.00.0]
 
 - Complete rewrite of the extension.
-- Added "find references" and better diagnostics.
+- Added "find references", workspace symbols, better diagnostics.
 - Improved code formatting
 
 ## [1.30.0]
