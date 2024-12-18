@@ -552,6 +552,7 @@ classname: identifier | expr_seq
  correctly parenthesizing function arguments
  */
 
+//TODO: Solve problem with "(roll_distance.width-10)"
 functionCall
 	// : caller = fn_caller ( args += operand)+ ( params += param)*
 	: caller = fn_caller (
