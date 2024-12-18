@@ -1,3 +1,7 @@
+/*
+TODO:
+ - Fix references for symbols with the same name or referenced from an enclosed construct (linke calling a methof of a structure that initiated into a variable)
+*/
 import {
   CancellationToken, Location, Position, ProviderResult,
   ReferenceContext, ReferenceProvider, TextDocument, Uri,

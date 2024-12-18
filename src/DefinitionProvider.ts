@@ -1,3 +1,9 @@
+/*
+TODO:
+ - Fix definition for symbols with the same name or referenced from an enclosed construct (linke calling a method of a structure that initiated into a variable)
+ - I should implement a method to derive a reference tree, instead of looking at the symbol table, of find a better implementation of the symbol table, keeping track of references in the listener
+ - keep track of named symbols, definition, references and aliases (assignations and re-assignation). respect scope
+*/
 import {
   CancellationToken, Definition, DefinitionLink, DefinitionProvider,
   Location, Position, ProviderResult, TextDocument,
