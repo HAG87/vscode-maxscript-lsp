@@ -2,31 +2,33 @@ import { BaseSymbol, SymbolConstructor } from 'antlr4-c3';
 import { ParseTree, TerminalNode } from 'antlr4ng';
 
 import {
-  AttributesDefinitionContext, DeclarationExpressionContext,
+  AccessorContext, AttributesDefinitionContext, DeclarationExpressionContext,
   EventHandlerClauseContext, Expr_seqContext, Fn_argsContext, Fn_paramsContext,
   FnDefinitionContext, For_bodyContext, FunctionCallContext, IdentifierContext,
-  Kw_overrideContext, MacroscriptDefinitionContext, mxsParser, ParamContext,
-  ParamDefinitionContext, ParamsDefinitionContext, PathContext,
-  PluginDefinitionContext, Rc_submenuContext, RcmenuControlContext,
-  RcmenuDefinitionContext, RolloutControlContext, RolloutDefinitionContext,
-  RolloutGroupContext, Struct_memberContext, StructDefinitionContext,
-  ToolDefinitionContext, UtilityDefinitionContext, VariableDeclarationContext,
+  IndexContext, Kw_overrideContext, MacroscriptDefinitionContext, mxsParser,
+  ParamContext, ParamDefinitionContext, ParamsDefinitionContext, PathContext,
+  PluginDefinitionContext, PropertyContext, Rc_submenuContext,
+  RcmenuControlContext, RcmenuDefinitionContext, RolloutControlContext,
+  RolloutDefinitionContext, RolloutGroupContext, Struct_memberContext,
+  StructDefinitionContext, ToolDefinitionContext, UtilityDefinitionContext,
+  VariableDeclarationContext,
 } from '../parser/mxsParser.js';
 import { mxsParserListener } from '../parser/mxsParserListener.js';
 import {
   AttributesDefSymbol, ContextSymbolTable, EventHandlerClauseSymbol, ExprSymbol,
   ExpSeqSymbol, fnArgsSymbol, FnCallSymbol, FnDefinitionSymbol,
-  fnParamsSymbol, forBodySymbol, IdentifierSymbol, MacroScriptDefinitionSymbol,
-  ParamsDefSymbol, ParamSymbol, PluginDefinitionSymbol, RcControlSymbol,
-  RcMenuDefinitionSymbol, RolloutControlSymbol, RolloutDefinitionSymbol,
-  rolloutGroupSymbol, StructDefinitionSymbol, StructMemberSymbol,
-  ToolDefinitionSymbol, UtilityDefinitionSymbol, VariableDeclSymbol,
+  fnParamsSymbol, ForBodySymbol, IdentifierSymbol, MacroScriptDefinitionSymbol,
+  ParamsDefSymbol, ParamSymbol, PluginDefinitionSymbol, PropertyAccessSymbol,
+  RcControlSymbol, RcMenuDefinitionSymbol, RolloutControlSymbol,
+  RolloutDefinitionSymbol, rolloutGroupSymbol, StructDefinitionSymbol,
+  StructMemberSymbol, ToolDefinitionSymbol, UtilityDefinitionSymbol,
+  VariableDeclSymbol,
 } from './ContextSymbolTable.js';
 
 export class symbolTableListener extends mxsParserListener
 {
     private symbolStack: BaseSymbol[] = [];
-    private scopeStack: BaseSymbol[] = [];
+    // private scopeStack: BaseSymbol[] = [];
 
     public constructor(private symbolTable: ContextSymbolTable)
     {
@@ -56,9 +58,11 @@ export class symbolTableListener extends mxsParserListener
     {
         const symbol = this.symbolTable.addNewSymbolOfType(type, this.currentSymbol(), ...args);
         symbol.context = context;
+        /*
         if (this.scopeStack.length > 0 && symbol instanceof ExprSymbol) {
             (symbol as ExprSymbol).scope = [...this.scopeStack];
         }
+        */
         return symbol;
     }
 
@@ -76,9 +80,11 @@ export class symbolTableListener extends mxsParserListener
     {
         const symbol = this.symbolTable.addNewSymbolOfType<T, Args>(type, this.currentSymbol(), ...args);
         symbol.context = context;
+        /*
         if (this.scopeStack.length > 0 && symbol instanceof ExprSymbol) {
             (symbol as ExprSymbol).scope = [...this.scopeStack];
         }
+        */
         this.symbolStack.push(symbol);
         return symbol;
     }
@@ -87,7 +93,7 @@ export class symbolTableListener extends mxsParserListener
     {
         return this.symbolStack.pop();
     }
-
+    /*
     private pushScope(symbol: BaseSymbol): void
     {
         this.scopeStack.push(symbol);
@@ -95,11 +101,8 @@ export class symbolTableListener extends mxsParserListener
             (symbol as ExprSymbol).scope = [...this.scopeStack];
         }
     }
-
-    private popScope(): void
-    {
-        this.scopeStack.pop();
-    }
+    private popScope(): void { this.scopeStack.pop(); }
+    */
 
     //====================================LISTENERS=======================================//
     /*
@@ -113,45 +116,41 @@ export class symbolTableListener extends mxsParserListener
     // Plugin
     public override enterPluginDefinition = (ctx: PluginDefinitionContext): void =>
     {
-        this.pushScope(
-            this.pushNewSymbol(PluginDefinitionSymbol, ctx, ctx.plugin_predicate()._plugin_name?.getText())
-        );
+        this.pushNewSymbol(PluginDefinitionSymbol, ctx, ctx.plugin_predicate()._plugin_name?.getText())
+        // this.pushScope( this.pushNewSymbol(PluginDefinitionSymbol, ctx, ctx.plugin_predicate()._plugin_name?.getText()) );
     }
     public override exitPluginDefinition = (ctx: PluginDefinitionContext): void =>
     {
-        this.popScope();
         this.popSymbol();
+        // this.popScope();
     }
     // MacroScript
     public override enterMacroscriptDefinition = (ctx: MacroscriptDefinitionContext): void =>
     {
-        this.pushScope(
-            this.pushNewSymbol(MacroScriptDefinitionSymbol, ctx, ctx.macroscript_predicate()._macro_name?.getText())
-        );
+        this.pushNewSymbol(MacroScriptDefinitionSymbol, ctx, ctx.macroscript_predicate()._macro_name?.getText())
+        // this.pushScope( this.pushNewSymbol(MacroScriptDefinitionSymbol, ctx, ctx.macroscript_predicate()._macro_name?.getText()) );
     }
     public override exitMacroscriptDefinition = (ctx: MacroscriptDefinitionContext): void =>
     {
-        this.popScope();
         this.popSymbol();
+        // this.popScope();
     }
     // Tool
     public override enterToolDefinition = (ctx: ToolDefinitionContext): void =>
     {
-        this.pushScope(
-            this.pushNewSymbol(ToolDefinitionSymbol, ctx, ctx.tool_predicate()._tool_name?.getText())
-        );
+        this.pushNewSymbol(ToolDefinitionSymbol, ctx, ctx.tool_predicate()._tool_name?.getText())
+        // this.pushScope( this.pushNewSymbol(ToolDefinitionSymbol, ctx, ctx.tool_predicate()._tool_name?.getText()) );
     }
     public override exitToolDefinition = (ctx: ToolDefinitionContext): void =>
     {
-        this.popScope();
         this.popSymbol();
+        // this.popScope();
     }
     // Rollout
     public override enterRolloutDefinition = (ctx: RolloutDefinitionContext): void =>
     {
-        this.pushScope(
-            this.pushNewSymbol(RolloutDefinitionSymbol, ctx, ctx.rollout_predicate()._rollout_name?.getText())
-        );
+        this.pushNewSymbol(RolloutDefinitionSymbol, ctx, ctx.rollout_predicate()._rollout_name?.getText())
+        // this.pushScope( this.pushNewSymbol(RolloutDefinitionSymbol, ctx, ctx.rollout_predicate()._rollout_name?.getText()) );
     }
     public override enterRolloutControl = (ctx: RolloutControlContext): void =>
     {
@@ -172,27 +171,25 @@ export class symbolTableListener extends mxsParserListener
 
     public override exitRolloutDefinition = (ctx: RolloutDefinitionContext): void =>
     {
-        this.popScope();
         this.popSymbol();
+        // this.popScope();
     }
     // Utility
     public override enterUtilityDefinition = (ctx: UtilityDefinitionContext): void =>
     {
-        this.pushScope(
-            this.pushNewSymbol(UtilityDefinitionSymbol, ctx, ctx.utility_predicate()._utility_name?.getText())
-        );
+        this.pushNewSymbol(UtilityDefinitionSymbol, ctx, ctx.utility_predicate()._utility_name?.getText())
+        // this.pushScope( this.pushNewSymbol(UtilityDefinitionSymbol, ctx, ctx.utility_predicate()._utility_name?.getText()) );
     }
     public override exitUtilityDefinition = (ctx: UtilityDefinitionContext): void =>
     {
-        this.popScope();
         this.popSymbol();
+        // this.popScope();
     }
     // RC menu
     public override enterRcmenuDefinition = (ctx: RcmenuDefinitionContext): void =>
     {
-        this.pushScope(
-            this.pushNewSymbol(RcMenuDefinitionSymbol, ctx, ctx.rcmenu_predicate()._rc_name?.getText())
-        );
+        this.pushNewSymbol(RcMenuDefinitionSymbol, ctx, ctx.rcmenu_predicate()._rc_name?.getText())
+        // this.pushScope( this.pushNewSymbol(RcMenuDefinitionSymbol, ctx, ctx.rcmenu_predicate()._rc_name?.getText()) );
     }
     public override enterRc_submenu = (ctx: Rc_submenuContext): void =>
     {
@@ -212,32 +209,30 @@ export class symbolTableListener extends mxsParserListener
 
     public override exitRcmenuDefinition = (ctx: RcmenuDefinitionContext): void =>
     {
-        this.popScope();
         this.popSymbol();
+        // this.popScope();
     }
     //attributes - scope
     public override enterAttributesDefinition = (ctx: AttributesDefinitionContext): void =>
     {
-        this.pushScope(
-            this.pushNewSymbol(AttributesDefSymbol, ctx, ctx.attributes_predicate().identifier().getText())
-        );
+        this.pushNewSymbol(AttributesDefSymbol, ctx, ctx.attributes_predicate().identifier().getText())
+        // this.pushScope( this.pushNewSymbol(AttributesDefSymbol, ctx, ctx.attributes_predicate().identifier().getText()) );
     }
     public override exitAttributesDefinition = (ctx: AttributesDefinitionContext): void =>
     {
-        this.popScope();
         this.popSymbol();
+        // this.popScope();
     }
     // params
     public override enterParamsDefinition = (ctx: ParamsDefinitionContext): void =>
     {
-        this.pushScope(
-            this.pushNewSymbol(ParamsDefSymbol, ctx, ctx.params_predicate().identifier().getText())
-        );
+        this.pushNewSymbol(ParamsDefSymbol, ctx, ctx.params_predicate().identifier().getText())
+        // this.pushScope( this.pushNewSymbol(ParamsDefSymbol, ctx, ctx.params_predicate().identifier().getText()) );
     }
     public override exitParamsDefinition = (ctx: ParamsDefinitionContext): void =>
     {
-        this.popScope();
         this.popSymbol();
+        // this.popScope();
     }
     public override enterParamDefinition = (ctx: ParamDefinitionContext): void =>
     {
@@ -255,24 +250,17 @@ export class symbolTableListener extends mxsParserListener
     // struct definition
     public override enterStructDefinition = (ctx: StructDefinitionContext): void =>
     {
-        this.pushScope(
-            this.pushNewSymbol(StructDefinitionSymbol, ctx, ctx._str_name?.getText())
-        );
+        this.pushNewSymbol(StructDefinitionSymbol, ctx, ctx._str_name?.getText())
+        // this.pushScope( this.pushNewSymbol(StructDefinitionSymbol, ctx, ctx._str_name?.getText()) );
     }
     public override exitStructDefinition = (ctx: StructDefinitionContext): void =>
     {
-        this.popScope();
         this.popSymbol();
+        // this.popScope();
     }
 
     public override enterStruct_member = (ctx: Struct_memberContext): void =>
     {
-        /*
-        if (ctx.children.length > 0) {
-            const rule = ctx.children[0] as ParserRuleContext
-            if (rule.ruleIndex === mxsParser.RULE_identifier) { }
-        }
-        */
         this.pushNewSymbol(StructMemberSymbol, ctx, ctx.identifier().getText());
     }
     public override exitStruct_member = (ctx: Struct_memberContext): void => { this.popSymbol(); }
@@ -287,14 +275,13 @@ export class symbolTableListener extends mxsParserListener
     // fn defintition
     public override enterFnDefinition = (ctx: FnDefinitionContext): void =>
     {
-        this.pushScope(
-            this.pushNewSymbol(FnDefinitionSymbol, ctx, ctx._fn_name?.getText())
-        );
+        this.pushNewSymbol(FnDefinitionSymbol, ctx, ctx._fn_name?.getText())
+        // this.pushScope( this.pushNewSymbol(FnDefinitionSymbol, ctx, ctx._fn_name?.getText()) );
     }
     public override exitFnDefinition = (ctx: FnDefinitionContext): void =>
     {
-        this.popScope();
         this.popSymbol();
+        // this.popScope();
     }
     public override enterFn_args = (ctx: Fn_argsContext): void => 
     {
@@ -326,7 +313,7 @@ export class symbolTableListener extends mxsParserListener
         this.pushNewSymbol(VariableDeclSymbol, ctx, name);
         */
         const symbol = this.pushNewSymbol(VariableDeclSymbol, ctx, ctx.identifier().getText());
-        this.pushScope(symbol);
+        // this.pushScope(symbol);
 
         if (ctx.parent && ctx.parent.ruleIndex === mxsParser.RULE_declarationExpression) {
             const decl = (ctx.parent as DeclarationExpressionContext)._scope?.getText().toLowerCase() || 'local';
@@ -336,35 +323,34 @@ export class symbolTableListener extends mxsParserListener
 
     public override exitVariableDeclaration = (ctx: VariableDeclarationContext): void =>
     {
-        this.popScope();
         this.popSymbol();
+        // this.popScope();
     }
     //-------------------------------------------------------------
     // /*
     public override enterExpr_seq = (ctx: Expr_seqContext): void =>
     {
-        this.pushScope(
-            this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString())
-        );
+        this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString())
+        // this.pushScope( this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString()) );
     }
 
     public override exitExpr_seq = (ctx: Expr_seqContext): void =>
     {
-        this.popScope();
         this.popSymbol();
+        // this.popScope();
     }
     // */
     //-------------------------------------------------------------
     // for loop
     public override enterFor_body = (ctx: For_bodyContext): void =>
     {
-        const symbol = this.pushNewSymbol(forBodySymbol, ctx, ctx.getText());
-        this.pushScope(symbol);
+        this.pushNewSymbol(ForBodySymbol, ctx, ctx.getText());
+        // this.pushScope(this.pushNewSymbol(ForBodySymbol, ctx, ctx.getText()););
     }
     public override exitFor_body = (ctx: For_bodyContext): void =>
     {
-        this.popScope();
         this.popSymbol();
+        // this.popScope();
     }
 
     // public override enterForLoopExpression = (ctx: ForLoopExpressionContext): void => { this.pushNewSymbol(forLoopExpressionSymbol, ctx)}
@@ -375,6 +361,7 @@ export class symbolTableListener extends mxsParserListener
     // function call
     public override enterFunctionCall = (ctx: FunctionCallContext): void => 
     {
+        //TODO: get caller definition...
         this.pushNewSymbol(FnCallSymbol, ctx, ctx._caller?.getText());
     }
     public override exitFunctionCall = (ctx: FunctionCallContext): void => { this.popSymbol(); }
@@ -384,7 +371,28 @@ export class symbolTableListener extends mxsParserListener
         this.pushNewSymbol(ParamSymbol, ctx);
     }
     public override exitParam = (ctx: ParamContext): void => { this.popSymbol(); }
-
+    /*
+    //TODO: references...
+    public override enterAccessor = (ctx: AccessorContext): void =>
+    {
+        const factor = ctx.factor()
+        const id = factor.identifier()
+        if (id) {
+            //...
+        }
+        this.pushNewSymbol(AccesorSymbol, ctx, ctx.factor())
+    }
+    public override exitAccessor = (ctx: AccessorContext): void => { this.popSymbol(); }
+    */
+    public override enterProperty = (ctx: PropertyContext): void =>
+    {
+        this.pushNewSymbol(PropertyAccessSymbol, ctx, ctx.identifier()!.getText())
+    }
+    public override exitProperty = (ctx: PropertyContext): void => { this.popSymbol(); }
+    /*
+    // public override enterIndex = (ctx: IndexContext): void => { this.pushNewSymbol(PropertyAccessSymbol, ctx) }
+    // public override exitIndex = (ctx: IndexContext): void => { this.popSymbol(); }
+    // */
     /*
     public override enterAssignmentExpression = (ctx: AssignmentExpressionContext): void =>
     {

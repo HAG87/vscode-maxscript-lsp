@@ -26,7 +26,7 @@ interface IDefinitionResult
 export class ExprSymbol extends ScopedSymbol
 {
     // pathIndex: number[];
-    scope?: BaseSymbol[];
+    // scope?: BaseSymbol[];
 
     constructor(name?: string/* , pathIndex: number[] = [0] */)
     {
@@ -56,12 +56,12 @@ export class ExprSymbol extends ScopedSymbol
             // symbol instanceof fnArgsSymbol ||
             // symbol instanceof fnParamsSymbol ||
             symbol instanceof VariableDeclSymbol ||
-            symbol instanceof forBodySymbol ||
+            symbol instanceof ForBodySymbol ||
             symbol instanceof ExpSeqSymbol
             //...
         ).reverse();
     }
-
+    /*
     public override async getAllSymbols<T extends BaseSymbol, Args extends unknown[]>(t: SymbolConstructor<T, Args>,
         localOnly = false): Promise<T[]>
     {
@@ -76,13 +76,14 @@ export class ExprSymbol extends ScopedSymbol
         if (!localOnly) {
             if (this.parent) {
                 const childSymbols = await this.parent.getAllSymbols(t);
-                // const childSymbols = await this.parent.getAllSymbols(t, true);
+                // const childSymbols = await this.getAllSymbols(t, true);
                 result.push(...childSymbols);
             }
         }
 
         return result;
     }
+    // */
 }
 
 //TODO: Definitions
@@ -150,18 +151,21 @@ export class VariableDeclSymbol extends ExprSymbol
 
 export class AssignmentExpressionSymbol extends ExprSymbol { }
 // export class forLoopExpressionSymbol extends ScopedSymbol { }
-export class forBodySymbol extends ExprSymbol { }
+export class ForBodySymbol extends ExprSymbol { }
 // export class loopExitStatementSymbol extends ScopedSymbol { }
 // export class AssignmentSymbol extends ExprSymbol { }
 export class FnCallSymbol extends ExprSymbol { }
 export class ExpSeqSymbol extends ExprSymbol { }
 export class ParamSymbol extends ExprSymbol { }
+
+// export class AccessorSymbol extends ExprSymbol { }
 // export class IndexAccessSymbol extends ExprSymbol { }
-// export class propertyAccessSymbol extends BaseSymbol { }
+export class PropertyAccessSymbol extends ExprSymbol { }
+
 // export class refSymbol extends ExprSymbol { }
 export class IdentifierSymbol extends BaseSymbol { }
 
-// export class arraySymbol extends ExprSymbol { }
+// export class ArraySymbol extends ExprSymbol { }
 // export class bitArraySymbol extends ExprSymbol { }
 // export class point3Symbol extends ExprSymbol { }
 // export class point2Symbol extends ExprSymbol { }
@@ -511,7 +515,6 @@ export class ContextSymbolTable extends SymbolTable
     private findSymbolInstances(root: BaseSymbol, entry: BaseSymbol, identifiersOnly = false): IDefinitionResult
     {
         const entryIndex = (entry.context as ParserRuleContext).start?.tokenIndex;
-
         function assertSymbols(symbolA: BaseSymbol, symbolB: BaseSymbol): boolean
         {
             const contextA = symbolA.context as ParserRuleContext;
@@ -574,11 +577,32 @@ export class ContextSymbolTable extends SymbolTable
         {
             const scopeAdepth = scopeA.length;
             const scopeBdepth = scopeB.length;
+
+            const paths = compareScopes(scopeA, scopeB);
+
             if (scopeBdepth > scopeAdepth) {
+                // is scopeB child of scopeB? 
                 return scopeB.slice(0, scopeAdepth).every((symbol, index) => assertSymbols(symbol, scopeA[index]));
             } else {
-                return scopeA.some((symbol, index) => assertSymbols(symbol, scopeB[index]));
+
+                // console.log('====')
+                // console.log('scopeA')
+                // console.log(scopeA)
+                // console.log('scopeB')
+                // console.log(scopeB)
+                // console.log('====')
+
+
+                // const test = scopeA.some((symbol, index) => {
+                //     console.log(index)
+                //     console.log(scopeB)
+                //     // assertSymbols(symbol, scopeB[index])
+                //     return false;
+                // });
+                // console.log(test)
+                // return scopeA.some((symbol, index) => assertSymbols(symbol, scopeB[index]));
             }
+            return false
         }
         function isScopeChild(scopeA: BaseSymbol[], scopeB: BaseSymbol[]): boolean
         {
@@ -611,15 +635,34 @@ export class ContextSymbolTable extends SymbolTable
             }
 
             const parentRule = symbol.parent.context as ParserRuleContext;
+            // scope of the parent. IdentifierSymbol does not store scope...24862486
             const scopeFound = (foundSymbol.parent as ExprSymbol).getScope();
             const scopeSymbol = (symbol.parent as ExprSymbol).getScope();
             const returnValue = () => identifiersOnly ? symbol : symbol.parent!;
 
             switch (parentRule.ruleIndex) {
                 //...
-                // case mxsParser.RULE_struct_members:
+                // rollout definition
+                // case mxsParser.RULE_rollout_predicate:
+                // tool definition
+                // case mxsParser.RULE_tool_predicate:
+                // etc
+
+                // case mxsParser.RULE_struct_members: // should be referenced by calls..
                 case mxsParser.RULE_structDefinition:
+                    // TODO: symbols with the same name fail to collect the correct definition or reference...
+                    // use accessor and scope to determine the correct definition!
+                    console.log('   + is STRUCT Definition? -- this needs to be fixed!')
+                    if (isScopeSibling(scopeFound, scopeSymbol) || isScopeChildOrParent(scopeFound, scopeSymbol)) {
+                        result.push(returnValue());
+                        return returnValue();
+                    }
+                    console.log('.. neh is not')
+
+                    break;
                 case mxsParser.RULE_fnDefinition:
+                    // TODO: symbols with the same name fail to collect the correct definition or reference...
+                    // use accessor and scope to determine the correct definition!
                     // console.log('   + is fn_Definition?')
                     if (isScopeSibling(scopeFound, scopeSymbol) || isScopeChildOrParent(scopeFound, scopeSymbol)) {
                         result.push(returnValue());
@@ -629,82 +672,118 @@ export class ContextSymbolTable extends SymbolTable
                 case mxsParser.RULE_for_body:
                 case mxsParser.RULE_fn_args:
                 case mxsParser.RULE_fn_params:
+                    //TODO: fix for fncall param_name equal to fn_arg in fnDefinition parent
                     // console.log('   + is fn_arg?')
-                    // console.log(symbol.parent)
-                    // console.log(symbol.parent.name)
                     if (isScopeChildOrParent(scopeFound, scopeSymbol)) {
                         // console.log('yes it is')
-                        // result.push(symbol);
-                        // return symbol;
                         result.push(returnValue());
                         return returnValue();
                     }
                     break;
                 case mxsParser.RULE_variableDeclaration:
-                    // console.log('   + Is variable declaration?');
                     //TODO: global variable
+                    // console.log('   + Is variable declaration?');
                     // console.log(`siblings?: ${isScopeSibling(scopeA, scopeB)}`);
                     if (isScopeSibling(scopeFound, scopeSymbol)) {
                         result.push(returnValue());
                         return returnValue();
                     }
                     break;
-                // properties!! look for the identifier
-                // for loop
                 // controls
                 // other blocks
                 // implicit declarations
                 // if symbol stand alone, ...
                 case mxsParser.RULE_expr_seq:
-                    // console.log('collect candidates')
-                    // console.log('   + implicit declaration? - exp_seq scope');
-                    // if (testScopePertenence(foundSymbol, symbol)) {
-                    if (isScopeSibling(scopeFound, scopeSymbol)) {
-                        // console.log('symbol added');
-                        // stop = true;
-                        // return node.parent;
-                        candidates.push(symbol);
-                        // return symbol;
+                    {
+                        // console.log('collect candidates')
+                        // console.log('   + implicit declaration? - exp_seq scope');
+                        // if (testScopePertenence(foundSymbol, symbol)) {
+                        if (isScopeSibling(scopeFound, scopeSymbol)) {
+                            candidates.push(symbol);
+                            // return symbol.parent;
+                        }
+                        /*
+                        const resolveScopes = compareScopes(foundSymbol, symbol);
+                        console.log(resolveScopes);
+                        const nodeIndex1 = (foundSymbol.context as ParserRuleContext).start?.tokenIndex || 0;
+                        const nodeIndex2 = (symbol.context as ParserRuleContext).start?.tokenIndex || 0;
+                        console.log(`${nodeIndex1} --- ${nodeIndex2}`);
+                        */
                     }
-                    /*
-                    const resolveScopes = compareScopes(foundSymbol, symbol);
-                    const nodeIndex1 = (foundSymbol.context as ParserRuleContext).start?.tokenIndex || 0;
-                    const nodeIndex2 = (symbol.context as ParserRuleContext).start?.tokenIndex || 0;
-                    console.log(`${nodeIndex1} --- ${nodeIndex2}`);
-                    console.log(resolveScopes);
-                    */
-                    // candidates.push(symbol);
                     break;
-                //...
-                default:
-                    // console.log('collect candidates')
-                    // console.log('   + implicit declaration? - everything else - unknown scope');
-                    /*
-                    const resolveScopes = compareScopes(foundSymbol, symbol);
-                    const nodeIndex1 = (foundSymbol.context as ParserRuleContext).start?.tokenIndex || 0;
-                    const nodeIndex2 = (symbol.context as ParserRuleContext).start?.tokenIndex || 0;
+                //TODO: function calls
+                // /*                 
+                case mxsParser.RULE_functionCall:
+                    console.log('it is a fn call!')
+                    // it is defined in a higher level scope?
 
-                    console.log(`${nodeIndex1} --- ${nodeIndex2}`);
-                    console.log(resolveScopes);
-                    // */
-                    // check scope
-                    if (isScopeChildOrParent(scopeFound, scopeSymbol) || isScopeSibling(scopeFound, scopeSymbol)) {
-                        candidates.push(symbol);
+                    // use Dijkstra’s to find the path of each symbol ocurrence and the found symbol??
+                    
+                    // definition is the outermost node (that it is a declaration of some type) in the path with the same name. can be a sibling or a parent, a sibling of a parent, 
+                    // candidates collected befor the node is found should be re-evaluated. this sis improtant to find all the references and not only the one up.
+                    // or maybe I could just look for the definition, and then look for all the references?? find the definition, then look down the path, and prune invalid branches...?
+                    candidates.push(symbol);
+                    break;
+                // */
+                /*
+            // {
+                // only for parameter name
+                // ensure that the call refers to the definition.. how?? I need a full interpreter??
+                // this should be ommited in the candidates filter
+                // candidates.push(symbol);
+            // }
+                // break;
+            
+            // */
+                // /*
+                //...
+                case mxsParser.RULE_assignment:
+                    // override the scope to find the definition!
+                    console.log('it is an assignment!')
+                    //...
+                    candidates.push(symbol);
+                    break;
+                case mxsParser.RULE_property:
+                    // properties!! look for the identifier
+                    // override the scope to find the definition!
+                    console.log('it is a property!')
+                    //...
+                    candidates.push(symbol);
+                    break;
+                // */
+                default:
+                    {
+                        // here, we can call another struct or so... this scope compare method will not suffice
+                        console.log('   + implicit declaration? - everything else - unknown scope');
+                        console.log(symbol)
+                        // check scope
+                        // check if identifier refers to a higher-level construct or global?
+                        if (isScopeChildOrParent(scopeFound, scopeSymbol) || isScopeSibling(scopeFound, scopeSymbol)) {
+                            // console.log('collect candidates')
+                            candidates.push(symbol);
+                        }
                     }
                     break;
             }
             return;
         }
-
+        // TODO: disable for spacial cases, like calls to struct methods.... etc
         function filterByScope(refScope: BaseSymbol[], collection: BaseSymbol[]): void
         {
             let from = 0, to = 0;
             while (from < collection.length) {
                 const scope = (collection[from].parent as ExprSymbol).getScope();
-
+                console.log('   -- refScope')
+                console.log(refScope)
+                console.log('   -- scope')
+                console.log(scope)
+                console.log(`same scope: ${isScopeSame(refScope, scope)}`)
+                console.log(`child scope: ${isScopeChild(refScope, scope)}`)
+                console.log(`sibling scope: ${isScopeSibling(refScope, scope)}`)
+                //TODO: these checks are too generic!.
                 if (
                     isScopeSame(refScope, scope) ||
-                    // isScopeSibling(refScope, scope) ||
+                    isScopeSibling(refScope, scope) ||
                     isScopeChild(refScope, scope)
                 ) {
                     collection[to] = collection[from];
@@ -728,52 +807,85 @@ export class ContextSymbolTable extends SymbolTable
                     const res =
                         _dfs(node.children[i], /* found, */ result, candidates);
                     // problem here when we reach the top with undefined
+                    // console.log(res);
                     if (res) {
                         // resultSymbol = res;
                         return res;
-                    }
+                    } //else return;
                 }
+                // return;
             }
 
+            //TODO: this is unreilable!!!
+            // would need to wirte a pre-processor that buildes definition and references. add this properties to the symbol, I dont know if I can make this generic or would need complex heuristics
             if (node.context) {
                 const nodeIndex = (node.context as ParserRuleContext).start?.tokenIndex || 0;
-                // IN THE SEARCH FOR THE SYMBOL: since the symbol we are looking for is an instance of IdentifierSymbol,
-                // we can filter the search for the symbol
+                // IN THE SEARCH FOR THE SYMBOL: since the symbol we are looking for is an instance of IdentifierSymbol, we can filter the search for the symbol
                 if (node.name === entry.name && node instanceof IdentifierSymbol) {
+                    // console.log('--> inspected symbol: ')
+                    // console.log(node)
                     if (!found && (nodeIndex === entryIndex)) {
+                        console.log('--- found symbol ---')
+                        console.log(node)
+                        console.log('--------------')
+
                         // check scope inclusion of the previously collected symbols
+
+                        /*
                         if (candidates.length > 0) {
+                            console.log('---------------filter candidates')
+                            
                             const foundScope = ((node.parent as ExprSymbol).getScope());
                             filterByScope(foundScope, candidates);
                         }
+                        // */
+
                         // test first if we are at the definition, works when we have a parent context
+                        // /*
                         if (node.parent && node.parent.context) {
                             const parentRule = node.parent.context as ParserRuleContext;
-
                             if (declRules.has(parentRule.ruleIndex)) {
+                                // console.log('found symbol is definition')
                                 result.push(node);
                                 return node.parent;
                             }
                         }
+                        // */
                         found = node;
                     }
+
+
                     // moving this above find routine will skip checking the found symbol.
                     if (found) {
                         const definition = checkDefinition(found, node, result, candidates);
-                        /*
+                        // const definition: BaseSymbol | undefined = undefined;
+                        // console.log(`found: ${found.name}`);
+                        // console.log('definition?');
+                        // console.log(definition);
+                        // console.log(candidates);
+                        // /*
+                        // check scope inclusion of the previously collected symbols
                         if (definition) {
-                            const definitionScope = definition instanceof IdentifierSymbol ? ((definition.parent as ExprSymbol).getScope()) : ((definition as ExprSymbol).getScope());
-                            filterByScope(definitionScope, candidates);
+                            // console.log('filter candidates')
+                            // const definitionScope = definition instanceof IdentifierSymbol ? ((definition.parent as ExprSymbol).getScope()) : ((definition as ExprSymbol).getScope());
+                            // filterByScope(definitionScope, candidates);
+                            return definition
                         }
-                        return definition
+                        // console.log(candidates);
+                        // console.log('it isnt definition!');
+
                         // */
-                        return checkDefinition(found, node, result, candidates);
+                        // return checkDefinition(found, node, result, candidates);
                     } else {
+                        // console.log('symbol not found, add candidate')
+                        //TODO: candidates should include calls...
                         candidates.push(node);
                     }
-
+                    // console.log('definition not found, add to candidates')
+                    // console.log(node)
                 }
             }
+            // console.log('symbol not found, return null')
             return;
         }
 
@@ -787,6 +899,12 @@ export class ContextSymbolTable extends SymbolTable
             results,
             candidates
         };
+
+        console.log('-------candidates-------------')
+        console.log(definitionResult.definition)
+        console.log(definitionResult.results)
+        console.log(definitionResult.candidates)
+        console.log('------------------------------')
 
         return definitionResult;
     }

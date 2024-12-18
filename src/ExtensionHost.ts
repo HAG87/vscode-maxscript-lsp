@@ -220,10 +220,12 @@ export class ExtensionHost
                 ExtensionHost.langSelector,
                 new mxsRenameProvider(this.backend)
             ),
+            // /*
             languages.registerHoverProvider(
                 ExtensionHost.langSelector,
                 new mxsHoverProvider(this.backend)
             ),
+            // */
             languages.registerCompletionItemProvider(
                 ExtensionHost.langSelector,
                 new mxsCompletionProvider(this.backend, defaultSettings),

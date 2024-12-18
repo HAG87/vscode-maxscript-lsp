@@ -1,4 +1,6 @@
-import { BaseSymbol, CodeCompletionCore, SymbolTable } from 'antlr4-c3';
+import {
+  BaseSymbol, CodeCompletionCore, ScopedSymbol, SymbolTable,
+} from 'antlr4-c3';
 import {
   BailErrorStrategy, CharStream, CommonTokenStream, DefaultErrorStrategy,
   ParseCancellationException, ParserRuleContext, ParseTree, ParseTreeWalker,
@@ -535,14 +537,11 @@ export class SourceContext
                         const currentSymbol = this.symbolTable.symbolContainingContext(context);
 
                         if (currentSymbol && currentSymbol.parent) {
+                            /*
                             const entrySymbol =
                                 currentSymbol instanceof IdentifierSymbol && currentSymbol.parent
                                     ? currentSymbol.parent as ExprSymbol
                                     : currentSymbol as ExprSymbol;
-
-                            // entrySymbol.getAllSymbols(IdentifierSymbol, true).then((symbols) => symbols.forEach(symbol => console.log(symbol.name)));
-                            // promises.push(entrySymbol.getAllSymbols(BaseSymbol));
-                            // promises.push(entrySymbol.getAllSymbols(ScopedSymbol));
 
                             promises.push(
                                 entrySymbol.getAllSymbols(IdentifierSymbol),
@@ -554,14 +553,21 @@ export class SourceContext
                                 entrySymbol.getAllSymbols(StructMemberSymbol),
                                 entrySymbol.getAllSymbols(RolloutControlSymbol),
                             );
-
-                            // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, IdentifierSymbol));
-                            // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, VariableDeclSymbol));
-                            // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, FnDefinitionSymbol));
-                            // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, fnArgsSymbol));
-                            // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, fnParamsSymbol));
-                            // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, StructDefinitionSymbol));
-                            // promises.push(this.symbolTable.getAllSymbolsOfType(entrySymbol, StructMemberSymbol));                
+                            */
+                            const entrySymbol: ScopedSymbol =
+                                currentSymbol instanceof IdentifierSymbol
+                                    ? currentSymbol.parent as ScopedSymbol
+                                    : currentSymbol as ScopedSymbol;
+                            promises.push(
+                                this.symbolTable.getAllSymbolsOfType(entrySymbol, IdentifierSymbol),
+                                // properties?
+                                this.symbolTable.getAllSymbolsOfType(entrySymbol, VariableDeclSymbol),
+                                this.symbolTable.getAllSymbolsOfType(entrySymbol, FnDefinitionSymbol),
+                                this.symbolTable.getAllSymbolsOfType(entrySymbol, fnArgsSymbol),
+                                this.symbolTable.getAllSymbolsOfType(entrySymbol, fnParamsSymbol),
+                                this.symbolTable.getAllSymbolsOfType(entrySymbol, StructDefinitionSymbol),
+                                this.symbolTable.getAllSymbolsOfType(entrySymbol, StructMemberSymbol)
+                            );
                         }
                         break;
                     }
