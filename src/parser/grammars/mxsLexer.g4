@@ -250,8 +250,7 @@ ASSIGN: ('+=' | '-=' | '*=' | '/=')
 	;
 //TODO: Solve problem with button btn_ok "OK" width:(roll_distance.width-10) height:30
 UNARY_MINUS
-		: {!this.noWsOrEqualBefore()}? '-' {this.noWsOrEqualNext()}?
-		// : '-' {this.noWsOrEqualNext()}?
+	: {this.noAlphanumBefore()}? '-' {this.noWsOrEqualNext()}?
 	;
 MINUS: '-'
 	;

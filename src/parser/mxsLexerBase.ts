@@ -1,10 +1,6 @@
-import
-{
-    CharStream,
-    Lexer,
-    Token,
-} from "antlr4ng";
-import { mxsLexer } from "./mxsLexer.js";
+import { CharStream, Lexer, Token } from 'antlr4ng';
+
+import { mxsLexer } from './mxsLexer.js';
 
 export abstract class mxsLexerBase extends Lexer
 {
@@ -51,6 +47,13 @@ export abstract class mxsLexerBase extends Lexer
         return (
             this.inputStream.LA(-1) > 32 &&
             this.inputStream.LA(-1) !== this.text.charCodeAt(0)
+        );
+    }
+
+    protected noAlphanumBefore(): boolean
+    {
+        return (
+            this.inputStream.LA(-1) < 65 || this.inputStream.LA(-1) > 122
         );
     }
 }
