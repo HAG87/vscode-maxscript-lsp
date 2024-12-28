@@ -109,10 +109,9 @@ export class symbolTableListener extends mxsParserListener
     public override enterExpr = (ctx: ExprContext): void => {
         this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString());
     }
-    public override exitExpr = (ctx: ExprContext): void => {
-        this.popSymbol();
-    }
+    public override exitExpr = (ctx: ExprContext): void => { this.popSymbol(); }
     // */
+    
     // Plugin
     public override enterPluginDefinition = (ctx: PluginDefinitionContext): void =>
     {
@@ -247,7 +246,8 @@ export class symbolTableListener extends mxsParserListener
     }
     public override exitWhenStatement = (ctx: WhenStatementContext): void => { this.popSymbol(); }
     // */
-    // struct definition
+    //-------------------------------------------------------------
+    /* struct definition */
     public override enterStructDefinition = (ctx: StructDefinitionContext): void =>
     {
         this.pushNewSymbol(StructDefinitionSymbol, ctx, ctx._str_name?.getText())
@@ -265,14 +265,8 @@ export class symbolTableListener extends mxsParserListener
     }
     public override exitStruct_member = (ctx: Struct_memberContext): void => { this.popSymbol(); }
 
-    // event clause
-    public override enterEventHandlerClause = (ctx: EventHandlerClauseContext): void =>
-    {
-        this.pushNewSymbol(EventHandlerClauseSymbol, ctx, ctx._ev_args?._ev_type?.getText());
-    }
-    public override exitEventHandlerClause = (ctx: EventHandlerClauseContext): void => { this.popSymbol(); }
-
-    // fn defintition
+    //-------------------------------------------------------------
+    /* fn defintition */
     public override enterFnDefinition = (ctx: FnDefinitionContext): void =>
     {
         this.pushNewSymbol(FnDefinitionSymbol, ctx, ctx._fn_name?.getText())
@@ -299,6 +293,10 @@ export class symbolTableListener extends mxsParserListener
     // public override enterParam_name = (ctx: Param_nameContext): void => { this.pushNewSymbol(ParamSymbol, ctx, ctx.getText()); }
     // public override exitParam_name = (ctx: Param_nameContext): void => { this.popSymbol(); }
 
+    //-------------------------------------------------------------
+    /* Variable declaration */
+
+    //TODO: references...
     // public override enterDeclarationExpression = (ctx: DeclarationExpressionContext): void => { }
     // public override exitDeclarationExpression = (ctx: DeclarationExpressionContext): void => { }
 
@@ -327,21 +325,14 @@ export class symbolTableListener extends mxsParserListener
         // this.popScope();
     }
     //-------------------------------------------------------------
-    // /*
-    public override enterExpr_seq = (ctx: Expr_seqContext): void =>
+    // /* event clause */
+    public override enterEventHandlerClause = (ctx: EventHandlerClauseContext): void =>
     {
-        this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString())
-        // this.pushScope( this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString()) );
+        this.pushNewSymbol(EventHandlerClauseSymbol, ctx, ctx._ev_args?._ev_type?.getText());
     }
+    public override exitEventHandlerClause = (ctx: EventHandlerClauseContext): void => { this.popSymbol(); }
 
-    public override exitExpr_seq = (ctx: Expr_seqContext): void =>
-    {
-        this.popSymbol();
-        // this.popScope();
-    }
-    // */
-    //-------------------------------------------------------------
-    // for loop
+    /* for loop */
     public override enterFor_body = (ctx: For_bodyContext): void =>
     {
         this.pushNewSymbol(ForBodySymbol, ctx, ctx.getText());
@@ -357,20 +348,37 @@ export class symbolTableListener extends mxsParserListener
     // public override exitForLoopExpression = (ctx: ForLoopExpressionContext): void => {this.popSymbol()}
     // public override enterLoopExitStatement = (ctx: LoopExitStatementContext): void => {this.pushNewSymbol(loopExitStatementSymbol, ctx)}
     // public override exitLoopExitStatement = (ctx: LoopExitStatementContext): void => {this.popSymbol()}
+    //-------------------------------------------------------------
+    /* expression sequence */
+    public override enterExpr_seq = (ctx: Expr_seqContext): void =>
+    {
+        this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString())
+        // this.pushScope( this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString()) );
+    }
 
-    // function call
-    public override enterFunctionCall = (ctx: FunctionCallContext): void => 
+    public override exitExpr_seq = (ctx: Expr_seqContext): void =>
+    {
+        this.popSymbol();
+        // this.popScope();
+    }
+    //-------------------------------------------------------------
+    /* function call */
+    //TODO: references...
+    public override enterFunctionCall = (ctx: FunctionCallContext): void =>
     {
         //TODO: get caller definition...
         this.pushNewSymbol(FnCallSymbol, ctx, ctx._caller?.getText());
     }
     public override exitFunctionCall = (ctx: FunctionCallContext): void => { this.popSymbol(); }
-    // params
+
+    /* params */
+    //TODO: references...
     public override enterParam = (ctx: ParamContext): void =>
     {
         this.pushNewSymbol(ParamSymbol, ctx);
     }
     public override exitParam = (ctx: ParamContext): void => { this.popSymbol(); }
+
     /*
     //TODO: references...
     public override enterAccessor = (ctx: AccessorContext): void =>
@@ -384,16 +392,21 @@ export class symbolTableListener extends mxsParserListener
     }
     public override exitAccessor = (ctx: AccessorContext): void => { this.popSymbol(); }
     */
+    /* properties */
+    //TODO: references...
     public override enterProperty = (ctx: PropertyContext): void =>
     {
         this.pushNewSymbol(PropertyAccessSymbol, ctx, ctx.identifier()!.getText())
     }
     public override exitProperty = (ctx: PropertyContext): void => { this.popSymbol(); }
+
     /*
     // public override enterIndex = (ctx: IndexContext): void => { this.pushNewSymbol(PropertyAccessSymbol, ctx) }
     // public override exitIndex = (ctx: IndexContext): void => { this.popSymbol(); }
     // */
+
     /*
+    //TODO: references...
     public override enterAssignmentExpression = (ctx: AssignmentExpressionContext): void =>
     {
         // this.pushNewSymbol(AssignmentExpressionSymbol, ctx, ctx._left?.getText());
@@ -403,6 +416,7 @@ export class symbolTableListener extends mxsParserListener
     // */
 
     /*
+    //TODO: references...
     public override enterAssignment = (ctx: AssignmentContext): void => { this.pushNewSymbol(AssignmentSymbol, ctx); }
     public override exitAssignment = (ctx: AssignmentContext): void => { this.popSymbol(); }
     //*/
@@ -422,7 +436,8 @@ export class symbolTableListener extends mxsParserListener
     public override exitExpr_operand = (ctx: Expr_operandContext): void => { this.popSymbol(); }
     // */
 
-    // Identifiers
+    /* Identifiers */
+    //TODO: references...
     public override exitIdentifier = (ctx: IdentifierContext): void =>
     {
         // IF I emmit an identifier here, but also use the current enterVariableDeclaration, I will have duplicated symbols
