@@ -138,7 +138,7 @@ rolloutControlType
 toolDefinition
 	: tool_predicate NL*
     lp
-        tool_clause (lbk? tool_clause)+
+        tool_clause (lbk? tool_clause)*
     rp
 	;
 tool_predicate: Tool NL* tool_name = identifier (NL* param)*
@@ -712,6 +712,7 @@ kw_reserved
 	| SET
 	| SubMenu
 	| TIME
+	| Tool
 	| PrintAllElements )
 	;
 
