@@ -52,8 +52,16 @@ export abstract class mxsLexerBase extends Lexer
 
     protected noAlphanumBefore(): boolean
     {
-        return (
-            this.inputStream.LA(-1) < 65 || this.inputStream.LA(-1) > 122
-        );
+        // this.inputStream.LA(-1) < 65
+        // this.inputStream.LA(-1) > 122
+        // this.inputStream.LA(-1) < 65
+        // this.inputStream.LA(-1) > 122
+        // console.log(this.inputStream.LA(-1))
+        if (this.inputStream.LA(-1) < 48) { return true;}
+
+        if (this.inputStream.LA(-1) > 57) {
+            return this.inputStream.LA(-1) < 65 || this.inputStream.LA(-1) > 122
+        }
+        return false;
     }
 }
