@@ -248,7 +248,7 @@ COMPARE: ('==' | '<' | '>' | '<=' | '>=' | '!=')
 	;
 ASSIGN: ('+=' | '-=' | '*=' | '/=')
 	;
-//TODO: Solve problem with button btn_ok "OK" width:(roll_distance.width-10) height:30
+//TODO: Solve problem with (value)-1
 UNARY_MINUS
 	: {this.noAlphanumBefore()}? '-' {this.noWsOrEqualNext()}?
 	;
