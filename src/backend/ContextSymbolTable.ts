@@ -652,12 +652,12 @@ export class ContextSymbolTable extends SymbolTable
                 case mxsParser.RULE_structDefinition:
                     // TODO: symbols with the same name fail to collect the correct definition or reference...
                     // use accessor and scope to determine the correct definition!
-                    console.log('   + is STRUCT Definition? -- this needs to be fixed!')
+                    // console.log('   + is STRUCT Definition? -- this needs to be fixed!')
                     if (isScopeSibling(scopeFound, scopeSymbol) || isScopeChildOrParent(scopeFound, scopeSymbol)) {
                         result.push(returnValue());
                         return returnValue();
                     }
-                    console.log('.. neh is not')
+                    // console.log('.. neh is not')
 
                     break;
                 case mxsParser.RULE_fnDefinition:
@@ -714,7 +714,7 @@ export class ContextSymbolTable extends SymbolTable
                 //TODO: function calls
                 // /*                 
                 case mxsParser.RULE_functionCall:
-                    console.log('it is a fn call!')
+                    // console.log('it is a fn call!')
                     // it is defined in a higher level scope?
 
                     // use Dijkstra’s to find the path of each symbol ocurrence and the found symbol??
@@ -739,14 +739,14 @@ export class ContextSymbolTable extends SymbolTable
                 //...
                 case mxsParser.RULE_assignment:
                     // override the scope to find the definition!
-                    console.log('it is an assignment!')
+                    // console.log('it is an assignment!')
                     //...
                     candidates.push(symbol);
                     break;
                 case mxsParser.RULE_property:
                     // properties!! look for the identifier
                     // override the scope to find the definition!
-                    console.log('it is a property!')
+                    // console.log('it is a property!')
                     //...
                     candidates.push(symbol);
                     break;
@@ -754,8 +754,9 @@ export class ContextSymbolTable extends SymbolTable
                 default:
                     {
                         // here, we can call another struct or so... this scope compare method will not suffice
-                        console.log('   + implicit declaration? - everything else - unknown scope');
-                        console.log(symbol)
+                        // console.log('   + implicit declaration? - everything else - unknown scope');
+                        // console.log(symbol)
+
                         // check scope
                         // check if identifier refers to a higher-level construct or global?
                         if (isScopeChildOrParent(scopeFound, scopeSymbol) || isScopeSibling(scopeFound, scopeSymbol)) {
@@ -773,6 +774,7 @@ export class ContextSymbolTable extends SymbolTable
             let from = 0, to = 0;
             while (from < collection.length) {
                 const scope = (collection[from].parent as ExprSymbol).getScope();
+                /*
                 console.log('   -- refScope')
                 console.log(refScope)
                 console.log('   -- scope')
@@ -780,6 +782,7 @@ export class ContextSymbolTable extends SymbolTable
                 console.log(`same scope: ${isScopeSame(refScope, scope)}`)
                 console.log(`child scope: ${isScopeChild(refScope, scope)}`)
                 console.log(`sibling scope: ${isScopeSibling(refScope, scope)}`)
+                */
                 //TODO: these checks are too generic!.
                 if (
                     isScopeSame(refScope, scope) ||
@@ -825,10 +828,11 @@ export class ContextSymbolTable extends SymbolTable
                     // console.log('--> inspected symbol: ')
                     // console.log(node)
                     if (!found && (nodeIndex === entryIndex)) {
+                        /*
                         console.log('--- found symbol ---')
                         console.log(node)
                         console.log('--------------')
-
+                        */
                         // check scope inclusion of the previously collected symbols
 
                         /*
@@ -899,13 +903,13 @@ export class ContextSymbolTable extends SymbolTable
             results,
             candidates
         };
-
+        /*
         console.log('-------candidates-------------')
         console.log(definitionResult.definition)
         console.log(definitionResult.results)
         console.log(definitionResult.candidates)
         console.log('------------------------------')
-
+        */
         return definitionResult;
     }
 
