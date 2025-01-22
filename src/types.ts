@@ -11,15 +11,33 @@ export interface ICodeFormatSettings
     lineContinuationChar: string,
     whitespaceChar: string,
     codeblock: {
+        /**
+         * If true, the formatter will add a line break after the opening and closing braces of a code block. when the code block contains multiple expressions
+         */
         parensInNewLine: boolean,
+        /**
+         * If true, the formatter will add a line break after the opening and closing braces of a code block whenever is possible, regarding the number of expressions in the block.
+         */
         newlineAllways: boolean,
+        /**
+         * If true, the formatter will add witespace after the opening and before the closing braces of a code block whenever the block contains a single expression.
+         */
         spaced: boolean,
     },
     statements: {
+        /**
+		 * if true, the formatter will add a line break after keywords like `do`, `else`, `try`, `catch`, `then`, `where`, `while`
+		 */
         useLineBreaks: boolean,
+        /**
+         * If true, the formatter will add optional whitespaces in statements.
+         */
         optionalWhitespace: boolean
     },
     list: {
+        /**
+         * Add line breaks after each list item in an array or point structure.
+         */
         useLineBreaks: boolean
     }
 }
