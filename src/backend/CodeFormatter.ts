@@ -572,13 +572,13 @@ export class mxsSimpleFormatter
 
 	private emmit(token: Token): codeToken
 	private emmit(token: Token, text: string, type: number): codeToken
-
-	private emmit(token: Token, text?: string, type?: number): codeToken
+	private emmit(token: Token, text: string, type: number, position: number): codeToken
+	private emmit(token: Token, text?: string, type?: number, position?: number): codeToken
 	{
 		return new codeToken(
 			text ?? token.text!,
 			type ?? tokenToCodeType.get(token.type)!,
-			token.start
+			position ?? token.stop
 		);
 	}
 
@@ -607,6 +607,7 @@ export class mxsSimpleFormatter
 				return root;
 			}
 			//---------------------------------------------------------
+			// first token
 			if (i === 0) {
 				if (currToken.type === mxsLexer.NL) {
 					cStack().vals.push(this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK));
@@ -654,13 +655,17 @@ export class mxsSimpleFormatter
 						//indentation
 						indentation++;
 						// const node = new blockNode(currToken.text!, indentation);
+						// create new codeblock
 						const node = new codeBlock(undefined, indentation);
+						// codeblock start token
 						node.start = this.emmit(currToken);
+						// push codeblock as child of the current codeblock
 						cStack().vals.push(node);
 						//-------------------------
+						// push to the stack.
 						stack.push(node);
 						//-------------------------
-						// new line after
+						// new line after, if the next token is a new line. this will maintain new lines in the codeblock
 						if (nextToken.type === mxsLexer.NL) {
 							cStack().vals.push(this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK));
 						}
@@ -671,11 +676,11 @@ export class mxsSimpleFormatter
 					{
 						//indentation
 						indentation--;
-						// cStack().vals.push(currToken.text!);
 						cStack().end = this.emmit(currToken);
 						//-------------------------
 						stack.pop();
 						//-------------------------
+						// line termination
 						if (nextToken.type === mxsLexer.NL) {
 							const next = this.nextRealToken(tokens, i + 2);
 							switch (next?.type) {
@@ -691,8 +696,8 @@ export class mxsSimpleFormatter
 					break;
 				//---------------------------------------------------------
 				// tokens that increase indentation, when sigle expression is next
-				// case mxsLexer.OF:
 				// case mxsLexer.RETURN:
+				// case mxsLexer.OF:
 				case mxsLexer.COLLECT:
 				case mxsLexer.DO:
 				case mxsLexer.ELSE:
@@ -704,10 +709,11 @@ export class mxsSimpleFormatter
 					{
 						cStack().vals.push(this.emmit(currToken));
 						if (nextToken.type !== mxsLexer.LPAREN) {
-
-							if (afterKeyword && this.tokensTillEOL(tokens, i) > 1) {
+							// if (afterKeyword && this.tokensTillEOL(tokens, i) > 1) {
+							if (afterKeyword) {
+								// cStack().vals.push(this.emmit(currToken, opt.whitespaceChar, codeTypes.WHITESPACE));
 								cStack().vals.push(this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK));
-								cStack().vals.push(new codeToken(opt.indentChar, codeTypes.WHITESPACE, currToken.start));
+								cStack().vals.push(this.emmit(currToken, opt.indentChar, codeTypes.WHITESPACE));
 							} else {
 								cStack().vals.push(this.emmit(currToken, opt.whitespaceChar, codeTypes.WHITESPACE));
 							}
@@ -727,7 +733,6 @@ export class mxsSimpleFormatter
 					}
 					break;
 				case mxsLexer.NL:
-					//...
 					/*
 					switch (nextToken.type) {
 						case mxsLexer.RPAREN:
@@ -778,13 +783,17 @@ export class mxsSimpleFormatter
 				case mxsLexer.EQ:
 					{
 						cStack().vals.push(this.emmit(currToken));
-
+						// NOTE: nextToken ommits whitespace
 						if (nextToken.type === mxsLexer.NL) {
-							const next = this.nextRealToken(tokens, i + 2);
-							if (next?.type !== mxsLexer.LPAREN) {
+							// const next = this.nextRealToken(tokens, i + 2);
+							if (this.nextRealToken(tokens, i + 2)?.type !== mxsLexer.LPAREN && afterKeyword) {
 								cStack().vals.push(this.emmit(currToken, opt.newLineChar, codeTypes.LINE_BREAK));
+							} else {
+								cStack().vals.push(this.emmit(currToken, opt.whitespaceChar, codeTypes.WHITESPACE));
 							}
 						} else {
+							// check cStack() ??? ===> cStack().vals.length - 1
+							// console.log(this.nextRealToken(tokens, i + 1)?.text);
 							cStack().vals.push(this.emmit(currToken, opt.whitespaceChar, codeTypes.WHITESPACE));
 						}
 					}
