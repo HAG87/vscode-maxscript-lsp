@@ -298,11 +298,11 @@ export class ContextSymbolTable extends SymbolTable
         // Queue for BFS
         const queue: BaseSymbol[] = [root];
 
-        const symbolPos = (searchSymbol.context as ParserRuleContext)?.start?.tokenIndex ?? 0;
+        const symbolPos = (searchSymbol.context as unknown as ParserRuleContext)?.start?.tokenIndex ?? 0;
         while (queue.length > 0) {
             const symbol = queue.shift()!; // Dequeue the front element
 
-            const nodePos = (symbol.context as ParserRuleContext)?.start?.tokenIndex ?? 0;
+            const nodePos = (symbol.context as unknown as ParserRuleContext)?.start?.tokenIndex ?? 0;
 
             if (symbol.name === searchSymbol.name &&
                 typeof symbol === typeof searchSymbol &&
@@ -494,8 +494,8 @@ export class ContextSymbolTable extends SymbolTable
 
     public assertSymbols(symbolA: BaseSymbol, symbolB: BaseSymbol): boolean
     {
-        const contextA = symbolA.context as ParserRuleContext;
-        const contextB = symbolB.context as ParserRuleContext;
+        const contextA = symbolA.context as unknown as ParserRuleContext;
+        const contextB = symbolB.context as unknown as ParserRuleContext;
 
         const rangeA = { line: contextA.start?.line || 0, column: contextA.start?.column || 0 };
         const rangeB = { line: contextB.start?.line || 0, column: contextB.start?.column || 0 };
@@ -514,11 +514,11 @@ export class ContextSymbolTable extends SymbolTable
      */
     private findSymbolInstances(root: BaseSymbol, entry: BaseSymbol, identifiersOnly = false): IDefinitionResult
     {
-        const entryIndex = (entry.context as ParserRuleContext).start?.tokenIndex;
+        const entryIndex = (entry.context as unknown as ParserRuleContext).start?.tokenIndex;
         function assertSymbols(symbolA: BaseSymbol, symbolB: BaseSymbol): boolean
         {
-            const contextA = symbolA.context as ParserRuleContext;
-            const contextB = symbolB.context as ParserRuleContext;
+            const contextA = symbolA.context as unknown as ParserRuleContext;
+            const contextB = symbolB.context as unknown as ParserRuleContext;
 
             const rangeA = { line: contextA.start?.line || 0, column: contextA.start?.column || 0 };
             const rangeB = { line: contextB.start?.line || 0, column: contextB.start?.column || 0 };
@@ -634,7 +634,7 @@ export class ContextSymbolTable extends SymbolTable
                 return;
             }
 
-            const parentRule = symbol.parent.context as ParserRuleContext;
+            const parentRule = symbol.parent.context as unknown as ParserRuleContext;
             // scope of the parent. IdentifierSymbol does not store scope...24862486
             const scopeFound = (foundSymbol.parent as ExprSymbol).getScope();
             const scopeSymbol = (symbol.parent as ExprSymbol).getScope();
@@ -822,7 +822,7 @@ export class ContextSymbolTable extends SymbolTable
             //TODO: this is unreilable!!!
             // would need to wirte a pre-processor that buildes definition and references. add this properties to the symbol, I dont know if I can make this generic or would need complex heuristics
             if (node.context) {
-                const nodeIndex = (node.context as ParserRuleContext).start?.tokenIndex || 0;
+                const nodeIndex = (node.context as unknown as ParserRuleContext).start?.tokenIndex || 0;
                 // IN THE SEARCH FOR THE SYMBOL: since the symbol we are looking for is an instance of IdentifierSymbol, we can filter the search for the symbol
                 if (node.name === entry.name && node instanceof IdentifierSymbol) {
                     // console.log('--> inspected symbol: ')
@@ -847,7 +847,7 @@ export class ContextSymbolTable extends SymbolTable
                         // test first if we are at the definition, works when we have a parent context
                         // /*
                         if (node.parent && node.parent.context) {
-                            const parentRule = node.parent.context as ParserRuleContext;
+                            const parentRule = node.parent.context as unknown as ParserRuleContext;
                             if (declRules.has(parentRule.ruleIndex)) {
                                 // console.log('found symbol is definition')
                                 result.push(node);
@@ -917,7 +917,7 @@ export class ContextSymbolTable extends SymbolTable
     {
         // check if the symbol is the id of a Definition
         // do not get symbol definition in these rules
-        let parentRule = symbol.parent?.context as ParserRuleContext || undefined;
+        let parentRule = symbol.parent?.context as unknown as ParserRuleContext || undefined;
         if (parentRule) {
             switch (parentRule.ruleIndex) {
                 case mxsParser.RULE_variableDeclaration:
@@ -944,8 +944,8 @@ export class ContextSymbolTable extends SymbolTable
         let prospect: BaseSymbol = prospects[0];
 
         if (ancestor.context && prospect.parent && prospect.parent.context) {
-            parentRule = ancestor.context as ParserRuleContext;
-            const prospectRule = prospect.parent.context as ParserRuleContext;
+            parentRule = ancestor.context as unknown as ParserRuleContext;
+            const prospectRule = prospect.parent.context as unknown as ParserRuleContext;
             switch (parentRule.ruleIndex) {
                 case mxsParser.RULE_fnDefinition:
                     switch (prospectRule.ruleIndex) {
