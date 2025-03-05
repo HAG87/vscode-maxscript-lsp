@@ -67,8 +67,6 @@ EXIT: E X I T
 	;
 FOR: F O R
 	;
-FROM: F R O M
-	;
 IF: I F
 	;
 IN: I N

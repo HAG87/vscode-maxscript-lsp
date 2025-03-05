@@ -111,7 +111,6 @@ const tokenToCodeType = new Map<number, codeTypes>([
     [mxsLexer.FALSE, codeTypes.VALUE],
     [mxsLexer.FN, codeTypes.KEYWORD],
     [mxsLexer.FOR, codeTypes.KEYWORD],
-    [mxsLexer.FROM, codeTypes.KEYWORD],
     [mxsLexer.GLOB, codeTypes.KEYWORD],
     [mxsLexer.GLOBAL, codeTypes.KEYWORD],
     [mxsLexer.Group, codeTypes.KEYWORD],

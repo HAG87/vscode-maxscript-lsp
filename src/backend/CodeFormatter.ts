@@ -76,7 +76,6 @@ const tokenToCodeType = new Map<number, codeTypes>([
 	[mxsLexer.ELSE, codeTypes.KEYWORD],
 	[mxsLexer.EXIT, codeTypes.KEYWORD],
 	[mxsLexer.FOR, codeTypes.KEYWORD],
-	[mxsLexer.FROM, codeTypes.KEYWORD],
 	[mxsLexer.IF, codeTypes.KEYWORD],
 	[mxsLexer.IN, codeTypes.KEYWORD],
 	[mxsLexer.OF, codeTypes.KEYWORD],
