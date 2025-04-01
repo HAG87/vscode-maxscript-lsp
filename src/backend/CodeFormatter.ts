@@ -548,7 +548,7 @@ export class mxsSimpleFormatter
 				//---------------------------------------------------------
 				// tokens that increase indentation, when sigle expression is next
 				// case mxsLexer.RETURN:
-				// case mxsLexer.OF:
+				case mxsLexer.OF:
 				case mxsLexer.COLLECT:
 				case mxsLexer.DO:
 				case mxsLexer.ELSE:
@@ -587,6 +587,7 @@ export class mxsSimpleFormatter
 					}
 					break;
 				case mxsLexer.NL:
+					// console.log(`NL: ${nextToken.text}`);
 					/*
 					switch (nextToken.type) {
 						case mxsLexer.RPAREN:
@@ -688,12 +689,17 @@ export class mxsSimpleFormatter
 								{
 									// look further up
 									const next = this.nextRealToken(tokens, i + 2);
+									
+									// console.log(`current: ${currToken!.text}`);
+									// console.log(`NL-next: ${nextToken!.text}`);
+									// console.log(`NL-next-real: ${next!.text}`);
+									// here, the token is not a control token, and the next is NL.
 									// /*
 									switch (next?.type) {
 										case mxsLexer.RPAREN:
-										case mxsLexer.LPAREN:
 										case mxsLexer.RBRACE:
-										case mxsLexer.LBRACE:
+										// case mxsLexer.LPAREN:
+										// case mxsLexer.LBRACE:
 											break;
 										default:
 											cStack().children.push(this.emmit(currToken, options.newLineChar, codeTypes.LINE_BREAK));
@@ -922,6 +928,8 @@ export class mxsSimpleFormatter
 		// const codeTree = this.formattingTree(this.tokens, this.options); // disable filtering
 		const codeTree = this.formattingTree(activeTokens, this.options);
 		
+		// console.log(codeTree);
+
 		// flatten the tree
 		const codeTokens = this.flattenCodeTree(codeTree, this.options);
 		
@@ -941,8 +949,12 @@ export class mxsSimpleFormatter
 		// produce the tree
 		const codeTree = this.formattingTree(activeTokens, this.options);
 
+		// console.log(codeTree);
+
 		// flatten the tree
 		const codeTokens = this.flattenCodeTree(codeTree, this.options);
+
+		// console.log(codeTree);
 
 		// derive the code
 		const code: string = this.tokensToString(codeTokens, this.options);
