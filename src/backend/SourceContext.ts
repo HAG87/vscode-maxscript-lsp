@@ -8,9 +8,7 @@ import {
 } from 'antlr4ng';
 
 import { mxsLexer } from '../parser/mxsLexer.js';
-import {
-  Fn_argsContext, Fn_paramsContext, mxsParser,
-} from '../parser/mxsParser.js';
+import { mxsParser } from '../parser/mxsParser.js';
 import {
   DiagnosticType, ICodeFormatSettings, IDefinition, IDiagnosticEntry,
   ILexicalRange, IMinifySettings, IPrettifySettings, ISemanticToken,
