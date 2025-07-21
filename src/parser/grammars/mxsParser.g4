@@ -486,37 +486,49 @@ destination: accessor | de_ref | identifier | path
 	;
 
 //---------------------------------------- SIMPLE_EXPR
+//--- Operator Precedence Refactor for Performance ---//
+// Replaces left-recursive simpleExpression with explicit precedence rules
 /*
-simple_expr : logic ;
-logic
-	: right = logic (OR | AND) NL* left = comparison
-	| <assoc=right> NOT NL* right = logic | comparison
-	;
- comparison
-	: right = comparison COMPARE NL* left = sum
-	| sum
-	;
- sum
-	: left = sum (PLUS | MINUS | UNARY_MINUS) NL* right = prod
-	| prod
- 	;
- prod
- 	: left = prod (PROD | DIV) NL* right = pow
- 	| pow
- 	;
- pow
-	 : <assoc=right> left = pow POW NL* right = as
-	| as
- 	;
- as
-	: left = as AS NL* classname
-	| unary
-	; 
- unary
-	: (MINUS | UNARY_MINUS) expr_operand
-	| expr_operand
-	;
- // */
+simpleExpression
+    : logicExpr
+    ;
+
+logicExpr
+    : logicExpr (OR | AND) NL* compExpr
+    | NOT NL* compExpr
+    | compExpr
+    ;
+
+compExpr
+    : compExpr COMPARE NL* addExpr
+    | addExpr
+    ;
+
+addExpr
+    : addExpr (PLUS | MINUS | UNARY_MINUS) NL* mulExpr
+    | mulExpr
+    ;
+
+mulExpr
+    : mulExpr (PROD | DIV) NL* powExpr
+    | powExpr
+    ;
+
+powExpr
+    : powExpr POW NL* typecastExpr
+    | typecastExpr
+    ;
+
+typecastExpr
+    : unaryExpr AS NL* classname
+    | unaryExpr
+    ;
+
+unaryExpr
+    : (MINUS | UNARY_MINUS) unaryExpr
+    | expr_operand
+    ;
+*/
 // /*
 simpleExpression
 	// : (fn_call | de_ref | operand) AS NL* classname #TypecastExpr | fn_call #FnCallExpr | de_ref #DeRef | operand #OperandExpr
