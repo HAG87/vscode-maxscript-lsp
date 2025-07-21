@@ -315,7 +315,7 @@ export class ExtensionHost
                             location: ProgressLocation.Window,
                             title: 'Minify file',
                         },
-                        (_progress, _token) =>
+                        async (_progress, _token) =>
                         {
                             return this.minifyFile(uri, true,
                                 minifySettings.filePrefix
@@ -336,7 +336,7 @@ export class ExtensionHost
                     {
                         if (!uris) { return; }
                         for (const uri of uris) {
-                            this.minifyFile(uri, true,
+                            await this.minifyFile(uri, true,
                                 minifySettings.filePrefix
                             )
                         }
