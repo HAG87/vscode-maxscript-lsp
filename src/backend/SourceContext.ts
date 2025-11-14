@@ -15,9 +15,9 @@ import {
   ISymbolInfo, SymbolKind,
 } from '../types.js';
 import { BackendUtils } from './BackendUtils.js';
-import { IformatterResult, mxsSimpleFormatter } from './CodeFormatter.js';
-import { ContextErrorListener } from './ContextErrorListener.js';
-import { ContextLexerErrorListener } from './ContextLexerErrorListener.js';
+import { IformatterResult, mxsSimpleFormatter } from './formatting/simpleCodeFormatter.js';
+import { ContextErrorListener } from './diagnostics/ContextErrorListener.js';
+import { ContextLexerErrorListener } from './diagnostics/ContextLexerErrorListener.js';
 import {
   AssignmentExpressionSymbol, AttributesDefSymbol, ContextSymbolTable,
   EventHandlerClauseSymbol, ExprSymbol, fnArgsSymbol, FnDefinitionSymbol,
@@ -28,9 +28,9 @@ import {
 } from './ContextSymbolTable.js';
 import {
   codeBlock, mxsParserVisitorFormatter,
-} from './mxsParserVisitorFormatter.js';
-import { mxsParserVisitorMinifier } from './mxsParserVisitorMinifier.js';
-import { semanticTokenListener } from './semanticTokenListener.js';
+} from './formatting/mxsParserVisitorFormatter.js';
+import { mxsParserVisitorMinifier } from './formatting/mxsParserVisitorMinifier.js';
+import { semanticTokenListener } from './semantic/semanticTokenListener.js';
 import { symbolTableListener } from './symbolTableListener.js';
 
 export const symbolToKindMap: Map<new () => BaseSymbol, SymbolKind> = new Map([

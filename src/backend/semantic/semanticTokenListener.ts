@@ -2,10 +2,10 @@ import { ParserRuleContext } from 'antlr4ng';
 
 import {
     FunctionCallContext, IdentifierContext, Param_nameContext,
-} from '../parser/mxsParser.js';
-import { mxsParserListener } from '../parser/mxsParserListener.js';
-import { ISemanticToken } from '../types.js';
-import { maxAPI } from './schemas/mxsAPI.js';
+} from '../../parser/mxsParser.js';
+import { mxsParserListener } from '../../parser/mxsParserListener.js';
+import { ISemanticToken } from '../../types.js';
+import { maxAPI } from '../schemas/mxsAPI.js';
 
 // Pre-allocated modifier arrays to avoid repeated allocations
 const MODIFIERS_DEFAULT_LIBRARY = ['defaultLibrary'];

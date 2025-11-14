@@ -1,3 +1,9 @@
+/**
+ * Workspace Symbol Provider
+ * Provides symbols across the entire workspace
+ * This is a WORK IN PROGRESS!
+ * 
+ */
 import { readlinkSync } from 'node:fs';
 
 import {
@@ -6,7 +12,7 @@ import {
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
-import { mxsSimpleSymbolProvider } from './backend/simpleSymbolProvider.js';
+import { mxsSimpleSymbolProvider } from './backend/symbols/simpleSymbolProvider.js';
 import { translateSymbolKind } from './Symbol.js';
 import { ISymbolInfo } from './types.js';
 import { Utilities } from './utils.js';

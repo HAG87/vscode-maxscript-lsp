@@ -1,7 +1,13 @@
+/**
+ * Fallback class to provide simple formatting options when the parser is not available
+ * format entire document
+ * format range
+ */
+
 import { CharStream, CommonTokenStream, Token } from 'antlr4ng';
 
-import { mxsLexer } from '../parser/mxsLexer.js';
-import { ICodeFormatSettings } from '../types.js';
+import { mxsLexer } from '../../parser/mxsLexer.js';
+import { ICodeFormatSettings } from '../../types.js';
 
 export interface IformatterResult
 {
@@ -293,11 +299,6 @@ class codeBlock
 	}
 }
 
-/**
- * Fallback class to provide simple formatting options when the parser is not available
- * format entire document
- * format range
- */
 export class mxsSimpleFormatter
 {
 	options: ICodeFormatSettings;

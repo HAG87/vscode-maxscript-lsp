@@ -1,8 +1,8 @@
 import { CommonTokenStream, Token } from 'antlr4ng';
 
-import { mxsLexer } from '../parser/mxsLexer.js';
-import { ISemanticToken } from '../types.js';
-import { maxAPI } from './schemas/mxsAPI.js';
+import { mxsLexer } from '../../parser/mxsLexer.js';
+import { ISemanticToken } from '../../types.js';
+import { maxAPI } from '../schemas/mxsAPI.js';
 
 // Pre-allocated modifier arrays to avoid repeated allocations
 const MODIFIERS_DEFAULT_LIBRARY = ['defaultLibrary'];

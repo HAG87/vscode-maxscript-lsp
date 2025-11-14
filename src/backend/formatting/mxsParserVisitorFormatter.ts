@@ -1,6 +1,6 @@
 import { ParserRuleContext, ParseTree, TerminalNode } from 'antlr4ng';
 
-import { mxsLexer } from '../parser/mxsLexer.js';
+import { mxsLexer } from '../../parser/mxsLexer.js';
 import {
   ArrayContext, ArrayListContext, Attributes_predicateContext,
   AttributesDefinitionContext, BitArrayContext, BitListContext,
@@ -21,11 +21,11 @@ import {
   StructDefinitionContext, Submenu_predicateContext, Tool_predicateContext,
   ToolDefinitionContext, TryExpressionContext, Utility_predicateContext,
   UtilityDefinitionContext, WhenStatementContext, WhileLoopExpressionContext,
-} from '../parser/mxsParser.js';
-import { mxsParserVisitor } from '../parser/mxsParserVisitor.js';
+} from '../../parser/mxsParser.js';
+import { mxsParserVisitor } from '../../parser/mxsParserVisitor.js';
 import {
   ICodeFormatSettings, IMinifySettings, IPrettifySettings,
-} from '../types.js';
+} from '../../types.js';
 
 type R = codeToken | codeBlock
 

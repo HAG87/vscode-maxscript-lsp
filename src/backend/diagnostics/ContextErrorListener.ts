@@ -8,33 +8,36 @@ import {
   Token,
 } from 'antlr4ng';
 
-import { DiagnosticType, IDiagnosticEntry } from '../types.js';
+import { DiagnosticType, IDiagnosticEntry } from '../../types.js';
 
-export class ContextLexerErrorListener extends BaseErrorListener
+export class ContextErrorListener extends BaseErrorListener
 {
     public constructor(private errorList: IDiagnosticEntry[])
     {
         super();
     }
 
-    public override syntaxError<S extends Token, T extends ATNSimulator>(_recognizer: Recognizer<T>,
-        _offendingSymbol: S | null, line: number, column: number, msg: string, _e: RecognitionException | null): void
+    public override syntaxError<S extends Token, T extends ATNSimulator>(recognizer: Recognizer<T>,
+        offendingSymbol: S | null, line: number, column: number, msg: string, _e: RecognitionException | null): void
     {
         const error: IDiagnosticEntry = {
             type: DiagnosticType.Error,
             message: msg,
             range: {
                 start: {
-                    column,
                     row: line,
+                    column,
                 },
                 end: {
-                    column: column + 1,
                     row: line,
+                    column: column + 1,
                 },
             },
         };
 
+        if (offendingSymbol) {
+            error.range.end.column = column + offendingSymbol.stop - offendingSymbol.start + 1;
+        }
         this.errorList.push(error);
     }
 }

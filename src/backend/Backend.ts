@@ -5,7 +5,7 @@ import {
   ICodeFormatSettings, ILexicalRange, IMinifySettings, IPrettifySettings,
   ISemanticToken, ISymbolInfo,
 } from '../types.js';
-import { IformatterResult } from './CodeFormatter.js';
+import { IformatterResult } from './formatting/simpleCodeFormatter.js';
 import { SourceContext } from './SourceContext.js';
 
 export interface IContextEntry
@@ -132,6 +132,7 @@ export class mxsBackend
         ctxEntry!.refCount++;
         return ctxEntry.context;
     }
+
     private preloadDocument(uri: string, source?: string): SourceContext
     {
         let ctxEntry = this.sourceContexts.get(uri);
@@ -177,6 +178,7 @@ export class mxsBackend
             }
         }
     }
+    
     //------------------------------------------------------------------
     // get symbols -- for mxsDefinitionProvider
     public symbolInfoAtPosition(
@@ -312,6 +314,7 @@ export class mxsBackend
     {
         return this.getContext(uri).getReferenceCount(symbol);
     }
+
     public getDependencies(uri: string): string[] {
         const entry = this.sourceContexts.get(uri);
         if (!entry) {
@@ -327,6 +330,7 @@ export class mxsBackend
 
         return result;
     }
+
     private pushDependencyFiles(entry: IContextEntry, contexts: Set<SourceContext>) {
         // Using a set for the context list here, to automatically exclude duplicates.
         for (const dep of entry.dependencies) {
