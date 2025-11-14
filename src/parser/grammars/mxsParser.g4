@@ -26,28 +26,31 @@ program: NL* expr (lbk expr)* NL* EOF
 	;
 
 expr
-	: simpleExpression
-	| declarationExpression
-	| assignmentExpression
-	| ifExpression
-	| whileLoopExpression
-	| doLoopExpression
-	| forLoopExpression
-	| loopExitStatement
-	| caseExpression
-	| structDefinition
-	| tryExpression
-	| fnDefinition
-	| fnReturnStatement
-	| contextExpression
-	| attributesDefinition
-	| whenStatement
-	| utilityDefinition
-	| rolloutDefinition
-	| toolDefinition
-	| rcmenuDefinition
-	| macroscriptDefinition
-	| pluginDefinition
+	// Keyword-led expressions - unambiguous, fast first-token lookup
+	: ifExpression                  // IF
+	| whileLoopExpression           // WHILE
+	| forLoopExpression             // FOR
+	| tryExpression                 // TRY
+	| caseExpression                // CASE
+	| declarationExpression         // LOCAL | GLOBAL | PERSISTENT
+	| fnDefinition                  // FN | MAPPED
+	| fnReturnStatement             // RETURN
+	| structDefinition              // STRUCT
+	| contextExpression             // AT | IN | WITH | SET | ABOUT
+	| whenStatement                 // WHEN
+	| loopExitStatement             // EXIT
+	// Definition blocks - keyword-led
+	| macroscriptDefinition         // MacroScript
+	| utilityDefinition             // Utility
+	| rolloutDefinition             // Rollout
+	| toolDefinition                // Tool
+	| rcmenuDefinition              // RCmenu
+	| pluginDefinition              // Plugin
+	| attributesDefinition          // Attributes
+	// Ambiguous cases - must be last (can start with identifier/accessor/path)
+	| doLoopExpression              // DO (conflicts with if-do, while-do, etc.)
+	| assignmentExpression          // identifier/accessor/path = ...
+	| simpleExpression              // Fallback - expressions, function calls, etc.
 	;
 
 //-------------------------------------- MACROSCRIPT_DEF
