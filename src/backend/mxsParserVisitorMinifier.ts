@@ -114,15 +114,48 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         return factor + right + this.visit(ctx.COLON())! + left + expr
     }
     visitIfExpression = (ctx: IfExpressionContext): string =>
-        this.visitChildren(ctx)!
+    {
+        let result = this.visit(ctx.IF())! + this.visit(ctx.simpleExpression())!
+        
+        if (ctx.THEN()) {
+            result += this.visit(ctx.THEN()!)!
+            result += this.visit(ctx._thenBody!)!
+            
+            if (ctx.ELSE()) {
+                result += this.visit(ctx.ELSE()!)!
+                result += this.visit(ctx._elseBody!)!
+            }
+        } else if (ctx.DO()) {
+            result += this.visit(ctx.DO()!)!
+            result += this.visit(ctx._doBody!)!
+        }
+        
+        return result
+    }
     visitDoLoopExpression = (ctx: DoLoopExpressionContext): string =>
-        this.visitChildren(ctx)!
+    {
+        return this.visit(ctx.DO()!)! + this.visit(ctx._body!)! + 
+               this.visit(ctx.WHILE()!)! + this.visit(ctx._condition!)!
+    }
     visitWhileLoopExpression = (ctx: WhileLoopExpressionContext): string =>
-        this.visitChildren(ctx)!
+    {
+        return this.visit(ctx.WHILE()!)! + this.visit(ctx._condition!)! + 
+               this.visit(ctx.DO()!)! + this.visit(ctx._body!)!
+    }
     visitForLoopExpression = (ctx: ForLoopExpressionContext): string =>
-        this.visitChildren(ctx)!
+    {
+        const forOperator = ctx._for_operator!.text!
+        const forAction = ctx._for_action!.text!
+        
+        return this.visit(ctx.FOR()!)! + this.visit(ctx.for_body())! + 
+               forOperator + this.visit(ctx.for_sequence())! + 
+               forAction + this.visit(ctx._body!)!
+    }
     visitTryExpression = (ctx: TryExpressionContext): string =>
-        this.visitChildren(ctx)!
+    {
+        return this.visit(ctx.TRY()!)! + this.visit(ctx._tryBody!)! + 
+               this.visit(ctx.CATCH()!)! + this.visit(ctx._catchBody!)!
+    }
     visitContextExpression = (ctx: ContextExpressionContext): string =>
         this.visitChildren(ctx)!
     //-------------------------------------------------------

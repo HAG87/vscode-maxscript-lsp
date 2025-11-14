@@ -53,8 +53,9 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
                     // childrens
                     symbolsList.push(this.collectAllChildren(symbol));
                 } else {
-                    // range
+                    // symbol does not have children
                     const range = Utilities.lexicalRangeToRange(symbol.definition.range);
+                    // /*
                     symbolsList.push(new DocumentSymbol(
                         symbol.name,
                         symbolDescriptionFromEnum(symbol.kind),
@@ -62,9 +63,11 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
                         range,
                         range // TODO: selectionRange
                     ));
+                    // */
                 }
             }
             resolve(symbolsList);
+            // resolve([]);
         });
     }
 }

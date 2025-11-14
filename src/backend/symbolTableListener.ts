@@ -350,6 +350,8 @@ export class symbolTableListener extends mxsParserListener
     // public override exitLoopExitStatement = (ctx: LoopExitStatementContext): void => {this.popSymbol()}
     //-------------------------------------------------------------
     /* expression sequence */
+    // Expression sequences are just grouping constructs and don't need symbol table entries
+    /*
     public override enterExpr_seq = (ctx: Expr_seqContext): void =>
     {
         this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString())
@@ -361,13 +363,14 @@ export class symbolTableListener extends mxsParserListener
         this.popSymbol();
         // this.popScope();
     }
+    */
     //-------------------------------------------------------------
     /* function call */
     //TODO: references...
     public override enterFunctionCall = (ctx: FunctionCallContext): void =>
     {
         //TODO: get caller definition...
-        this.pushNewSymbol(FnCallSymbol, ctx, ctx._caller?.getText());
+        this.pushNewSymbol(FnCallSymbol, ctx, ctx.fn_caller()?.getText());
     }
     public override exitFunctionCall = (ctx: FunctionCallContext): void => { this.popSymbol(); }
 

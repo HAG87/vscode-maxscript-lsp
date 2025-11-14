@@ -1149,38 +1149,46 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     }
     visitIfExpression = (ctx: IfExpressionContext): codeBlock =>
     {
-        // break at keywords
         const vals: (R | R[])[] = []
-        let last: ParseTree | undefined;
-
-        for (const [i, child] of ctx.children.entries()) {
-            if (last && last instanceof TerminalNode) {
-                let indent: number = this.indentLevel
-                let ref = i
-                while (ctx.children[ref] instanceof TerminalNode && (<TerminalNode>ctx.children[ref]).symbol.type === mxsLexer.NL) {
-                    ref++;
-                }
-                if (!ctx.children[ref].getText().startsWith('(')) {
-                    indent++;
-                }
-
-                switch (last.symbol.type) {
-                    case mxsLexer.THEN:
-                    case mxsLexer.DO:
-                        vals.push(this.emmitLineBreak(false, indent))
-                        break;
-                    case mxsLexer.ELSE:
-                        vals.splice(vals.length - 1, 0,
-                            this.emmitLineBreak(false, this.indentLevel))
-                        vals.push(this.emmitLineBreak(false, indent))
-                        break;
-                }
+        
+        // IF keyword and condition
+        vals.push(this.visit(ctx.IF())!)
+        vals.push(this.visit(ctx.simpleExpression())!)
+        
+        // THEN branch
+        if (ctx.THEN()) {
+            vals.push(this.visit(ctx.THEN()!)!)
+            
+            const thenBody = ctx._thenBody!
+            const thenBodyText = thenBody.getText()
+            const indent = thenBodyText.startsWith('(') ? this.indentLevel : this.indentLevel + 1
+            vals.push(this.emmitLineBreak(false, indent))
+            vals.push(this.visit(thenBody)!)
+            
+            // ELSE branch (optional)
+            if (ctx.ELSE()) {
+                vals.push(this.emmitLineBreak(false, this.indentLevel))
+                vals.push(this.visit(ctx.ELSE()!)!)
+                
+                const elseBody = ctx._elseBody!
+                const elseBodyText = elseBody.getText()
+                const elseIndent = elseBodyText.startsWith('(') ? this.indentLevel : this.indentLevel + 1
+                vals.push(this.emmitLineBreak(false, elseIndent))
+                vals.push(this.visit(elseBody)!)
             }
-            vals.push(this.visit(child)!)
-            last = child
         }
+        // DO branch
+        else if (ctx.DO()) {
+            vals.push(this.visit(ctx.DO()!)!)
+            
+            const doBody = ctx._doBody!
+            const doBodyText = doBody.getText()
+            const indent = doBodyText.startsWith('(') ? this.indentLevel : this.indentLevel + 1
+            vals.push(this.emmitLineBreak(false, indent))
+            vals.push(this.visit(doBody)!)
+        }
+        
         return new codeBlock(
-            // this.visitChildren(ctx)!,
             vals.flat(),
             this.indentLevel,
             undefined,
@@ -1190,33 +1198,25 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     }
     visitDoLoopExpression = (ctx: DoLoopExpressionContext): codeBlock =>
     {
-        // break at keyword
         const vals: (R | R[])[] = []
-        let last: ParseTree | undefined;
-
-        for (const [i, child] of ctx.children.entries()) {
-            if (last && last instanceof TerminalNode) {
-
-                let indent: number = this.indentLevel
-                let ref = i
-                while (ctx.children[ref] instanceof TerminalNode && (<TerminalNode>ctx.children[ref]).symbol.type === mxsLexer.NL) {
-                    ref++;
-                }
-                if (!ctx.children[ref].getText().startsWith('(')) {
-                    indent++;
-                }
-                switch (last.symbol.type) {
-                    case mxsLexer.DO:
-                    case mxsLexer.WHILE:
-                        vals.push(this.emmitLineBreak(false, indent))
-                        break;
-                }
-            }
-            vals.push(this.visit(child)!)
-            last = child
-        }
+        
+        vals.push(this.visit(ctx.DO()!)!)
+        
+        const body = ctx._body!
+        const bodyText = body.getText()
+        let indent = bodyText.startsWith('(') ? this.indentLevel : this.indentLevel + 1
+        vals.push(this.emmitLineBreak(false, indent))
+        vals.push(this.visit(body)!)
+        
+        vals.push(this.visit(ctx.WHILE()!)!)
+        
+        const condition = ctx._condition!
+        const conditionText = condition.getText()
+        indent = conditionText.startsWith('(') ? this.indentLevel : this.indentLevel + 1
+        vals.push(this.emmitLineBreak(false, indent))
+        vals.push(this.visit(condition)!)
+        
         return new codeBlock(
-            // this.visitChildren(ctx)!,
             vals.flat(),
             this.indentLevel,
             undefined,
@@ -1226,33 +1226,19 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     }
     visitWhileLoopExpression = (ctx: WhileLoopExpressionContext): codeBlock =>
     {
-        // break at keywords
         const vals: (R | R[])[] = []
-        let last: ParseTree | undefined;
-
-        for (const [i, child] of ctx.children.entries()) {
-            if (last && last instanceof TerminalNode) {
-
-                let indent: number = this.indentLevel
-                let ref = i
-                while (ctx.children[ref] instanceof TerminalNode && (<TerminalNode>ctx.children[ref]).symbol.type === mxsLexer.NL) {
-                    ref++;
-                }
-                if (!ctx.children[ref].getText().startsWith('(')) {
-                    indent++;
-                }
-
-                switch (last.symbol.type) {
-                    case mxsLexer.DO:
-                        vals.push(this.emmitLineBreak(false, indent))
-                        break;
-                }
-            }
-            vals.push(this.visit(child)!)
-            last = child
-        }
+        
+        vals.push(this.visit(ctx.WHILE()!)!)
+        vals.push(this.visit(ctx._condition!)!)
+        vals.push(this.visit(ctx.DO()!)!)
+        
+        const body = ctx._body!
+        const bodyText = body.getText()
+        const indent = bodyText.startsWith('(') ? this.indentLevel : this.indentLevel + 1
+        vals.push(this.emmitLineBreak(false, indent))
+        vals.push(this.visit(body)!)
+        
         return new codeBlock(
-            // this.visitChildren(ctx)!,
             vals.flat(),
             this.indentLevel,
             undefined,
@@ -1263,31 +1249,22 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     visitForLoopExpression = (ctx: ForLoopExpressionContext): codeBlock =>
     {
         const vals: (R | R[])[] = []
-        let last: ParseTree | undefined;
-
-        for (const [i, child] of ctx.children.entries()) {
-            if (last && last instanceof TerminalNode) {
-
-                let indent: number = this.indentLevel
-                let ref = i
-                while (ctx.children[ref] instanceof TerminalNode && (<TerminalNode>ctx.children[ref]).symbol.type === mxsLexer.NL) {
-                    ref++;
-                }
-                if (!ctx.children[ref].getText().startsWith('(')) {
-                    indent++;
-                }
-                switch (last.symbol.type) {
-                    case mxsLexer.DO:
-                    case mxsLexer.COLLECT:
-                        vals.push(this.emmitLineBreak(false, indent))
-                        break;
-                }
-            }
-            vals.push(this.visit(child)!)
-            last = child
-        }
+        
+        vals.push(this.visit(ctx.FOR()!)!)
+        vals.push(this.visit(ctx.for_body())!)
+        
+        // _for_operator and _for_action are Token objects, not rule contexts
+        vals.push(new codeToken(ctx._for_operator!.text!, tokenToCodeType.get(ctx._for_operator!.type) ?? codeTypes.KEYWORD))
+        vals.push(this.visit(ctx.for_sequence())!)
+        vals.push(new codeToken(ctx._for_action!.text!, tokenToCodeType.get(ctx._for_action!.type) ?? codeTypes.KEYWORD))
+        
+        const body = ctx._body!
+        const bodyText = body.getText()
+        const indent = bodyText.startsWith('(') ? this.indentLevel : this.indentLevel + 1
+        vals.push(this.emmitLineBreak(false, indent))
+        vals.push(this.visit(body)!)
+        
         return new codeBlock(
-            // this.visitChildren(ctx)!,
             vals.flat(),
             this.indentLevel,
             undefined,
@@ -1408,35 +1385,25 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     visitTryExpression = (ctx: TryExpressionContext): codeBlock =>
     {
         const vals: (R | R[])[] = []
-        let last: ParseTree | undefined;
-
-        for (const [i, child] of ctx.children.entries()) {
-            if (last && last instanceof TerminalNode) {
-                let indent: number = this.indentLevel
-                let ref = i
-                while (ctx.children[ref] instanceof TerminalNode && (<TerminalNode>ctx.children[ref]).symbol.type === mxsLexer.NL) {
-                    ref++;
-                }
-                if (!ctx.children[ref].getText().startsWith('(')) {
-                    indent++;
-                }
-
-                switch (last.symbol.type) {
-                    case mxsLexer.TRY:
-                        vals.push(this.emmitLineBreak(false, indent))
-                        break;
-                    case mxsLexer.CATCH:
-                        vals.splice(vals.length - 1, 0,
-                            this.emmitLineBreak(false, this.indentLevel))
-                        vals.push(this.emmitLineBreak(false, indent))
-                        break;
-                }
-            }
-            vals.push(this.visit(child)!)
-            last = child
-        }
+        
+        vals.push(this.visit(ctx.TRY()!)!)
+        
+        const tryBody = ctx._tryBody!
+        const tryBodyText = tryBody.getText()
+        let indent = tryBodyText.startsWith('(') ? this.indentLevel : this.indentLevel + 1
+        vals.push(this.emmitLineBreak(false, indent))
+        vals.push(this.visit(tryBody)!)
+        
+        vals.push(this.emmitLineBreak(false, this.indentLevel))
+        vals.push(this.visit(ctx.CATCH()!)!)
+        
+        const catchBody = ctx._catchBody!
+        const catchBodyText = catchBody.getText()
+        indent = catchBodyText.startsWith('(') ? this.indentLevel : this.indentLevel + 1
+        vals.push(this.emmitLineBreak(false, indent))
+        vals.push(this.visit(catchBody)!)
+        
         return new codeBlock(
-            // this.visitChildren(ctx)!,
             vals.flat(),
             this.indentLevel,
             undefined,
