@@ -9,7 +9,8 @@ import {
     FnDefinitionSymbol, fnArgsSymbol, fnParamsSymbol, IdentifierSymbol,
     RolloutControlSymbol, StructDefinitionSymbol, StructMemberSymbol,
     VariableDeclSymbol,
-} from '../ContextSymbolTable.js';
+} from './symbolTypes.js';
+import { SymbolUtils } from './symbolUtils.js';
 
 /**
  * Configuration for code completion behavior
@@ -249,8 +250,7 @@ export class CodeCompletionProvider
     private static processSymbolResults(
         symbolLists: (BaseSymbol[] | undefined)[],
         row: number,
-        sourceUri: string,
-        getKindFromSymbol: (symbol: BaseSymbol) => SymbolKind
+        sourceUri: string
     ): ISymbolInfo[]
     {
         const result: ISymbolInfo[] = [];
@@ -276,7 +276,7 @@ export class CodeCompletionProvider
                 }
 
                 result.push({
-                    kind: getKindFromSymbol(symbol),
+                    kind: SymbolUtils.getKindFromSymbol(symbol),
                     name: symbol.name,
                     source: sourceUri,
                     definition: undefined,
@@ -300,7 +300,6 @@ export class CodeCompletionProvider
      * @param row Line number (1-based)
      * @param column Column number (0-based)
      * @param config Completion configuration
-     * @param getKindFromSymbol Function to map symbol to kind
      * @returns Array of completion candidates
      */
     public static async getCandidates(
@@ -310,8 +309,7 @@ export class CodeCompletionProvider
         symbolTable: any,
         row: number,
         column: number,
-        config: ICompletionConfig,
-        getKindFromSymbol: (symbol: BaseSymbol) => SymbolKind
+        config: ICompletionConfig
     ): Promise<ISymbolInfo[]>
     {
         // Initialize code completion core
@@ -351,8 +349,7 @@ export class CodeCompletionProvider
         const symbolResults = CodeCompletionProvider.processSymbolResults(
             symbolLists,
             row,
-            config.sourceUri,
-            getKindFromSymbol
+            config.sourceUri
         );
 
         // Combine all results

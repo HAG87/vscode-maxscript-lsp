@@ -15,7 +15,7 @@ import {
 } from '../parser/mxsParser.js';
 import { mxsParserListener } from '../parser/mxsParserListener.js';
 import {
-  AttributesDefSymbol, ContextSymbolTable, EventHandlerClauseSymbol, ExprSymbol,
+  AttributesDefSymbol, EventHandlerClauseSymbol, ExprSymbol,
   ExpSeqSymbol, fnArgsSymbol, FnCallSymbol, FnDefinitionSymbol,
   fnParamsSymbol, ForBodySymbol, IdentifierSymbol, MacroScriptDefinitionSymbol,
   ParamsDefSymbol, ParamSymbol, PluginDefinitionSymbol, PropertyAccessSymbol,
@@ -23,7 +23,8 @@ import {
   RolloutDefinitionSymbol, rolloutGroupSymbol, StructDefinitionSymbol,
   StructMemberSymbol, ToolDefinitionSymbol, UtilityDefinitionSymbol,
   VariableDeclSymbol,
-} from './ContextSymbolTable.js';
+} from './symbols/symbolTypes.js';
+import { ContextSymbolTable } from './ContextSymbolTable.js';
 
 export class symbolTableListener extends mxsParserListener
 {

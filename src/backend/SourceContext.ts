@@ -1,5 +1,5 @@
 import {
-  BaseSymbol, CodeCompletionCore, ScopedSymbol, SymbolTable,
+  BaseSymbol, ScopedSymbol, SymbolTable,
 } from 'antlr4-c3';
 import {
   BailErrorStrategy, CharStream, CommonTokenStream, DefaultErrorStrategy,
@@ -18,14 +18,7 @@ import { BackendUtils } from './BackendUtils.js';
 import { IformatterResult, mxsSimpleFormatter } from './formatting/simpleCodeFormatter.js';
 import { ContextErrorListener } from './diagnostics/ContextErrorListener.js';
 import { ContextLexerErrorListener } from './diagnostics/ContextLexerErrorListener.js';
-import {
-  AssignmentExpressionSymbol, AttributesDefSymbol, ContextSymbolTable,
-  EventHandlerClauseSymbol, ExprSymbol, fnArgsSymbol, FnDefinitionSymbol,
-  fnParamsSymbol, IdentifierSymbol, MacroScriptDefinitionSymbol,
-  PluginDefinitionSymbol, RolloutControlSymbol, RolloutDefinitionSymbol,
-  StructDefinitionSymbol, StructMemberSymbol, ToolDefinitionSymbol,
-  UtilityDefinitionSymbol, VariableDeclSymbol,
-} from './ContextSymbolTable.js';
+import { ContextSymbolTable } from './ContextSymbolTable.js';
 import {
   codeBlock, mxsParserVisitorFormatter,
 } from './formatting/mxsParserVisitorFormatter.js';
@@ -34,24 +27,6 @@ import { semanticTokenListener } from './semantic/semanticTokenListener.js';
 import { CodeCompletionProvider } from './symbols/codeCompletionProvider.js';
 import { symbolTableListener } from './symbolTableListener.js';
 
-export const symbolToKindMap: Map<new () => BaseSymbol, SymbolKind> = new Map([
-    [PluginDefinitionSymbol, SymbolKind.Plugin],
-    [MacroScriptDefinitionSymbol, SymbolKind.MacroScript],
-    [AttributesDefSymbol, SymbolKind.Attributes],
-    [ToolDefinitionSymbol, SymbolKind.Tool],
-    [UtilityDefinitionSymbol, SymbolKind.Rollout],
-    [RolloutDefinitionSymbol, SymbolKind.Rollout],
-    [StructDefinitionSymbol, SymbolKind.Struct],
-    [StructMemberSymbol, SymbolKind.Identifier],
-    [EventHandlerClauseSymbol, SymbolKind.Event],
-    //...
-    [FnDefinitionSymbol, SymbolKind.Function],
-    [fnArgsSymbol, SymbolKind.Argument],
-    [fnParamsSymbol, SymbolKind.Parameter],
-    [VariableDeclSymbol, SymbolKind.Declaration],
-    [AssignmentExpressionSymbol, SymbolKind.Identifier],
-    [IdentifierSymbol, SymbolKind.Identifier],
-]);
 
 // One context for each valid document
 export class SourceContext
@@ -176,89 +151,7 @@ export class SourceContext
         // return this.info.imports;
     }
     //------------------------------------------------- SYMBOLS
-    public static getKindFromSymbol(symbol: BaseSymbol): SymbolKind
-    {
-        return symbolToKindMap.get(symbol.constructor as typeof BaseSymbol) || SymbolKind.Null;
-    }
 
-    /**
-     * @param ctx The context to get info for.
-     * @param keepQuotes A flag indicating if quotes should be kept if there are any around the context's text.
-     *
-     * @returns The definition info for the given rule context.
-    */
-    public static definitionForContext(ctx: ParseTree | undefined, keepQuotes: boolean): IDefinition | undefined
-    {
-        if (!ctx) { return undefined; }
-
-        const result: IDefinition = {
-            text: "",
-            range: {
-                start: {
-                    row: 0,
-                    column: 0
-                },
-                end: {
-                    row: 0,
-                    column: 0
-                },
-            },
-        };
-
-        if (ctx instanceof ParserRuleContext && ctx.start && ctx.stop) {
-            const start = ctx.start;
-            const stop = ctx.stop;
-
-            result.range = {
-                start: {
-                    row: start.line,
-                    column: start.column
-                },
-                end: {
-                    row: stop.line,
-                    column: stop.column
-                }
-            };
-            // console.log(result.range);  
-            const inputStream = ctx.start?.tokenSource?.inputStream;
-
-            if (inputStream) {
-                try {
-                    result.text = inputStream.getTextFromRange(start.start, stop.stop);
-                    // console.log(result.text);
-                } catch (e) {
-                    // The method getText uses an unreliable JS String API which can throw on larger texts.
-                    // In this case we cannot return the text of the given context.
-                    // A context with such a large size is probably an error case anyway (unfinished multi line comment
-                    // or unfinished action).
-                }
-            }
-        } else if (ctx instanceof TerminalNode) {
-            result.text = ctx.getText();
-            result.range = {
-                start: {
-                    row: ctx.symbol!.line,
-                    column: ctx.symbol!.column
-                },
-                end: {
-                    row: ctx.symbol!.line,
-                    column: ctx.symbol!.column + result.text.length
-                }
-            };
-        }
-
-        if (keepQuotes || result.text.length < 2) {
-            return result;
-        }
-
-        const quoteChar = result.text[0];
-        if ((quoteChar === '"' || quoteChar === "'")
-            && quoteChar === result.text[result.text.length - 1]) {
-            result.text = result.text.substring(1, result.text.length - 1);
-        }
-
-        return result;
-    }
     /**
      * Gets the symbol at the specified position
      * @param row position line number
@@ -269,7 +162,8 @@ export class SourceContext
     {
         if (!this.tree) return undefined;
 
-        const symbol = this.symbolTable.getSymbolAtPosition(row, column);
+        const symbol =
+            this.symbolTable.getSymbolAtPosition(row, column);
         return symbol ? this.symbolTable.getSymbolInfo(symbol) : undefined;
     }
     /**
@@ -350,6 +244,7 @@ export class SourceContext
         // /*
         // The symbol table returns symbols of itself and those it depends on (if recursive is true).
         const result = await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
+
         // Add also symbols from contexts referencing us, this time not recursive
         // as we have added our content already.
         for (const reference of this.references) {
@@ -363,6 +258,7 @@ export class SourceContext
         // */
         // return await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
     }
+
     public getSymbolInfo(symbol: string | BaseSymbol): ISymbolInfo | undefined
     {
         return this.symbolTable.getSymbolInfo(symbol);
@@ -395,8 +291,7 @@ export class SourceContext
             this.symbolTable,
             row,
             column,
-            { sourceUri: this.sourceUri },
-            SourceContext.getKindFromSymbol
+            { sourceUri: this.sourceUri }
         );
     }
 
@@ -437,8 +332,10 @@ export class SourceContext
         this.lexer.reset();
         this.tokenStream.setTokenSource(this.lexer);
         this.tokenStream.fill();
+
         // initialize the formatter
         const formatter = new mxsSimpleFormatter(this.tokenStream, options);
+        
         // format code
         if ('stop' in range) {
             return formatter.formatRange(range.start, range.stop);
@@ -551,5 +448,4 @@ export class SourceContext
 
         return result;
     }
-    //...
 }
