@@ -6,8 +6,11 @@ import { mxsParser } from './mxsParser.js';
 
 export abstract class mxsParserBase extends Parser
 {
-    // Cache for predicate results to avoid repeated token lookups
-    private predicateCache = new Map<string, boolean>();
+    // OPTIMIZATION: Use numeric keys instead of string concatenation
+    // Format: (type << 24) | (tokenIndex << 8) | offset
+    // This avoids string allocation and is faster to compute
+    private predicateCache = new Map<number, boolean>();
+    private static readonly CACHE_MAX_SIZE = 1000; // Prevent unbounded growth
 
     constructor(input: TokenStream)
     {
@@ -30,6 +33,13 @@ export abstract class mxsParserBase extends Parser
         }
     }
     */
+    // OPTIMIZATION: Inline helper to generate numeric cache keys
+    // Uses bit packing: (predicateType << 24) | (tokenIndex << 8) | offset
+    private makeCacheKey(predicateType: number, tokenIndex: number, offset: number): number
+    {
+        return (predicateType << 24) | ((tokenIndex & 0xFFFF) << 8) | (offset & 0xFF);
+    }
+
     private nextTokenType(type: number, offset: number = 1)
     {
         const currentToken = this.getCurrentToken();
@@ -69,36 +79,59 @@ export abstract class mxsParserBase extends Parser
         return this.inputStream.LA(1) !== token;
     }
 
+    // OPTIMIZATION: Use numeric cache keys (predicate type IDs)
+    private static readonly PRED_COLON = 1;
+    private static readonly PRED_PARENS = 2;
+    private static readonly PRED_NOWS = 3;
+
     // used for param:name
     protected colonBeNext(offset: number = 1): boolean
     {
-        const key = `colon_${this.getCurrentToken().tokenIndex}_${offset}`;
-        if (this.predicateCache.has(key)) {
-            return this.predicateCache.get(key)!;
+        const currentToken = this.getCurrentToken();
+        if (!currentToken) return false;
+        
+        const key = this.makeCacheKey(mxsParserBase.PRED_COLON, currentToken.tokenIndex, offset);
+        
+        let result = this.predicateCache.get(key);
+        if (result !== undefined) {
+            return result;
         }
-        const result = this.nextTokenType(mxsLexer.COLON, offset);
+        
+        result = this.nextTokenType(mxsLexer.COLON, offset);
         this.predicateCache.set(key, result);
         return result;
     }
 
     protected closedParens(offset: number = 1): boolean
     {
-        const key = `parens_${this.getCurrentToken().tokenIndex}_${offset}`;
-        if (this.predicateCache.has(key)) {
-            return this.predicateCache.get(key)!;
+        const currentToken = this.getCurrentToken();
+        if (!currentToken) return false;
+        
+        const key = this.makeCacheKey(mxsParserBase.PRED_PARENS, currentToken.tokenIndex, offset);
+        
+        let result = this.predicateCache.get(key);
+        if (result !== undefined) {
+            return result;
         }
-        const result = this.nextTokenType(mxsLexer.RPAREN, offset);
+        
+        result = this.nextTokenType(mxsLexer.RPAREN, offset);
         this.predicateCache.set(key, result);
         return result;
     }
 
     protected noWSBeNext(offset: number = 1): boolean
     {
-        const key = `noWS_${this.getCurrentToken().tokenIndex}_${offset}`;
-        if (this.predicateCache.has(key)) {
-            return this.predicateCache.get(key)!;
+        const currentToken = this.getCurrentToken();
+        if (!currentToken) return true;
+        
+        const key = this.makeCacheKey(mxsParserBase.PRED_NOWS, currentToken.tokenIndex, offset);
+        
+        let result = this.predicateCache.get(key);
+        if (result !== undefined) {
+            return result;
         }
-        const result = this.nextTokenChannel(offset);
+        
+        result = this.nextTokenChannel(offset);
         this.predicateCache.set(key, result);
         return result;
     }
@@ -113,10 +146,13 @@ export abstract class mxsParserBase extends Parser
         return this.prevTokenChannel(offset);
     }
 
-    // Override consume to clear predicate cache when advancing
+    // OPTIMIZATION: Clear cache periodically to prevent unbounded growth
     public override consume(): Token
     {
-        this.predicateCache.clear();
+        // Clear cache when it gets too large to prevent memory issues
+        if (this.predicateCache.size > mxsParserBase.CACHE_MAX_SIZE) {
+            this.predicateCache.clear();
+        }
         return super.consume();
     }
 
@@ -133,8 +169,12 @@ export abstract class mxsParserBase extends Parser
      */
     protected lineTerminatorAhead(/* channel: number = mxsLexer.NEWLINE_CHANNEL */): boolean
     {
+        // OPTIMIZATION: Cache current token
+        const currentToken = this.getCurrentToken();
+        if (!currentToken) return false;
+        
         // Get the token ahead of the current index.
-        let idx: number = this.getCurrentToken().tokenIndex - 1;
+        let idx: number = currentToken.tokenIndex - 1;
         if (idx < 0) return false;
         let ahead: Token = this.inputStream.get(idx);
 
@@ -149,16 +189,23 @@ export abstract class mxsParserBase extends Parser
         }
         */
         // look one token back
-        idx = this.getCurrentToken().tokenIndex - 2;
+        idx = currentToken.tokenIndex - 2;
         if (idx < 0) return false;
         ahead = this.inputStream.get(idx);
 
-        // Get the token's text and type.
-        const text = ahead.text;
-        const type = ahead.type;
+        // OPTIMIZATION: Single-pass line terminator check
+        // Check for NL token first (most common case)
+        if (ahead.type === mxsParser.NL) {
+            return true;
+        }
+        
+        // OPTIMIZATION: Only check text if it's a block comment
+        if (ahead.type === mxsParser.BLOCK_COMMENT) {
+            const text = ahead.text;
+            // Single pass check - indexOf returns early on match
+            return text ? (text.indexOf("\r") !== -1 || text.indexOf("\n") !== -1) : false;
+        }
 
-        return (type === mxsParser.BLOCK_COMMENT && (text?.includes("\r") || text?.includes("\n"))) ||
-            (type === mxsParser.NL);
-        // return false;
+        return false;
     }
 }
