@@ -22,7 +22,7 @@
   "engines": {
     "vscode": "^1.91.0"
   },
-  "main": "./out/extension.cjs",
+  "main": "./out/extension.js",
   "type": "module",
   "contributes": {
     "languages": [
@@ -284,11 +284,11 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
-    "compile": "npm run check-types && npm run lint && node esbuild.cjs",
-    "watch": "npm-run-all -p watch:*",
-    "watch:esbuild": "node esbuild.cjs --watch",
-    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
     "package": "npm run check-types && npm run lint && node esbuild.cjs --production",
+    "compile:esbuild": "npm run check-types && npm run lint && node esbuild.cjs",
+    "watch:esbuild": "node esbuild.cjs --watch",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
