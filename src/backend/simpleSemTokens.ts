@@ -4,6 +4,11 @@ import { mxsLexer } from '../parser/mxsLexer.js';
 import { ISemanticToken } from '../types.js';
 import { maxAPI } from './schemas/mxsAPI.js';
 
+// Pre-allocated modifier arrays to avoid repeated allocations
+const MODIFIERS_DEFAULT_LIBRARY = ['defaultLibrary'];
+const MODIFIERS_DEFAULT_LIBRARY_STATIC = ['defaultLibrary', 'static'];
+const MODIFIERS_DEFAULT_LIBRARY_READONLY = ['defaultLibrary', 'readonly'];
+
 /**
  * Fallback class to provide semantic tokens when the parser is not available
  */
@@ -11,105 +16,144 @@ export class mxsSimpleSemTokensProvider
 {
     private tokenStream: CommonTokenStream;
     private tokens: Token[];
+    
     constructor(stream: CommonTokenStream, tokens: Token[], private tokenStack: ISemanticToken[])
     {
         this.tokenStream = stream;
         this.tokens = tokens.length !== 0 ? tokens : this.getTokens();
     }
+    
     private getTokens(): Token[]
     {
-        const tokensToRetrieve = new Set<number>([
-            mxsLexer.ID
-        ])
-        return this.tokenStream.getTokens(undefined, undefined, tokensToRetrieve)
+        // Direct array filtering is faster than Set for single token type
+        return this.tokenStream.getTokens(undefined, undefined, new Set([mxsLexer.ID]));
     }
-    private addToken(line: number, startCharacter: number, length: number, tokenType: string, tokenModifiers: string[]): void
+    
+    collectSemanticTokens(): void
     {
-        this.tokenStack.push(
-            {
-                line,
-                startCharacter,
-                length,
-                tokenType,
-                tokenModifiers,
-            }
-        )
-    }
-    collectSemanticTokens():void
-    {
-        // const result: ISemanticToken[] = []
-
+        // Early exit if no tokens
         if (this.tokens.length === 0) {
-            this.tokens = this.getTokens()
+            this.tokens = this.getTokens();
+            if (this.tokens.length === 0) {
+                return;
+            }
         }
 
-        for (const token of this.tokens) {
-
-            const txt = token.text ?? '';
-
-            if (maxAPI.class.has(txt)) {
-                this.addToken(token.line, token.column, txt.length,
-                    'class',
-                    ['defaultLibrary', 'static']
-                );
-                return;
+        // Process all tokens
+        for (let i = 0; i < this.tokens.length; i++) {
+            const token = this.tokens[i];
+            const txt = token.text;
+            
+            // Skip empty tokens
+            if (!txt) {
+                continue;
             }
+            
+            const line = token.line;
+            const column = token.column;
+            const length = txt.length;
+
+            // Check in order of likelihood (most common first)
+            // Functions are most common in MaxScript code
             if (maxAPI.function.has(txt)) {
-                this.addToken(token.line, token.column, txt.length,
-                    'function',
-                    ['defaultLibrary']
-                );
-                return;
+                this.tokenStack.push({
+                    line,
+                    startCharacter: column,
+                    length,
+                    tokenType: 'function',
+                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
+                });
+                continue;
             }
-            if (maxAPI.interface.has(txt)) {
-                this.addToken(token.line, token.column, txt.length,
-                    'interface',
-                    ['defaultLibrary']
-                );
-                return;
-            }
-            if (maxAPI.namespace.has(txt)) {
-                this.addToken(token.line, token.column, txt.length,
-                    'namespace',
-                    ['defaultLibrary']
-                );
-                return;
-            }
-            if (maxAPI.struct.has(txt)) {
-                this.addToken(token.line, token.column, txt.length,
-                    'struct',
-                    ['defaultLibrary']
-                );
-                return;
-            }
-
-            if (maxAPI.type.has(txt)) {
-                this.addToken(token.line, token.column, txt.length,
-                    'type',
-                    ['defaultLibrary']
-                );
-                return;
-            }
+            
+            // Variables and constants
             if (maxAPI.variable.has(txt)) {
-                this.addToken(token.line, token.column, txt.length,
-                    'variable',
-                    ['defaultLibrary']
-                );
-                return;
+                this.tokenStack.push({
+                    line,
+                    startCharacter: column,
+                    length,
+                    tokenType: 'variable',
+                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
+                });
+                continue;
             }
+            
             if (maxAPI.constant.has(txt)) {
-                this.addToken(token.line, token.column, txt.length,
-                    'variable',
-                    ['defaultLibrary', 'readonly']
-                );
-                return;
+                this.tokenStack.push({
+                    line,
+                    startCharacter: column,
+                    length,
+                    tokenType: 'variable',
+                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY_READONLY,
+                });
+                continue;
+            }
+            
+            // Classes and types
+            if (maxAPI.class.has(txt)) {
+                this.tokenStack.push({
+                    line,
+                    startCharacter: column,
+                    length,
+                    tokenType: 'class',
+                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY_STATIC,
+                });
+                continue;
+            }
+            
+            if (maxAPI.type.has(txt)) {
+                this.tokenStack.push({
+                    line,
+                    startCharacter: column,
+                    length,
+                    tokenType: 'type',
+                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
+                });
+                continue;
+            }
+            
+            // Structs and interfaces (less common)
+            if (maxAPI.struct.has(txt)) {
+                this.tokenStack.push({
+                    line,
+                    startCharacter: column,
+                    length,
+                    tokenType: 'struct',
+                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
+                });
+                continue;
+            }
+            
+            if (maxAPI.interface.has(txt)) {
+                this.tokenStack.push({
+                    line,
+                    startCharacter: column,
+                    length,
+                    tokenType: 'interface',
+                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
+                });
+                continue;
+            }
+            
+            // Namespaces (least common)
+            if (maxAPI.namespace.has(txt)) {
+                this.tokenStack.push({
+                    line,
+                    startCharacter: column,
+                    length,
+                    tokenType: 'namespace',
+                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
+                });
+                continue;
             }
         }
     }
-    provideSemanticTokens(): ISemanticToken[] {
+    
+    provideSemanticTokens(): ISemanticToken[]
+    {
         if (this.tokenStack.length === 0) {
-            this.collectSemanticTokens()
+            this.collectSemanticTokens();
         }
-        return this.tokenStack
+        return this.tokenStack;
     }
 }

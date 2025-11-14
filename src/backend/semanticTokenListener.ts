@@ -1,19 +1,22 @@
 import { ParserRuleContext } from 'antlr4ng';
 
 import {
-  FunctionCallContext, IdentifierContext, Param_nameContext,
+    FunctionCallContext, IdentifierContext, Param_nameContext,
 } from '../parser/mxsParser.js';
 import { mxsParserListener } from '../parser/mxsParserListener.js';
 import { ISemanticToken } from '../types.js';
 import { maxAPI } from './schemas/mxsAPI.js';
 
-export class semanticTokenListener extends mxsParserListener
-{
+// Pre-allocated modifier arrays to avoid repeated allocations
+const MODIFIERS_DEFAULT_LIBRARY = ['defaultLibrary'];
+const MODIFIERS_DEFAULT_LIBRARY_STATIC = ['defaultLibrary', 'static'];
+const MODIFIERS_DEFAULT_LIBRARY_READONLY = ['defaultLibrary', 'readonly'];
+
+export class semanticTokenListener extends mxsParserListener {
     // private symbolStack: ParserRuleContext[] = [];
 
     private collect: boolean = true
-    public constructor(private tokenStack: ISemanticToken[])
-    {
+    public constructor(private tokenStack: ISemanticToken[]) {
         // clear the token list
         tokenStack.length = 0;
         super();
@@ -29,95 +32,128 @@ export class semanticTokenListener extends mxsParserListener
     public override enterProperty = (ctx: PropertyContext): void => { this.symbolStack.push(ctx); }
     public override exitProperty = (ctx: PropertyContext): void => { this.symbolStack.pop(); }
     */
-   public override enterParam_name = (_ctx: Param_nameContext): void => {this.collect = false;}
-   public override exitParam_name = (_ctx: Param_nameContext): void => {this.collect = true;}
-    public override exitIdentifier = (ctx: IdentifierContext): void =>
-    {
-        if (!ctx.start || !this.collect) { return }
+    public override enterParam_name = (_ctx: Param_nameContext): void => { this.collect = false; }
+    public override exitParam_name = (_ctx: Param_nameContext): void => { this.collect = true; }
+    
+    public override exitIdentifier = (ctx: IdentifierContext): void => {
+        if (!this.collect) { return; }
+        
+        const start = ctx.start;
+        if (!start) { return; }
 
         const txt = ctx.getText().toLowerCase();
+        const line = start.line;
+        const column = start.column;
+        const length = txt.length;
 
-        if (maxAPI.class.has(txt)) {
-            this.addToken(ctx.start.line, ctx.start.column, txt.length,
-                'class',
-                ['defaultLibrary', 'static']
-            );
-            return;
-        }
+        // Check in order of likelihood (most common first)
+        // Functions are most common in MaxScript code
         if (maxAPI.function.has(txt)) {
-            this.addToken(ctx.start.line, ctx.start.column, txt.length,
-                'function',
-                ['defaultLibrary']
-            );
+            this.tokenStack.push({
+                line,
+                startCharacter: column,
+                length,
+                tokenType: 'function',
+                tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
+            });
             return;
         }
-        if (maxAPI.interface.has(txt)) {
-            this.addToken(ctx.start.line, ctx.start.column, txt.length,
-                'interface',
-                ['defaultLibrary']
-            );
-            return;
-        }
-        if (maxAPI.namespace.has(txt)) {
-            this.addToken(ctx.start.line, ctx.start.column, txt.length,
-                'namespace',
-                ['defaultLibrary']
-            );
-            return;
-        }
-        if (maxAPI.struct.has(txt)) {
-            this.addToken(ctx.start.line, ctx.start.column, txt.length,
-                'struct',
-                ['defaultLibrary']
-            );
-            return;
-        }
-
-        if (maxAPI.type.has(txt)) {
-            this.addToken(ctx.start.line, ctx.start.column, txt.length,
-                'type',
-                ['defaultLibrary']
-            );
-            return;
-        }
+        
+        // Variables and constants
         if (maxAPI.variable.has(txt)) {
-            this.addToken(ctx.start.line, ctx.start.column, txt.length,
-                'variable',
-                ['defaultLibrary']
-            );
+            this.tokenStack.push({
+                line,
+                startCharacter: column,
+                length,
+                tokenType: 'variable',
+                tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
+            });
             return;
         }
+        
         if (maxAPI.constant.has(txt)) {
-            this.addToken(ctx.start.line, ctx.start.column, txt.length,
-                'variable',
-                ['defaultLibrary', 'readonly']
-            );
+            this.tokenStack.push({
+                line,
+                startCharacter: column,
+                length,
+                tokenType: 'variable',
+                tokenModifiers: MODIFIERS_DEFAULT_LIBRARY_READONLY,
+            });
             return;
         }
+        
+        // Classes and types
+        if (maxAPI.class.has(txt)) {
+            this.tokenStack.push({
+                line,
+                startCharacter: column,
+                length,
+                tokenType: 'class',
+                tokenModifiers: MODIFIERS_DEFAULT_LIBRARY_STATIC,
+            });
+            return;
+        }
+        
+        if (maxAPI.type.has(txt)) {
+            this.tokenStack.push({
+                line,
+                startCharacter: column,
+                length,
+                tokenType: 'type',
+                tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
+            });
+            return;
+        }
+        
+        // Structs and interfaces (less common)
+        if (maxAPI.struct.has(txt)) {
+            this.tokenStack.push({
+                line,
+                startCharacter: column,
+                length,
+                tokenType: 'struct',
+                tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
+            });
+            return;
+        }
+        
+        if (maxAPI.interface.has(txt)) {
+            this.tokenStack.push({
+                line,
+                startCharacter: column,
+                length,
+                tokenType: 'interface',
+                tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
+            });
+            return;
+        }
+        
+        // Namespaces (least common)
+        if (maxAPI.namespace.has(txt)) {
+            this.tokenStack.push({
+                line,
+                startCharacter: column,
+                length,
+                tokenType: 'namespace',
+                tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
+            });
+            return;
+        }
+        
         /*
         if (this.symbolStack.length > 0) { 
             const curr = this.symbolStack[this.symbolStack.length - 1];
             if (curr.ruleIndex === mxsParser.RULE_functionCall) {
-                this.addToken(ctx.start.line, ctx.start.column, txt.length,
-                    'method',
-                    ['modification']
-                );
+                this.tokenStack.push({
+                    line,
+                    startCharacter: column,
+                    length,
+                    tokenType: 'method',
+                    tokenModifiers: ['modification'],
+                });
                 return;
             }
         }
         */
-    }
-
-    private addToken(line: number, startCharacter: number, length: number, tokenType: string, tokenModifiers: string[]): void
-    {
-        this.tokenStack.push(
-            {
-                line,
-                startCharacter,
-                length,
-                tokenType,
-                tokenModifiers,
-            }
-        )
     }
 }
