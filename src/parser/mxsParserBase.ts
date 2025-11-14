@@ -32,36 +32,36 @@ export abstract class mxsParserBase extends Parser
     */
     private nextTokenType(type: number, offset: number = 1)
     {
-        const idx = this.getCurrentToken().tokenIndex + offset;
+        const currentToken = this.getCurrentToken();
+        const idx = currentToken.tokenIndex + offset;
         const token = this.inputStream.get(idx);
         return token ? token.type === type : true;
     }
 
     private prevTokenType(type: number, offset: number = 1)
     {
-        const idx = this.getCurrentToken().tokenIndex - offset;
+        const currentToken = this.getCurrentToken();
+        const idx = currentToken.tokenIndex - offset;
         const token = this.inputStream.get(idx);
         return token ? token.type === type : true;
     }
 
     private nextTokenChannel(offset: number = 1)
     {
-        const idx = this.getCurrentToken().tokenIndex + offset;
+        const currentToken = this.getCurrentToken();
+        const idx = currentToken.tokenIndex + offset;
         const token = this.inputStream.get(idx);
-        if (token) {
-            return (token?.channel === mxsLexer.DEFAULT_TOKEN_CHANNEL);
-        }
-        return true;
+        // OPTIMIZATION: Remove optional chaining - token is checked first
+        return token ? token.channel === mxsLexer.DEFAULT_TOKEN_CHANNEL : true;
     }
 
     private prevTokenChannel(offset: number = 1)
     {
-        const idx = this.getCurrentToken().tokenIndex - offset;
+        const currentToken = this.getCurrentToken();
+        const idx = currentToken.tokenIndex - offset;
         const token = this.inputStream.get(idx);
-        if (token) {
-            return (token?.channel === mxsLexer.DEFAULT_TOKEN_CHANNEL);
-        }
-        return true;
+        // OPTIMIZATION: Remove optional chaining
+        return token ? token.channel === mxsLexer.DEFAULT_TOKEN_CHANNEL : true;
     }
 
     protected itsNot(token: number): boolean
