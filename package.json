@@ -311,6 +311,7 @@
     "typescript-eslint": "^8.6.0"
   },
   "dependencies": {
+    "@strumenta/tylasu": "^1.6.30",
     "antlr4-c3": "^3.4.2",
     "antlr4ng": "^3.0.14"
   }

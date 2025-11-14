@@ -1,35 +1,12 @@
 /**
- * Tylasu-inspired AST nodes for MaxScript
+ * MaxScript AST nodes using Tylasu library
  * POC: Focus on variable declarations and references only
  */
 
-import { ParserRuleContext } from 'antlr4ng';
-
-// Base position information
-export interface Position {
-    line: number;
-    column: number;
-}
-
-export interface Range {
-    start: Position;
-    end: Position;
-}
-
-// Base AST Node
-export abstract class ASTNode {
-    range?: Range;
-    parent?: ASTNode;
-    
-    constructor(range?: Range) {
-        this.range = range;
-    }
-    
-    abstract accept<T>(visitor: ASTVisitor<T>): T;
-}
+import { Node, Position, ReferenceByName, PossiblyNamed } from '@strumenta/tylasu';
 
 // Scope node - can contain declarations
-export abstract class ScopeNode extends ASTNode {
+export abstract class ScopeNode extends Node {
     declarations: Map<string, VariableDeclaration> = new Map();
     
     // Direct reference to parent scope for fast lookups
@@ -50,23 +27,21 @@ export abstract class ScopeNode extends ASTNode {
      * Add a declaration to this scope
      */
     addDeclaration(decl: VariableDeclaration): void {
-        this.declarations.set(decl.name, decl);
-        decl.declaringScope = this;
+        if (decl.name) {
+            this.declarations.set(decl.name, decl);
+            decl.declaringScope = this;
+        }
     }
 }
 
 // Root program node
 export class Program extends ScopeNode {
-    statements: ASTNode[] = [];
-    
-    accept<T>(visitor: ASTVisitor<T>): T {
-        return visitor.visitProgram(this);
-    }
+    statements: Node[] = [];
 }
 
 // Variable declaration: local x = 5
-export class VariableDeclaration extends ASTNode {
-    name: string;
+export class VariableDeclaration extends Node implements PossiblyNamed {
+    name?: string;
     scope: 'local' | 'global' | 'persistent'; // MaxScript specific
     initializer?: Expression;
     
@@ -76,85 +51,56 @@ export class VariableDeclaration extends ASTNode {
     // All references to this declaration
     references: VariableReference[] = [];
     
-    constructor(name: string, scope: 'local' | 'global' | 'persistent', range?: Range) {
-        super(range);
+    constructor(name: string, scope: 'local' | 'global' | 'persistent', position?: Position) {
+        super(position);
         this.name = name;
         this.scope = scope;
-    }
-    
-    accept<T>(visitor: ASTVisitor<T>): T {
-        return visitor.visitVariableDeclaration(this);
     }
 }
 
 // Variable reference: usage of a variable
-export class VariableReference extends ASTNode {
-    name: string;
+export class VariableReference extends Node implements PossiblyNamed {
+    name?: string;
     
-    // Direct link to declaration (O(1) lookup after resolution)
-    declaration?: VariableDeclaration;
+    // Tylasu reference - links to declaration
+    declaration?: ReferenceByName<VariableDeclaration>;
     
-    constructor(name: string, range?: Range) {
-        super(range);
+    constructor(name: string, position?: Position) {
+        super(position);
         this.name = name;
-    }
-    
-    accept<T>(visitor: ASTVisitor<T>): T {
-        return visitor.visitVariableReference(this);
+        this.declaration = new ReferenceByName(name);
     }
 }
 
 // Function definition (scope node)
-export class FunctionDefinition extends ScopeNode {
-    name: string;
+export class FunctionDefinition extends ScopeNode implements PossiblyNamed {
+    name?: string;
     parameters: VariableDeclaration[] = [];
     body?: BlockExpression;
     
-    constructor(name: string, range?: Range) {
-        super(range);
+    constructor(name: string, position?: Position) {
+        super(position);
         this.name = name;
-    }
-    
-    accept<T>(visitor: ASTVisitor<T>): T {
-        return visitor.visitFunctionDefinition(this);
     }
 }
 
 // Block expression (scope node) - (expr1; expr2; expr3)
 export class BlockExpression extends ScopeNode {
     expressions: Expression[] = [];
-    
-    accept<T>(visitor: ASTVisitor<T>): T {
-        return visitor.visitBlockExpression(this);
-    }
 }
 
 // Base expression
-export abstract class Expression extends ASTNode {
+export abstract class Expression extends Node {
 }
 
 // Assignment expression
 export class AssignmentExpression extends Expression {
-    target: VariableReference;
-    value: Expression;
+    target?: VariableReference;
+    value?: Expression;
     
-    constructor(target: VariableReference, value: Expression, range?: Range) {
-        super(range);
+    constructor(target?: VariableReference, value?: Expression, position?: Position) {
+        super(position);
         this.target = target;
         this.value = value;
     }
-    
-    accept<T>(visitor: ASTVisitor<T>): T {
-        return visitor.visitAssignmentExpression(this);
-    }
-}
-
-// Visitor pattern for AST traversal
-export interface ASTVisitor<T> {
-    visitProgram(node: Program): T;
-    visitVariableDeclaration(node: VariableDeclaration): T;
-    visitVariableReference(node: VariableReference): T;
-    visitFunctionDefinition(node: FunctionDefinition): T;
-    visitBlockExpression(node: BlockExpression): T;
-    visitAssignmentExpression(node: AssignmentExpression): T;
 }

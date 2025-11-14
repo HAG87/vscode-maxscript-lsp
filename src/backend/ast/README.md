@@ -2,7 +2,9 @@
 
 ## Overview
 
-This POC demonstrates a Tylasu-inspired AST approach to replace the current antlr4-c3 symbol table, which has O(n²) complexity and unreliable scope resolution.
+This POC demonstrates using the **[Tylasu](https://github.com/Strumenta/tylasu)** AST library to replace the current antlr4-c3 symbol table, which has O(n²) complexity and unreliable scope resolution.
+
+Tylasu is a professional AST framework from Strumenta, part of the [StarLasu](https://github.com/Strumenta/StarLasu) family of libraries.
 
 ## Problem Statement
 

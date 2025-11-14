@@ -40,10 +40,10 @@ export function findReferencesAt(ast: Program, line: number, column: number) {
     // Find declaration at position (simplified for POC)
     let targetDecl;
     for (const [name, decl] of ast.declarations) {
-        if (decl.range &&
-            decl.range.start.line === line &&
-            decl.range.start.column <= column &&
-            decl.range.end.column >= column) {
+        if (decl.position &&
+            decl.position.start.line === line &&
+            decl.position.start.column <= column &&
+            decl.position.end.column >= column) {
             targetDecl = decl;
             break;
         }

@@ -44,7 +44,7 @@ function findReferences(declaration: VariableDeclaration): VariableReference[] {
  * O(1) lookup using direct link
  */
 function findDeclaration(reference: VariableReference): VariableDeclaration | undefined {
-    return reference.declaration;
+    return reference.declaration?.referred;
 }
 
 /**
@@ -63,7 +63,7 @@ function test1() {
     // Find references
     const refs = findReferences(xDecl!);
     refs.forEach((ref, i) => {
-        console.log(`  Reference ${i + 1}: line ${ref.range?.start.line}, resolved: ${ref.declaration?.name}`);
+        console.log(`  Reference ${i + 1}: line ${ref.position?.start.line}, resolved: ${ref.declaration?.referred?.name}`);
     });
 }
 

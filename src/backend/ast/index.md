@@ -1,13 +1,13 @@
 # Tylasu AST POC - Index
 
-This directory contains the Proof of Concept implementation for replacing antlr4-c3 symbol resolution with a Tylasu-inspired AST approach.
+This directory contains the Proof of Concept implementation using **[Tylasu](https://github.com/Strumenta/tylasu)** - a professional AST library from Strumenta - to replace antlr4-c3 symbol resolution with O(1) direct reference lookups.
 
 ## 📁 File Guide
 
 ### Core Implementation
-- **[ASTNodes.ts](./ASTNodes.ts)** - Node definitions, scope chain, visitor pattern
-- **[ASTBuilder.ts](./ASTBuilder.ts)** - Converts ANTLR parse tree to AST
-- **[SymbolResolver.ts](./SymbolResolver.ts)** - Resolves symbol references (O(1))
+- **[ASTNodes.ts](./ASTNodes.ts)** - Node definitions extending Tylasu's `Node` class
+- **[ASTBuilder.ts](./ASTBuilder.ts)** - Converts ANTLR parse tree to Tylasu AST
+- **[SymbolResolver.ts](./SymbolResolver.ts)** - Resolves symbol references using `ReferenceByName`
 
 ### Testing & Examples
 - **[POC_Test.ts](./POC_Test.ts)** - Test suite with benchmarks
@@ -15,6 +15,7 @@ This directory contains the Proof of Concept implementation for replacing antlr4
 
 ### Documentation
 - **[README.md](./README.md)** - Complete guide (start here!)
+- **[TYLASU_INTEGRATION.md](./TYLASU_INTEGRATION.md)** - How Tylasu was integrated ⭐
 - **[QUICKSTART.md](./QUICKSTART.md)** - API reference and usage
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Visual diagrams and data flow
 - **[IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)** - What was built

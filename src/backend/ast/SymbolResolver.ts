@@ -1,11 +1,9 @@
 /**
- * Resolves symbol references in the AST
+ * Resolves symbol references in the AST using Tylasu
  * Implements variable declaration/reference linking
  */
 
 import {
-    ASTNode,
-    ASTVisitor,
     AssignmentExpression,
     BlockExpression,
     Expression,
@@ -16,7 +14,7 @@ import {
     VariableReference,
 } from './ASTNodes.js';
 
-export class SymbolResolver implements ASTVisitor<void> {
+export class SymbolResolver {
     // Track current scope during traversal
     private currentScope: ScopeNode;
     
@@ -28,33 +26,35 @@ export class SymbolResolver implements ASTVisitor<void> {
         this.visitProgram(this.program);
     }
     
-    visitProgram(node: Program): void {
+    private visitProgram(node: Program): void {
         this.currentScope = node;
         for (const stmt of node.statements) {
             this.visit(stmt);
         }
     }
     
-    visitVariableDeclaration(node: VariableDeclaration): void {
+    private visitVariableDeclaration(node: VariableDeclaration): void {
         // Declaration is already added to scope by ASTBuilder
         // Nothing to resolve here
     }
     
-    visitVariableReference(node: VariableReference): void {
-        // Resolve the reference using scope chain
-        const declaration = this.currentScope.resolve(node.name);
+    private visitVariableReference(node: VariableReference): void {
+        if (!node.name || !node.declaration) return;
         
-        if (declaration) {
-            // Link reference to declaration
-            node.declaration = declaration;
+        // Resolve using scope chain
+        const resolved = this.currentScope.resolve(node.name);
+        
+        if (resolved) {
+            // Use Tylasu's ReferenceByName to link
+            node.declaration.referred = resolved;
             
             // Add back-reference from declaration
-            declaration.references.push(node);
+            resolved.references.push(node);
         }
         // If no declaration found, reference remains unresolved (implicit global in MaxScript)
     }
     
-    visitFunctionDefinition(node: FunctionDefinition): void {
+    private visitFunctionDefinition(node: FunctionDefinition): void {
         // Save current scope
         const previousScope = this.currentScope;
         
@@ -70,7 +70,7 @@ export class SymbolResolver implements ASTVisitor<void> {
         this.currentScope = previousScope;
     }
     
-    visitBlockExpression(node: BlockExpression): void {
+    private visitBlockExpression(node: BlockExpression): void {
         // Blocks create new scope in MaxScript
         const previousScope = this.currentScope;
         
@@ -84,7 +84,7 @@ export class SymbolResolver implements ASTVisitor<void> {
         this.currentScope = previousScope;
     }
     
-    visitAssignmentExpression(node: AssignmentExpression): void {
+    private visitAssignmentExpression(node: AssignmentExpression): void {
         // Visit target (left side - may be a reference)
         if (node.target) {
             this.visit(node.target);
@@ -96,8 +96,8 @@ export class SymbolResolver implements ASTVisitor<void> {
         }
     }
     
-    // Generic visit dispatcher
-    private visit(node: ASTNode): void {
+    // Generic visit dispatcher using Tylasu's walk pattern
+    private visit(node: any): void {
         if (node instanceof Program) {
             this.visitProgram(node);
         } else if (node instanceof VariableDeclaration) {
@@ -108,6 +108,8 @@ export class SymbolResolver implements ASTVisitor<void> {
             this.visitFunctionDefinition(node);
         } else if (node instanceof BlockExpression) {
             this.visitBlockExpression(node);
+        } else if (node instanceof AssignmentExpression) {
+            this.visitAssignmentExpression(node);
         }
         // Add more node types as needed
     }

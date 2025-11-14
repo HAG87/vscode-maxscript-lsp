@@ -1,9 +1,10 @@
 /**
- * Builds AST from ANTLR parse tree
+ * Builds AST from ANTLR parse tree using Tylasu
  * POC: Variables only
  */
 
 import { ParserRuleContext } from 'antlr4ng';
+import { Position, Point } from '@strumenta/tylasu';
 import {
     DeclarationExpressionContext,
     ExprContext,
@@ -15,20 +16,17 @@ import {
 } from '../../parser/mxsParser.js';
 import { mxsParserVisitor } from '../../parser/mxsParserVisitor.js';
 import {
-    ASTNode,
     AssignmentExpression,
     BlockExpression,
     Expression,
     FunctionDefinition,
-    Position,
     Program,
-    Range,
     ScopeNode,
     VariableDeclaration,
     VariableReference,
 } from './ASTNodes.js';
 
-export class ASTBuilder extends mxsParserVisitor<ASTNode | ASTNode[] | null> {
+export class ASTBuilder extends mxsParserVisitor<any> {
     // Stack to track current scope
     private scopeStack: ScopeNode[] = [];
     
@@ -58,13 +56,15 @@ export class ASTBuilder extends mxsParserVisitor<ASTNode | ASTNode[] | null> {
         this.scopeStack.pop();
     }
     
-    private getRange(ctx: ParserRuleContext): Range | undefined {
+    /**
+     * Convert ANTLR context to Tylasu Position
+     */
+    private getPosition(ctx: ParserRuleContext): Position | undefined {
         if (!ctx.start || !ctx.stop) return undefined;
         
-        return {
-            start: { line: ctx.start.line, column: ctx.start.column },
-            end: { line: ctx.stop.line, column: ctx.stop.column }
-        };
+        const start = new Point(ctx.start.line, ctx.start.column);
+        const end = new Point(ctx.stop.line, ctx.stop.column);
+        return new Position(start, end);
     }
     
     // Program
@@ -81,7 +81,7 @@ export class ASTBuilder extends mxsParserVisitor<ASTNode | ASTNode[] | null> {
     }
     
     // Declaration expression: local x, y = 5
-    visitDeclarationExpression = (ctx: DeclarationExpressionContext): ASTNode[] => {
+    visitDeclarationExpression = (ctx: DeclarationExpressionContext): any => {
         const scope = ctx._scope?.getText()?.toLowerCase() as 'local' | 'global' | 'persistent' | undefined;
         const scopeType = scope || 'local';
         
@@ -89,9 +89,9 @@ export class ASTBuilder extends mxsParserVisitor<ASTNode | ASTNode[] | null> {
         
         for (const varDeclCtx of ctx._decl) {
             const name = varDeclCtx.identifier().getText();
-            const range = this.getRange(varDeclCtx);
+            const position = this.getPosition(varDeclCtx);
             
-            const decl = new VariableDeclaration(name, scopeType, range);
+            const decl = new VariableDeclaration(name, scopeType, position);
             
             // Add to current scope
             this.getCurrentScope().addDeclaration(decl);
@@ -105,12 +105,12 @@ export class ASTBuilder extends mxsParserVisitor<ASTNode | ASTNode[] | null> {
     // Function definition: fn myFunc x y = (...)
     visitFnDefinition = (ctx: FnDefinitionContext): FunctionDefinition => {
         const name = ctx._fn_name?.getText() || 'anonymous';
-        const range = this.getRange(ctx);
+        const position = this.getPosition(ctx);
         
-        const fnDef = new FunctionDefinition(name, range);
+        const fnDef = new FunctionDefinition(name, position);
         
         // Add function to current scope as a declaration
-        const fnDecl = new VariableDeclaration(name, 'local', range);
+        const fnDecl = new VariableDeclaration(name, 'local', position);
         this.getCurrentScope().addDeclaration(fnDecl);
         
         // Push function scope
@@ -119,8 +119,8 @@ export class ASTBuilder extends mxsParserVisitor<ASTNode | ASTNode[] | null> {
         // Add parameters as declarations in function scope
         for (const argCtx of ctx.fn_args()) {
             const paramName = argCtx.identifier().getText();
-            const paramRange = this.getRange(argCtx);
-            const param = new VariableDeclaration(paramName, 'local', paramRange);
+            const paramPosition = this.getPosition(argCtx);
+            const param = new VariableDeclaration(paramName, 'local', paramPosition);
             fnDef.parameters.push(param);
             fnDef.addDeclaration(param);
         }
@@ -145,10 +145,10 @@ export class ASTBuilder extends mxsParserVisitor<ASTNode | ASTNode[] | null> {
     // Identifier - could be declaration or reference
     visitIdentifier = (ctx: IdentifierContext): VariableReference => {
         const name = ctx.getText();
-        const range = this.getRange(ctx);
+        const position = this.getPosition(ctx);
         
         // Create reference (will be resolved later)
-        const ref = new VariableReference(name, range);
+        const ref = new VariableReference(name, position);
         
         return ref;
     }
