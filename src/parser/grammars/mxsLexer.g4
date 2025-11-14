@@ -246,7 +246,20 @@ COMPARE: ('==' | '<' | '>' | '<=' | '>=' | '!=')
 	;
 ASSIGN: ('+=' | '-=' | '*=' | '/=')
 	;
-//TODO: Solve problem with (value)-1
+
+// UNARY_MINUS vs MINUS disambiguation
+// MaxScript distinguishes between:
+//   -5       → UNARY_MINUS (prefix)
+//   x - 5    → MINUS (binary)
+//   (x)-5    → Can be ambiguous: (x) MINUS 5 or (x) then UNARY_MINUS 5
+//
+// Rules for UNARY_MINUS:
+// 1. Must NOT follow alphanumeric (prevents: x-5 being x UNARY_MINUS 5)
+// 2. Must NOT be followed by whitespace or '=' (prevents: - = being UNARY_MINUS EQ)
+//
+// Predicates:
+// - noAlphanumBefore(): checks char before '-' is not alphanumeric/underscore
+// - noWsOrEqualNext(): checks char after '-' is not whitespace or '='
 UNARY_MINUS
 	: {this.noAlphanumBefore()}? '-' {this.noWsOrEqualNext()}?
 	;
@@ -295,24 +308,33 @@ LBRACK: '['
 RBRACK: ']'
 	;
 //--------------------------------------------------------------//
-//WHITESPACE
+//WHITESPACE & NEWLINES
+// Order matters: WS must come before NL to handle line continuations correctly
+// Line continuation: backslash followed by optional whitespace and newline
+
 WS: ( WSchar | Backslash WSchar* [\r\n\f]+)+ -> channel(HIDDEN)
 	;
-//NEW LINES
+
+// NEW LINES - MaxScript uses newlines AND semicolons as statement separators
+// These are significant for the parser (not hidden)
 NL
 	: NLchar+ //-> channel(NEWLINE_CHANNEL)
 	;
+
 //--------------------------------------------------------------//
-// fragment Nleft : [\r\n] ; wihitewhitespacespace with newlines, around operators, is meaningless
+// Whitespace fragments
+fragment WSchar: [ \t]
+	;
+fragment NLchar: [\r\n] | Semicolon
+	;
+
+// Unused fragments - kept for potential future use
+// These could be used to handle newlines around operators specially
 fragment NLeft
 	: [\r\n] [ \t\r\n]+ //-> channel(HIDDEN)
 	;
 fragment Nright
 	: [ \t\r\n]+ [\r\n] //-> channel(HIDDEN)
-	;
-fragment WSchar: [ \t]
-	;
-fragment NLchar: [\r\n] | Semicolon
 	;
 //--------------------------------------------------------------//
 fragment Float

@@ -331,15 +331,15 @@ fn_params
 	;
 
 //FN_RETURN
-fnReturnStatement: RETURN NL* expr
+fnReturnStatement: RETURN NL* returnValue = expr
 	;
 
 //---------------------------------------- LOOPS While loop
-whileLoopExpression: WHILE NL* expr NL* DO NL* expr
+whileLoopExpression: WHILE NL* condition = expr NL* DO NL* body = expr
 	;
 
 // Do loop
-doLoopExpression: DO NL* expr NL* WHILE NL* expr
+doLoopExpression: DO NL* body = expr NL* WHILE NL* condition = expr
 	;
 
 /* For loop
@@ -352,7 +352,7 @@ doLoopExpression: DO NL* expr NL* WHILE NL* expr
  */
 
 forLoopExpression
-	: FOR NL* for_body NL* for_operator = (IN | EQ) NL* for_sequence NL* for_action = (DO | COLLECT) NL* expr
+	: FOR NL* for_body NL* for_operator = (IN | EQ) NL* for_sequence NL* for_action = (DO | COLLECT) NL* body = expr
 	;
 
 for_body : var = identifier ( comma index_name = identifier ( comma filtered_index_name = identifier )? )?
@@ -367,11 +367,11 @@ for_while: WHILE NL* expr
 	;
 for_where: WHERE NL* expr
 	;
-loopExitStatement: EXIT (NL* WITH NL* expr)?
+loopExitStatement: EXIT (NL* WITH NL* exitValue = expr)?
 	;
 
 //----------------------------------------TRY EXPR
-tryExpression: TRY NL* expr NL* CATCH NL* expr
+tryExpression: TRY NL* tryBody = expr NL* CATCH NL* catchBody = expr
 	;
 
 //---------------------------------------- CASE-EXPR
@@ -443,23 +443,26 @@ case_item
  ;
  */
 
-// /*
-// this does work but it is slooow
+// OPTIMIZED: Factor common prefix to avoid re-parsing condition
+// Key insight: Use simpleExpression for condition (not expr) to avoid infinite recursion
+// The body can be expr (which may include nested if statements)
+ifExpression
+	: IF NL* ifCondition = simpleExpression NL* (
+		THEN NL* thenBody = expr (NL* ELSE NL* elseBody = expr)?
+		| DO NL* doBody = expr
+	)
+	;
+
+/* PREVIOUS VERSIONS (kept for reference)
+
+// This works but is slow - parses condition twice
 ifExpression
 	: IF NL* simpleExpression NL* THEN NL* expr (NL* ELSE NL* expr)?
 	| IF NL* simpleExpression NL*   DO NL* expr	
 	;
 
-/*
- : IF NL* expr NL* DO NL* expr 
- | IF NL* expr NL* 
-    ( THEN NL* non_if_expr NL* ELSE NL* expr
-        | THEN NL* expr
-        | if_statement )
-// */
-
-/* // this fails for whatever reason with SLL
- if_statement
+// This caused infinite loop - used expr in condition (includes ifExpression recursively)
+if_statement
  : IF NL* ifClause = expr NL* THEN NL*
     ifBody = expr NL*
         (ELSE NL* elseBody = expr | {this.itsNot(mxsLexer.ELSE)}? )
@@ -489,68 +492,41 @@ destination: accessor | de_ref | identifier | path
 	;
 
 //---------------------------------------- SIMPLE_EXPR
-//--- Operator Precedence Refactor for Performance ---//
-// Replaces left-recursive simpleExpression with explicit precedence rules
-/*
+//--- Operator Precedence (Correct MaxScript Order) ---//
+// Direct left recursion - ANTLR4 handles efficiently
+// Precedence from LOWEST to HIGHEST (top to bottom):
+// 1. Type cast (as)
+// 2. Logical OR
+// 3. Logical AND
+// 4. Comparison (==, !=, <, >, <=, >=)
+// 5. Addition/Subtraction (+, -)
+// 6. Multiplication/Division (*, /)
+// 7. Exponentiation (^) - right associative
+// 8. Unary prefix (-, +, not) - right associative
+// 9. Primary expressions (highest)
+
 simpleExpression
-    : logicExpr
-    ;
-
-logicExpr
-    : logicExpr (OR | AND) NL* compExpr
-    | NOT NL* compExpr
-    | compExpr
-    ;
-
-compExpr
-    : compExpr COMPARE NL* addExpr
-    | addExpr
-    ;
-
-addExpr
-    : addExpr (PLUS | MINUS | UNARY_MINUS) NL* mulExpr
-    | mulExpr
-    ;
-
-mulExpr
-    : mulExpr (PROD | DIV) NL* powExpr
-    | powExpr
-    ;
-
-powExpr
-    : powExpr POW NL* typecastExpr
-    | typecastExpr
-    ;
-
-typecastExpr
-    : unaryExpr AS NL* classname
-    | unaryExpr
-    ;
-
-unaryExpr
-    : (MINUS | UNARY_MINUS) unaryExpr
-    | expr_operand
-    ;
-*/
-// /*
-simpleExpression
-	// : (fn_call | de_ref | operand) AS NL* classname #TypecastExpr | fn_call #FnCallExpr | de_ref #DeRef | operand #OperandExpr
-	: left = simpleExpression AS NL* classname	                                        //# TypecastExpr
-	| (MINUS | UNARY_MINUS) right = simpleExpression									//# UnaryExpr
-	| <assoc = right> left = simpleExpression POW NL* right = simpleExpression			//# ExponentExpr
-	| left = simpleExpression (PROD | DIV) NL* right = simpleExpression					//# ProductExpr
-	| left = simpleExpression (PLUS | MINUS | UNARY_MINUS) NL* right = simpleExpression	//# AdditionExpr
+	: left = simpleExpression AS NL* classname	                                        //# TypecastExpr (LOWEST precedence)
+	| left = simpleExpression OR NL* right = simpleExpression					        //# LogicOrExpr
+	| left = simpleExpression AND NL* right = simpleExpression					        //# LogicAndExpr
 	| left = simpleExpression COMPARE NL* right = simpleExpression						//# ComparisonExpr
-	| <assoc = right> NOT NL* right = simpleExpression									//# LogicNOTExpr
-	| left = simpleExpression (OR | AND) NL* right = simpleExpression					//# LogicExpr
-	| expr_operand							                                            //# ExprOperand
+	| left = simpleExpression (PLUS | MINUS | UNARY_MINUS) NL* right = simpleExpression	//# AdditionExpr
+	| left = simpleExpression (PROD | DIV) NL* right = simpleExpression					//# ProductExpr
+	| <assoc = right> left = simpleExpression POW NL* right = simpleExpression			//# ExponentExpr (right assoc)
+	| (MINUS | UNARY_MINUS) right = simpleExpression									//# UnaryMinusExpr (prefix)
+	| <assoc = right> NOT NL* right = simpleExpression									//# LogicNotExpr (prefix)
+	| expr_operand							                                            //# ExprOperand (HIGHEST precedence)
 	;
-// */
 
 expr_operand
-	: functionCall	//# FnCallExpr
-	| de_ref	    //# deRef
-	| operand	    //# OperandExpr
+	: functionCall
+	| de_ref
+	| operand
+	;
+
+operand
+	: accessor
+	| factor
 	;
 
 classname: identifier | expr_seq
@@ -565,30 +541,34 @@ classname: identifier | expr_seq
  This means you have to be careful 
  about
  correctly parenthesizing function arguments
+ 
+ Strategy to reduce backtracking:
+ 1. fn_caller now excludes de_ref (handled separately in expr_operand)
+ 2. Parser tries functionCall first, which requires call syntax
+ 3. If no call syntax present, falls back to plain operand
+ 4. This still requires backtracking but is necessary for MaxScript's syntax
+ 
+ The ambiguity between "foo bar" (call) and "foo bar" (two identifiers)
+ is resolved by operator precedence - function calls bind tighter than
+ most operators, so arguments are consumed greedily up to an operator.
  */
 
-//TODO: Solve problem with "(roll_distance.width-10)"
 functionCall
-	// : caller = fn_caller ( args += operand)+ ( params += param)*
-	: caller = fn_caller (
-		// PAREN_PAIR //nullary call operator
-		paren_pair //nullary call operator
-		| (args += operand_arg)+ (params += param)*
-		// | (args += operand_arg)+
-		| (params += param)+
+	: fn_caller (
+		paren_pair                                    // foo()
+		| (args += operand_arg)+ (params += param)*   // foo arg1 arg2 x:val
+		| (params += param)+                          // foo x:val y:val
 	)
-	// | operand
 	;
 
 paren_pair: {this.closedParens()}? LPAREN RPAREN
 	;
 
 fn_caller
-	: identifier
+	: accessor
+	| identifier
 	| path
-	| de_ref
-	| accessor
-	| expr_seq //EXPRESSION SEQUENCE
+	| expr_seq
 	| QUESTION
 	;
 
@@ -606,11 +586,6 @@ operand_arg
 
 // unary_op : UNARY_MINUS operand ;
 // ------------------------------------------------------------------------//
-operand
-	// : (MINUS | UNARY_MINUS) unaryMinus = operand
-	: accessor
-	| factor
-	;
 
 //------------------------------------------------------------------------//
 // TODO: Remove left recursion

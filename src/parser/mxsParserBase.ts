@@ -6,6 +6,9 @@ import { mxsParser } from './mxsParser.js';
 
 export abstract class mxsParserBase extends Parser
 {
+    // Cache for predicate results to avoid repeated token lookups
+    private predicateCache = new Map<string, boolean>();
+
     constructor(input: TokenStream)
     {
         super(input);
@@ -69,17 +72,35 @@ export abstract class mxsParserBase extends Parser
     // used for param:name
     protected colonBeNext(offset: number = 1): boolean
     {
-        return this.nextTokenType(mxsLexer.COLON, offset);
+        const key = `colon_${this.getCurrentToken().tokenIndex}_${offset}`;
+        if (this.predicateCache.has(key)) {
+            return this.predicateCache.get(key)!;
+        }
+        const result = this.nextTokenType(mxsLexer.COLON, offset);
+        this.predicateCache.set(key, result);
+        return result;
     }
 
     protected closedParens(offset: number = 1): boolean
     {
-        return this.nextTokenType(mxsLexer.RPAREN, offset);
+        const key = `parens_${this.getCurrentToken().tokenIndex}_${offset}`;
+        if (this.predicateCache.has(key)) {
+            return this.predicateCache.get(key)!;
+        }
+        const result = this.nextTokenType(mxsLexer.RPAREN, offset);
+        this.predicateCache.set(key, result);
+        return result;
     }
 
     protected noWSBeNext(offset: number = 1): boolean
     {
-        return this.nextTokenChannel(offset);
+        const key = `noWS_${this.getCurrentToken().tokenIndex}_${offset}`;
+        if (this.predicateCache.has(key)) {
+            return this.predicateCache.get(key)!;
+        }
+        const result = this.nextTokenChannel(offset);
+        this.predicateCache.set(key, result);
+        return result;
     }
 
     protected noNewLines(): boolean
@@ -90,6 +111,13 @@ export abstract class mxsParserBase extends Parser
     protected noSpaces(offset: number = 1): boolean
     {
         return this.prevTokenChannel(offset);
+    }
+
+    // Override consume to clear predicate cache when advancing
+    public override consume(): Token
+    {
+        this.predicateCache.clear();
+        return super.consume();
     }
 
     /**
