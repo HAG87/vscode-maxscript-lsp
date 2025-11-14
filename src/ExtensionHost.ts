@@ -23,7 +23,7 @@ import {
 } from './settings.js';
 import { mxsSymbolProvider } from './SymbolProvider.js';
 import { Utilities } from './utils.js';
-import { mxsWorkspaceSymbolProvider } from './workspaceSymbolProvider.js';
+import { mxsWorkspaceSymbolProvider } from './WorkspaceSymbolProvider.js';
 
 // import { ICodeFormatSettings } from './types.js';
 
