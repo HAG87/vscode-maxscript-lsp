@@ -22,7 +22,7 @@
   "engines": {
     "vscode": "^1.91.0"
   },
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "type": "module",
   "contributes": {
     "languages": [

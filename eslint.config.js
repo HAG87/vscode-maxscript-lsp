@@ -12,6 +12,8 @@ export default [
       "src/parser/mxsLexer.*",
       "src/parser/mxsParserListener.*",
       "src/parser/mxsParserVisitor.*",
+      "esbuild.cjs", // CommonJS build script
+      "scripts/**", // Node.js scripts
     ]
   },
   pluginJs.configs.recommended,

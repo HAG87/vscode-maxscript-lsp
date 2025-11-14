@@ -1,3 +1,12 @@
+/**
+ * esbuild configuration for production builds
+ * 
+ * This is a CommonJS file (.cjs) because it runs in Node.js directly.
+ * Development builds use tsc (outputs to out/), production uses esbuild (outputs to dist/).
+ * 
+ * @type {import('esbuild')}
+ */
+
 const esbuild = require("esbuild");
 
 const production = process.argv.includes('--production');
@@ -29,13 +38,14 @@ async function main() {
 			'src/extension.ts'
 		],
 		bundle: true,
-		format: 'cjs',
+		format: 'esm',
 		minify: production,
 		sourcemap: !production,
 		sourcesContent: false,
 		platform: 'node',
-		outfile: 'out/extension.cjs',
+		outfile: 'dist/extension.js',
 		external: ['vscode'],
+		metafile: true,
 		logLevel: 'silent',
 		plugins: [
 			/* add to the end of plugins array */
