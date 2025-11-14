@@ -283,6 +283,7 @@
     }
   },
   "scripts": {
+    "postinstall": "node scripts/postinstall.js",
     "vscode:prepublish": "npm run package",
     "compile": "npm run check-types && node esbuild.cjs",
     "check-types": "tsc --noEmit",
@@ -295,6 +296,11 @@
     "pretest": "npm run compile-tests && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test",
+    "test:ast": "npm run compile && node out/backend/ast/run-tests.js",
+    "test:ast:simple": "npm run compile && node out/backend/ast/test-simple.js",
+    "test:ast:functions": "npm run compile && node out/backend/ast/test-functions.js",
+    "test:ast:nested": "npm run compile && node out/backend/ast/test-nested.js",
+    "test:ast:performance": "npm run compile && node out/backend/ast/test-performance.js",
     "generate": "antlr4ng -Dlanguage=TypeScript -visitor -Xexact-output-dir src/parser/grammars/mxsLexer.g4 src/parser/grammars/mxsParser.g4 -o src/parser"
   },
   "devDependencies": {
@@ -307,6 +313,7 @@
     "globals": "^15.9.0",
     "npm-run-all": "^4.1.5",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
     "typescript": "^5.6.2",
     "typescript-eslint": "^8.6.0"
   },

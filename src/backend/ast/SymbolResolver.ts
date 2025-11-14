@@ -17,13 +17,37 @@ import {
 export class SymbolResolver {
     // Track current scope during traversal
     private currentScope: ScopeNode;
+    private allReferences: VariableReference[];
     
-    constructor(private program: Program) {
+    constructor(private program: Program, references: VariableReference[] = []) {
         this.currentScope = program;
+        this.allReferences = references;
     }
     
     resolve(): void {
+        // Resolve all collected references
+        for (const ref of this.allReferences) {
+            this.resolveReference(ref);
+        }
+        
+        // Also walk the tree for any references not in the list
         this.visitProgram(this.program);
+    }
+    
+    private resolveReference(node: VariableReference): void {
+        if (!node.name || !node.declaration) return;
+        
+        // Resolve using scope chain (walk up from program root)
+        const resolved = this.program.resolve(node.name);
+        
+        if (resolved) {
+            // Use Tylasu's ReferenceByName to link
+            node.declaration.referred = resolved;
+            
+            // Add back-reference from declaration
+            resolved.references.push(node);
+        }
+        // If no declaration found, reference remains unresolved (implicit global in MaxScript)
     }
     
     private visitProgram(node: Program): void {

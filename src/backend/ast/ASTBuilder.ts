@@ -33,6 +33,9 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     // Root program
     private program: Program;
     
+    // Collect all references for later resolution
+    private allReferences: VariableReference[] = [];
+    
     constructor() {
         super();
         this.program = new Program();
@@ -41,6 +44,10 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     
     getProgram(): Program {
         return this.program;
+    }
+    
+    getAllReferences(): VariableReference[] {
+        return this.allReferences;
     }
     
     private getCurrentScope(): ScopeNode {
@@ -78,6 +85,15 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         }
         
         return this.program;
+    }
+    
+    // Expression - visit all children to collect references
+    visitExpr = (ctx: ExprContext): Expression | null => {
+        // Visit all children to find identifiers and other expressions
+        const result = this.visitChildren(ctx);
+        
+        // Return a generic expression for now
+        return result as Expression;
     }
     
     // Declaration expression: local x, y = 5
@@ -149,6 +165,9 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         
         // Create reference (will be resolved later)
         const ref = new VariableReference(name, position);
+        
+        // Track for resolution
+        this.allReferences.push(ref);
         
         return ref;
     }
