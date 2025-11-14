@@ -737,6 +737,7 @@ kw_override
 	| REDRAW
 	| Rollout
 	| Tool
+	| AND
 	| TO
 	| ON )
 	;
