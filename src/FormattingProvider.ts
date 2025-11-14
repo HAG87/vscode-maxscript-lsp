@@ -19,8 +19,7 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
         return new Promise<TextEdit[]>((resolve) =>
         {
             const { code, start, stop } =
-                this.backend.formatCode(
-                    document.uri.toString(),
+                this.backend.getContext(document.uri.toString()).formatCode(
                     Utilities.rangeToLexicalRange(range),
                     this.options
                 );
@@ -55,8 +54,7 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
             ranges.forEach(range =>
             {
                 const { code, start, stop } =
-                    this.backend.formatCode(
-                        document.uri.toString(),
+                    this.backend.getContext(document.uri.toString()).formatCode(
                         {
                             start: document.offsetAt(range.start),
                             stop: document.offsetAt(range.end) - 1
@@ -123,8 +121,7 @@ export class mxsFormattingProvider implements DocumentFormattingEditProvider
                 document.positionAt(document.getText().length)
             );
             const { code, start, stop } =
-                this.backend.formatCode(
-                    document.uri.toString(),
+                this.backend.getContext(document.uri.toString()).formatCode(
                     Utilities.rangeToLexicalRange(range),
                     this.options
                 );

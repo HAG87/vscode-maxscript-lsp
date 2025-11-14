@@ -115,7 +115,7 @@ export interface IContextEntry
  * To refactor this safely:
  * 1. Make sourceContexts collection accessible via getter: `get contexts() { return this.sourceContexts; }`
  * 2. Update extension providers to use direct context access pattern
- * 3. Deprecate wrapper methods (mark with @deprecated)
+ * 3. Deprecate wrapper methods (mark with @ deprecated)
  * 4. Remove wrapper methods in next major version
  * 5. Implement workspace-wide features listed above
  */
@@ -208,6 +208,7 @@ export class mxsBackend
      * Call this before reparsing or code completion.
      * @param uri The document uri
      * @param source The document content, or undefined to read from file
+     * @deprecated Use SourceContext.setText() instead.
      */
     public setText(uri: string, source?: string): void
     {
@@ -253,6 +254,7 @@ export class mxsBackend
     private loadDocument(uri: string, source?: string): SourceContext
     {
         let ctxEntry = this.sourceContexts.get(uri);
+
         if (!ctxEntry) {
             // new context
             const ctx = new SourceContext(uri);
@@ -394,12 +396,7 @@ export class mxsBackend
     }
 
     /**
-     * Determines source file and position of all occurrences of the given symbol. The search includes
-     * also all referencing and referenced contexts.
-     *
-     * @param fileName The grammar file name.
-     * @param symbolName The name of the symbol to check.
-     * @returns A list of symbol info entries, each describing one occurrence.
+     * @deprecated Consider using: backend.contexts.get(uri)?.context.symbolTable.getSymbolOccurrences(symbolName, false)
      */
     public getSymbolOccurrences(uri: string, symbolName: string): ISymbolInfo[]
     {
@@ -408,6 +405,9 @@ export class mxsBackend
         return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => lhs.kind - rhs.kind);
     }
 
+    /**
+     * @deprecated Consider using: backend.contexts.get(uri)?.context.symbolTable.getScopedSymbolOccurrences(symbol)
+     */
     public symbolInfoAtPositionCtxOccurrences(
         uri: string,
         line: number,

@@ -24,8 +24,7 @@ export class mxsDefinitionProvider implements DefinitionProvider
     {
         return new Promise((resolve) =>
         {
-            const info = this.backend.symbolInfoDefinition(
-                document.uri.toString(),
+            const info = this.backend.getContext(document.uri.toString())?.symbolDefinition(  
                 position.line + 1,
                 position.character);
 

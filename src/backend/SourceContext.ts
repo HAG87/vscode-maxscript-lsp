@@ -89,14 +89,6 @@ export class SourceContext
         this.parser.addErrorListener(this.errorListener);
     }
 
-    public setText(source: string): void
-    {
-        this.lexer.inputStream = CharStream.fromString(source);
-    }
-    public changedText(source: string): boolean
-    {
-        return source === this.lexer.text
-    }
     //----------------------------------------------------------------parser
     // get getTokenStream() { return this.tokenStream; }
     public parse(): void
@@ -150,6 +142,22 @@ export class SourceContext
         // TODO: this can be used to add dependencies... imports come from the listener
         // return this.info.imports;
     }
+
+    /**
+     * Update the text content of a loaded context.
+     * Call this before reparsing or code completion.
+     * @param uri The document uri
+     * @param source The document content, or undefined to read from file
+     */
+    public setText(source: string): void
+    {
+        this.lexer.inputStream = CharStream.fromString(source);
+    }
+
+    public changedText(source: string): boolean
+    {
+        return source === this.lexer.text
+    }
     //------------------------------------------------- SYMBOLS
 
     /**
@@ -166,6 +174,7 @@ export class SourceContext
             this.symbolTable.getSymbolAtPosition(row, column);
         return symbol ? this.symbolTable.getSymbolInfo(symbol) : undefined;
     }
+    
     /**
      * Returns the symbol definition
      * TODO: Add references in the symbol table to speed up things!
@@ -183,6 +192,33 @@ export class SourceContext
             this.symbolTable.getSymbolDefinition(symbol!);
         return definition ? this.symbolTable.getSymbolInfo(definition) : undefined;
     }
+
+    /**
+     * Determines source file and position of all occurrences of the given symbol. The search includes
+     * also all referencing and referenced contexts.
+     *
+     * @param fileName The grammar file name.
+     * @param symbolName The name of the symbol to check.
+     * @returns A list of symbol info entries, each describing one occurrence.
+     */
+    public getSymbolOccurrences(symbolName: string): ISymbolInfo[]
+    {
+        const result = this.symbolTable.getSymbolOccurrences(symbolName, false);
+        // Sort result by kind. This way rule definitions appear before rule references and are re-parsed first.
+        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => lhs.kind - rhs.kind);
+    }
+
+    public symbolInfoAtPositionCtxOccurrences(line: number, character: number): ISymbolInfo[] | undefined
+    {
+        const symbol = this.symbolTable.getSymbolAtPosition(line, character);
+
+        if (!symbol) { return undefined; }
+
+        const result = this.symbolTable.getScopedSymbolOccurrences(symbol)
+
+        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => lhs.kind - rhs.kind);
+    }
+
     /**
      * Returns the symbol at the given position or one of its outer scopes.
      *
@@ -234,11 +270,22 @@ export class SourceContext
         return;
     }
 
+    /**
+     * Returns a list of top level symbols from a file (and optionally its dependencies).
+     *
+     * @param includeDependencies If true, includes symbols from all dependencies as well.
+     * @returns A list of symbol info entries.
+     */
     public listTopLevelSymbols(includeDependencies: boolean): ISymbolInfo[]
     {
         return this.symbolTable.symbolInfoTopLevel(includeDependencies);
     }
 
+    /**
+     * Returns all symbols from this context and optionally its dependencies.
+     * @param recursive 
+     * @returns 
+     */
     public async getAllSymbols(recursive: boolean): Promise<BaseSymbol[]>
     {
         // /*
@@ -325,7 +372,6 @@ export class SourceContext
     // TODO: formatter that uses the parse tree and a visitor
     public formatCode(range: ILexicalRange, options?: ICodeFormatSettings): IformatterResult;
     public formatCode(range: { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult;
-
     public formatCode(range: ILexicalRange | { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult
     {
         // execute lexer

@@ -19,23 +19,22 @@ export class mxsRenameProvider implements RenameProvider
         return new Promise((resolve) =>
         {
             const occurrences =
-                this.backend.symbolInfoAtPositionCtxOccurrences(
-                    document.uri.toString(),
+                this.backend.getContext(document.uri.toString()).symbolInfoAtPositionCtxOccurrences(
                     position.line + 1,
                     position.character);
 
             if (occurrences) {
-                const result = new WorkspaceEdit();
+                const workspaceEdit = new WorkspaceEdit();
                 for (const symbol of occurrences) {
                     // if (symbol.definition) {
-                        result.replace(
+                        workspaceEdit.replace(
                             Uri.parse(symbol.source),
                             Utilities.symbolNameRange(symbol),
                             newName
                         );
                     // }
                 }
-                resolve(result);
+                resolve(workspaceEdit);
             } else {
                 resolve(undefined);
             }

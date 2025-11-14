@@ -42,7 +42,8 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
     {
         return new Promise((resolve) =>
         {
-            const symbols = this.backend.listTopLevelSymbols(document.uri.toString(), false);
+            const symbols =
+                this.backend.getContext(document.uri.toString())?.listTopLevelSymbols(false);
             const symbolsList: DocumentSymbol[] = [];
 
             for (const symbol of symbols) {

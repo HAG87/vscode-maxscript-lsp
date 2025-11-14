@@ -1,6 +1,6 @@
 /*
 TODO:
- - Fix references for symbols with the same name or referenced from an enclosed construct (linke calling a methof of a structure that initiated into a variable)
+ - Fix references for symbols with the same name or referenced from an enclosed construct (like calling a method of a structure that initiated into a variable)
 */
 import {
   CancellationToken, Location, Position, ProviderResult,
@@ -23,8 +23,7 @@ export class mxsReferenceProvider implements ReferenceProvider
         return new Promise((resolve) =>
         {
             const occurrences =
-                this.backend.symbolInfoAtPositionCtxOccurrences(
-                    document.uri.toString(),
+                this.backend.getContext(document.uri.toString()).symbolInfoAtPositionCtxOccurrences(
                     position.line + 1,
                     position.character);
 

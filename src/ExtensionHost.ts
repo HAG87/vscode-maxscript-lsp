@@ -75,7 +75,7 @@ export class ExtensionHost
                 this.backend.getContext(document.uri.toString(), document.getText())
                 this.diagnosticCollection.set(
                     document.uri,
-                    diagnosticAdapter(this.backend.getDiagnostics(document.uri.toString()))
+                    diagnosticAdapter(this.backend.getContext(document.uri.toString())?.getDiagnostics)
                 )
             }
         }
@@ -102,6 +102,7 @@ export class ExtensionHost
         })
         ctx.subscriptions.push(watchFiles)
     }
+    
     //register eventHandlers
     private registerEventHandlers(ctx: ExtensionContext): void
     {
@@ -112,7 +113,7 @@ export class ExtensionHost
                     this.backend.getContext(document.uri.toString(), document.getText())
                     this.diagnosticCollection.set(
                         document.uri,
-                        diagnosticAdapter(this.backend.getDiagnostics(document.uri.toString()))
+                        diagnosticAdapter(this.backend.getContext(document.uri.toString())?.getDiagnostics)
                     )
                 }
             }),
@@ -142,7 +143,7 @@ export class ExtensionHost
                         
                         this.diagnosticCollection.set(
                             event.document.uri,
-                            diagnosticAdapter(this.backend.getDiagnostics(event.document.uri.toString()))
+                            diagnosticAdapter(this.backend.getContext(event.document.uri.toString())?.getDiagnostics)
                         )
                         //TODO:
                         // this.codeLensProvider.refresh();
@@ -408,7 +409,7 @@ export class ExtensionHost
     private minifyDocument(uri: Uri, shouldUnload: boolean = false, enhanced: boolean = false): string | null
     {
         // minify
-        const minResult = this.backend.minifyCode(uri.toString(), minifySettings, enhanced)
+        const minResult = this.backend.getContext(uri.toString())?.minifyCode(minifySettings, enhanced)
         // minify done, dispose context
         if (shouldUnload) {
             this.backend.releaseContext(uri.toString())
@@ -449,7 +450,8 @@ export class ExtensionHost
     }
     private prettifyDocument(uri: Uri, shouldUnload: boolean = false): string | null
     {
-        const prettyResult = this.backend.prettifyCode(uri.toString(), prettifySettings)
+        const prettyResult =
+            this.backend.getContext(uri.toString())?.prettifyCode(prettifySettings)
         // done, dispose context
         if (shouldUnload) {
             this.backend.releaseContext(uri.toString())

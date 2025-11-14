@@ -39,7 +39,8 @@ export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider
        return new Promise((resolve) =>
         {
             // TODO: if no parse tree is available, fallback to simple method
-            const tokens = this.backend.getDocumentSemanticTokens(document.uri.toString());
+            // const tokens = this.backend.getDocumentSemanticTokens(document.uri.toString());
+            const tokens = this.backend.getContext(document.uri.toString())?.getSemanticTokens;
 
             // some optimizations to recompute the tokens only if they have changed...
             if (tokens && tokens.length > 0) {
