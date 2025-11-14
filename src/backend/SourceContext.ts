@@ -31,6 +31,7 @@ import {
 } from './formatting/mxsParserVisitorFormatter.js';
 import { mxsParserVisitorMinifier } from './formatting/mxsParserVisitorMinifier.js';
 import { semanticTokenListener } from './semantic/semanticTokenListener.js';
+import { CodeCompletionProvider } from './symbols/codeCompletionProvider.js';
 import { symbolTableListener } from './symbolTableListener.js';
 
 export const symbolToKindMap: Map<new () => BaseSymbol, SymbolKind> = new Map([
@@ -373,301 +374,30 @@ export class SourceContext
     }
 
     //------------------------------------------------- code completion
-    private async getScope(context: ParseTree | null, symbolTable: SymbolTable): Promise<BaseSymbol | undefined>
-    {
-        async function dfs(context: ParseTree | null): Promise<BaseSymbol | undefined>
-        {
-            if (!context) {
-                return undefined;
-            }
-            const scope = await symbolTable.symbolWithContext(context);
-            if (scope) {
-                return scope;
-            } else {
-                return await dfs(context.parent);
-            }
-        }
-        return await dfs(context);
-    }
-
+    /**
+     * Get code completion candidates at the specified position.
+     * Delegates to CodeCompletionProvider for the heavy lifting.
+     * 
+     * @param row Line number (1-based)
+     * @param column Column number (0-based)
+     * @returns Array of completion candidates
+     */
     public async getCodeCompletionCandidates(row: number, column: number): Promise<ISymbolInfo[]>
     {
-        if (!this.parser) { return []; }
-
-        const prettyValue = (id: string): string =>
-        {
-            return id.split('').reduce((acc: string, c: string, i: number) =>
-            {
-                if (i < id.length - 1) {
-                    const next = id[i + 1];
-                    // is current uppercase?
-                    const currentCase = (c === c.toUpperCase() && c !== c.toLowerCase());
-                    // is next uppercase?
-                    const nextCase = (next === next.toUpperCase() && next !== next.toLowerCase());
-                    // curent is upercase, and next also.
-                    return currentCase && nextCase ? acc + c.toLowerCase() : acc + c;
-                }
-                return acc + c.toLowerCase();
-            }, '');
-        };
-
-        const core = new CodeCompletionCore(this.parser);
-        core.showResult = false;
-        // core.showResult = true;
-        // core.showDebugOutput = true;
-
-        core.ignoredTokens = new Set([
-            mxsParser.BLOCK_COMMENT,
-            mxsParser.LINE_COMMENT,
-            mxsParser.STRING,
-            mxsParser.NUMBER,
-            mxsParser.TIMEVAL,
-            mxsParser.RESOURCE,
-            mxsParser.TRUE,
-            mxsParser.FALSE,
-            mxsParser.OFF,
-
-            // mxsParser.PATH,
-            // mxsParser.NAME,
-            mxsParser.ID,
-            mxsParser.QUOTED_ID,
-
-            mxsParser.NL,
-            mxsParser.WS,
-
-            mxsParser.COMPARE,
-            mxsParser.ASSIGN,
-            mxsParser.UNARY_MINUS,
-            mxsParser.MINUS,
-            mxsParser.PLUS,
-            mxsParser.PROD,
-            mxsParser.DIV,
-            mxsParser.POW,
-            // mxsParser.EQ,
-            mxsParser.SHARP,
-            mxsParser.COMMA,
-            mxsParser.COLON,
-            mxsParser.GLOB,
-            // mxsParser.DOT,
-            // mxsParser.DOTDOT,
-            mxsParser.AMP,
-            mxsParser.QUESTION,
-
-            mxsParser.LPAREN,
-            mxsParser.RPAREN,
-            mxsParser.LBRACE,
-            mxsParser.RBRACE,
-            mxsParser.LBRACK,
-            mxsParser.RBRACK,
-
-            Token.EOF,
-        ]);
-
-        core.preferredRules = new Set([
-            mxsParser.RULE_identifier,
-            mxsParser.RULE_path,
-            mxsParser.RULE_name,
-            mxsParser.RULE_property,
-            mxsParser.RULE_rolloutControl,
-            mxsParser.RULE_rcmenuControl,
-            mxsParser.RULE_struct_member,
-            //...
-        ]);
-
-        // Search the token index which covers our caret position.
-        let index: number;
-        this.tokenStream.fill();
-        for (index = 0; ; ++index) {
-            const token = this.tokenStream.get(index);
-            // console.log(token.toString());
-            if (token.type === Token.EOF || token.line > row) {
-                break;
-            }
-            if (token.line < row) {
-                continue;
-            }
-            const length = token.text ? token.text.length : 0;
-
-            if ((token.column + length) >= column) {
-                break;
-            }
+        if (!this.parser || !this.tree) {
+            return [];
         }
 
-        const candidates = core.collectCandidates(index);
-        const result: ISymbolInfo[] = [];
-
-        candidates.tokens.forEach((following: number[], type: number) =>
-        {
-            switch (type) {
-                //...
-                case mxsLexer.EQ: {
-                    result.push({
-                        kind: SymbolKind.Operator,
-                        name: "=",
-                        description: "Variable assignment",
-                        source: this.sourceUri,
-                    });
-                    break;
-                }
-                default: {
-                    const value = this.parser?.vocabulary.getDisplayName(type) ?? "";
-                    result.push({
-                        kind: SymbolKind.Keyword,
-                        name: prettyValue(value),   // value[0] === "'" ? value.substring(1, value.length - 1) : value, // Remove quotes.
-                        //description: "Rule alt separator",
-                        source: this.sourceUri,
-                    });
-                    break;
-                }
-            }
-        });
-
-        const promises: Array<Promise<BaseSymbol[] | undefined>> = [];
-        candidates.rules.forEach((candidateRule, key) =>
-        {
-            switch (key) {
-                case mxsParser.RULE_identifier:
-                    {
-                        const context = BackendUtils.parseTreeFromPosition(<ParseTree>this.tree, row, column);
-
-                        if (!context) { return; }
-
-                        const currentSymbol = this.symbolTable.symbolContainingContext(context);
-
-                        if (currentSymbol && currentSymbol.parent) {
-                            /*
-                            const entrySymbol =
-                                currentSymbol instanceof IdentifierSymbol && currentSymbol.parent
-                                    ? currentSymbol.parent as ExprSymbol
-                                    : currentSymbol as ExprSymbol;
-
-                            promises.push(
-                                entrySymbol.getAllSymbols(IdentifierSymbol),
-                                entrySymbol.getAllSymbols(VariableDeclSymbol),
-                                entrySymbol.getAllSymbols(FnDefinitionSymbol),
-                                entrySymbol.getAllSymbols(fnArgsSymbol),
-                                entrySymbol.getAllSymbols(fnParamsSymbol),
-                                entrySymbol.getAllSymbols(StructDefinitionSymbol),
-                                entrySymbol.getAllSymbols(StructMemberSymbol),
-                                entrySymbol.getAllSymbols(RolloutControlSymbol),
-                            );
-                            */
-                            const entrySymbol: ScopedSymbol =
-                                currentSymbol instanceof IdentifierSymbol
-                                    ? currentSymbol.parent as ScopedSymbol
-                                    : currentSymbol as ScopedSymbol;
-                            promises.push(
-                                this.symbolTable.getAllSymbolsOfType(entrySymbol, IdentifierSymbol),
-                                // properties?
-                                this.symbolTable.getAllSymbolsOfType(entrySymbol, VariableDeclSymbol),
-                                this.symbolTable.getAllSymbolsOfType(entrySymbol, FnDefinitionSymbol),
-                                this.symbolTable.getAllSymbolsOfType(entrySymbol, fnArgsSymbol),
-                                this.symbolTable.getAllSymbolsOfType(entrySymbol, fnParamsSymbol),
-                                this.symbolTable.getAllSymbolsOfType(entrySymbol, StructDefinitionSymbol),
-                                this.symbolTable.getAllSymbolsOfType(entrySymbol, StructMemberSymbol)
-                            );
-                        }
-                        break;
-                    }
-                case mxsParser.RULE_struct_member: {
-                    result.push(
-                        {
-                            kind: SymbolKind.Keyword,
-                            name: 'Public',
-                            source: this.sourceUri,
-                            definition: undefined,
-                            description: undefined,
-                        },
-                        {
-                            kind: SymbolKind.Keyword,
-                            name: 'Private',
-                            source: this.sourceUri,
-                            definition: undefined,
-                            description: undefined,
-                        }
-                    );
-                    break;
-                }
-                /*    
-                case ANTLRv4Parser.RULE_actionBlock: {
-                    result.push({
-                        kind: SymbolKind.ParserAction,
-                        name: "{ action code }",
-                        source: this.fileName,
-                        definition: undefined,
-                        description: undefined,
-                    });
-    
-                    // Include predicates only when we are in a lexer or parser element.
-                    const list = candidateRule.ruleList;
-                    if (list[list.length - 1] === ANTLRv4Parser.RULE_lexerElement) {
-                        result.push({
-                            kind: SymbolKind.LexerPredicate,
-                            name: "{ predicate }?",
-                            source: this.fileName,
-                            definition: undefined,
-                            description: undefined,
-                        });
-                    } else if (list[list.length - 1] === ANTLRv4Parser.RULE_element) {
-                        result.push({
-                            kind: SymbolKind.ParserPredicate,
-                            name: "{ predicate }?",
-                            source: this.fileName,
-                            definition: undefined,
-                            description: undefined,
-                        });
-                    }
-                    break;
-                }
-    
-                case ANTLRv4Parser.RULE_terminalDef: { // Lexer rules.
-                    promises.push(this.symbolTable.getAllSymbols(BuiltInTokenSymbol));
-                    promises.push(this.symbolTable.getAllSymbols(VirtualTokenSymbol));
-                    promises.push(this.symbolTable.getAllSymbols(TokenSymbol));
-    
-                    // Include fragment rules only when referenced from a lexer rule.
-                    const list = candidateRule.ruleList;
-                    if (list[list.length - 1] === ANTLRv4Parser.RULE_lexerAtom) {
-                        promises.push(this.symbolTable.getAllSymbols(FragmentTokenSymbol));
-                    }
-    
-                    break;
-                } 
-                // */
-            }
-        });
-
-        const symbolLists = await Promise.all(promises);
-        const collectedNames: Set<string> = new Set([]);
-
-        symbolLists.forEach((symbols) =>
-        {
-            if (symbols) {
-                symbols.forEach((symbol) =>
-                {
-                    if (symbol.name && symbol.name !== "EOF" && !(collectedNames.has(symbol.name))) {
-                        // filter out symbols downwards the current position
-                        let collectThis = true;
-                        if (symbol.context) {
-                            const symline = (symbol.context as ParserRuleContext).start?.line ?? 0;
-                            collectThis = symline <= row;
-                        }
-                        if (collectThis) {
-                            result.push({
-                                kind: SourceContext.getKindFromSymbol(symbol),
-                                name: symbol.name,
-                                source: this.sourceUri,
-                                definition: undefined,
-                                description: undefined,
-                            });
-                            collectedNames.add(symbol.name);
-                        }
-                    }
-                });
-            }
-        });
-
-        return result;
+        return CodeCompletionProvider.getCandidates(
+            this.parser,
+            this.tokenStream,
+            this.tree,
+            this.symbolTable,
+            row,
+            column,
+            { sourceUri: this.sourceUri },
+            SourceContext.getKindFromSymbol
+        );
     }
 
     //-------------------------------------------------diagnostics
@@ -789,9 +519,10 @@ export class SourceContext
         context.references.push(this);
         this.symbolTable.addDependencies(context.symbolTable);
     }
+    
     /**
      * Remove the given context from our list of dependencies.
-     *
+     * THIS IS PART OF THE WORK IN PROGRESS FOR THE WORKSPACE SYMBOL PROVIDER
      * @param context The context to remove.
      */
     public removeDependency(context: SourceContext): void
@@ -802,6 +533,12 @@ export class SourceContext
         }
         this.symbolTable.removeDependency(context.symbolTable);
     }
+    /**
+     * Get the reference count for the given symbol across this context and all referencing contexts.
+     * THIS IS PART OF THE WORK IN PROGRESS FOR THE WORKSPACE SYMBOL PROVIDER
+     * @param symbol The symbol to get the reference count for.
+     * @return The reference count.
+     */
     public getReferenceCount(symbol: string): number
     {
         this.runSemanticAnalysisIfNeeded();
