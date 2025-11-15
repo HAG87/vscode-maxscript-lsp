@@ -18,6 +18,7 @@ import { BackendUtils } from './BackendUtils.js';
 import { IformatterResult, mxsSimpleFormatter } from './formatting/simpleCodeFormatter.js';
 import { ContextErrorListener } from './diagnostics/ContextErrorListener.js';
 import { ContextLexerErrorListener } from './diagnostics/ContextLexerErrorListener.js';
+import { CustomErrorStrategy } from './diagnostics/CustomErrorStrategy.js';
 import { ContextSymbolTable } from './ContextSymbolTable.js';
 import {
   codeBlock, mxsParserVisitorFormatter,
@@ -93,38 +94,47 @@ export class SourceContext
     // get getTokenStream() { return this.tokenStream; }
     public parse(): void
     {
-        // Rewind the input stream for a new parse run.
-        this.lexer.reset();
-        this.tokenStream.setTokenSource(this.lexer);
-        this.parser.reset();
-        this.parser.errorHandler = new BailErrorStrategy();
-        this.parser.interpreter.predictionMode = PredictionMode.SLL;
+        // Clear previous parse results
         this.tree = undefined;
-        //---------------------------------------------------------------
-        //TODO: semantic tokens while parsing...
-        // this.parser.addParseListener();
-        //---------------------------------------------------------------
-        // this.semanticAnalysisDone = false;
         this.diagnostics.length = 0;
         this.symbolTable.clear();
         // TODO: add Global symbols here
         //this.symbolTable.addDependencies(SourceContext.globalSymbols);
-        //---------------------------------------------------------------
+        
+        // Two-stage parsing: SLL mode first (fast), then LL mode if needed (accurate)
+        // This is the recommended ANTLR approach for best performance + error handling
+        
+        // STAGE 1: Try SLL prediction mode (faster, but may fail on complex grammar)
+        this.lexer.reset();
+        this.tokenStream.setTokenSource(this.lexer);
+        this.parser.reset();
+        
+        // Remove error listener during SLL pass - we don't want diagnostics from speculative parsing
+        this.parser.removeErrorListeners();
+        this.parser.errorHandler = new BailErrorStrategy(); // Bail on first error
+        this.parser.interpreter.predictionMode = PredictionMode.SLL;
+        
         try {
             this.tree = this.parser.program();
         } catch (e) {
             if (e instanceof ParseCancellationException) {
-                // TODO: hack: clear diagnostics to avoid duplicates
-                this.diagnostics.length = 0;
-
+                // STAGE 2: SLL failed, retry with LL mode (slower but handles all cases)
+                // Reset everything for second attempt
                 this.lexer.reset();
                 this.tokenStream.setTokenSource(this.lexer);
                 this.parser.reset();
-
-                this.parser.errorHandler = new DefaultErrorStrategy();
+                
+                // Re-add error listener for LL pass - now we want real diagnostics
+                this.parser.addErrorListener(this.errorListener);
+                
+                // Use custom error handling strategy for better recovery
+                this.parser.errorHandler = new CustomErrorStrategy();
                 this.parser.interpreter.predictionMode = PredictionMode.LL;
+                
+                // Parse again - this time we'll get proper error messages with better recovery
                 this.tree = this.parser.program();
             } else {
+                // Some other error, re-throw
                 throw e;
             }
         }
