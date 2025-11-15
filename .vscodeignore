@@ -4,11 +4,13 @@
 vsc-extension-quickstart.md
 src/**
 out/**
+!out/extension.cjs
 node_modules/**
 scripts/**
 .eslintrc.json
 tsconfig.json
 esbuild.cjs
+eslint.config.js
 *.md
 !README.md
 !CHANGELOG.md
