@@ -15,7 +15,7 @@ import {
   Params_predicateContext, ParamsDefinitionContext, Paren_pairContext,
   Plugin_predicateContext, PluginDefinitionContext, ProgramContext, RbContext,
   Rc_submenuContext, RcContext, Rcmenu_predicateContext, RcmenuControlContext,
-  RcmenuDefinitionContext, Rollout_predicateContext, RolloutControlContext,
+  RcmenuDefinitionContext, ReferenceContext, Rollout_predicateContext, RolloutControlContext,
   RolloutDefinitionContext, RolloutGroupContext, RpContext,
   SimpleExpressionContext, Struct_accessContext, Struct_bodyContext,
   StructDefinitionContext, Submenu_predicateContext, Tool_predicateContext,
@@ -1505,13 +1505,18 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         return vals
     }
     visitIdentifier = (ctx: IdentifierContext): codeToken =>
-        {
-            const token = new codeToken(ctx.getText(), codeTypes.ID, ctx.start?.start)
-            if (ctx.AMP() || ctx.GLOB()) {
-                token.hasPrefix = true;
-            }
-            return token
-        }
+    {
+        return new codeToken(ctx.getText(), codeTypes.ID, ctx.start?.start)
+    }
+    
+    visitReference = (ctx: ReferenceContext): R[] =>
+    {
+        const vals = this.visitChildren(ctx)!;
+        // change prefix state
+        Object.assign(<codeToken>vals[0], { isPrefix: true });
+        // (vals[0] as codeToken).isPrefix = true
+        return vals
+    }
     //-------------------------------------------------------
     visitArray = (ctx: ArrayContext): codeBlock =>
     {

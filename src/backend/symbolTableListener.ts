@@ -8,7 +8,7 @@ import {
   IndexContext, Kw_overrideContext, MacroscriptDefinitionContext, mxsParser,
   ParamContext, ParamDefinitionContext, ParamsDefinitionContext, PathContext,
   PluginDefinitionContext, PropertyContext, Rc_submenuContext,
-  RcmenuControlContext, RcmenuDefinitionContext, RolloutControlContext,
+  RcmenuControlContext, RcmenuDefinitionContext, ReferenceContext, RolloutControlContext,
   RolloutDefinitionContext, RolloutGroupContext, Struct_memberContext,
   StructDefinitionContext, ToolDefinitionContext, UtilityDefinitionContext,
   VariableDeclarationContext,
@@ -280,14 +280,14 @@ export class symbolTableListener extends mxsParserListener
     }
     public override enterFn_args = (ctx: Fn_argsContext): void => 
     {
-        this.pushNewSymbol(fnArgsSymbol, ctx, ctx.identifier().ids().getText());
+        this.pushNewSymbol(fnArgsSymbol, ctx, ctx.reference()?.getText());
     }
     public override exitFn_args = (ctx: Fn_argsContext): void => { this.popSymbol(); }
 
     public override enterFn_params = (ctx: Fn_paramsContext): void =>
     {
         // this is a workaround for param: without assignment
-        this.pushNewSymbol(fnParamsSymbol, ctx, ctx.identifier()?.ids().getText() || ctx.kw_override()?.getText());
+        this.pushNewSymbol(fnParamsSymbol, ctx, ctx.identifier()?.getText());
     }
     public override exitFn_params = (ctx: Fn_paramsContext): void => { this.popSymbol(); }
 
@@ -400,7 +400,7 @@ export class symbolTableListener extends mxsParserListener
     //TODO: references...
     public override enterProperty = (ctx: PropertyContext): void =>
     {
-        this.pushNewSymbol(PropertyAccessSymbol, ctx, ctx.identifier()!.getText())
+        this.pushNewSymbol(PropertyAccessSymbol, ctx, ctx.identifier()?.getText())
     }
     public override exitProperty = (ctx: PropertyContext): void => { this.popSymbol(); }
 
@@ -444,15 +444,20 @@ export class symbolTableListener extends mxsParserListener
     //TODO: references...
     public override exitIdentifier = (ctx: IdentifierContext): void =>
     {
-        // IF I emmit an identifier here, but also use the current enterVariableDeclaration, I will have duplicated symbols
-        // Use operand or factor instead, for now.
-        this.addNewSymbol(IdentifierSymbol, ctx, ctx.ids().getText());
+        this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
     }
+
+    public override exitReference = (ctx: ReferenceContext): void =>
+    {
+        this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
+    }
+
     public override exitPath = (ctx: PathContext): void =>
     {
         // emiting an identifier here
         this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
     }
+    
     public override enterKw_override = (ctx: Kw_overrideContext): void =>
     {
         this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());

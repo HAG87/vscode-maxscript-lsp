@@ -353,12 +353,14 @@ fragment String_verbatim: '@"' ~["]* '"'
 fragment Quoted: '\'' (~['] | '\\\'')* '\''
 	;
 //--------------------------------------------------------------//
+/*
 fragment Void
 	: U N D E F I N E D
 	| U N S U P P L I E D
 	| S I L E N T V A L U E
 	| O K
 	;
+*/
 // BASIC FRAGMENTS
 fragment Latinchars: [a-zA-Z_0-9]
 	;

@@ -208,7 +208,7 @@ whenStatement: when_predicate NL* DO NL* expr
 	;
 
 when_predicate
-	: WHEN NL* (identifier NL*)? (identifier | path | expr_seq | array) NL* (CHANGE | DELETED)  NL*  (NL* param)* (NL* operand)?
+	: WHEN NL* (reference NL*)? (reference | path | expr_seq | array) NL* (CHANGE | DELETED)  NL*  (NL* param)* (NL* operand)?
 	;
 
 //-------------------------------------- CONTEXT_EXPR
@@ -221,7 +221,7 @@ ctx_set
 	: SET (ANIMATE | TIME | IN | LEVEL) NL* operand
 	| SET COORDSYS NL* (LOCAL | operand)
 	| SET ABOUT NL* (COORDSYS | operand)
-	| SET UNDO NL* (STRING | param | identifier)? NL* simpleExpression
+	| SET UNDO NL* (STRING | param | reference)? NL* simpleExpression
 	;
 
 ctx_predicate
@@ -229,7 +229,7 @@ ctx_predicate
 	| IN NL* operand
 	| ABOUT NL* (COORDSYS | operand)
 	| (IN NL*)? COORDSYS NL* (LOCAL | operand)
-	| (WITH NL*)? UNDO NL* (STRING | param | identifier)? NL* simpleExpression
+	| (WITH NL*)? UNDO NL* (STRING | param | reference)? NL* simpleExpression
 	| (WITH NL*)? DefaultAction NL* name
 	| (WITH NL*)? ctx_keyword NL* simpleExpression
 	;
@@ -284,9 +284,9 @@ eventHandlerClause
 	;
 
 event_args
-	: ev_target = identifier NL* ev_type = identifier ( NL* ev_args += identifier )+
-	| ev_target = identifier NL* ev_type = identifier
-	| ev_type = identifier
+	: ev_target = reference NL* ev_type = reference ( NL* ev_args += reference )+
+	| ev_target = reference NL* ev_type = reference
+	| ev_type = reference
 	;
 
 //---------------------------------------- STRUCT DEF
@@ -315,7 +315,7 @@ struct_access: PUBLIC | PRIVATE
 fnDefinition
 	: (fn_mod = MAPPED NL* fn_decl = FN | fn_decl = FN) NL* fn_name = identifier NL*
 		( NL* fn_args )*
-		(NL* fn_params)*
+		( NL* fn_params )*
 		NL* fn_body
 	;
 
@@ -323,7 +323,7 @@ fn_body
 	: EQ NL* expr
 	;
 fn_args
-	: identifier
+	: reference
 	// | de_ref
 	;
 fn_params
@@ -355,7 +355,7 @@ forLoopExpression
 	: FOR NL* for_body NL* for_operator = (IN | EQ) NL* for_sequence NL* for_action = (DO | COLLECT) NL* body = expr
 	;
 
-for_body : var = identifier ( comma index_name = identifier ( comma filtered_index_name = identifier )? )?
+for_body : var = reference ( comma index_name = reference ( comma filtered_index_name = reference )? )?
 	;
 for_sequence : expr ( NL* for_to NL* for_by? )? ( NL* (for_while NL* for_where? | for_where) )?
 	;
@@ -488,7 +488,7 @@ assignmentExpression
 assignment: EQ NL* expr
 	;
 
-destination: accessor | de_ref | identifier | path
+destination: de_ref | reference | path | accessor
 	;
 
 //---------------------------------------- SIMPLE_EXPR
@@ -529,7 +529,7 @@ operand
 	| factor
 	;
 
-classname: identifier | expr_seq
+classname: ID | kw_reserved | expr_seq
 	;
 
 //---------------------------------------- FUNCTION CALL Positional Arguments Keyword Arguments
@@ -566,7 +566,7 @@ paren_pair: {this.closedParens()}? LPAREN RPAREN
 
 fn_caller
 	: accessor
-	| identifier
+	| reference
 	| path
 	| expr_seq
 	| QUESTION
@@ -606,7 +606,7 @@ index: lb expr rb
 
 //---------------------------------------- FACTORS
 factor
-	: identifier
+	: reference
 	| bool
 	| STRING
 	| RESOURCE
@@ -665,13 +665,13 @@ array: SHARP NL* lp arrayList? rp
 arrayList: expr ( comma expr)* ;
 
 // Identifiers
-identifier
-	: GLOB ids
-	| {this.noWSBeNext()}? AMP ids
-	| ids
+reference
+	: GLOB identifier
+	| {this.noWSBeNext()}? AMP identifier
+	| identifier
 	;
 
-ids: (ID | QUOTED_ID | kw_reserved)
+identifier: (ID | QUOTED_ID | kw_reserved)
 	;
 
 path
@@ -682,7 +682,7 @@ path
 name: NAME
 	;
 
-de_ref: {this.noWSBeNext()}? PROD (accessor | ids | path)
+de_ref: {this.noWSBeNext()}? PROD (accessor | identifier | path)
 	;
 // by_ref: {this.noWSBeNext()}? AMP (ids | path) ;
 

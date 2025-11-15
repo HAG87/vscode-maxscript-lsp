@@ -199,8 +199,9 @@ export class ContextSymbolTable extends SymbolTable {
             return undefined;
         }
         const parent = terminal.parent as ParserRuleContext;
+        
         // filter!
-        if (parent.ruleIndex !== mxsParser.RULE_ids) {
+        if (parent.ruleIndex !== mxsParser.RULE_identifier) {
             return undefined;
         }
 
