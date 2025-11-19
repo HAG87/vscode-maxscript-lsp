@@ -36,7 +36,11 @@ SymbolResolver (visitor)
        ↓
 AST with resolved references
        ↓
-Providers (Definition, References, etc.)
+SymbolTreeBuilder
+       ↓
+VS Code ISymbolInfo[] (hierarchical)
+       ↓
+Providers (Definition, References, DocumentSymbol, etc.)
 ```
 
 ## Files
@@ -44,6 +48,7 @@ Providers (Definition, References, etc.)
 - **ASTNodes.ts**: Core AST node definitions with scope chain
 - **ASTBuilder.ts**: Converts ANTLR parse tree to AST
 - **SymbolResolver.ts**: Resolves all symbol references (O(1) per symbol)
+- **SymbolTreeBuilder.ts**: Converts resolved AST to hierarchical symbol tree for VS Code
 - **POC_Test.ts**: Test cases demonstrating the approach
 - **README_POC.ts**: Example integration code
 
@@ -78,15 +83,60 @@ class VariableReference extends ASTNode {
 }
 ```
 
+### SymbolTreeBuilder
+```typescript
+class SymbolTreeBuilder {
+    // Build hierarchical symbol tree for VS Code outline
+    static buildSymbolTree(program: Program, sourceUri: string): ISymbolInfo[];
+    
+    // Build flattened symbol list with hierarchy info
+    static buildFullSymbolTree(program: Program, sourceUri: string): ISymbolInfo[];
+}
+```
+
+**Purpose:** Converts the resolved AST into VS Code's document symbol format.
+
+**Output Structure:**
+```typescript
+// Hierarchical tree for outline view
+Function: myFunction
+  ├─ Parameter: x
+  ├─ Parameter: y
+  ├─ LocalVar: result
+  └─ Function: inner (nested)
+      └─ LocalVar: temp
+
+Struct: MyStruct
+  ├─ Field: value
+  ├─ Field: name
+  └─ Function: getValue (method)
+      └─ LocalVar: temp
+```
+
+**Features:**
+- Functions contain parameters, locals, and nested functions
+- Structs contain fields and methods
+- Blocks are transparent (contents bubble up)
+- Proper VS Code symbol kinds (Function, Struct, Variable, Parameter, Field)
+
 ## Usage Example
 
 ```typescript
 import { buildAST } from './README_POC';
+import { SymbolResolver } from './SymbolResolver';
+import { SymbolTreeBuilder } from './SymbolTreeBuilder';
 
-// Build AST with resolved references
+// 1. Build AST with resolved references
 const ast = buildAST('local x = 5\ny = x + 1');
 
-// Find declaration
+// 2. Resolve symbol references
+const resolver = new SymbolResolver(ast);
+resolver.resolve();
+
+// 3. Build hierarchical symbol tree for VS Code
+const symbols = SymbolTreeBuilder.buildSymbolTree(ast, 'file:///myfile.ms');
+
+// Find declaration - O(1)
 const xDecl = ast.declarations.get('x');
 
 // Get all references - O(1)!
@@ -98,6 +148,15 @@ references.forEach(ref => {
     console.log(`Reference at line ${ref.range.start.line}`);
     console.log(`Resolved to: ${ref.declaration.name}`);
 });
+
+// Use symbols in VS Code DocumentSymbolProvider
+class MySymbolProvider implements DocumentSymbolProvider {
+    provideDocumentSymbols(document: TextDocument): DocumentSymbol[] {
+        const ast = this.buildAndResolveAST(document);
+        const symbols = SymbolTreeBuilder.buildSymbolTree(ast, document.uri.toString());
+        return symbols.map(s => this.toDocumentSymbol(s));
+    }
+}
 ```
 
 ## Performance Comparison
@@ -107,6 +166,7 @@ references.forEach(ref => {
 | Find references | O(n²) tree walk | O(1) array access | 40-100x |
 | Find definition | O(n) tree walk | O(1) direct link | 10-50x |
 | Scope resolution | Heuristic matching | Direct scope chain | 100% reliable |
+| Build symbol tree | O(n²) with DFS | O(n) single pass | 10-50x |
 
 ## POC Scope
 
@@ -117,6 +177,9 @@ references.forEach(ref => {
 - ✅ Function parameters
 - ✅ Block expressions (basic)
 - ✅ Scope chain resolution
+- ✅ Struct definitions
+- ✅ Hierarchical symbol tree builder
+- ✅ VS Code DocumentSymbol integration
 
 **Not Yet Implemented:**
 - ❌ Control flow (if, while, for)
@@ -145,8 +208,14 @@ references.forEach(ref => {
 ```typescript
 // DefinitionProvider.ts
 const ast = buildAST(document.getText());
+const resolver = new SymbolResolver(ast);
+resolver.resolve();
 const reference = findNodeAtPosition(ast, position);
 return reference.declaration?.range; // O(1)!
+
+// DocumentSymbolProvider.ts
+const symbols = SymbolTreeBuilder.buildSymbolTree(ast, document.uri.toString());
+return symbols.map(s => this.toDocumentSymbol(s)); // Hierarchical outline!
 ```
 
 ### Phase 3: Expand AST (2 weeks)

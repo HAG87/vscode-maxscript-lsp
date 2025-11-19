@@ -296,11 +296,12 @@
     "pretest": "npm run compile-tests && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test",
-    "test:ast": "npm run compile && node out/backend/ast/run-tests.js",
-    "test:ast:simple": "npm run compile && node out/backend/ast/test-simple.js",
-    "test:ast:functions": "npm run compile && node out/backend/ast/test-functions.js",
-    "test:ast:nested": "npm run compile && node out/backend/ast/test-nested.js",
-    "test:ast:performance": "npm run compile && node out/backend/ast/test-performance.js",
+    "test:ast": "npm run compile-tests && node out/backend/ast/run-tests.js",
+    "test:ast:simple": "npm run compile-tests && node out/backend/ast/test-simple.js",
+    "test:ast:functions": "npm run compile-tests && node out/backend/ast/test-functions.js",
+    "test:ast:nested": "npm run compile-tests && node out/backend/ast/test-nested.js",
+    "test:ast:performance": "npm run compile-tests && node out/backend/ast/test-performance.js",
+    "test:ast:symboltree": "npm run compile-tests && node out/backend/ast/test-symboltree.js",
     "generate": "antlr4ng -Dlanguage=TypeScript -visitor -Xexact-output-dir src/parser/grammars/mxsLexer.g4 src/parser/grammars/mxsParser.g4 -o src/parser"
   },
   "devDependencies": {

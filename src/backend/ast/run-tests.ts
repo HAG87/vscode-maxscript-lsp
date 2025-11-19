@@ -14,7 +14,8 @@ const tests = [
     'test-simple.js',
     'test-functions.js',
     'test-nested.js',
-    'test-performance.js'
+    'test-performance.js',
+    'test-symboltree.js'
 ];
 
 console.log('========================================');

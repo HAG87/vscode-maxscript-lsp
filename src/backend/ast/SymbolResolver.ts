@@ -1,6 +1,47 @@
 /**
  * Resolves symbol references in the AST using Tylasu
- * Implements variable declaration/reference linking
+ * 
+ * PURPOSE:
+ * Links variable/function references to their declarations (semantic binding).
+ * This enables features like go-to-definition, find-all-references, and unused variable detection.
+ * 
+ * PROCESS:
+ * 1. Walks the AST tree respecting scope boundaries
+ * 2. For each VariableReference, finds its VariableDeclaration using scope chain lookup
+ * 3. Creates bidirectional links:
+ *    - Reference.declaration → points to Declaration
+ *    - Declaration.references[] → contains all References
+ * 
+ * SCOPE HANDLING:
+ * - Respects MaxScript scope rules (local → function → global)
+ * - Functions create new scope for parameters and locals
+ * - Structs create scope for members and methods
+ * - Blocks create scope for their local declarations
+ * 
+ * USAGE:
+ * ```typescript
+ * // After building AST from parse tree
+ * const ast = ASTBuilder.buildAST(parseTree);
+ * 
+ * // Resolve all symbol references
+ * const resolver = new SymbolResolver(ast, collectedReferences);
+ * resolver.resolve();
+ * 
+ * // Now AST has resolved links:
+ * // - Each VariableReference knows its VariableDeclaration
+ * // - Each VariableDeclaration knows all its references
+ * 
+ * // Use for language features:
+ * // - Go-to-definition: follow reference.declaration.referred
+ * // - Find-all-references: access declaration.references[]
+ * // - Unused variables: check if declaration.references.length === 0
+ * 
+ * // Then build symbol tree for VS Code outline:
+ * const symbols = SymbolTreeBuilder.buildSymbolTree(ast, sourceUri);
+ * ```
+ * 
+ * @see SymbolTreeBuilder - Converts resolved AST to hierarchical symbol tree for VS Code outline
+ * @see ASTBuilder - Creates initial AST from ANTLR parse tree
  */
 
 import {
@@ -10,6 +51,7 @@ import {
     FunctionDefinition,
     Program,
     ScopeNode,
+    StructDefinition,
     VariableDeclaration,
     VariableReference,
 } from './ASTNodes.js';
@@ -94,6 +136,22 @@ export class SymbolResolver {
         this.currentScope = previousScope;
     }
     
+    private visitStructDefinition(node: StructDefinition): void {
+        // Save current scope
+        const previousScope = this.currentScope;
+        
+        // Enter struct scope
+        this.currentScope = node;
+        
+        // Resolve methods
+        for (const method of node.methods) {
+            this.visit(method);
+        }
+        
+        // Restore scope
+        this.currentScope = previousScope;
+    }
+    
     private visitBlockExpression(node: BlockExpression): void {
         // Blocks create new scope in MaxScript
         const previousScope = this.currentScope;
@@ -130,6 +188,8 @@ export class SymbolResolver {
             this.visitVariableReference(node);
         } else if (node instanceof FunctionDefinition) {
             this.visitFunctionDefinition(node);
+        } else if (node instanceof StructDefinition) {
+            this.visitStructDefinition(node);
         } else if (node instanceof BlockExpression) {
             this.visitBlockExpression(node);
         } else if (node instanceof AssignmentExpression) {

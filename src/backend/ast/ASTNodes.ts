@@ -32,11 +32,32 @@ export abstract class ScopeNode extends Node {
             decl.declaringScope = this;
         }
     }
+    
+    /**
+     * Get all declarations in this scope (for symbol tree)
+     */
+    getDeclarations(): VariableDeclaration[] {
+        return Array.from(this.declarations.values());
+    }
+    
+    /**
+     * Get all nested scopes (functions, blocks) for hierarchical symbol tree
+     */
+    abstract getChildScopes(): ScopeNode[];
 }
 
 // Root program node
 export class Program extends ScopeNode {
     statements: Node[] = [];
+    
+    getChildScopes(): ScopeNode[] {
+        // Return all function definitions and top-level blocks
+        return this.statements.filter(stmt => 
+            stmt instanceof FunctionDefinition || 
+            stmt instanceof StructDefinition ||
+            stmt instanceof BlockExpression
+        ) as ScopeNode[];
+    }
 }
 
 // Variable declaration: local x = 5
@@ -82,11 +103,42 @@ export class FunctionDefinition extends ScopeNode implements PossiblyNamed {
         super(position);
         this.name = name;
     }
+    
+    getChildScopes(): ScopeNode[] {
+        // Return body if it exists
+        return this.body ? [this.body] : [];
+    }
+}
+
+// Struct definition (scope node)
+export class StructDefinition extends ScopeNode implements PossiblyNamed {
+    name?: string;
+    members: VariableDeclaration[] = [];
+    methods: FunctionDefinition[] = [];
+    
+    constructor(name: string, position?: Position) {
+        super(position);
+        this.name = name;
+    }
+    
+    getChildScopes(): ScopeNode[] {
+        // Return all methods as child scopes
+        return this.methods;
+    }
 }
 
 // Block expression (scope node) - (expr1; expr2; expr3)
 export class BlockExpression extends ScopeNode {
-    expressions: Expression[] = [];
+    expressions: Node[] = [];  // Can contain Expression, FunctionDefinition, VariableDeclaration, etc.
+    
+    getChildScopes(): ScopeNode[] {
+        // Return nested blocks, functions, and structs
+        return this.expressions.filter(expr => 
+            expr instanceof FunctionDefinition || 
+            expr instanceof BlockExpression ||
+            expr instanceof StructDefinition
+        ) as ScopeNode[];
+    }
 }
 
 // Base expression
