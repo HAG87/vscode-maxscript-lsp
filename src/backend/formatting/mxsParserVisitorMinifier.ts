@@ -114,48 +114,15 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         return factor + right + this.visit(ctx.COLON())! + left + expr
     }
     visitIfExpression = (ctx: IfExpressionContext): string =>
-    {
-        let result = this.visit(ctx.IF())! + this.visit(ctx._ifCondition!)
-
-        if (ctx._doBody) {
-            result += this.visit(ctx.DO()!)!
-            result += this.visit(ctx._doBody!)!
-        } else if (ctx._thenBody) {
-            result += this.visit(ctx.THEN()!)!
-            result += this.visit(ctx._thenBody!)!
-
-            if (ctx.ELSE()) {
-                result += this.visit(ctx.ELSE()!)!
-                result += this.visit(ctx._elseBody!)!
-            }
-        }
-        
-        return result
-    }
+        this.visitChildren(ctx)!
     visitDoLoopExpression = (ctx: DoLoopExpressionContext): string =>
-    {
-        return this.visit(ctx.DO()!)! + this.visit(ctx._body!)! + 
-               this.visit(ctx.WHILE()!)! + this.visit(ctx._condition!)!
-    }
+        this.visitChildren(ctx)!
     visitWhileLoopExpression = (ctx: WhileLoopExpressionContext): string =>
-    {
-        return this.visit(ctx.WHILE()!)! + this.visit(ctx._condition!)! + 
-               this.visit(ctx.DO()!)! + this.visit(ctx._body!)!
-    }
+        this.visitChildren(ctx)!
     visitForLoopExpression = (ctx: ForLoopExpressionContext): string =>
-    {
-        const forOperator = ctx._for_operator!.text!
-        const forAction = ctx._for_action!.text!
-        
-        return this.visit(ctx.FOR()!)! + this.visit(ctx.for_body())! + 
-               forOperator + this.visit(ctx.for_sequence())! + 
-               forAction + this.visit(ctx._body!)!
-    }
+        this.visitChildren(ctx)!
     visitTryExpression = (ctx: TryExpressionContext): string =>
-    {
-        return this.visit(ctx.TRY()!)! + this.visit(ctx._tryBody!)! + 
-               this.visit(ctx.CATCH()!)! + this.visit(ctx._catchBody!)!
-    }
+        this.visitChildren(ctx)!
     visitContextExpression = (ctx: ContextExpressionContext): string =>
         this.visitChildren(ctx)!
     //-------------------------------------------------------

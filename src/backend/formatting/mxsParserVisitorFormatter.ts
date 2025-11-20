@@ -1509,13 +1509,13 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         return new codeToken(ctx.getText(), codeTypes.ID, ctx.start?.start)
     }
     
-    visitReference = (ctx: ReferenceContext): R[] =>
+    visitReference = (ctx: ReferenceContext): codeToken =>
     {
-        const vals = this.visitChildren(ctx)!;
-        // change prefix state
-        Object.assign(<codeToken>vals[0], { isPrefix: true });
-        // (vals[0] as codeToken).isPrefix = true
-        return vals
+        const token = new codeToken(ctx.getText(), codeTypes.ID, ctx.start?.start)
+        if (ctx.AMP() || ctx.GLOB()) {
+            token.hasPrefix = true;
+        }
+        return token
     }
     //-------------------------------------------------------
     visitArray = (ctx: ArrayContext): codeBlock =>
