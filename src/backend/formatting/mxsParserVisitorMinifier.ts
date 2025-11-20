@@ -115,19 +115,19 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     }
     visitIfExpression = (ctx: IfExpressionContext): string =>
     {
-        let result = this.visit(ctx.IF())! + this.visit(ctx.simpleExpression())!
-        
-        if (ctx.THEN()) {
+        let result = this.visit(ctx.IF())! + this.visit(ctx._ifCondition!)
+
+        if (ctx._doBody) {
+            result += this.visit(ctx.DO()!)!
+            result += this.visit(ctx._doBody!)!
+        } else if (ctx._thenBody) {
             result += this.visit(ctx.THEN()!)!
             result += this.visit(ctx._thenBody!)!
-            
+
             if (ctx.ELSE()) {
                 result += this.visit(ctx.ELSE()!)!
                 result += this.visit(ctx._elseBody!)!
             }
-        } else if (ctx.DO()) {
-            result += this.visit(ctx.DO()!)!
-            result += this.visit(ctx._doBody!)!
         }
         
         return result
