@@ -363,26 +363,6 @@ export class mxsBackend
     }
 
     /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.getSymbolInfo(symbol)
-     */
-    public infoForSymbol(uri: string, symbol: string)
-    {
-        return this.getContext(uri).getSymbolInfo(symbol);
-    }
-
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.enclosingSymbolAtPosition(...)
-     */
-    public enclosingSymbolAtPosition(
-        uri: string,
-        line: number,
-        character: number,
-        ruleScope = false)
-    {
-        return this.getContext(uri).enclosingSymbolAtPosition(line, character, ruleScope);
-    }
-
-    /**
      * Returns a list of top level symbols from a file (and optionally its dependencies).
      *
      * @param fileName The grammar file name.

@@ -63,6 +63,8 @@ export class Utilities
      */
     public static lexicalRangeToRange(range: ILexicalRange): Range
     {
+        // ILexicalRange uses ANTLR's 1-based line numbers
+        // Convert to VS Code's 0-based Position
         const start = new Position(
             range.start.row === 0 ? 0 : range.start.row - 1,
             range.start.column

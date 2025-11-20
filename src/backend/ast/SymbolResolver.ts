@@ -144,7 +144,7 @@ export class SymbolResolver {
         this.currentScope = node;
         
         // Resolve methods
-        for (const method of node.methods) {
+        for (const method of node.members) {
             this.visit(method);
         }
         

@@ -11,10 +11,31 @@
  * - Proper symbol kinds (Variable, Function, Class, etc.)
  * - Position information for navigation
  * 
+ * MAXSCRIPT LANGUAGE COMPONENTS FOR SYMBOL OUTLINE:
+ * ✅ Implemented:
+ * - Variables: local, global, persistent declarations
+ * - Functions: function definitions with arguments, parameters, and local variables
+ * - Structs: struct definitions with fields and methods
+ * - Struct Members: public/private fields and methods
+ * - Nested Functions: functions defined inside other functions or blocks
+ * 
+ * ⏳ Pending:
+ * - MacroScripts: macroscript definitions (should appear as top-level symbols)
+ * - Utilities: utility plugin definitions
+ * - Rollouts: rollout UI definitions with controls
+ * - Tools: tool definitions
+ * - RCMenus: right-click menu definitions
+ * - Plugins: plugin definitions (geometry, modifier, material, etc.)
+ * - Attributes: attribute definitions (custom attributes)
+ * - Event Handlers: on <event> do <handler> clauses in rollouts/structs
+ * - Control Declarations: UI controls in rollouts (button, spinner, checkbox, etc.)
+ * 
  * STRUCTURE:
  * The builder creates a tree where:
  * - Functions contain: parameters, local variables, nested functions
- * - Structs contain: member fields, methods
+ * - Structs contain: member fields, methods (with accessibility markers)
+ * - MacroScripts contain: local functions, variables, event handlers
+ * - Rollouts contain: controls, event handlers, local functions
  * - Blocks are transparent (their contents bubble up to parent)
  * 
  * METHODS:
@@ -38,6 +59,12 @@
  * //   ├─ LocalVar: result
  * //   └─ Function: inner (nested)
  * //       └─ LocalVar: temp
+ * // 
+ * // Struct: MyStruct
+ * //   ├─ Field: count
+ * //   ├─ Field: name (private)
+ * //   ├─ Method: init
+ * //   └─ Method: getValue (private)
  * 
  * // 3. Use in VS Code DocumentSymbolProvider
  * provideDocumentSymbols(document: TextDocument): DocumentSymbol[] {
@@ -65,7 +92,11 @@ import {
     ScopeNode,
     VariableDeclaration,
     FunctionDefinition,
+    FunctionArgument,
+    FunctionParameter,
     StructDefinition,
+    StructMemberField,
+    BlockExpression,
 } from './ASTNodes.js';
 
 export class SymbolTreeBuilder {
@@ -124,14 +155,31 @@ export class SymbolTreeBuilder {
     }
     
     /**
-     * Build symbol info for a function with its parameters and local variables as children
+     * Build symbol info for a function with its arguments, parameters, and local variables as children
      */
     private static buildFunctionSymbol(func: FunctionDefinition, sourceUri: string): ISymbolInfo {
         const children: ISymbolInfo[] = [];
         
-        // Add parameters as children
+        // Add simple arguments as children (fn test a b c)
+        for (const arg of func.arguments) {
+            children.push({
+                name: arg.name || '<unnamed>',
+                kind: SymbolKind.Parameter,
+                source: sourceUri,
+                definition: this.positionToDefinition(arg),
+            });
+        }
+        
+        // Add named parameters as children (fn test size:10)
         for (const param of func.parameters) {
-            children.push(this.buildVariableSymbol(param, sourceUri, SymbolKind.Parameter));
+            const description = param.defaultValue ? 'with default' : undefined;
+            children.push({
+                name: param.name || '<unnamed>',
+                kind: SymbolKind.Parameter,
+                source: sourceUri,
+                definition: this.positionToDefinition(param),
+                description,
+            });
         }
         
         // Add local variables declared in function body scope
@@ -175,14 +223,30 @@ export class SymbolTreeBuilder {
     private static buildStructSymbol(struct: StructDefinition, sourceUri: string): ISymbolInfo {
         const children: ISymbolInfo[] = [];
         
-        // Add struct members (fields)
+        // Process all struct members (fields, methods, and events)
         for (const member of struct.members) {
-            children.push(this.buildVariableSymbol(member, sourceUri, SymbolKind.Field));
-        }
-        
-        // Add struct methods
-        for (const method of struct.methods) {
-            children.push(this.buildFunctionSymbol(method, sourceUri));
+            if (!member.value) continue;
+            
+            // Check if this is a method (FunctionDefinition) or a field (StructMemberField)
+            if (member.value instanceof FunctionDefinition) {
+                // Add method
+                const methodSymbol = this.buildFunctionSymbol(member.value, sourceUri);
+                // Optionally mark private methods with description
+                if (member.accessibility === 'private' && methodSymbol) {
+                    methodSymbol.description = 'private';
+                }
+                children.push(methodSymbol);
+            } else if (member.value instanceof StructMemberField) {
+                // Add field - create symbol from StructMemberField
+                const fieldSymbol: ISymbolInfo = {
+                    name: member.value.name || '<unnamed>',
+                    kind: SymbolKind.Field,
+                    source: sourceUri,
+                    definition: this.positionToDefinition(member.value),
+                    description: member.accessibility === 'private' ? 'private' : undefined,
+                };
+                children.push(fieldSymbol);
+            }
         }
         
         return {
@@ -196,6 +260,9 @@ export class SymbolTreeBuilder {
     
     /**
      * Build symbol info for a variable declaration
+     */
+    /**
+     * Build symbol info for a variable with nested scopes from initializer
      */
     private static buildVariableSymbol(
         decl: VariableDeclaration, 
@@ -220,12 +287,29 @@ export class SymbolTreeBuilder {
             }
         }
         
+        // Check if initializer contains nested scopes (e.g., local x = (fn inner y = y * 2))
+        let children: ISymbolInfo[] | undefined;
+        if (decl.initializer instanceof BlockExpression) {
+            children = [];
+            // Traverse child scopes in the initializer block
+            for (const childScope of decl.initializer.getChildScopes()) {
+                const symbol = this.buildSymbolForNode(childScope, sourceUri);
+                if (symbol) {
+                    children.push(symbol);
+                }
+            }
+            if (children.length === 0) {
+                children = undefined;
+            }
+        }
+        
         return {
             name: decl.name || '<unnamed>',
             kind: symbolKind,
             source: sourceUri,
             definition: this.positionToDefinition(decl),
             description: decl.scope !== 'local' ? decl.scope : undefined,
+            children,
         };
     }
     

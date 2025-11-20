@@ -1,6 +1,6 @@
 import {
   CancellationToken, DocumentSymbol, DocumentSymbolProvider, ProviderResult,
-  SymbolInformation, TextDocument,
+  Range, SymbolInformation, TextDocument,
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
@@ -12,29 +12,31 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
 {
     public constructor(private backend: mxsBackend) { }
 
-    private collectAllChildren(symbol: ISymbolInfo): DocumentSymbol
+    /**
+     * Convert ISymbolInfo to VS Code DocumentSymbol
+     */
+    private symbolInfoToDocumentSymbol(symbol: ISymbolInfo): DocumentSymbol
     {
-        function dfs(currentSymbol: ISymbolInfo): DocumentSymbol    
-        {
-            // if (!currentSymbol.definition) { return; }
-            const range = Utilities.lexicalRangeToRange(currentSymbol.definition!.range);
+        // Use definition range if available, otherwise create a default range
+        const range = symbol.definition 
+            ? Utilities.lexicalRangeToRange(symbol.definition.range)
+            : new Range(0, 0, 0, 0);
 
-            const info = new DocumentSymbol(
-                currentSymbol.name,
-                symbolDescriptionFromEnum(currentSymbol.kind),
-                translateSymbolKind(currentSymbol.kind),
-                range,
-                range // TODO: SelectionRange
-            );
+        const documentSymbol = new DocumentSymbol(
+            symbol.name,
+            symbolDescriptionFromEnum(symbol.kind),
+            translateSymbolKind(symbol.kind),
+            range,
+            range // TODO: SelectionRange - should be the identifier range only
+        );
 
-            if (currentSymbol.children?.length) {
-                info.children = currentSymbol.children
-                    .filter(child => 'name' in child && 'definition' in child)
-                    .map(child => dfs(child))
-            }
-            return info;
+        if (symbol.children?.length) {
+            documentSymbol.children = symbol.children
+                .filter(child => child.name && child.definition)
+                .map(child => this.symbolInfoToDocumentSymbol(child));
         }
-        return dfs(symbol);
+
+        return documentSymbol;
     }
 
     provideDocumentSymbols(document: TextDocument, _token: CancellationToken):
@@ -42,33 +44,24 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
     {
         return new Promise((resolve) =>
         {
-            const symbols =
-                this.backend.getContext(document.uri.toString())?.listTopLevelSymbols(false);
+            const symbols = this.backend.getContext(document.uri.toString())?.buildSymbolTree();
+            
+            if (!symbols || symbols.length === 0) {
+                resolve([]);
+                return;
+            }
+
             const symbolsList: DocumentSymbol[] = [];
 
             for (const symbol of symbols) {
                 if (!symbol.definition || !symbol.name) {
                     continue;
                 }
-                if (symbol.children?.length) {
-                    // childrens
-                    symbolsList.push(this.collectAllChildren(symbol));
-                } else {
-                    // symbol does not have children
-                    const range = Utilities.lexicalRangeToRange(symbol.definition.range);
-                    // /*
-                    symbolsList.push(new DocumentSymbol(
-                        symbol.name,
-                        symbolDescriptionFromEnum(symbol.kind),
-                        translateSymbolKind(symbol.kind),
-                        range,
-                        range // TODO: selectionRange
-                    ));
-                    // */
-                }
+                // Use symbolInfoToDocumentSymbol for all symbols (handles both with and without children)
+                symbolsList.push(this.symbolInfoToDocumentSymbol(symbol));
             }
+            
             resolve(symbolsList);
-            // resolve([]);
         });
     }
 }

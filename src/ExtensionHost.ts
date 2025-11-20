@@ -227,10 +227,12 @@ export class ExtensionHost
     private registerProviders(ctx: ExtensionContext): void
     {
         ctx.subscriptions.push(
+            
             languages.registerDocumentSymbolProvider(
                 ExtensionHost.langSelector,
                 new mxsSymbolProvider(this.backend)
             ),
+            /*
             languages.registerReferenceProvider(
                 ExtensionHost.langSelector,
                 new mxsReferenceProvider(this.backend)
@@ -247,12 +249,12 @@ export class ExtensionHost
                 ExtensionHost.langSelector,
                 new mxsRenameProvider(this.backend)
             ),
-            // /*
+            
             languages.registerHoverProvider(
                 ExtensionHost.langSelector,
                 new mxsHoverProvider(this.backend)
             ),
-            // */
+            
             languages.registerCompletionItemProvider(
                 ExtensionHost.langSelector,
                 new mxsCompletionProvider(this.backend, defaultSettings),
@@ -285,7 +287,7 @@ export class ExtensionHost
                     defaultSettings.formatter
                 )
             ),
-            // /*
+            /*
             languages.registerWorkspaceSymbolProvider(
                 this.workspaceSymbolProvider
             )

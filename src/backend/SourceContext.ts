@@ -8,7 +8,7 @@ import {
 } from 'antlr4ng';
 
 import { mxsLexer } from '../parser/mxsLexer.js';
-import { mxsParser } from '../parser/mxsParser.js';
+import { mxsParser, ProgramContext } from '../parser/mxsParser.js';
 import {
   DiagnosticType, ICodeFormatSettings, IDefinition, IDiagnosticEntry,
   ILexicalRange, IMinifySettings, IPrettifySettings, ISemanticToken,
@@ -27,32 +27,42 @@ import { mxsParserVisitorMinifier } from './formatting/mxsParserVisitorMinifier.
 import { semanticTokenListener } from './semantic/semanticTokenListener.js';
 import { CodeCompletionProvider } from './symbols/codeCompletionProvider.js';
 import { symbolTableListener } from './symbolTableListener.js';
-
+import { ASTBuilder } from './ast/ASTBuilder.js';
+import { Program } from './ast/ASTNodes.js';
+import { SymbolResolver } from './ast/SymbolResolver.js';
+import { SymbolTreeBuilder } from './ast/SymbolTreeBuilder';
 
 // One context for each valid document
 export class SourceContext
 {
     // context source uri pointing at the document
     public sourceUri: string;
-
+    //-------------------------------------------------
+    // Parsing infrastructure.
+    private tokenStream: CommonTokenStream;
+    private lexer: mxsLexer;
+    private parser: mxsParser;
+    // The root context from the last parse run.
+    private tree: ProgramContext | undefined;
+    
+    //-------------------------------------------------
     // symbols for the current document
     public symbolTable: ContextSymbolTable;
-    // document uri?
-    // symbolTable: string;
 
+    // AST for the current document
+    public ast: Program | undefined;
+    
     // could be useful to store te token stream...
 
+    //-------------------------------------------------
     // hold diagnostics for the context
     public diagnostics: IDiagnosticEntry[] = [];
     // semantic tokens
     public semanticTokens: ISemanticToken[] = [];
     // TODO: Contexts referencing us.
     private references: SourceContext[] = [];
+    //-------------------------------------------------
 
-    // Parsing infrastructure.
-    private tokenStream: CommonTokenStream;
-    private lexer: mxsLexer;
-    private parser: mxsParser;
     // error listeners
     private lexerErrorListener: ContextLexerErrorListener =
         new ContextLexerErrorListener(this.diagnostics);
@@ -68,7 +78,8 @@ export class SourceContext
     public constructor(uri: string, /*settings*/)
     {
         this.sourceUri = uri;
-        // initialize simbol table
+
+        // initialize symbol table
         this.symbolTable = new ContextSymbolTable(
             this.sourceUri,
             { allowDuplicateSymbols: true },
@@ -94,6 +105,7 @@ export class SourceContext
     }
 
     //----------------------------------------------------------------parser
+
     // get getTokenStream() { return this.tokenStream; }
     public parse(): void
     {
@@ -167,23 +179,45 @@ export class SourceContext
         this.symbolTable.tree = this.tree;
         const symbolsListener = new symbolTableListener(this.symbolTable);
         ParseTreeWalker.DEFAULT.walk(symbolsListener, this.tree);
+        //---------------------------------------------------------------
+        // 2. Build AST from parse tree
+        const builder = new ASTBuilder();
+        this.ast = builder.visitProgram(this.tree);
+        // 3. Resolve all symbol references
+        const resolver = new SymbolResolver(this.ast); // Takes existing AST
+        resolver.resolve(); // MUTATES the AST (no return value)
+        //---------------------------------------------------------------
+        // TODO: this.info.unreferencedRules = this.symbolTable.getUnreferencedSymbols();
+        // TODO: this can be used to add dependencies... imports come from the listener
+        // return this.info.imports;
         this.symbolTable.rebuildReferenceIndex();
         
         this.symbolTableDirty = false;
     }
+    //---------------------------------------------------------------
+    // 3. Build hierarchical symbol tree for VS Code
+    public buildSymbolTree(): ISymbolInfo[] {
+        if (!this.ast) {
+            return [];
+        }
+        return SymbolTreeBuilder.buildSymbolTree(this.ast, this.sourceUri);
+    }
+    //---------------------------------------------------------------
 
     /**
      * Update the text content of a loaded context.
      * Call this before reparsing or code completion.
-     * @param uri The document uri
      * @param source The document content, or undefined to read from file
      */
     public setText(source: string): void
     {
-        this.lexer.inputStream = CharStream.fromString(source);
+        const charStream = CharStream.fromString(source);
+        if (charStream != this.lexer.inputStream) {
+            this.lexer.inputStream = charStream
+        }
     }
 
-    public changedText(source: string): boolean
+    public hasChangedText(source: string): boolean
     {
         return source === this.lexer.text
     }
@@ -260,6 +294,7 @@ export class SourceContext
      * @param ruleScope If true find the enclosing rule (if any) and return it's range, instead of the directly
      *                  enclosing scope.
      * @returns The symbol at the given position (if there's any).
+     * @deprecated
     */
     public enclosingSymbolAtPosition(
         row: number,
@@ -342,12 +377,17 @@ export class SourceContext
         // return await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
     }
 
+    /**
+     * @deprecated
+     */
     public getSymbolInfo(symbol: string | BaseSymbol): ISymbolInfo | undefined
     {
         this.ensureSymbolTable();
         return this.symbolTable.getSymbolInfo(symbol);
     }
-
+    /**
+     * @deprecated
+     */
     public resolveSymbol(symbolName: string): BaseSymbol | undefined
     {
         this.ensureSymbolTable();

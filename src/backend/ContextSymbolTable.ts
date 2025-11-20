@@ -267,7 +267,8 @@ export class ContextSymbolTable extends SymbolTable {
      */
     public symbolInfoTopLevel(localOnly: boolean): ISymbolInfo[] {
         return (topLevelSymbolsType.map(t =>
-            this.symbolInfoOfType(t as typeof ExprSymbol, localOnly)).flat());
+            this.symbolInfoOfType(t as typeof ExprSymbol, localOnly)).flat()
+        );
     }
 
     private symbolInfoOfType<T extends ScopedSymbol, Args extends unknown[]>

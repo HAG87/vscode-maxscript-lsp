@@ -19,6 +19,25 @@ options {
 	superClass = mxsParserBase;
 	//language = TypeScript; output = AST;
 }
+/*
+Most programming languages share some concepts.
+We identified these common concepts and defined marker types for them.
+In this way, we can treat these elements similary in all languages.
+
+They are:
+
+- Statement: for example print statements, expression statements, or return statements
+- Expression: for example, literals, mathematical expressions, boolean expressions
+- Entity Declaration: for example, class declarations, top level function declarations
+
+A Primitive Type is anything that is not a Node is considered a primitive type.
+Typically these are Strings, Chars, Ints.
+This does not include Enums, which are treated separately.
+Arbitrary other types can be used.
+They may require additional configuration for example, for serialization.
+
+
+*/
 
 /*GRAMMAR RULES*/
 

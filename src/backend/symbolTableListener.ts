@@ -111,6 +111,10 @@ export class symbolTableListener extends mxsParserListener
         this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString());
     }
     public override exitExpr = (ctx: ExprContext): void => { this.popSymbol(); }
+
+    public override enterExpr_seq = (ctx: Expr_seqContext): void => {
+        this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString());
+    }
     // */
     
     // Plugin
