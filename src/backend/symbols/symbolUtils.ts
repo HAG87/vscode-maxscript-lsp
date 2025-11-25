@@ -2,7 +2,7 @@ import { ParserRuleContext, ParseTree, TerminalNode } from "antlr4ng";
 import { BaseSymbol } from "antlr4-c3";
 import { IDefinition, SymbolKind } from "../../types.js";
 import {
-    AssignmentExpressionSymbol, AttributesDefSymbol, EventHandlerClauseSymbol,
+    AssignmentExpressionSymbol, AttributesDefSymbol, EventHandlerStatementSymbol,
     fnArgsSymbol, FnDefinitionSymbol, fnParamsSymbol,
     IdentifierSymbol, MacroScriptDefinitionSymbol, PluginDefinitionSymbol,
     RcMenuDefinitionSymbol,
@@ -20,7 +20,7 @@ const symbolToKindMap: Map<new () => BaseSymbol, SymbolKind> = new Map([
     [RcMenuDefinitionSymbol, SymbolKind.RcMenu],
     [StructDefinitionSymbol, SymbolKind.Struct],
     [StructMemberSymbol, SymbolKind.Identifier],
-    [EventHandlerClauseSymbol, SymbolKind.Event],
+    [EventHandlerStatementSymbol, SymbolKind.Event],
     //...
     [FnDefinitionSymbol, SymbolKind.Function],
     [fnArgsSymbol, SymbolKind.Argument],

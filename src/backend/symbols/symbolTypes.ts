@@ -70,7 +70,7 @@ export class MacroScriptDefinitionSymbol extends ExprSymbol { }
 export class ToolDefinitionSymbol extends ExprSymbol { }
 export class UtilityDefinitionSymbol extends ExprSymbol { }
 export class RolloutDefinitionSymbol extends ExprSymbol { }
-export class rolloutGroupSymbol extends ExprSymbol { }
+export class rolloutGroupDefinitionSymbol extends ExprSymbol { }
 export class RcMenuDefinitionSymbol extends ExprSymbol { }
 export class RolloutControlSymbol extends ExprSymbol
 {
@@ -95,7 +95,7 @@ export class ParamsDefSymbol extends ExprSymbol { }
 export class ParamDefSymbol extends ExprSymbol { }
 export class StructDefinitionSymbol extends ExprSymbol { }
 export class StructMemberSymbol extends ExprSymbol { }
-export class EventHandlerClauseSymbol extends ExprSymbol { }
+export class EventHandlerStatementSymbol extends ExprSymbol { }
 export class FnDefinitionSymbol extends ExprSymbol { }
 export class fnArgsSymbol extends ExprSymbol { }
 export class fnParamsSymbol extends ExprSymbol { }
@@ -112,14 +112,14 @@ export class VariableDeclSymbol extends ExprSymbol
 }
 
 // export class whenStatementSymbol extends ExprSymbol { }
-// export class contextExpressionSymbol extends ExprSymbol { }
+// export class contexStatementSymbol extends ExprSymbol { }
 
-// export class caseExpressionSymbol extends ScopedSymbol { }
-// export class tryExpressionSymbol extends ScopedSymbol { }
-// export class whileLoopExpressionSymbol extends ScopedSymbol { }
-// export class doLoopExpressionSymbol extends ScopedSymbol { }
-// export class caseExpressionSymbol extends ScopedSymbol { }
-// export class tryExpressionSymbol extends ScopedSymbol { }
+// export class caseStatementSymbol extends ScopedSymbol { }
+// export class tryStatementSymbol extends ScopedSymbol { }
+// export class whileLoopStatementSymbol extends ScopedSymbol { }
+// export class doLoopStatementSymbol extends ScopedSymbol { }
+// export class caseStatementSymbol extends ScopedSymbol { }
+// export class tryStatementSymbol extends ScopedSymbol { }
 
 // export class TypecastExprSymbol extends ExprSymbol { }
 // export class UnaryExprSymbol extends ExprSymbol { }
@@ -131,7 +131,7 @@ export class VariableDeclSymbol extends ExprSymbol
 // export class LogicExprSymbol extends ExprSymbol { }
 
 export class AssignmentExpressionSymbol extends ExprSymbol { }
-// export class forLoopExpressionSymbol extends ScopedSymbol { }
+// export class forLoopStatementSymbol extends ScopedSymbol { }
 export class ForBodySymbol extends ExprSymbol { }
 // export class loopExitStatementSymbol extends ScopedSymbol { }
 // export class AssignmentSymbol extends ExprSymbol { }
