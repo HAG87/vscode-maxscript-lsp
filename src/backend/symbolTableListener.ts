@@ -280,7 +280,7 @@ export class symbolTableListener extends mxsParserListener
     }
     public override enterFn_args = (ctx: Fn_argsContext): void => 
     {
-        this.pushNewSymbol(fnArgsSymbol, ctx, ctx.reference()?.getText());
+        this.pushNewSymbol(fnArgsSymbol, ctx, ctx.identifier()?.getText());
     }
     public override exitFn_args = (ctx: Fn_argsContext): void => { this.popSymbol(); }
 

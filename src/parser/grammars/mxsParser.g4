@@ -380,8 +380,8 @@ fn_body
 	: EQ NL* expr
 	;
 fn_args
-	: reference
-	// | de_ref
+	: {this.noWSBeNext()}? AMP identifier   // &arg - by-reference parameter
+	| identifier                             // arg - by-value parameter
 	;
 fn_params
 	: {this.colonBeNext()}? (identifier | kw_override) COLON (NL* operand_arg)?
@@ -514,15 +514,34 @@ simpleExpression
 	| expr_operand							                                            //# ExprOperand (HIGHEST precedence)
 	;
 
+// MaxScript operator precedence within expr_operand:
+// Ordered choice in ANTLR: first match wins
+//
+// 1. Try prefix operators (&, *) first - they bind to the tightest construct after them
+//    &foo.bar → &(foo.bar) - reference to accessor result
+//    *foo.bar → *(foo.bar) - dereference accessor result
+//
+// 2. Then try function calls - postfix operator that needs call syntax
+//    foo.bar() → (foo.bar)() - call the result of accessor
+//
+// 3. Finally try operand - accessor (postfix .[]) or primary (literals/identifiers)
+//    foo.bar → accessor
+//    foo → identifier (via factor)
+//
+// This ordering correctly implements MaxScript's precedence where & and * are prefix
+// operators that have lower precedence than postfix operators (. [] ()), meaning:
+// - &obj.prop is parsed as &(obj.prop), not (&obj).prop
+// - *arr[0] is parsed as *(arr[0]), not (*arr)[0]
 expr_operand
-	: functionCall
-	| de_ref
-	| operand
+	: by_ref      // Prefix: & (binds to everything after)
+	| de_ref      // Prefix: * (binds to everything after)
+	| functionCall // Postfix: function calls with () or args
+	| operand      // Postfix accessor (.[]]) or Primary (literals)
 	;
 
 operand
-	: accessor
-	| factor
+	: accessor    // Postfix: property/index access (obj.prop[0])
+	| factor      // Primary: literals, identifiers, paths, etc.
 	;
 
 classname: ID | kw_reserved | expr_seq
@@ -650,15 +669,16 @@ array: SHARP NL* lp arrayList? rp
 arrayList: expr ( comma expr)*
 	;
 
-// derreferenced variables
-de_ref: {this.noWSBeNext()}? PROD (accessor | identifier | path)
+// Dereference operator: *identifier, *path, *accessor
+de_ref: {this.noWSBeNext()}? PROD (accessor | reference | path)
 	;
-// by_ref: {this.noWSBeNext()}? AMP (ids | path) ;
+	;
+// Reference operator: &identifier, &path, &accessor
+// by_ref: {this.noWSBeNext()}? AMP (accessor | reference | path);
 
 // Identifiers
 reference
 	: GLOB identifier
-	| {this.noWSBeNext()}? AMP identifier
 	| identifier
 	;
 
@@ -666,9 +686,7 @@ identifier
 	: (ID | QUOTED_ID | kw_reserved)
 	;
 
-path
-	: {this.noWSBeNext()}? AMP PATH
-	| PATH
+path: PATH
 	;
 
 name: NAME
