@@ -74,18 +74,18 @@ expr
 ///*
 expr
 	// Keyword-led expressions - unambiguous, fast first-token lookup
-	: ifExpression                  // IF
-	| whileLoopExpression           // WHILE
-	| forLoopExpression             // FOR
-	| tryExpression                 // TRY
-	| caseExpression                // CASE
-	| declarationExpression         // LOCAL | GLOBAL | PERSISTENT
-	| fnDefinition                  // FN | MAPPED
-	| fnReturnStatement             // RETURN
-	| structDefinition              // STRUCT
-	| contextExpression             // AT | IN | WITH | SET | ABOUT
-	| whenStatement                 // WHEN
-	| loopExitStatement             // EXIT
+	: ifStatement                  // IF
+	| whileLoopStatement           // WHILE
+	| forLoopStatement             // FOR
+	| tryStatement                 // TRY
+	| caseStatement                // CASE
+	| declarationStatement         // LOCAL | GLOBAL | PERSISTENT
+	| fnDefinition                 // FN | MAPPED
+	| fnReturnStatement            // RETURN
+	| structDefinition             // STRUCT
+	| contexStatement              // AT | IN | WITH | SET | ABOUT
+	| whenStatement                // WHEN
+	| loopExitStatement            // EXIT
 	// Definition blocks - keyword-led
 	| macroscriptDefinition         // MacroScript
 	| utilityDefinition             // Utility
@@ -101,52 +101,52 @@ expr
 //*/
 //-------------------------------------- MACROSCRIPT_DEF
 macroscriptDefinition
-	: macroscript_predicate NL*
+	: macroscript_clause NL*
     lp
-        (macroscript_clause (lbk? macroscript_clause)*)?
+        (macroscript_members (lbk? macroscript_members)*)?
     rp
 	;
-macroscript_predicate: MacroScript NL* macro_name = identifier ( NL* param )*
+macroscript_clause: MacroScript NL* macro_name = identifier ( NL* param )*
 	;
-macroscript_clause: expr | eventHandlerClause
+macroscript_members: expr | eventHandlerStatement
 	;
 //-------------------------------------- UTILITY_DEF
 utilityDefinition
-	: utility_predicate NL*
+	: utility_clause NL*
     lp
-        ( rollout_clause (lbk? rollout_clause)* )?
+        ( rollout_members (lbk? rollout_members)* )?
     rp
 	;
-utility_predicate: Utility NL* utility_name = identifier NL* operand (NL* param)*
+utility_clause: Utility NL* utility_name = identifier NL* operand (NL* param)*
 	;
 //-------------------------------------- ROLLOUT_DEF
 rolloutDefinition
-	: rollout_predicate NL*
+	: rollout_clause NL*
     lp
-        ( rollout_clause (lbk? rollout_clause)* )?
+        ( rollout_members (lbk? rollout_members)* )?
     rp
 	;
 
-rollout_predicate: Rollout NL* rollout_name = identifier NL* operand (NL* param)*
+rollout_clause: Rollout NL* rollout_name = identifier NL* operand (NL* param)*
 	;
-rollout_clause
-	: declarationExpression
+rollout_members
+	: declarationStatement
 	| rolloutControl
-	| rolloutGroup
+	| rolloutGroupDefinition
 	| fnDefinition
 	| structDefinition
-	| eventHandlerClause
+	| eventHandlerStatement
 	| toolDefinition
 	| rolloutDefinition
 	;
 
-rolloutGroup
-	: group_predicate NL*
+rolloutGroupDefinition
+	: group_clause NL*
     lp
         ( rolloutControl (lbk? rolloutControl)* )?
     rp
 	;
-group_predicate: Group NL* group_name = STRING?
+group_clause: Group NL* group_name = STRING?
 	;
 
 rolloutControl: rolloutControlType NL* controlName = identifier (NL* operand)? (NL* param)*
@@ -184,39 +184,39 @@ rolloutControlType
 
 //-------------------------------------- TOOL_DEF
 toolDefinition
-	: tool_predicate NL*
+	: tool_clause NL*
     lp
-        tool_clause (lbk? tool_clause)*
+        tool_members (lbk? tool_members)*
     rp
 	;
-tool_predicate: Tool NL* tool_name = identifier (NL* param)*
+tool_clause: Tool NL* tool_name = identifier (NL* param)*
 	;
-tool_clause: declarationExpression | fnDefinition | structDefinition | eventHandlerClause
+tool_members: declarationStatement | fnDefinition | structDefinition | eventHandlerStatement
 	;
 
 //-------------------------------------- RCMENU_DEF
 rcmenuDefinition
-	: rcmenu_predicate NL*
+	: rcmenu_clause NL*
 	lp
 		(rc_clause (lbk? rc_clause)*)?
 	rp
 	;
-rcmenu_predicate: RCmenu NL* rc_name = identifier
+rcmenu_clause: RCmenu NL* rc_name = identifier
 	;
-rc_submenu
-	: submenu_predicate NL*
+rc_submenudefinition
+	: submenu_clause NL*
     lp
-        ( rc_clause (lbk? rc_clause)* )?
+        ( rc_members (lbk? rc_members)* )?
     rp
 	;
-submenu_predicate: SubMenu NL* submenu_name = STRING (NL* param)*
+submenu_clause: SubMenu NL* submenu_name = STRING (NL* param)*
 	;
-rc_clause
-	: declarationExpression
+rc_members
+	: declarationStatement
 	| fnDefinition
 	| structDefinition
-	| eventHandlerClause
-	| rc_submenu
+	| eventHandlerStatement
+	| rc_submenudefinition
 	| rcmenuControl
 	;
 
@@ -227,20 +227,20 @@ rcmenuControl
 
 //-------------------------------------- PLUGIN_DEF
 pluginDefinition
-	: plugin_predicate NL*
+	: plugin_clause NL*
     lp
-        plugin_clause (lbk? plugin_clause)*
+        plugin_members (lbk? plugin_members)*
     rp
 	;
-plugin_predicate: Plugin NL* plugin_kind = identifier NL* plugin_name = identifier (NL* param)*
+plugin_clause: Plugin NL* plugin_kind = identifier NL* plugin_name = identifier (NL* param)*
 	;
-plugin_clause
-	: declarationExpression
+plugin_members
+	: declarationStatement
 	| fnDefinition
 	| structDefinition
 	| toolDefinition
 	| rolloutDefinition
-	| eventHandlerClause
+	| eventHandlerStatement
 	| paramsDefinition
 	;
 
@@ -249,7 +249,7 @@ plugin_clause
 // deleted [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr>
 // objects var_name | path | array
 
-whenStatement: when_predicate NL* DO NL* expr
+whenStatement: when_clause NL* DO NL* expr
 	;
 
 when_predicate
@@ -263,7 +263,7 @@ contextExpression
 	| ctx_set
 	;
 
-ctx_cascading: ctx_predicate (comma ctx_predicate)* NL* expr
+ctx_cascading: ctx_clause (comma ctx_clause)* NL* expr
 	;
 /*
 	set <context>      
@@ -324,16 +324,16 @@ ctx_switches
 
 //-------------------------------------- PARAMETER DEF
 paramsDefinition
-	: params_predicate NL*
+	: params_clause NL*
     lp
-        ( params_clause (lbk params_clause)* )?
+        ( params_members (lbk params_members)* )?
     rp
 	;
-params_predicate: Parameters NL* identifier (NL* param)*
+params_clause: Parameters NL* identifier (NL* param)*
 	;
-params_clause
+params_members
 	: paramDefinition
-	| eventHandlerClause
+	| eventHandlerStatement
 	;
 paramDefinition: identifier (NL* param)*
 	;
@@ -342,22 +342,22 @@ paramDefinition: identifier (NL* param)*
 // [silentErrors:t/f] [initialRollupState:0xnnnnn] [remap:#(<old_param_names_array>,
 // <new_param_names_array>)]
 attributesDefinition
-	: attributes_predicate NL*
+	: attributes_clause NL*
     lp
-        attributes_clause ( lbk attributes_clause )*
+        attributes_members ( lbk attributes_members )*
     rp
 	;
-attributes_predicate: Attributes NL* identifier (NL* param)*
+attributes_clause: Attributes NL* identifier (NL* param)*
 	;
-attributes_clause
-	: declarationExpression
-	| eventHandlerClause
+attributes_members
+	: declarationStatement
+	| eventHandlerStatement
 	| paramsDefinition
 	| rolloutDefinition
 	;
 
 //-------------------------------------- EVENT HANDLER
-eventHandlerClause
+eventHandlerStatement
 	: ON NL* ev_args = event_args NL* ev_action = (DO | RETURN) NL* ev_body = expr
 	;
 
@@ -379,7 +379,7 @@ struct_body: (struct_access NL*)? struct_members ( comma (struct_access NL*)? st
 struct_members
 	: struct_member
 	| fnDefinition
-	| eventHandlerClause	
+	| eventHandlerStatement	
 	;
 
 struct_member: identifier assignment? ;
@@ -411,11 +411,11 @@ fnReturnStatement: RETURN NL* returnValue = expr
 	;
 
 //---------------------------------------- LOOPS While loop
-whileLoopExpression: WHILE NL* condition = expr NL* DO NL* body = expr
+whileLoopStatement: WHILE NL* condition = expr NL* DO NL* body = expr
 	;
 
 // Do loop
-doLoopExpression: DO NL* body = expr NL* WHILE NL* condition = expr
+doLoopStatement: DO NL* body = expr NL* WHILE NL* condition = expr
 	;
 
 /* For loop
@@ -427,7 +427,7 @@ doLoopExpression: DO NL* body = expr NL* WHILE NL* condition = expr
  * <expr> [where <expr>]
  */
 
-forLoopExpression
+forLoopStatement
 	: FOR NL* for_body NL* for_operator = (IN | EQ) NL* for_sequence NL* for_action = (DO | COLLECT) NL* body = expr
 	;
 
@@ -447,28 +447,17 @@ loopExitStatement: EXIT (NL* WITH NL* exitValue = expr)?
 	;
 
 //----------------------------------------TRY EXPR
-tryExpression: TRY NL* tryBody = expr NL* CATCH NL* catchBody = expr
+tryStatement: TRY NL* tryBody = expr NL* CATCH NL* catchBody = expr
 	;
 
 //---------------------------------------- CASE-EXPR
-/*
- // this is not correct, because if should work for 5:(a), buuuut.....
-case_item
-    :{!this.colonBeNext()}? (NUMBER | TIMEVAL) COLON NL* expr;
-    | (NUMBER | TIMEVAL) COLON (lbk | {!this.noSpaces()}?) expr
-    | factor NL* COLON NL* expr
-    ;
- case_factor
-	: (accessor | var_name | path | bool | STRING | name | array | bitArray | point3 | point2 | box2 | unary_minus | expr_seq)
-	;
- */
-caseExpression
-	: case_predicate NL*
+caseStatement
+	: case_clause NL*
 	lp
 		case_item (lbk case_item)*
 	rp
 	;
-case_predicate: CASE (NL* expr)? NL* OF
+case_clause: CASE (NL* expr)? NL* OF
 	;
 // This will produce errors at compile time...
 case_item: factor COLON NL* expr
@@ -478,7 +467,7 @@ case_item: factor COLON NL* expr
 // OPTIMIZED: Factor common prefix to avoid re-parsing condition
 // Key insight: Use simpleExpression for condition (not expr) to avoid infinite recursion
 // The body can be expr (which may include nested if statements)
-ifExpression
+ifStatement
 	: IF NL* ifCondition = simpleExpression NL* (
 		THEN NL* thenBody = expr (NL* ELSE NL* elseBody = expr)?
 		| DO NL* doBody = expr
@@ -488,12 +477,12 @@ ifExpression
 /* PREVIOUS VERSIONS (kept for reference)
 
 // This works but is slow - parses condition twice
-ifExpression
+ifStatement
 	: IF NL* simpleExpression NL* THEN NL* expr (NL* ELSE NL* expr)?
 	| IF NL* simpleExpression NL*   DO NL* expr	
 	;
 
-// This caused infinite loop - used expr in condition (includes ifExpression recursively)
+// This caused infinite loop - used expr in condition (includes ifStatement recursively)
 if_statement
  : IF NL* ifClause = expr NL* THEN NL*
     ifBody = expr NL*
@@ -503,7 +492,7 @@ if_statement
 */
 
 //---------------------------------------- DECLARATIONS
-declarationExpression
+declarationStatement
 	: scope = decl_scope NL*
         decl += variableDeclaration ( comma decl += variableDeclaration )*
 	;

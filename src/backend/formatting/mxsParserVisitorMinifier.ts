@@ -3,20 +3,20 @@ import { ParserRuleContext, TerminalNode } from 'antlr4ng';
 import { mxsLexer } from '../../parser/mxsLexer.js';
 import {
   AccessorContext, AssignmentContext, AttributesDefinitionContext,
-  Case_itemContext, CaseExpressionContext, CommaContext,
-  ContextExpressionContext, DoLoopExpressionContext, EventHandlerClauseContext,
+  Case_itemContext, CaseStatementContext, CommaContext,
+  ContexStatementContext, DoLoopStatementContext, EventHandlerStatementContext,
   Expr_operandContext, Expr_seqContext, ExprContext, FactorContext,
-  FnDefinitionContext, FnReturnStatementContext, ForLoopExpressionContext,
-  FunctionCallContext, IdentifierContext, IfExpressionContext, IndexContext,
+  FnDefinitionContext, FnReturnStatementContext, ForLoopStatementContext,
+  FunctionCallContext, IdentifierContext, IfStatementContext, IndexContext,
   LbContext, LbkContext, LcContext, LpContext,
   MacroscriptDefinitionContext, mxsParser, OperandContext, Param_nameContext,
   ParamContext, ParamsDefinitionContext, Paren_pairContext,
   PluginDefinitionContext, ProgramContext, PropertyContext, RbContext,
-  Rc_submenuContext, RcContext, RcmenuControlContext, RcmenuDefinitionContext,
-  RolloutControlContext, RolloutDefinitionContext, RolloutGroupContext,
+  Rc_submenudefinitionContext, RcContext, RcmenuControlContext, RcmenuDefinitionContext,
+  RolloutControlContext, RolloutDefinitionContext, RolloutGroupDefinitionContext,
   RpContext, SimpleExpressionContext, Struct_bodyContext,
-  StructDefinitionContext, ToolDefinitionContext, TryExpressionContext,
-  UtilityDefinitionContext, WhenStatementContext, WhileLoopExpressionContext,
+  StructDefinitionContext, ToolDefinitionContext, TryStatementContext,
+  UtilityDefinitionContext, WhenStatementContext, WhileLoopStatementContext,
 } from '../../parser/mxsParser.js';
 import { mxsParserVisitor } from '../../parser/mxsParserVisitor.js';
 import { ICodeFormatSettings, IMinifySettings } from '../../types.js';
@@ -47,7 +47,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     //-------------------------------------------------------
     visitToolDefinition = (ctx: ToolDefinitionContext): string =>
         this.visitChildren(ctx)!
-    // visitTool_predicate = (ctx: Tool_predicateContext): string => { return this.visitChildren(ctx)! }
+    // visitTool_clause = (ctx: Tool_clauseContext): string => { return this.visitChildren(ctx)! }
     // visitTool_body = (ctx: Tool_bodyContext): string => { return this.visitChildren(ctx)! }
     //-------------------------------------------------------
     visitMacroscriptDefinition = (ctx: MacroscriptDefinitionContext): string =>
@@ -59,9 +59,9 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         this.visitChildren(ctx)!
     visitRolloutDefinition = (ctx: RolloutDefinitionContext): string =>
         this.visitChildren(ctx)!
-    // visitRollout_predicate = (ctx: Rollout_predicateContext): string => { return this.visitChildren(ctx)! }
+    // visitRollout_clause = (ctx: Rollout_clauseContext): string => { return this.visitChildren(ctx)! }
     // visitRollout_body = (ctx: Rollout_bodyContext): string => { return this.visitChildren(ctx)! }
-    visitRolloutGroup = (ctx: RolloutGroupContext): string =>
+    visitRolloutGroupDefinition = (ctx: RolloutGroupDefinitionContext): string =>
         this.visitChildren(ctx)!
     visitRolloutControl = (ctx: RolloutControlContext): string =>
         this.visitChildren(ctx)!
@@ -70,7 +70,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         this.visitChildren(ctx)!
     visitRcmenuControl = (ctx: RcmenuControlContext): string =>
         this.visitChildren(ctx)!
-    visitRc_submenu = (ctx: Rc_submenuContext): string =>
+    visitRc_submenudefinition = (ctx: Rc_submenudefinitionContext): string =>
         this.visitChildren(ctx)!
     //-------------------------------------------------------
     visitAttributesDefinition = (ctx: AttributesDefinitionContext): string =>
@@ -82,14 +82,14 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         this.visitChildren(ctx)!
     visitStruct_body = (ctx: Struct_bodyContext): string =>
         this.visitChildren(ctx)!
-    visitEventHandlerClause = (ctx: EventHandlerClauseContext): string =>
+    visitEventHandlerStatement = (ctx: EventHandlerStatementContext): string =>
         this.visitChildren(ctx)!
     visitFnDefinition = (ctx: FnDefinitionContext): string =>
         this.visitChildren(ctx)!
     visitFnReturnStatement = (ctx: FnReturnStatementContext): string =>
         this.visitChildren(ctx)!
     //-------------------------------------------------------
-    visitCaseExpression = (ctx: CaseExpressionContext): string =>
+    visitCaseStatement = (ctx: CaseStatementContext): string =>
     {
         /*
         console.log(ctx.case_item())
@@ -113,17 +113,50 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
 
         return factor + right + this.visit(ctx.COLON())! + left + expr
     }
-    visitIfExpression = (ctx: IfExpressionContext): string =>
-        this.visitChildren(ctx)!
-    visitDoLoopExpression = (ctx: DoLoopExpressionContext): string =>
-        this.visitChildren(ctx)!
-    visitWhileLoopExpression = (ctx: WhileLoopExpressionContext): string =>
-        this.visitChildren(ctx)!
-    visitForLoopExpression = (ctx: ForLoopExpressionContext): string =>
-        this.visitChildren(ctx)!
-    visitTryExpression = (ctx: TryExpressionContext): string =>
-        this.visitChildren(ctx)!
-    visitContextExpression = (ctx: ContextExpressionContext): string =>
+    visitIfStatement = (ctx: IfStatementContext): string =>
+    {
+        let result = this.visit(ctx.IF())! + this.visit(ctx.simpleExpression())!
+        
+        if (ctx.THEN()) {
+            result += this.visit(ctx.THEN()!)!
+            result += this.visit(ctx._thenBody!)!
+            
+            if (ctx.ELSE()) {
+                result += this.visit(ctx.ELSE()!)!
+                result += this.visit(ctx._elseBody!)!
+            }
+        } else if (ctx.DO()) {
+            result += this.visit(ctx.DO()!)!
+            result += this.visit(ctx._doBody!)!
+        }
+        
+        return result
+    }
+    visitDoLoopStatement = (ctx: DoLoopStatementContext): string =>
+    {
+        return this.visit(ctx.DO()!)! + this.visit(ctx._body!)! + 
+               this.visit(ctx.WHILE()!)! + this.visit(ctx._condition!)!
+    }
+    visitWhileLoopStatement = (ctx: WhileLoopStatementContext): string =>
+    {
+        return this.visit(ctx.WHILE()!)! + this.visit(ctx._condition!)! + 
+               this.visit(ctx.DO()!)! + this.visit(ctx._body!)!
+    }
+    visitForLoopStatement = (ctx: ForLoopStatementContext): string =>
+    {
+        const forOperator = ctx._for_operator!.text!
+        const forAction = ctx._for_action!.text!
+        
+        return this.visit(ctx.FOR()!)! + this.visit(ctx.for_body())! + 
+               forOperator + this.visit(ctx.for_sequence())! + 
+               forAction + this.visit(ctx._body!)!
+    }
+    visitTryStatement = (ctx: TryStatementContext): string =>
+    {
+        return this.visit(ctx.TRY()!)! + this.visit(ctx._tryBody!)! + 
+               this.visit(ctx.CATCH()!)! + this.visit(ctx._catchBody!)!
+    }
+    visitContexStatement = (ctx: ContexStatementContext): string =>
         this.visitChildren(ctx)!
     //-------------------------------------------------------
     visitExpr_seq = (ctx: Expr_seqContext): string =>
