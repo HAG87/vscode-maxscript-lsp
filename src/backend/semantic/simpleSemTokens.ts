@@ -2,7 +2,7 @@ import { CommonTokenStream, Token } from 'antlr4ng';
 
 import { mxsLexer } from '../../parser/mxsLexer.js';
 import { ISemanticToken } from '../../types.js';
-import { maxAPI } from '../schemas/mxsAPI.js';
+import { maxAPI, maxAPILookup } from '../schemas/mxsAPI.js';
 
 // Pre-allocated modifier arrays to avoid repeated allocations
 const MODIFIERS_DEFAULT_LIBRARY = ['defaultLibrary'];
@@ -54,95 +54,15 @@ export class mxsSimpleSemTokensProvider
             const length = txt.length;
 
             // Check in order of likelihood (most common first)
-            // Functions are most common in MaxScript code
-            if (maxAPI.function.has(txt)) {
+            // Single Map lookup for classification
+            const info = maxAPILookup.get(txt);
+            if (info) {
                 this.tokenStack.push({
                     line,
                     startCharacter: column,
                     length,
-                    tokenType: 'function',
-                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
-                });
-                continue;
-            }
-            
-            // Variables and constants
-            if (maxAPI.variable.has(txt)) {
-                this.tokenStack.push({
-                    line,
-                    startCharacter: column,
-                    length,
-                    tokenType: 'variable',
-                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
-                });
-                continue;
-            }
-            
-            if (maxAPI.constant.has(txt)) {
-                this.tokenStack.push({
-                    line,
-                    startCharacter: column,
-                    length,
-                    tokenType: 'variable',
-                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY_READONLY,
-                });
-                continue;
-            }
-            
-            // Classes and types
-            if (maxAPI.class.has(txt)) {
-                this.tokenStack.push({
-                    line,
-                    startCharacter: column,
-                    length,
-                    tokenType: 'class',
-                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY_STATIC,
-                });
-                continue;
-            }
-            
-            if (maxAPI.type.has(txt)) {
-                this.tokenStack.push({
-                    line,
-                    startCharacter: column,
-                    length,
-                    tokenType: 'type',
-                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
-                });
-                continue;
-            }
-            
-            // Structs and interfaces (less common)
-            if (maxAPI.struct.has(txt)) {
-                this.tokenStack.push({
-                    line,
-                    startCharacter: column,
-                    length,
-                    tokenType: 'struct',
-                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
-                });
-                continue;
-            }
-            
-            if (maxAPI.interface.has(txt)) {
-                this.tokenStack.push({
-                    line,
-                    startCharacter: column,
-                    length,
-                    tokenType: 'interface',
-                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
-                });
-                continue;
-            }
-            
-            // Namespaces (least common)
-            if (maxAPI.namespace.has(txt)) {
-                this.tokenStack.push({
-                    line,
-                    startCharacter: column,
-                    length,
-                    tokenType: 'namespace',
-                    tokenModifiers: MODIFIERS_DEFAULT_LIBRARY,
+                    tokenType: info.tokenType as any,
+                    tokenModifiers: info.tokenModifiers,
                 });
                 continue;
             }
