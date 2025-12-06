@@ -1,3 +1,4 @@
+/* THIS IS BROKEN! */
 import {
   CancellationToken, CompletionContext, CompletionItem, CompletionItemKind,
   CompletionItemProvider, CompletionList, Position, ProviderResult,

@@ -1,4 +1,5 @@
 /*
+THIS IS BROKEN!
 TODO:
  - Fix references for symbols with the same name or referenced from an enclosed construct (like calling a method of a structure that initiated into a variable)
 */

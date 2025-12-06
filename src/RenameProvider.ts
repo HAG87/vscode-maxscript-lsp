@@ -1,3 +1,4 @@
+/* THIS IS BROKEN! */
 import {
   CancellationToken, Position, ProviderResult, RenameProvider,
   TextDocument, Uri, WorkspaceEdit,
