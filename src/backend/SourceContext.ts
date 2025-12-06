@@ -69,9 +69,6 @@ export class SourceContext
     private errorListener: ContextErrorListener =
         new ContextErrorListener(this.diagnostics);
 
-    // The root context from the last parse run.
-    private tree: ParserRuleContext | undefined;
-
     // Flag to track if symbol table needs population (lazy loading)
     private symbolTableDirty: boolean = false;
 

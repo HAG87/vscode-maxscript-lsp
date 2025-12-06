@@ -6,10 +6,10 @@ The grammar changes we made **should not break** the existing visitor implementa
 
 ## Current Visitor Approach (Generic - Still Works)
 
-The `visitIfExpression` method currently uses a **generic approach** that iterates through `ctx.children` and checks for specific tokens:
+The `visitifStatement` method currently uses a **generic approach** that iterates through `ctx.children` and checks for specific tokens:
 
 ```typescript
-visitIfExpression = (ctx: IfExpressionContext): codeBlock =>
+visitifStatement = (ctx: ifStatementContext): codeBlock =>
 {
     const vals: (R | R[])[] = []
     let last: ParseTree | undefined;
@@ -54,10 +54,10 @@ visitIfExpression = (ctx: IfExpressionContext): codeBlock =>
 
 ## Improved Approach (After Parser Regeneration)
 
-Once you regenerate the parser with the updated grammar, the `IfExpressionContext` will have labeled accessor methods:
+Once you regenerate the parser with the updated grammar, the `ifStatementContext` will have labeled accessor methods:
 
 ```typescript
-export class IfExpressionContext extends antlr.ParserRuleContext {
+export class ifStatementContext extends antlr.ParserRuleContext {
     public ifCondition(): SimpleExpressionContext { ... }    // The condition
     public thenBody(): ExprContext | null { ... }            // THEN branch body
     public elseBody(): ExprContext | null { ... }            // ELSE branch body  
@@ -71,7 +71,7 @@ export class IfExpressionContext extends antlr.ParserRuleContext {
 ### Refactored Visitor (More Explicit):
 
 ```typescript
-visitIfExpression = (ctx: IfExpressionContext): codeBlock =>
+visitifStatement = (ctx: ifStatementContext): codeBlock =>
 {
     const vals: (R | R[])[] = []
     
@@ -164,7 +164,7 @@ Not overridden in visitor - uses default behavior.
 ✅ Formatting will continue to work correctly
 
 ### After Parser Regeneration (Optional Improvements):
-1. Consider refactoring `visitIfExpression` to use labeled accessors
+1. Consider refactoring `visitifStatement` to use labeled accessors
 2. Add similar improvements to other complex expression visitors
 3. Add unit tests to verify formatting behavior
 

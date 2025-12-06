@@ -13,7 +13,7 @@ Three major optimizations were applied to the MaxScript ANTLR4 parser grammar to
 **Solution:** Reordered alternatives by first-token disambiguation:
 - **Top Priority:** Keyword-led expressions (`IF`, `WHILE`, `FOR`, `TRY`, `CASE`, `LOCAL/GLOBAL`, `FN`, `RETURN`, `STRUCT`, `WHEN`, `EXIT`, context expressions)
 - **Middle Priority:** Definition blocks (`MacroScript`, `Utility`, `Rollout`, `Tool`, `RCmenu`, `Plugin`, `Attributes`)
-- **Low Priority:** Ambiguous cases (`doLoopExpression`, `assignmentExpression`, `simpleExpression`)
+- **Low Priority:** Ambiguous cases (`doLoopStatement`, `assignmentExpression`, `simpleExpression`)
 
 **Expected Gain:** 25-35% improvement for typical MaxScript code
 
@@ -145,7 +145,7 @@ These optimizations preserve MaxScript's whitespace sensitivity:
 ## Future Optimization Opportunities
 
 1. **Inline tiny rules** (`arrayList`, `bitList`) - 2-3% gain
-2. **Factor `ifExpression`** - needs investigation of infinite loop issue
+2. **Factor `ifStatement`** - needs investigation of infinite loop issue
 3. **Optimize `factor` alternatives** - group by token type
 4. **Cache `lineTerminatorAhead()`** - similar to other predicates
 
