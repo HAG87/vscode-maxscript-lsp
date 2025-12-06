@@ -40,56 +40,48 @@
  * - MemberExpression: Property access (obj.property)
  * - IndexExpression: Array/collection indexing (arr[1])
  * - AssignmentExpression: Variable assignments (x = 5) - simple references only
+ * - ReferenceExpression: Reference operator (&obj, &obj.prop, &$path)
+ * - DereferenceExpression: Dereference operator (*ref, *ref.prop, *$path)
  * 
  * Note: Property paths like obj.prop1[0].prop2 are represented as nested MemberExpression
  * and IndexExpression nodes. The parser captures accessors as a flat array (to avoid left
  * recursion), so the AST builder must reconstruct the proper nested structure by chaining
  * these expressions: IndexExpression(MemberExpression(IndexExpression(MemberExpression(...))))
  * 
- * Definition Blocks:
- * - DefinitionBlock: Unified node for all definition blocks (MacroScript, Utility, Rollout, Tool, RCMenu, Plugin, Attributes)
- *   Each has: kind, name, parameters, and body clauses (expressions, functions, structs, event handlers)
- * 
- * ⏳ Pending AST Nodes:
- * 
- * Control Flow Statements:
- * - IfStatement: if-then-else conditionals
- * - WhileStatement: while loops
- * - DoWhileStatement: do-while loops
- * - ForStatement: for loops (for i in collection, for i = 1 to 10)
- * - ForWhereClause: for-where filtering
- * - ForWhileClause: for-while conditions
- * - CaseStatement: case/of switch statements
- * - CaseItem: Individual case branches
+ * Control Flow:
+ * - IfStatement: if-then-else conditionals with optional do-variant
+ * - WhileStatement: while loops (while condition do body)
+ * - DoWhileStatement: do-while loops (do body while condition)
  * - TryStatement: try-catch error handling
- * - CatchClause: catch blocks
- * - ReturnStatement: return statements
- * - ExitStatement: exit/continue statements
- * - WhenStatement: when construct
- * 
- * Context Expressions:
- * - ContextExpression: at/in/with/set level/time/coordsys expressions
- * - AtLevelExpression: at level context
- * - InCoordSysExpression: in coordsys context
- * - WithExpression: with context
+ * - ForStatement: for loops with in/= operators, do/collect actions
+ * - CaseStatement: case/of switch statements with case items
+ * - ReturnStatement: return statements with optional value
+ * - ExitStatement: exit statements with optional value
+ * - WhenStatement: when change handlers for object monitoring
  * 
  * Event Handlers:
- * - EventHandlerClause: on <event> do <handler> clauses
+ * - EventHandlerStatement: on <event> do <handler> clauses (on target event args do/return body)
  * 
- * Advanced Literals:
- * - PathLiteral: File path literals ($scripts/test.ms)
- * - IntervalLiteral: Time interval literals (interval start end)
- * - PercentLiteral: Percentage literals (50%)
- * - TimeValueLiteral: Time value literals (10f, 10t, 10s)
+ * Definition Blocks:
+ * - DefinitionBlock: Unified node for all definition blocks (MacroScript, Utility, Rollout, RolloutGroup, Tool, RCMenu, Plugin, Attributes)
+ *   Each has: kind, name, parameters, and body clauses (expressions, functions, structs, event handlers)
  * 
  * Note: Matrix3, Quat, Angle, and Color are not implemented as literals since they use
  * function call syntax (matrix3 [1,0,0] [0,1,0] [0,0,1], quat 0 0 0 1, color 255 0 0)
  * and will be handled as CallExpression nodes.
  * 
- * Complex Expressions:
- * - DereferenceExpression: Dereference expressions ($obj)
- * - ArrayComprehension: Collect expressions (for x in arr where condition collect result)
- * - TernaryExpression: Conditional expressions (if condition then a else b as value)
+ * ⏳ Pending AST Nodes:
+ * 
+ * Context Statement:
+ * - contexStatement: at/in/with/set level/time/coordsys expressions
+ * - AtLevelExpression: at level context
+ * - InCoordSysExpression: in coordsys context
+ * - WithExpression: with context
+ * 
+ * Advanced Literals:
+ * - PathLiteral: File path literals ($scripts/test.ms)
+ * - IntervalLiteral: Time interval literals (interval start end)
+ * - TimeValueLiteral: Time value literals (10f, 10t, 10s)
  * 
  * Assignment Targets:
  * - ComplexAssignmentTarget: Support for property paths, derefs, and accessors as assignment targets
@@ -179,12 +171,15 @@ export class VariableReference extends Node implements PossiblyNamed {
 }
 
 // Function argument: simple identifier in function definition (fn test a b c)
+// Can be by-value (arg) or by-reference (&arg)
 export class FunctionArgument extends Node implements PossiblyNamed {
     name?: string;
+    isByReference: boolean = false;  // true for &arg, false for arg
     
-    constructor(name: string, position?: Position) {
+    constructor(name: string, isByReference: boolean = false, position?: Position) {
         super(position);
         this.name = name;
+        this.isByReference = isByReference;
     }
 }
 
@@ -456,5 +451,228 @@ export class AssignmentExpression extends Expression {
         super(position);
         this.target = target;
         this.value = value;
+    }
+}
+
+// Reference expression: &variable, &obj.prop, &$path
+// The & operator creates a reference (pointer) to a variable or property
+export class ReferenceExpression extends Expression {
+    operand: Expression;
+    
+    constructor(operand: Expression, position?: Position) {
+        super(position);
+        this.operand = operand;
+    }
+}
+
+// Dereference expression: *variable, *ref.prop, *$path
+// The * operator dereferences a reference (pointer) to access its value
+export class DereferenceExpression extends Expression {
+    operand: Expression;
+    
+    constructor(operand: Expression, position?: Position) {
+        super(position);
+        this.operand = operand;
+    }
+}
+
+// ============================================================================
+// CONTROL FLOW STATEMENTS
+// ============================================================================
+
+// If statement: if condition then body else altBody | if condition do body
+// MaxScript supports two variants:
+// 1. if <condition> then <body> [else <altBody>]  - traditional if-then-else
+// 2. if <condition> do <body>                      - do-variant (no else)
+export class IfStatement extends Expression {
+    condition: Expression;
+    thenBody?: Expression;  // Body for 'if...then' variant
+    elseBody?: Expression;  // Optional else clause
+    doBody?: Expression;    // Body for 'if...do' variant
+    
+    constructor(condition: Expression, position?: Position) {
+        super(position);
+        this.condition = condition;
+    }
+    
+    /** True if this is the 'do' variant (if cond do body), false for 'then' variant */
+    get isDoVariant(): boolean {
+        return this.doBody !== undefined;
+    }
+}
+
+// While statement: while condition do body
+export class WhileStatement extends Expression {
+    condition: Expression;
+    body: Expression;
+    
+    constructor(condition: Expression, body: Expression, position?: Position) {
+        super(position);
+        this.condition = condition;
+        this.body = body;
+    }
+}
+
+// Do-While statement: do body while condition
+export class DoWhileStatement extends Expression {
+    body: Expression;
+    condition: Expression;
+    
+    constructor(body: Expression, condition: Expression, position?: Position) {
+        super(position);
+        this.body = body;
+        this.condition = condition;
+    }
+}
+
+// Try-Catch statement: try body catch handler
+// MaxScript's try-catch is simple: try <expr> catch <expr>
+// The catch body is executed if any error occurs in the try body
+export class TryStatement extends Expression {
+    tryBody: Expression;
+    catchBody: Expression;
+    
+    constructor(tryBody: Expression, catchBody: Expression, position?: Position) {
+        super(position);
+        this.tryBody = tryBody;
+        this.catchBody = catchBody;
+    }
+}
+
+// For statement: for var [, index [, filtered_index]] in/= sequence do/collect body
+// MaxScript supports multiple for loop variants:
+// - for i in array do expr
+// - for i = 1 to 10 do expr
+// - for i in array collect expr
+// - for i = 1 to 10 by 2 where condition while condition do expr
+export class ForStatement extends Expression {
+    variable: VariableReference;           // Loop variable
+    indexVariable?: VariableReference;     // Optional index variable
+    filteredIndexVariable?: VariableReference; // Optional filtered index variable
+    operator: 'in' | '=';                  // in (iterate collection) or = (numeric range)
+    sequence: Expression;                  // Collection or start value
+    toValue?: Expression;                  // End value (for = loops)
+    byValue?: Expression;                  // Step value (for = loops)
+    whereCondition?: Expression;           // Optional where filter
+    whileCondition?: Expression;           // Optional while condition
+    action: 'do' | 'collect';              // do (execute) or collect (accumulate results)
+    body: Expression;                      // Loop body
+    
+    constructor(
+        variable: VariableReference,
+        operator: 'in' | '=',
+        sequence: Expression,
+        action: 'do' | 'collect',
+        body: Expression,
+        position?: Position
+    ) {
+        super(position);
+        this.variable = variable;
+        this.operator = operator;
+        this.sequence = sequence;
+        this.action = action;
+        this.body = body;
+    }
+    
+    /** True if this is a collect loop (returns array of results) */
+    get isCollect(): boolean {
+        return this.action === 'collect';
+    }
+    
+    /** True if this is a numeric range loop (for i = start to end) */
+    get isRange(): boolean {
+        return this.operator === '=' && this.toValue !== undefined;
+    }
+}
+
+// Case statement: case [expr] of ( item1: expr1; item2: expr2; ... )
+export class CaseStatement extends Expression {
+    testValue?: Expression;    // Optional value to test (case expr of)
+    items: CaseItem[] = [];    // Case items (value: body)
+    
+    constructor(position?: Position) {
+        super(position);
+    }
+}
+
+// Case item: value : body
+export class CaseItem extends Node {
+    value: Expression;   // Case value (can be any factor)
+    body: Expression;    // Body to execute when matched
+    
+    constructor(value: Expression, body: Expression, position?: Position) {
+        super(position);
+        this.value = value;
+        this.body = body;
+    }
+}
+
+// Return statement: return [expr]
+export class ReturnStatement extends Expression {
+    value?: Expression;  // Optional return value
+    
+    constructor(value?: Expression, position?: Position) {
+        super(position);
+        this.value = value;
+    }
+}
+
+// Exit statement: exit [with expr]
+// Used to exit loops, optionally with a value
+export class ExitStatement extends Expression {
+    value?: Expression;  // Optional exit value (with clause)
+    
+    constructor(value?: Expression, position?: Position) {
+        super(position);
+        this.value = value;
+    }
+}
+
+// When statement: when [type] objects change[s]/deleted [params] do expr
+// MaxScript's change handler for monitoring object changes
+export class WhenStatement extends Expression {
+    targetType?: VariableReference;    // Optional type filter
+    targets: Expression;               // Objects to monitor (reference, path, array)
+    event: 'change' | 'deleted';       // Event type
+    parameters: Expression[] = [];     // Optional parameters
+    handler?: Expression;              // Optional handler parameter
+    body: Expression;                  // Handler body
+    
+    constructor(
+        targets: Expression,
+        event: 'change' | 'deleted',
+        body: Expression,
+        position?: Position
+    ) {
+        super(position);
+        this.targets = targets;
+        this.event = event;
+        this.body = body;
+    }
+}
+
+// Event handler statement: on target event [args] do/return body
+// MaxScript's event handler syntax for UI controls and other objects
+// Examples:
+//   on btn pressed do print "clicked"
+//   on myRollout open do initialize()
+//   on myControl changed val do updateUI val
+export class EventHandlerStatement extends Expression {
+    target?: VariableReference;        // Optional target object (on btn pressed do...)
+    eventType: VariableReference;      // Event type (pressed, changed, open, etc.)
+    eventArgs: VariableReference[] = [];  // Optional event arguments
+    action: 'do' | 'return';           // do (execute) or return (return value)
+    body: Expression;                  // Handler body
+    
+    constructor(
+        eventType: VariableReference,
+        action: 'do' | 'return',
+        body: Expression,
+        position?: Position
+    ) {
+        super(position);
+        this.eventType = eventType;
+        this.action = action;
+        this.body = body;
     }
 }

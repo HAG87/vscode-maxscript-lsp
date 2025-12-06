@@ -6,7 +6,7 @@
  * - program: Top-level program structure
  * - expr: Expression dispatcher
  * - expr_seq: Parenthesized expression blocks
- * - declarationExpression: local/global/persistent variable declarations
+ * - declarationStatement: local/global/persistent variable declarations
  * - fnDefinition: Function definitions with arguments, parameters, and body
  * - structDefinition: Struct definitions
  * - struct_body: Struct body with accessibility modifiers
@@ -19,22 +19,26 @@
  * - identifier: Identifiers
  * - factor: Literal expressions (numbers, strings, booleans, names, arrays, undefined)
  * - bool: Boolean literals
- * - simpleExpression: Basic expression handling (partial)
+ * - simpleExpression: Basic expression handling (binary and unary operators)
+ * - expr_operand: Expression operand handling (by_ref | de_ref | functionCall | operand)
+ * - operand: Operand handling (accessor | factor)
+ * - by_ref: Reference operator (&variable, &obj.prop, &$path)
+ * - de_ref: Dereference operator (*ref, *ref.prop, *$path)
  * 
  * ⏳ Pending parser rules:
  * Control Flow:
- * - ifExpression: if-then-else statements
- * - whileLoopExpression: while loops
- * - doLoopExpression: do loops
- * - forLoopExpression: for loops (including for-in, for-where, for-while)
- * - caseExpression: case/of statements
- * - tryExpression: try-catch error handling
+ * - ifStatement: if-then-else statements
+ * - whileLoopStatement: while loops
+ * - doLoopStatement: do loops
+ * - forLoopStatement: for loops (including for-in, for-where, for-while)
+ * - caseStatement: case/of statements
+ * - tryStatement: try-catch error handling
  * - loopExitStatement: exit with/continue statements
  * - fnReturnStatement: return statements
  * - whenStatement: when construct
  * 
  * Context Expressions:
- * - contextExpression: at/in/with/set/about level/time/coordsys
+ * - contexStatement: at/in/with/set/about level/time/coordsys
  * 
  * Definitions:
  * - macroscriptDefinition: MacroScript blocks
@@ -46,7 +50,7 @@
  * - attributesDefinition: Attribute definitions
  * 
  * Event Handlers:
- * - eventHandlerClause: on <event> do <handler>
+ * - eventHandlerStatement: on <event> do <handler>
  * 
  * Operators & Expressions:
  * - binaryExpression: Binary operators (+, -, *, /, etc.)
@@ -81,8 +85,11 @@ import {
     AccessorContext,
     AssignmentExpressionContext,
     BoolContext,
-    DeclarationExpressionContext,
+    By_refContext,
+    De_refContext,
+    DeclarationStatementContext,
     ExprContext,
+    Expr_operandContext,
     Expr_seqContext,
     FactorContext,
     FnDefinitionContext,
@@ -90,6 +97,7 @@ import {
     IdentifierContext,
     IndexContext,
     mxsParser,
+    OperandContext,
     ProgramContext,
     PropertyContext,
     ReferenceContext,
@@ -106,6 +114,7 @@ import {
     BlockExpression,
     BooleanLiteral,
     CallExpression,
+    DereferenceExpression,
     Expression,
     FunctionArgument,
     FunctionDefinition,
@@ -115,6 +124,7 @@ import {
     NameLiteral,
     NumberLiteral,
     Program,
+    ReferenceExpression,
     ScopeNode,
     StringLiteral,
     StructDefinition,
@@ -198,7 +208,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         if (structDef) {
             return this.visit(structDef);
         }
-        const declExpr = ctx.declarationExpression();
+        const declExpr = ctx.declarationStatement();
         if (declExpr) {
             return this.visit(declExpr);
         }
@@ -251,7 +261,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     }
     
     // Declaration expression: local x, y = 5
-    visitDeclarationExpression = (ctx: DeclarationExpressionContext): any => {
+    visitdeclarationStatement = (ctx: DeclarationStatementContext): any => {
         const scope = ctx._scope?.getText()?.toLowerCase() as 'local' | 'global' | 'persistent' | undefined;
         const scopeType = scope || 'local';
         
@@ -292,12 +302,14 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         // Push function scope
         this.pushScope(fnDef);
         
-        // Add simple arguments as declarations (fn test a b c)
+        // Add simple arguments as declarations (fn test a b c, fn test &a &b)
         for (const argCtx of ctx.fn_args()) {
-            const argName = argCtx.reference().getText();
+            // Check if it's by-reference (&arg) or by-value (arg)
+            const isByReference = argCtx.AMP() !== null;
+            const argName = argCtx.identifier().getText();
             const argPosition = this.getPosition(argCtx);
             
-            const arg = new FunctionArgument(argName, argPosition);
+            const arg = new FunctionArgument(argName, isByReference, argPosition);
             fnDef.arguments.push(arg);
             
             // Also add as variable declaration in function scope
@@ -560,17 +572,138 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         // Check for binary operators (left recursion handled by ANTLR)
         // The grammar defines operator precedence, so we get the proper tree
         
-        // For now, delegate to default visitor to traverse children
-        // TODO: Implement proper operator precedence handling
-        const result = this.visitChildren(ctx);
-        
-        // If we got a valid expression, return it
-        if (result instanceof Expression) {
-            return result;
+        // Unary operators (prefix)
+        if (ctx.NOT()) {
+            const right = this.visit(ctx._right!) as Expression;
+            return new UnaryExpression('not', right, position);
         }
         
-        // Otherwise return undefined
+        if ((ctx.MINUS() || ctx.UNARY_MINUS()) && !ctx._left) {
+            // Unary minus (no left operand means it's unary)
+            const right = this.visit(ctx._right!) as Expression;
+            return new UnaryExpression('-', right, position);
+        }
+        
+        // Binary operators
+        if (ctx._left && ctx._right) {
+            const left = this.visit(ctx._left) as Expression;
+            const right = this.visit(ctx._right) as Expression;
+            
+            // Type cast (as)
+            if (ctx.AS()) {
+                // TODO: Implement type cast expression
+                // For now, treat as binary expression
+                return new BinaryExpression('as', left, right, position);
+            }
+            
+            // Logical operators
+            if (ctx.OR()) {
+                return new BinaryExpression('or', left, right, position);
+            }
+            if (ctx.AND()) {
+                return new BinaryExpression('and', left, right, position);
+            }
+            
+            // Comparison operators
+            if (ctx.COMPARE()) {
+                const operator = ctx.COMPARE()!.getText();
+                return new BinaryExpression(operator, left, right, position);
+            }
+            
+            // Arithmetic operators
+            if (ctx.PLUS()) {
+                return new BinaryExpression('+', left, right, position);
+            }
+            if (ctx.MINUS() || ctx.UNARY_MINUS()) {
+                return new BinaryExpression('-', left, right, position);
+            }
+            if (ctx.PROD()) {
+                return new BinaryExpression('*', left, right, position);
+            }
+            if (ctx.DIV()) {
+                return new BinaryExpression('/', left, right, position);
+            }
+            if (ctx.POW()) {
+                return new BinaryExpression('^', left, right, position);
+            }
+        }
+        
+        // Base case: expr_operand (highest precedence)
+        const operand = ctx.expr_operand();
+        if (operand) {
+            return this.visit(operand) as Expression;
+        }
+        
+        // Fallback
         return new UndefinedLiteral(position);
+    }
+    
+    // Expression operand: by_ref | de_ref | functionCall | operand
+    visitExpr_operand = (ctx: Expr_operandContext): Expression => {
+        // Check for by_ref (reference operator: &obj, &obj.prop, &$path)
+        const byRef = ctx.by_ref();
+        if (byRef) {
+            return this.visit(byRef) as Expression;
+        }
+        
+        // Check for de_ref (dereference operator: *ref, *ref.prop, *$path)
+        const deRef = ctx.de_ref();
+        if (deRef) {
+            return this.visit(deRef) as Expression;
+        }
+        
+        // Check for function call
+        const functionCall = ctx.functionCall();
+        if (functionCall) {
+            return this.visit(functionCall) as Expression;
+        }
+        
+        // Check for operand
+        const operand = ctx.operand();
+        if (operand) {
+            return this.visit(operand) as Expression;
+        }
+        
+        return new UndefinedLiteral();
+    }
+    
+    // Reference operator: &obj, &obj.prop, &$path
+    visitBy_ref = (ctx: By_refContext): Expression => {
+        const position = this.getPosition(ctx);
+        
+        // The grammar is: by_ref: {noWSBeNext}? AMP (accessor | reference | path)
+        // Visit the child (accessor, reference, or path)
+        const operand = this.visitChildren(ctx) as Expression;
+        
+        return new ReferenceExpression(operand, position);
+    }
+    
+    // Dereference operator: *ref, *ref.prop, *$path
+    visitDe_ref = (ctx: De_refContext): Expression => {
+        const position = this.getPosition(ctx);
+        
+        // The grammar is: de_ref: {noWSBeNext}? PROD (accessor | reference | path)
+        // Visit the child (accessor, reference, or path)
+        const operand = this.visitChildren(ctx) as Expression;
+        
+        return new DereferenceExpression(operand, position);
+    }
+    
+    // Operand: accessor | factor
+    visitOperand = (ctx: OperandContext): Expression => {
+        // Check for accessor (property/index access)
+        const accessor = ctx.accessor();
+        if (accessor) {
+            return this.visit(accessor) as Expression;
+        }
+        
+        // Check for factor (literals, references, etc.)
+        const factor = ctx.factor();
+        if (factor) {
+            return this.visit(factor) as Expression;
+        }
+        
+        return new UndefinedLiteral();
     }
     
     // Accessor: factor (index | property)+
