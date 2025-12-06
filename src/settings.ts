@@ -64,9 +64,9 @@ export const defaultSettings: IMaxScriptSettings = {
     //  GoToDefinition: true,
     //  Diagnostics: true,
     //},
-    // parser: {
-    // 	multiThreading: true,
-    // },
+    parser: {
+        reparseDelay: 300  // 300ms debounce delay for reparsing
+    },
     completions: {
         dataBaseCompletion: true,
         codeCompletion: true

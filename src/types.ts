@@ -66,6 +66,10 @@ export interface IMaxScriptSettings
         GoToReferences: boolean,
         Diagnostics: boolean,
     },
+    parser?: {
+        /** Debounce delay in milliseconds before reparsing after text changes (default: 300ms) */
+        reparseDelay: number,
+    },
     completions: {
         dataBaseCompletion: boolean,
         codeCompletion: boolean

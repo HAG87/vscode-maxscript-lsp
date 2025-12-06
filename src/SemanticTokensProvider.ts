@@ -1,6 +1,6 @@
 import {
   CancellationToken, DocumentRangeSemanticTokensProvider,
-  DocumentSemanticTokensProvider, Event, ProviderResult, Range,
+  DocumentSemanticTokensProvider, Event, EventEmitter, ProviderResult, Range,
   SemanticTokens, SemanticTokensBuilder, SemanticTokensLegend, TextDocument,
 } from 'vscode';
 
@@ -18,9 +18,21 @@ export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider
     // private currentTokens: ISemanticToken[] = [];
     // private documentTokenBuilder: Map<string,SemanticTokensBuilder> = new Map<string,SemanticTokensBuilder>();
 
+    private _onDidChangeSemanticTokens = new EventEmitter<void>();
+
     constructor(private backend: mxsBackend) { }
 
-    onDidChangeSemanticTokens?: Event<void> | undefined;
+    public get onDidChangeSemanticTokens(): Event<void> {
+        return this._onDidChangeSemanticTokens.event;
+    }
+
+    /**
+     * Notify VS Code that semantic tokens have changed and should be refreshed.
+     * Call this after reparsing the document.
+     */
+    public refresh(): void {
+        this._onDidChangeSemanticTokens.fire();
+    }
 
     provideDocumentSemanticTokens(document: TextDocument, _token: CancellationToken): ProviderResult<SemanticTokens>
     {

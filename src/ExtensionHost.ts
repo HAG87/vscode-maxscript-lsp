@@ -36,6 +36,8 @@ export class ExtensionHost
     // this will hold a global collection of workspace symbols, provided in a simple manner,
     // these symbols does not hold much info, and does not follow code scopes
     private workspaceSymbolProvider: mxsWorkspaceSymbolProvider
+    // Semantic tokens provider - need reference for refresh notifications
+    private semanticTokensProvider!: mxsSemanticTokensProvider
     // diagnostics for the extension
     private readonly diagnosticCollection = languages.createDiagnosticCollection('maxscript');
     //----------------------------------------------------------------
@@ -136,19 +138,37 @@ export class ExtensionHost
                     if (timer) {
                         clearTimeout(timer)
                     }
+                    
+                    // Get reparse delay from settings, default to 300ms
+                    const config = workspace.getConfiguration('maxscript');
+                    const reparseDelay = config.get<number>('parser.reparseDelay', 300);
+                    
                     this.changeTimers.set(fileName, setTimeout(() =>
                     {
                         this.changeTimers.delete(fileName)
+                        
+                        // Clear diagnostics before reparsing to ensure stale errors are removed
+                        this.diagnosticCollection.delete(event.document.uri);
+                        
+                        // Reparse the document
                         this.backend.reparse(event.document.uri)
+                        
+                        // Get fresh diagnostics after reparse
+                        const context = this.backend.getContext(event.document.uri.toString());
+                        const diagnostics = context?.getDiagnostics ?? [];
                         
                         this.diagnosticCollection.set(
                             event.document.uri,
-                            diagnosticAdapter(this.backend.getContext(event.document.uri.toString())?.getDiagnostics)
+                            diagnosticAdapter(diagnostics)
                         )
+                        
+                        // Refresh semantic tokens after reparse
+                        this.semanticTokensProvider.refresh();
+                        
                         //TODO:
                         // this.codeLensProvider.refresh();
                         // this.updateProviders(event.document.uri.toString())
-                    }, 300))
+                    }, reparseDelay))
                 }
                 // */
             }),
@@ -234,7 +254,7 @@ export class ExtensionHost
             ),
             languages.registerDocumentSemanticTokensProvider(
                 ExtensionHost.langSelector,
-                new mxsSemanticTokensProvider(this.backend),
+                this.semanticTokensProvider = new mxsSemanticTokensProvider(this.backend),
                 mxsSemtoTokensLegend
             ),
             /*
