@@ -153,7 +153,7 @@ tool_clause: declarationExpression | fnDefinition | structDefinition | eventHand
 rcmenuDefinition
 	: rcmenu_predicate NL*
 	lp
-		(rc_clause (NL* rc_clause)*)?
+		(rc_clause (lbk? rc_clause)*)?
 	rp
 	;
 rcmenu_predicate: RCmenu NL* rc_name = identifier
