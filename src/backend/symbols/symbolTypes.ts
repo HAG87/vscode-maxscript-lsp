@@ -27,6 +27,7 @@ export class ExprSymbol extends ScopedSymbol
             symbol instanceof ToolDefinitionSymbol ||
             symbol instanceof UtilityDefinitionSymbol ||
             symbol instanceof RolloutDefinitionSymbol ||
+            symbol instanceof RcMenuDefinitionSymbol ||
             symbol instanceof StructDefinitionSymbol ||
             symbol instanceof StructMemberSymbol ||
             symbol instanceof FnDefinitionSymbol ||
@@ -166,6 +167,7 @@ export const topLevelSymbolsType: Array<new () => BaseSymbol> = [
     ToolDefinitionSymbol,
     UtilityDefinitionSymbol,
     RolloutDefinitionSymbol,
+    RcMenuDefinitionSymbol,
     EventHandlerClauseSymbol,
     StructDefinitionSymbol,
     StructMemberSymbol,

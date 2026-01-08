@@ -7,7 +7,7 @@ import { ISymbolInfo, SymbolKind } from '../../types.js';
 import { BackendUtils } from '../BackendUtils.js';
 import {
     FnDefinitionSymbol, fnArgsSymbol, fnParamsSymbol, IdentifierSymbol,
-    RolloutControlSymbol, StructDefinitionSymbol, StructMemberSymbol,
+    StructDefinitionSymbol, StructMemberSymbol,
     VariableDeclSymbol,
 } from './symbolTypes.js';
 import { SymbolUtils } from './symbolUtils.js';

@@ -137,6 +137,7 @@ export enum SymbolKind
 	RcMenu,
 	Parameters,
 	Control,
+	RcMenuControl,
 	Attributes,
 	Event,
 	Struct,

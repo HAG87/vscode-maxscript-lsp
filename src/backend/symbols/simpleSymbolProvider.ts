@@ -9,6 +9,7 @@ const tokenTypeToSymbolKind: Map<number, SymbolKind> = new Map<number, SymbolKin
     [mxsLexer.FN, SymbolKind.Function],
     [mxsLexer.STRUCT, SymbolKind.Struct],
     [mxsLexer.Rollout, SymbolKind.Rollout],
+    [mxsLexer.RCmenu, SymbolKind.RcMenu],
     [mxsLexer.Utility, SymbolKind.Utility],
     [mxsLexer.MacroScript, SymbolKind.MacroScript],
     [mxsLexer.Attributes, SymbolKind.Attributes],
@@ -46,6 +47,7 @@ export class mxsSimpleSymbolProvider
         const tokensToRetrieve = new Set<number>([
             mxsLexer.MacroScript,
             mxsLexer.Rollout,
+            mxsLexer.RCmenu,
             mxsLexer.Tool,
             mxsLexer.Utility,
             mxsLexer.Parameters,
@@ -66,6 +68,7 @@ export class mxsSimpleSymbolProvider
                 case mxsLexer.Utility:
                 case mxsLexer.MacroScript:
                 case mxsLexer.Rollout:
+                case mxsLexer.RCmenu:
                 case mxsLexer.Attributes:
                 case mxsLexer.Parameters:
                 case mxsLexer.Tool:

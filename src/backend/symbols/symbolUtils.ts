@@ -5,6 +5,7 @@ import {
     AssignmentExpressionSymbol, AttributesDefSymbol, EventHandlerClauseSymbol,
     fnArgsSymbol, FnDefinitionSymbol, fnParamsSymbol,
     IdentifierSymbol, MacroScriptDefinitionSymbol, PluginDefinitionSymbol,
+    RcMenuDefinitionSymbol,
     RolloutDefinitionSymbol, StructDefinitionSymbol, StructMemberSymbol,
     ToolDefinitionSymbol, UtilityDefinitionSymbol, VariableDeclSymbol
 } from "./symbolTypes.js";
@@ -16,6 +17,7 @@ const symbolToKindMap: Map<new () => BaseSymbol, SymbolKind> = new Map([
     [ToolDefinitionSymbol, SymbolKind.Tool],
     [UtilityDefinitionSymbol, SymbolKind.Rollout],
     [RolloutDefinitionSymbol, SymbolKind.Rollout],
+    [RcMenuDefinitionSymbol, SymbolKind.RcMenu],
     [StructDefinitionSymbol, SymbolKind.Struct],
     [StructMemberSymbol, SymbolKind.Identifier],
     [EventHandlerClauseSymbol, SymbolKind.Event],
