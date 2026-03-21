@@ -384,7 +384,7 @@ export class ContextSymbolTable extends SymbolTable {
         const prospects: BaseSymbol[] = ancestor.getAllNestedSymbolsSync(symbol.name);
         let prospect: BaseSymbol = prospects[0];
 
-        if (ancestor.context && prospect.parent && prospect.parent.context) {
+        if (ancestor.context && prospect && prospect.parent && prospect.parent.context) {
             parentRule = ancestor.context as unknown as ParserRuleContext;
             const prospectRule = prospect.parent.context as unknown as ParserRuleContext;
             switch (parentRule.ruleIndex) {
