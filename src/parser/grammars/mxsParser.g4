@@ -10,7 +10,7 @@
 parser grammar mxsParser;
 
 @header {
-    import { mxsParserBase } from "./mxsParserBase.js"
+    import { mxsParserBase } from "./base/mxsParserBase.js"
     import { mxsLexer } from "./mxsLexer.js"
 }
 

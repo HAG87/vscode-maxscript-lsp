@@ -1,8 +1,8 @@
 import { Parser, Token, TokenStream } from 'antlr4ng';
 
-import { mxsLexer } from './mxsLexer.js';
+import { mxsLexer } from '../mxsLexer.js';
 // import MultiChannelTokenStream from './multiChannelTokenStream.js';
-import { mxsParser } from './mxsParser.js';
+import { mxsParser } from '../mxsParser.js';
 
 export abstract class mxsParserBase extends Parser
 {

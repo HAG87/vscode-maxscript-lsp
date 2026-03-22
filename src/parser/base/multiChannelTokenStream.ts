@@ -1,5 +1,5 @@
 import { BufferedTokenStream, TokenSource, Token } from "antlr4ng";
-import { mxsParser } from "./mxsParser.js";
+import { mxsParser } from "../mxsParser.js";
 
 // export default class MultiChannelTokenStream extends CommonTokenStream
 export default class MultiChannelTokenStream extends BufferedTokenStream

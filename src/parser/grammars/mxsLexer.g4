@@ -9,7 +9,7 @@
 lexer grammar mxsLexer;
 
 @header {
-	import { mxsLexerBase } from './mxsLexerBase.js'
+	import { mxsLexerBase } from './base/mxsLexerBase.js'
 }
 
 options {
