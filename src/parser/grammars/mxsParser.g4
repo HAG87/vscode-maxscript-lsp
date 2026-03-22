@@ -77,7 +77,7 @@ expr
 	| attributesDefinition          // Attributes
 	// Ambiguous cases - must be last (can start with identifier/accessor/path)
 	| doLoopExpression              // DO (conflicts with if-do, while-do, etc.)
-	| assignmentExpression          // catch-all: simpleExpression with optional assignment
+	| simpleExpression              // Fallback - expressions, assignments, function calls, etc.
 	;
 //*/
 //-------------------------------------- MACROSCRIPT_DEF
@@ -91,7 +91,6 @@ macroscript_predicate: MacroScript NL* macro_name = identifier ( NL* param )*
 	;
 macroscript_clause: expr | eventHandlerClause
 	;
-
 //-------------------------------------- UTILITY_DEF
 utilityDefinition
 	: utility_predicate NL*
@@ -458,62 +457,7 @@ case_predicate: CASE (NL* expr)? NL* OF
 case_item: factor COLON NL* expr
 	;
 
-/*
- // this is not correct, because if should work for 5:(a), buuuut.....
-case_item
-    :{!this.colonBeNext()}? (NUMBER | TIMEVAL) COLON NL* expr;
-    | (NUMBER | TIMEVAL) COLON (lbk | {!this.noSpaces()}?) expr
-    | factor NL* COLON NL* expr
-    ;
-
- case_factor
-	: accessor
-	| var_name
-	| path
-	| bool
-	| STRING
-	| name
-	| array
-	| bitArray
-	| point3
-	| point2
-	| box2
-	| unary_minus
-	| expr_seq
-	;
- */
 //---------------------------------------- IF-CLAUSE
-/*
- ('else' e | {_input.LA(1) != ELSE}?)
- ifStatement
-    : 'if' expression 'then' (statement | block) 'else' (statement | block)
-    | 'if' expression 'then' (statementNoIf | block)
-    ;
-*/
-
-/*
- statement : non_if_statement | if_statement ;
-
- if_statement
-    : 'if' parExpression 
-        ifBody= (
-            non_if_statement 'else' elseBody=statement
-                | if_statement )
-    ;   
-*/
-/*
- stmt : matched_stmt ∣ open_stmt ;
-
- matched_stmt
-    : if expr then matched_stmt else matched_stmt
-    ∣ other
- ;
- open_stmt
-    : if expr then stmt
-    ∣ if expr then matched_stmt else open_stmt
- ;
- */
-
 // OPTIMIZED: Factor common prefix to avoid re-parsing condition
 // Key insight: Use simpleExpression for condition (not expr) to avoid infinite recursion
 // The body can be expr (which may include nested if statements)
@@ -551,18 +495,7 @@ variableDeclaration: identifier assignment?
 decl_scope: ( LOCAL | GLOBAL | PERSISTENT NL* GLOBAL)
 	;
 
-//---------------------------------------- ASSIGNMENT EXPRESSION
-// Unified rule: parse simpleExpression, then optionally match assignment.
-// This eliminates the prediction ambiguity between assignmentExpression and
-// simpleExpression that caused LL-mode failures during deep lookahead.
-assignmentExpression
-	: simpleExpression ((ASSIGN | EQ) NL* expr)?
-	;
-
 assignment: EQ NL* expr
-	;
-
-destination: de_ref | reference | path | accessor
 	;
 
 //---------------------------------------- SIMPLE_EXPR
@@ -578,9 +511,11 @@ destination: de_ref | reference | path | accessor
 // 7. Exponentiation (^) - right associative
 // 8. Unary prefix (-, +, not) - right associative
 // 9. Primary expressions (highest)
+// ASSIGNMENT EXPRESSION is now integrated into simpleExpression as its lowest-precedence operator.
 
 simpleExpression
-	: left = simpleExpression AS NL* classname	                                        //# TypecastExpr (LOWEST precedence)
+	: left = simpleExpression (ASSIGN | EQ) NL* assignExpr = expr							//# AssignmentExpr (LOWEST precedence)
+	| left = simpleExpression AS NL* classname	                                        //# TypecastExpr
 	| left = simpleExpression OR NL* right = simpleExpression					        //# LogicOrExpr
 	| left = simpleExpression AND NL* right = simpleExpression					        //# LogicAndExpr
 	| left = simpleExpression COMPARE NL* right = simpleExpression						//# ComparisonExpr
