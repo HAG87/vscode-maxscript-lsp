@@ -4,8 +4,9 @@
  */
 
 import {
-  ATNSimulator, BaseErrorListener, RecognitionException, Recognizer,
-  Token, NoViableAltException, InputMismatchException, FailedPredicateException,
+  ATNConfigSet, ATNSimulator, BaseErrorListener, BitSet, DFA, Parser,
+  RecognitionException, Recognizer, Token,
+  NoViableAltException, InputMismatchException,
 } from 'antlr4ng';
 
 import { DiagnosticType, IDiagnosticEntry } from '../../types.js';
@@ -66,6 +67,59 @@ export class ContextErrorListener extends BaseErrorListener
         }
 
         this.errorList.push(error);
+    }
+
+    /**
+     * Called when an SLL conflict is found and the parser is about to retry
+     * with full LL context. This is a normal part of two-stage parsing; it does
+     * not indicate an error but may indicate an ambiguous or context-sensitive
+     * grammar rule. No diagnostic is emitted — only syntax errors from
+     * `syntaxError` are reported to the user.
+     */
+    public override reportAttemptingFullContext(
+        _recognizer: Parser,
+        _dfa: DFA,
+        _startIndex: number,
+        _stopIndex: number,
+        _conflictingAlts: BitSet | undefined,
+        _configs: ATNConfigSet): void
+    {
+        // SLL -> LL fallback is expected for context-sensitive grammar rules
+        // (e.g. distinguishing `accessor as Classname` from `assignmentExpression`).
+        // No action needed; the parser handles this transparently.
+    }
+
+    /**
+     * Called when the full-context LL prediction resolves an SLL conflict to a
+     * unique alternative. No diagnostic is emitted.
+     */
+    public override reportContextSensitivity(
+        _recognizer: Parser,
+        _dfa: DFA,
+        _startIndex: number,
+        _stopIndex: number,
+        _prediction: number,
+        _configs: ATNConfigSet): void
+    {
+        // Context-sensitive prediction resolved successfully; no action needed.
+    }
+
+    /**
+     * Called when the full-context prediction results in an ambiguity.
+     * Ambiguities are grammar-level issues and do not produce user-visible
+     * diagnostics at parse time.
+     */
+    public override reportAmbiguity(
+        _recognizer: Parser,
+        _dfa: DFA,
+        _startIndex: number,
+        _stopIndex: number,
+        _exact: boolean,
+        _ambigAlts: BitSet | undefined,
+        _configs: ATNConfigSet): void
+    {
+        // Ambiguities are expected in some MaxScript constructs (e.g. function
+        // call vs expression) and are resolved by precedence rules in the grammar.
     }
 
     private enhanceNoViableAltMessage(msg: string, token: Token | null): string
