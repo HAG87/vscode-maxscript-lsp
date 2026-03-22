@@ -216,10 +216,10 @@ export class SourceContext
         if (!this.tree) return undefined;
         this.ensureSymbolTable();
 
-        const symbol =
-            this.symbolTable.getSymbolAtPosition(row, column);
-        const definition =
-            this.symbolTable.getSymbolDefinition(symbol!);
+        const symbol = this.symbolTable.getSymbolAtPosition(row, column);
+        if (!symbol) return undefined;
+
+        const definition = this.symbolTable.getSymbolDefinition(symbol!);
         return definition ? this.symbolTable.getSymbolInfo(definition) : undefined;
     }
 
