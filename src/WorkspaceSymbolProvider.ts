@@ -4,8 +4,6 @@
  * This is a WORK IN PROGRESS!
  * 
  */
-import { readlinkSync } from 'node:fs';
-
 import {
   CancellationToken, Location, Position, SymbolInformation,
   Uri, workspace, WorkspaceSymbolProvider,
@@ -31,14 +29,12 @@ export class mxsWorkspaceSymbolProvider implements WorkspaceSymbolProvider
 
     async collectDocuments(): Promise<string[]>
     {
-        const paths: string[] = [];
-
         async function collect(uri: Uri): Promise<string[]>
         {
             const result: string[] = [];
             const files = await workspace.fs.readDirectory(uri)
             for (const file of files) {
-                switch (file[1]) {
+                switch (file[1] as number) {
                     case 2:
                         result.push(...await collect(Uri.joinPath(uri, file[0])))
                         break;
@@ -49,16 +45,15 @@ export class mxsWorkspaceSymbolProvider implements WorkspaceSymbolProvider
                             result.push(Uri.joinPath(uri, file[0]).toString())
                         }
                         break;
-                    case 64:
-                        {
-                            const dest = readlinkSync(file[0])
-                            if (
-                                dest.toLowerCase().endsWith('.ms') ||
-                                dest.toLowerCase().endsWith('.mcr')
-                            ) {
-                                result.push(file[0])
-                            }
+                    case 65: // FileType.File | FileType.SymbolicLink
+                        if (
+                            file[0].toLowerCase().endsWith('.ms') || file[0].toLowerCase().endsWith('.mcr')
+                        ) {
+                            result.push(Uri.joinPath(uri, file[0]).toString())
                         }
+                        break;
+                    case 66: // FileType.Directory | FileType.SymbolicLink
+                        result.push(...await collect(Uri.joinPath(uri, file[0])))
                         break;
                 }
             }
@@ -66,6 +61,8 @@ export class mxsWorkspaceSymbolProvider implements WorkspaceSymbolProvider
         }
 
         const folders = workspace.workspaceFolders;
+        const paths: string[] = [];
+
         if (folders) {
             for (const folder of folders) {
                 paths.push(...await collect(folder.uri));
@@ -165,18 +162,21 @@ export class mxsWorkspaceSymbolProvider implements WorkspaceSymbolProvider
                 resolve([])
                 return;
             })
-
+            /*
+            const applyFilter = (symbols: SymbolInformation[]) =>
+                query ? symbols.filter(s => s.name.toLowerCase().includes(query.toLowerCase())) : symbols;
+            //*/
             if (this.workspaceSymbolsCollection.length === 0) {
                 this.resolveSymbolInfo().then(() =>
                 {
                     // derive symbols
                     this.collectWorkspaceSymbols()
                     resolve(this.workspaceSymbolsCollection)
-                    // resolve(this.workspaceSymbolsCollection.filter( (symbol) => symbol.name.toLowerCase().includes(query.toLowerCase())) )
+                    // resolve(applyFilter(this.workspaceSymbolsCollection)) // filter disabled because vscode does its own.
                 }, () => resolve([]));
             } else {
                 resolve(this.workspaceSymbolsCollection)
-                // resolve(this.workspaceSymbolsCollection.filter( (symbol) => symbol.name.toLowerCase().includes(query.toLowerCase())) )
+                // resolve(applyFilter(this.workspaceSymbolsCollection)) // filter disabled because vscode does its own filtering based on the query.
             }
         })
     }
