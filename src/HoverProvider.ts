@@ -17,8 +17,8 @@ export class mxsHoverProvider implements HoverProvider
     {
         return new Promise((resolve) =>
         {
-            const info = this.backend.symbolInfoAtPosition(
-                document.uri.toString(),
+            const ctx = this.backend.getContext(document.uri.toString());
+            const info = ctx.symbolAtPosition(
                 position.line + 1,
                 position.character
             );
@@ -34,10 +34,10 @@ export class mxsHoverProvider implements HoverProvider
                     ]));
                 } else {
                     // provide symbol definition
-                    const info = this.backend.symbolInfoDefinition(
-                        document.uri.toString(),
+                    const info = ctx.symbolDefinition(
                         position.line + 1,
                         position.character);
+                    
                     if (info && info.definition) {
                         const markedStr: MarkdownString = new MarkdownString(`**${symbolDescriptionFromEnum(info.kind)}**\n`)
                         markedStr.appendCodeblock(info.definition.text, 'maxscript')
