@@ -239,36 +239,69 @@ when_predicate
 	;
 
 //-------------------------------------- CONTEXT_EXPR
-contextExpression: ctx_cascading | ctx_set
+
+contextExpression
+	: ctx_cascading
+	| ctx_set
 	;
 
 ctx_cascading: ctx_predicate (comma ctx_predicate)* NL* expr
 	;
+/*
+	set <context>      
+	Where, <context> is one of the MAXScript context prefixes: animate , time , in , coordsys , about , level , or undo .
+ */
 ctx_set
-	: SET (ANIMATE | TIME | IN | LEVEL) NL* operand
-	| SET COORDSYS NL* (LOCAL | operand)
-	| SET ABOUT NL* (COORDSYS | operand)
-	| SET UNDO NL* (STRING | param | reference)? NL* simpleExpression
+	: SET (
+		(ANIMATE | TIME | LEVEL | IN) NL* operand
+		| ctx_coordsys
+		| ctx_about
+		| ctx_undo
+	)
 	;
 
+/* One of the following context expressions:
+	at level <node>
+	at time <time>
+	in <node>
+	[ in ] coordsys ( local | world | parent | <operand> )
+	about ( pivot | selection | coordsys | <operand> )
+	[ with ] animate <boolean> 
+	[ with ] undo <boolean>
+	[ with ] redraw <boolean>
+	[ with ] quiet <boolean>
+	[ with ] redraw <boolean>
+	[ with ] printAllElements <boolean>
+	[ with ] defaultAction <action>
+	[ with ] MXSCallstackCaptureEnabled <boolean>
+	[ with ] dontRepeatMessages <boolean>
+	[ with ] macroRecorderEmitterEnabled <boolean>
+ */
 ctx_predicate
 	: AT NL* (LEVEL | TIME) NL* operand
-	| IN NL* operand
-	| ABOUT NL* (COORDSYS | operand)
-	| (IN NL*)? COORDSYS NL* (LOCAL | operand)
-	| (WITH NL*)? UNDO NL* (STRING | param | reference)? NL* simpleExpression
-	| (WITH NL*)? DefaultAction NL* name
-	| (WITH NL*)? ctx_keyword NL* simpleExpression
+	| IN NL* (ctx_coordsys | operand)
+	| WITH NL* (ctx_undo | ctx_switches)
+	| ctx_about
+	| ctx_coordsys
+	| ctx_undo
+	| ctx_switches
 	;
 
-ctx_keyword
+ctx_about: ABOUT NL* (COORDSYS | operand)
+	;
+ctx_coordsys: COORDSYS NL* (LOCAL | operand)
+	;
+ctx_undo: UNDO NL* (STRING | param | reference)? NL* operand
+	;
+ctx_switches
 	: ( ANIMATE
+	| DefaultAction
 	| DontRepeatMessages
 	| MacroRecorderEmitterEnabled
 	| MXScallstackCaptureEnabled
 	| PrintAllElements
 	| QUIET
-	| REDRAW )
+	| REDRAW ) NL* operand
 	;
 
 //-------------------------------------- PARAMETER DEF
@@ -402,6 +435,17 @@ tryExpression: TRY NL* tryBody = expr NL* CATCH NL* catchBody = expr
 	;
 
 //---------------------------------------- CASE-EXPR
+/*
+ // this is not correct, because if should work for 5:(a), buuuut.....
+case_item
+    :{!this.colonBeNext()}? (NUMBER | TIMEVAL) COLON NL* expr;
+    | (NUMBER | TIMEVAL) COLON (lbk | {!this.noSpaces()}?) expr
+    | factor NL* COLON NL* expr
+    ;
+ case_factor
+	: (accessor | var_name | path | bool | STRING | name | array | bitArray | point3 | point2 | box2 | unary_minus | expr_seq)
+	;
+ */
 caseExpression
 	: case_predicate NL*
 	lp
@@ -614,20 +658,20 @@ operand_arg
 	| operand
 	;
 
-// unary_op : UNARY_MINUS operand ;
-// ------------------------------------------------------------------------//
-
-//------------------------------------------------------------------------//
-// TODO: Remove left recursion
+// ------------------------------------------------------------------------ ACCESSORS
+/*
+accessor // with left recursion to handle chaining: foo.bar[1].baz
+    : accessor (index | property)
+    | factor (index | property)
+	;
+ */
 accessor
-    // : accessor (index | property)
-    // | factor (index | property)
     : factor (index | property)+
 	;
 
-//------------------------------------------------------------------------//
 // Property accessor
-property: DOT NL* (identifier | kw_override)
+property
+	: DOT NL* (identifier | kw_override)
 	;
 
 //Index accessor
@@ -647,9 +691,7 @@ factor
 	| QUESTION
 	| array
 	| bitArray
-	| point3
-	| point2
-	| box2
+	| vector
 	| expr_seq //EXPRESSION SEQUENCE
 	;
 
@@ -661,40 +703,28 @@ expr_seq:
 	;
 
 //---------------------------------------- TYPES
-box2:
+// Unified vector literal: [expr, expr, ...] — covers Point2, Point3, Box2, etc.
+vector:
     lb
-        expr comma expr comma expr comma expr
-    rb
-	;
-
-point3:
-    lb
-        expr comma expr comma expr
-    rb
-	;
-
-point2:
-    lb
-        expr comma expr
+        expr (comma expr)*
     rb
 	;
 
 // BitArray
-// bitArray: SHARP NL* lc (bitexpr ( comma bitexpr)*)? rc
 bitArray: SHARP NL* lc bitList? rc
 	;
-bitList: bitexpr ( comma bitexpr)* ;
-
+bitList: bitexpr ( comma bitexpr)*
+	;
 bitexpr: expr NL* DOTDOT NL* expr | expr
 	;
 
 // Array
-// array: SHARP NL* lp (expr ( comma expr)*)? rp
 array: SHARP NL* lp arrayList? rp
 	;
 arrayList: expr ( comma expr)*
 	;
 
+// derreferenced variables
 de_ref: {this.noWSBeNext()}? PROD (accessor | identifier | path)
 	;
 // by_ref: {this.noWSBeNext()}? AMP (ids | path) ;
@@ -706,7 +736,8 @@ reference
 	| identifier
 	;
 
-identifier: (ID | QUOTED_ID | kw_reserved)
+identifier
+	: (ID | QUOTED_ID | kw_reserved)
 	;
 
 path
@@ -717,13 +748,10 @@ path
 name: NAME
 	;
 
-
-
-// Boolean
 bool: (TRUE | FALSE | OFF | ON)
 	;
-//---------------------------------------- OVERRIDABLE KEYWORDS CONTEXTUAL KEYWORDS...can be used as
-// identifiers outside the context...
+//---------------------------------------- OVERRIDABLE KEYWORDS CONTEXTUAL KEYWORDS
+//...can be used as identifiers outside the context...
 kw_reserved
 	: rolloutControlType |
 	( Group
