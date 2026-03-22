@@ -105,8 +105,6 @@ const tokenToCodeType = new Map<number, codeTypes>([
 	[mxsLexer.LEVEL, codeTypes.KEYWORD],
 	[mxsLexer.TIME, codeTypes.KEYWORD],
 	[mxsLexer.UNDO, codeTypes.KEYWORD],
-	[mxsLexer.CHANGE, codeTypes.KEYWORD],
-	[mxsLexer.DELETED, codeTypes.KEYWORD],
 	[mxsLexer.DefaultAction, codeTypes.KEYWORD],
 	[mxsLexer.ANIMATE, codeTypes.KEYWORD],
 	[mxsLexer.DontRepeatMessages, codeTypes.KEYWORD],
