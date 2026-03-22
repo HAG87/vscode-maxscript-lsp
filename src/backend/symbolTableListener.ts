@@ -441,7 +441,10 @@ export class symbolTableListener extends mxsParserListener
 
     public override exitReference = (ctx: ReferenceContext): void =>
     {
-        this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
+        // Only emit for $global or &byref — plain identifier already handled by exitIdentifier
+        if (ctx.getChildCount() > 1) {
+            this.addNewSymbol(IdentifierSymbol, ctx, ctx.getText());
+        }
     }
 
     public override exitPath = (ctx: PathContext): void =>

@@ -140,8 +140,8 @@ export class ContextSymbolTable extends SymbolTable {
                     symbol.parent instanceof fnArgsSymbol ||
                     symbol.parent instanceof fnParamsSymbol
                 ) {
-                    break;
-                    // continue;
+                    // break;
+                    continue;
                 } else if (!(symbol.parent && ContextSymbolTable.assertSymbols(root, symbol.parent))) {
                     result.push(symbol);
                 }
@@ -170,7 +170,7 @@ export class ContextSymbolTable extends SymbolTable {
                 if (!symbol.context) {
                     continue;
                 }
-
+                
                 if (symbol.context.getSourceInterval().properlyContains(context.getSourceInterval())) {
                     let child;
                     if (symbol instanceof ScopedSymbol) {
@@ -350,10 +350,13 @@ export class ContextSymbolTable extends SymbolTable {
                 case mxsParser.RULE_variableDeclaration:
                 case mxsParser.RULE_fn_args:
                 case mxsParser.RULE_fn_params:
-                    //...
-                    // console.log('symbol is in definition!');
-                    return symbol;
+                    // Only bail out if this symbol IS the declared name, not a RHS reference
+                    if (symbol.parent && symbol.name === (symbol.parent as ExprSymbol).name) {
+                        return symbol;
+                    }
+                    break;  // otherwise continue searching for cam's actual definition
                 default:
+                    // continue the search
                     break;
             }
         } else {
@@ -390,7 +393,7 @@ export class ContextSymbolTable extends SymbolTable {
 
         // walk the tree, starting from the symbol, going up parents...
         // console.log('---DFS---');
-        const searchDefinition = this.findSymbolInstances(this, symbol);
+        const searchDefinition = this.findSymbolInstances(this, symbol, false);
         
         // TODO: This is unreliable, returns the parent?
         if (searchDefinition.definition) return searchDefinition.definition;
@@ -400,7 +403,7 @@ export class ContextSymbolTable extends SymbolTable {
             return searchDefinition.candidates[searchDefinition.candidates.length - 1];
         }
 
-        // seach in top-level symbols as last chance, unreilable
+        // seach in top-level symbols as last chance, unreliable
         if (ancestor.parent) {
             let topScope = ancestor.parent;
             while (topScope) {
@@ -444,15 +447,16 @@ export class ContextSymbolTable extends SymbolTable {
         // dfs search        
         const searchDefinition = this.findSymbolInstances(this, symbol, true);
 
+        // definition found. I need to search the references candidates and filter out of scope ones
         if (searchDefinition.definition) {
             table = [searchDefinition.definition];
         }
 
         if (searchDefinition.candidates.length > 0) {
-            // console.log(searchDefinition.candidates)
+            // searchDefinition produced candidates
             table.push(...searchDefinition.candidates);
         } else {
-            // search for candidates... if there is a definition
+            // no candidates fallback, collect all references regardless of symbol scope.
             if (searchDefinition.definition) {
                 table.push(...this.collectReferences(
                     searchDefinition.definition,
@@ -460,37 +464,59 @@ export class ContextSymbolTable extends SymbolTable {
                 )
             }
         }
-
-        return this.getSymbolOccurrencesInternal(symbol.name, table);
+        // filter by scope
+        return this.getSymbolOccurrencesInternal(symbol.name, table, symbol);
     }
 
-    private getSymbolOccurrencesInternal(symbolName: string, symbols: BaseSymbol[]): ISymbolInfo[] {
+    private getSymbolOccurrencesInternal(
+        symbolName: string,
+        symbols: BaseSymbol[],
+        scopeRef?: BaseSymbol   // entry symbol — used to scope-filter unconfirmed candidates
+    ): ISymbolInfo[]
+    {
         const result: ISymbolInfo[] = [];
+
+        const refScope = scopeRef
+            ? (scopeRef.parent as ExprSymbol).getScope()
+            : undefined;
 
         const getOwner = (symbol: BaseSymbol): SourceContext | undefined => {
             if (symbol.root) {
                 const topParent = symbol.root.parent;
-                if (topParent) {
-                    return (topParent as ContextSymbolTable).owner;
-                }
+                if (topParent) return (topParent as ContextSymbolTable).owner;
             }
             return;
         }
 
         for (const symbol of symbols) {
+            if (!symbol.context || symbol.name !== symbolName) continue;
+
+            // When a scope reference is available, prune candidates whose scope
+            // is unrelated to the entry — same/sibling/parent/child scopes are kept.
+            if (refScope) {
+                const scope = (symbol.parent as ExprSymbol).getScope();
+                // filter by scope
+                if (
+                    !ContextSymbolTable.isScopeSame(refScope, scope) &&
+                    !ContextSymbolTable.isScopeSibling(refScope, scope) &&
+                    !ContextSymbolTable.isScopeChild(refScope, scope) &&   // candidate inside entry scope
+                    !ContextSymbolTable.isScopeChild(scope, refScope) &&   // entry inside candidate scope
+                    refScope.length !== 0 &&
+                    scope.length !== 0
+                ) continue;
+            }
+
             const owner = getOwner(symbol) || this.owner;
 
             if (owner) {
                 // symbol has context and name matches the search...
-                if (symbol.context && symbol.name === symbolName) {
-                    result.push({
-                        kind: SymbolUtils.getKindFromSymbol(symbol),
-                        name: symbolName,
-                        source: owner.sourceUri.toString(),
-                        definition: SymbolUtils.definitionForContext(symbol.context, true),
-                        // description: undefined,
-                    });
-                }
+                result.push({
+                    kind: SymbolUtils.getKindFromSymbol(symbol),
+                    name: symbolName,
+                    source: owner.sourceUri.toString(),
+                    definition: SymbolUtils.definitionForContext(symbol.context, true),
+                    // description: undefined,
+                });
             }
         }
 
@@ -599,16 +625,8 @@ export class ContextSymbolTable extends SymbolTable {
 
     private static isScopeSibling(scopeA: BaseSymbol[], scopeB: BaseSymbol[]): boolean
     {
-        const scopeAdepth = scopeA.length;
-        const scopeBdepth = scopeB.length;
-
-        // Check if both files have a common root
-        if (scopeAdepth > 1 && scopeBdepth > 1) {
-            const resolveScopes = ContextSymbolTable.compareScopes(scopeA, scopeB);
-            return resolveScopes.subPathB.length <= 1 && resolveScopes.subPathA.length <= 1;
-        }
-
-        return false;
+        const { subPathA, subPathB } = ContextSymbolTable.compareScopes(scopeA, scopeB);
+        return subPathA.length <= 1 && subPathB.length <= 1;
     }
 
     private static isScopeChild(scopeA: BaseSymbol[], scopeB: BaseSymbol[]): boolean
@@ -644,9 +662,12 @@ export class ContextSymbolTable extends SymbolTable {
             */
             //TODO: these checks are too generic!.
             if (
-                ContextSymbolTable.isScopeSame(refScope, scope) ||
-                ContextSymbolTable.isScopeSibling(refScope, scope) ||
-                ContextSymbolTable.isScopeChild(refScope, scope)
+                ContextSymbolTable.isScopeSame(refScope, scope)
+                || ContextSymbolTable.isScopeSibling(refScope, scope)
+                || ContextSymbolTable.isScopeChild(refScope, scope) // B inside A
+                || ContextSymbolTable.isScopeChild(scope, refScope) // A inside B 
+                || refScope.length === 0 // root/top-level scope
+                || scope.length === 0
             ) {
                 collection[to] = collection[from];
                 to++;
@@ -672,6 +693,11 @@ export class ContextSymbolTable extends SymbolTable {
         switch (parentRule.ruleIndex) {
             case mxsParser.RULE_structDefinition:
             case mxsParser.RULE_fnDefinition:
+                if (symbol.name !== symbol.parent!.name) {
+                    // e.g. "cam" inside "fn setObjID" body — reference, not the function name
+                    candidates.push(symbol);
+                    break;
+                }
                 if (ContextSymbolTable.isScopeSibling(scopeFound, scopeSymbol) ||
                     ContextSymbolTable.isScopeChild(scopeFound, scopeSymbol)) {
                     result.push(ret()); return ret();
@@ -680,12 +706,22 @@ export class ContextSymbolTable extends SymbolTable {
             case mxsParser.RULE_for_body:
             case mxsParser.RULE_fn_args:
             case mxsParser.RULE_fn_params:
+                if (symbol.name !== symbol.parent!.name) {
+                    candidates.push(symbol);
+                    break;
+                }
                 if (ContextSymbolTable.isScopeChild(scopeFound, scopeSymbol)) {
                     result.push(ret()); return ret();
                 }
                 break;
             case mxsParser.RULE_variableDeclaration:
-                if (ContextSymbolTable.isScopeSibling(scopeFound, scopeSymbol)) {
+                if (symbol.name !== symbol.parent!.name) {
+                    // cam inside "local campos = cam.pos" — it's a reference, not a declaration
+                    candidates.push(symbol);
+                    break;
+                }
+                if (ContextSymbolTable.isScopeSibling(scopeFound, scopeSymbol) ||
+                    ContextSymbolTable.isScopeChild(scopeSymbol, scopeFound)) {
                     result.push(ret()); return ret();
                 }
                 break;
@@ -739,17 +775,16 @@ export class ContextSymbolTable extends SymbolTable {
                     // console.log('--> inspected symbol: ')
                     // console.log(node)
                     if (!found && (nodeIndex === entryIndex)) {
-                        /*
-                        console.log('--- found symbol ---')
-                        console.log(node)
-                        console.log('--------------')
-                        */
-                        // check scope inclusion of the previously collected symbols
-
-                        /*
+                        if (node !== entry) {
+                            // Same position as entry but different symbol (duplicate from exitReference/exitIdentifier)
+                            return undefined;
+                        }
+                        // console.log('--- found symbol ---')
+                       
+                       /*
+                        // check scope inclusion of the previously collected symbols THIS IS DELEGATED TO getSYmbolOcurrencesInternal
                         if (candidates.length > 0) {
-                            console.log('---------------filter candidates')
-                            
+                            console.log('---------------filter candidates')                            
                             const foundScope = ((node.parent as ExprSymbol).getScope());
                             filterByScope(foundScope, candidates);
                         }
@@ -759,10 +794,12 @@ export class ContextSymbolTable extends SymbolTable {
                         // /*
                         if (node.parent && node.parent.context) {
                             const parentRule = node.parent.context as unknown as ParserRuleContext;
-                            if (declRules.has(parentRule.ruleIndex)) {
+                            // if (declRules.has(parentRule.ruleIndex)) {
+                            // The declaring identifier is always the one whose name matches the parent scope symbol's name
+                            if (declRules.has(parentRule.ruleIndex) && node.name === node.parent!.name) {
                                 // console.log('found symbol is definition')
                                 result.push(node);
-                                return node.parent;
+                                return identifiersOnly ? node : node.parent;  // was always node.parent
                             }
                         }
                         // */
@@ -773,12 +810,7 @@ export class ContextSymbolTable extends SymbolTable {
                     // moving this above find routine will skip checking the found symbol.
                     if (found) {
                        const definition = this.checkDefinitionCandidate(found, node, result, candidates, identifiersOnly);
-                        // const definition: BaseSymbol | undefined = undefined;
-                        // console.log(`found: ${found.name}`);
-                        // console.log('definition?');
-                        // console.log(definition);
-                        // console.log(candidates);
-                       
+                      
                         // check scope inclusion of the previously collected symbols
                         if (definition) {
                             // console.log('filter candidates')
@@ -803,6 +835,13 @@ export class ContextSymbolTable extends SymbolTable {
         const results: BaseSymbol[] = [];
         const candidates: BaseSymbol[] = [];
         const definition = _dfs(root, results, candidates);
+
+        console.log('--- search result ---');
+        console.log('definition:');
+        console.log(definition);
+        console.log('candidates:');
+        console.log(candidates);
+
         return { definition, results, candidates };
     }
     //---------------------------------------------------------------
