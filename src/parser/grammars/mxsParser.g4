@@ -25,6 +25,34 @@ options {
 program: NL* expr (lbk expr)* NL* EOF
 	;
 
+ /*
+// OLD VERSION:
+expr
+	: simpleExpression
+	| declarationExpression
+	| assignmentExpression
+	| ifExpression
+	| whileLoopExpression
+	| doLoopExpression
+	| forLoopExpression
+	| loopExitStatement
+	| caseExpression
+	| structDefinition
+	| tryExpression
+	| fnDefinition
+	| fnReturnStatement
+	| contextExpression
+	| attributesDefinition
+	| whenStatement
+	| utilityDefinition
+	| rolloutDefinition
+	| toolDefinition
+	| rcmenuDefinition
+	| macroscriptDefinition
+	| pluginDefinition
+	;
+//*/
+///*
 expr
 	// Keyword-led expressions - unambiguous, fast first-token lookup
 	: ifExpression                  // IF
@@ -49,10 +77,9 @@ expr
 	| attributesDefinition          // Attributes
 	// Ambiguous cases - must be last (can start with identifier/accessor/path)
 	| doLoopExpression              // DO (conflicts with if-do, while-do, etc.)
-	| assignmentExpression          // identifier/accessor/path = ...
-	| simpleExpression              // Fallback - expressions, function calls, etc.
+	| assignmentExpression          // catch-all: simpleExpression with optional assignment
 	;
-
+//*/
 //-------------------------------------- MACROSCRIPT_DEF
 macroscriptDefinition
 	: macroscript_predicate NL*
@@ -208,7 +235,7 @@ whenStatement: when_predicate NL* DO NL* expr
 	;
 
 when_predicate
-	: WHEN NL* (reference NL*)? (reference | path | expr_seq | array) NL* (CHANGE | DELETED)  NL*  (NL* param)* (NL* operand)?
+	: WHEN NL* (reference NL*)? (reference | path | expr_seq | array) NL* identifier  NL*  (NL* param)* (NL* operand)?
 	;
 
 //-------------------------------------- CONTEXT_EXPR
@@ -481,8 +508,11 @@ decl_scope: ( LOCAL | GLOBAL | PERSISTENT NL* GLOBAL)
 	;
 
 //---------------------------------------- ASSIGNMENT EXPRESSION
+// Unified rule: parse simpleExpression, then optionally match assignment.
+// This eliminates the prediction ambiguity between assignmentExpression and
+// simpleExpression that caused LL-mode failures during deep lookahead.
 assignmentExpression
-	: destination (ASSIGN | EQ) NL* expr
+	: simpleExpression ((ASSIGN | EQ) NL* expr)?
 	;
 
 assignment: EQ NL* expr
@@ -662,7 +692,12 @@ bitexpr: expr NL* DOTDOT NL* expr | expr
 // array: SHARP NL* lp (expr ( comma expr)*)? rp
 array: SHARP NL* lp arrayList? rp
 	;
-arrayList: expr ( comma expr)* ;
+arrayList: expr ( comma expr)*
+	;
+
+de_ref: {this.noWSBeNext()}? PROD (accessor | identifier | path)
+	;
+// by_ref: {this.noWSBeNext()}? AMP (ids | path) ;
 
 // Identifiers
 reference
@@ -682,9 +717,7 @@ path
 name: NAME
 	;
 
-de_ref: {this.noWSBeNext()}? PROD (accessor | identifier | path)
-	;
-// by_ref: {this.noWSBeNext()}? AMP (ids | path) ;
+
 
 // Boolean
 bool: (TRUE | FALSE | OFF | ON)
@@ -693,9 +726,7 @@ bool: (TRUE | FALSE | OFF | ON)
 // identifiers outside the context...
 kw_reserved
 	: rolloutControlType |
-	( CHANGE
-	| DELETED
-	| Group
+	( Group
 	| LEVEL
 	| MenuItem
 	| Separator

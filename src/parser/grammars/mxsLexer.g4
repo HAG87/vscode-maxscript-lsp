@@ -115,10 +115,6 @@ TIME: T I M E
 	;
 UNDO: U N D O
 	;
-CHANGE: C H A N G E S?
-	;
-DELETED: D E L E T E D
-	;
 DefaultAction: D E F A U L T A C T I O N
 	;
 ANIMATE: A N I M A T E
