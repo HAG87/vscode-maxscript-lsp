@@ -329,7 +329,9 @@ export class symbolTableListener extends mxsParserListener
     // /* event clause */
     public override enterEventHandlerClause = (ctx: EventHandlerClauseContext): void =>
     {
-        this.pushNewSymbol(EventHandlerClauseSymbol, ctx, ctx._ev_args?._ev_type?.getText());
+        const refs = ctx._ev_args?._refs;
+        const evType = refs && refs.length > 1 ? refs[1] : refs?.[0];
+        this.pushNewSymbol(EventHandlerClauseSymbol, ctx, evType?.getText());
     }
     public override exitEventHandlerClause = (ctx: EventHandlerClauseContext): void => { this.popSymbol(); }
 
@@ -407,16 +409,6 @@ export class symbolTableListener extends mxsParserListener
     /*
     // public override enterIndex = (ctx: IndexContext): void => { this.pushNewSymbol(PropertyAccessSymbol, ctx) }
     // public override exitIndex = (ctx: IndexContext): void => { this.popSymbol(); }
-    // */
-
-    /*
-    //TODO: references...
-    public override enterAssignmentExpression = (ctx: AssignmentExpressionContext): void =>
-    {
-        // this.pushNewSymbol(AssignmentExpressionSymbol, ctx, ctx._left?.getText());
-        this.pushNewSymbol(AssignmentExpressionSymbol, ctx, ctx.destination().getText());
-    }
-    public override exitAssignmentExpression = (ctx: AssignmentExpressionContext): void => { this.popSymbol(); }
     // */
 
     /*
