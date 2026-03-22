@@ -343,9 +343,7 @@ eventHandlerClause
 	;
 
 event_args
-	: ev_target = reference NL* ev_type = reference ( NL* ev_args += reference )+
-	| ev_target = reference NL* ev_type = reference
-	| ev_type = reference
+	: refs += reference (NL* refs += reference)*
 	;
 
 //---------------------------------------- STRUCT DEF
@@ -650,7 +648,11 @@ bitArray: SHARP NL* lc bitList? rc
 	;
 bitList: bitexpr ( comma bitexpr)*
 	;
-bitexpr: expr NL* DOTDOT NL* expr | expr
+// Current: SLL conflict — both alts start with expr
+// bitexpr: expr NL* DOTDOT NL* expr | expr
+
+// Fix: factor common prefix — fully LL(1) after parsing expr
+bitexpr: expr (NL* DOTDOT NL* expr)?
 	;
 
 // Array
