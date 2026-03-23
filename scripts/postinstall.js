@@ -5,6 +5,7 @@
  * 
  * The Tylasu package has a bug where ESM imports don't include .js extensions.
  * This script patches all .js files in the ESM dist to add the missing extensions.
+ * Safe to run multiple times — won't double-patch already-patched files.
  */
 
 import { readdir, readFile, writeFile } from 'fs/promises';
@@ -14,12 +15,15 @@ async function patchFile(filePath) {
     try {
         let content = await readFile(filePath, 'utf-8');
         
-        // Replace relative imports without .js extension
-        // Matches: from "./path" or from "../path" 
-        // Adds: .js before the closing quote
+        // Replace relative imports/exports without .js extension
+        // Matches: from "./path" or from "../path" with or without trailing semicolon
+        // Uses a replacer function to avoid adding .js.js on repeated runs
         const patched = content.replace(
-            /(from\s+['"]\.\.?\/[^'"]+)(['"]\s*;)/g,
-            '$1.js$2'
+            /\bfrom\s+(['"])(\.\.?\/[^'"]+?)(\1)/g,
+            (match, quote, path, closeQuote) => {
+                if (path.endsWith('.js')) return match; // already patched
+                return `from ${quote}${path}.js${closeQuote}`;
+            }
         );
         
         if (content !== patched) {
@@ -59,7 +63,11 @@ async function main() {
     try {
         console.log('Patching @strumenta/tylasu ESM imports...');
         const count = await patchDirectory(tylasuEsmPath);
-        console.log(`\n✅ Successfully patched ${count} files`);
+        if (count > 0) {
+            console.log(`\n✅ Successfully patched ${count} files`);
+        } else {
+            console.log('\nℹ  No files needed patching (already patched or clean)');
+        }
     } catch (error) {
         if (error.code === 'ENOENT') {
             console.log('ℹ  @strumenta/tylasu not found, skipping patch');
