@@ -83,9 +83,7 @@ import { ParserRuleContext } from 'antlr4ng';
 import { Position, Point, Node } from '@strumenta/tylasu';
 import {
     AccessorContext,
-    AssignmentExpressionContext,
     BoolContext,
-    By_refContext,
     De_refContext,
     DeclarationStatementContext,
     ExprContext,
@@ -191,6 +189,9 @@ export class ASTBuilder extends mxsParserVisitor<any> {
             const node = this.visit(exprCtx);
             if (node && !Array.isArray(node)) {
                 this.program.statements.push(node);
+            } else if (Array.isArray(node)) {
+                // Declaration statements return VariableDeclaration[]
+                this.program.statements.push(...node);
             }
         }
         
@@ -212,11 +213,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         if (declExpr) {
             return this.visit(declExpr);
         }
-        const assignExpr = ctx.assignmentExpression();
-        if (assignExpr) {
-            return this.visit(assignExpr);
-        }
-        
+
         // Visit all children to find identifiers and other expressions
         const result = this.visitChildren(ctx);
         
@@ -261,7 +258,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     }
     
     // Declaration expression: local x, y = 5
-    visitdeclarationStatement = (ctx: DeclarationStatementContext): any => {
+    visitDeclarationStatement = (ctx: DeclarationStatementContext): any => {
         const scope = ctx._scope?.getText()?.toLowerCase() as 'local' | 'global' | 'persistent' | undefined;
         const scopeType = scope || 'local';
         
@@ -442,7 +439,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         
         return field;
     }
-    
+    /* // ASSIGNMENT EXPRESSIONS ARE CURRENTLY HANDLED IN visitSimpleExpression FOR POC, BUT THIS MAY NEED TO BE REWORKED TO PROPERLY CAPTURE COMPLEX ASSIGNMENT TARGETS (ACCESSORS, DEREFS, ETC.)
     // Assignment expression: x = 5, obj.prop = value
     visitAssignmentExpression = (ctx: AssignmentExpressionContext): AssignmentExpression => {
         const position = this.getPosition(ctx);
@@ -464,7 +461,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         
         return new AssignmentExpression(target, value, position);
     }
-    
+    */
     // Reference: identifier, global identifier, or &identifier
     visitReference = (ctx: ReferenceContext): VariableReference => {
         const name = ctx.identifier().getText();
@@ -497,7 +494,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     // LITERAL/TERMINAL NODE VISITORS
     // ============================================================================
     
-    // Factor: terminal nodes (literals, references, arrays, etc.)
+    // Factor: terminal nodes (literals, references, arrays, etc.) CHECK: IS THIS CORRECT? 
     visitFactor = (ctx: FactorContext): Expression => {
         const position = this.getPosition(ctx);
         
@@ -557,7 +554,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         return new UndefinedLiteral(position);
     }
     
-    // Boolean literal
+    // Boolean literal CHECK: IS THIS CORRECT? 
     visitBool = (ctx: BoolContext): BooleanLiteral => {
         const position = this.getPosition(ctx);
         const text = ctx.getText().toLowerCase();
@@ -566,6 +563,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     }
     
     // Simple expression: handles operators and builds expression tree
+    // TODO: needs to include assignment expressions and other operator types
     visitSimpleExpression = (ctx: SimpleExpressionContext): Expression => {
         const position = this.getPosition(ctx);
         
@@ -641,11 +639,12 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     // Expression operand: by_ref | de_ref | functionCall | operand
     visitExpr_operand = (ctx: Expr_operandContext): Expression => {
         // Check for by_ref (reference operator: &obj, &obj.prop, &$path)
+        /*
         const byRef = ctx.by_ref();
         if (byRef) {
             return this.visit(byRef) as Expression;
         }
-        
+        */
         // Check for de_ref (dereference operator: *ref, *ref.prop, *$path)
         const deRef = ctx.de_ref();
         if (deRef) {
@@ -668,6 +667,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     }
     
     // Reference operator: &obj, &obj.prop, &$path
+    /*
     visitBy_ref = (ctx: By_refContext): Expression => {
         const position = this.getPosition(ctx);
         
@@ -677,7 +677,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         
         return new ReferenceExpression(operand, position);
     }
-    
+    */
     // Dereference operator: *ref, *ref.prop, *$path
     visitDe_ref = (ctx: De_refContext): Expression => {
         const position = this.getPosition(ctx);
