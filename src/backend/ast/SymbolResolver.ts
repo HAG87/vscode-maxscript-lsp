@@ -47,13 +47,21 @@
 import {
     AssignmentExpression,
     BlockExpression,
+    CaseStatement,
+    DoWhileStatement,
     Expression,
+    ExitStatement,
+    ForStatement,
     FunctionDefinition,
+    IfStatement,
     Program,
+    ReturnStatement,
     ScopeNode,
     StructDefinition,
+    TryStatement,
     VariableDeclaration,
     VariableReference,
+    WhileStatement,
 } from './ASTNodes.js';
 
 export class SymbolResolver {
@@ -156,6 +164,56 @@ export class SymbolResolver {
             this.visit(node.value);
         }
     }
+
+    private visitIfStatement(node: IfStatement): void {
+        this.visit(node.condition);
+        if (node.thenBody) this.visit(node.thenBody);
+        if (node.elseBody) this.visit(node.elseBody);
+        if (node.doBody) this.visit(node.doBody);
+    }
+
+    private visitWhileStatement(node: WhileStatement): void {
+        this.visit(node.condition);
+        this.visit(node.body);
+    }
+
+    private visitDoWhileStatement(node: DoWhileStatement): void {
+        this.visit(node.body);
+        this.visit(node.condition);
+    }
+
+    private visitForStatement(node: ForStatement): void {
+        this.visit(node.variable);
+        if (node.indexVariable) this.visit(node.indexVariable);
+        if (node.filteredIndexVariable) this.visit(node.filteredIndexVariable);
+        this.visit(node.sequence);
+        if (node.toValue) this.visit(node.toValue);
+        if (node.byValue) this.visit(node.byValue);
+        if (node.whereCondition) this.visit(node.whereCondition);
+        if (node.whileCondition) this.visit(node.whileCondition);
+        this.visit(node.body);
+    }
+
+    private visitTryStatement(node: TryStatement): void {
+        this.visit(node.tryBody);
+        this.visit(node.catchBody);
+    }
+
+    private visitCaseStatement(node: CaseStatement): void {
+        if (node.testValue) this.visit(node.testValue);
+        for (const item of node.items) {
+            this.visit(item.value);
+            this.visit(item.body);
+        }
+    }
+
+    private visitReturnStatement(node: ReturnStatement): void {
+        if (node.value) this.visit(node.value);
+    }
+
+    private visitExitStatement(node: ExitStatement): void {
+        if (node.value) this.visit(node.value);
+    }
     
     /**
      * Generic visit dispatcher
@@ -179,6 +237,22 @@ export class SymbolResolver {
             this.visitBlockExpression(node);
         } else if (node instanceof AssignmentExpression) {
             this.visitAssignmentExpression(node);
+        } else if (node instanceof IfStatement) {
+            this.visitIfStatement(node);
+        } else if (node instanceof WhileStatement) {
+            this.visitWhileStatement(node);
+        } else if (node instanceof DoWhileStatement) {
+            this.visitDoWhileStatement(node);
+        } else if (node instanceof ForStatement) {
+            this.visitForStatement(node);
+        } else if (node instanceof TryStatement) {
+            this.visitTryStatement(node);
+        } else if (node instanceof CaseStatement) {
+            this.visitCaseStatement(node);
+        } else if (node instanceof ReturnStatement) {
+            this.visitReturnStatement(node);
+        } else if (node instanceof ExitStatement) {
+            this.visitExitStatement(node);
         } else {
             // FIX #2: Catch-all for expression nodes (BinaryExpression, CallExpression, etc)
             // Walk children to find any nested VariableReferences

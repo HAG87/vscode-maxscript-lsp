@@ -84,6 +84,8 @@ import { Position, Point, Node } from '@strumenta/tylasu';
 import {
     AccessorContext,
     BoolContext,
+    CaseStatementContext,
+    DoLoopStatementContext,
     DeRefContext,
     DeclarationStatementContext,
     ExprContext,
@@ -91,18 +93,24 @@ import {
     ExprSeqContext,
     FactorContext,
     FnDefinitionContext,
+    FnReturnStatementContext,
     FnParamsContext,
     IdentifierContext,
+    IfStatementContext,
     IndexContext,
+    LoopExitStatementContext,
     mxsParser,
     OperandContext,
+    ForLoopStatementContext,
     ProgramContext,
     PropertyContext,
     ReferenceContext,
     SimpleExpressionContext,
     StructBodyContext,
     StructDefinitionContext,
+    TryStatementContext,
     VariableDeclarationContext,
+    WhileLoopStatementContext,
 } from '../../parser/mxsParser.js';
 import { mxsParserVisitor } from '../../parser/mxsParserVisitor.js';
 import {
@@ -117,21 +125,30 @@ import {
     FunctionArgument,
     FunctionDefinition,
     FunctionParameter,
+    ForStatement,
+    IfStatement,
     IndexExpression,
+    ExitStatement,
     MemberExpression,
     NameLiteral,
     NumberLiteral,
     Program,
+    ReturnStatement,
     ReferenceExpression,
     ScopeNode,
+    CaseItem,
+    CaseStatement,
     StringLiteral,
     StructDefinition,
     StructMember,
     StructMemberField,
+    TryStatement,
     UnaryExpression,
     UndefinedLiteral,
     VariableDeclaration,
     VariableReference,
+    WhileStatement,
+    DoWhileStatement,
 } from './ASTNodes.js';
 
 export class ASTBuilder extends mxsParserVisitor<any> {
@@ -438,6 +455,141 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         structDef.addDeclaration(fieldDecl);
         
         return field;
+    }
+
+    // Return statement: return expr
+    visitFnReturnStatement = (ctx: FnReturnStatementContext): ReturnStatement => {
+        const position = this.getPosition(ctx);
+        const value = (ctx._returnValue ? this.visit(ctx._returnValue) : this.visit(ctx.expr())) as Expression;
+        return new ReturnStatement(value, position);
+    }
+
+    // Loop exit statement: exit [with expr]
+    visitLoopExitStatement = (ctx: LoopExitStatementContext): ExitStatement => {
+        const position = this.getPosition(ctx);
+        const value = ctx._exitValue ? this.visit(ctx._exitValue) as Expression : undefined;
+        return new ExitStatement(value, position);
+    }
+
+    // If statement: if cond then expr [else expr] | if cond do expr
+    visitIfStatement = (ctx: IfStatementContext): IfStatement => {
+        const position = this.getPosition(ctx);
+        const condition = this.visit(ctx._ifCondition || ctx.simpleExpression()) as Expression;
+        const node = new IfStatement(condition, position);
+
+        if (ctx.THEN()) {
+            const thenBody = (ctx._thenBody ? this.visit(ctx._thenBody) : this.visit(ctx.expr(0)!)) as Expression;
+            node.thenBody = thenBody;
+
+            const elseExpr = ctx._elseBody;
+            if (elseExpr) {
+                node.elseBody = this.visit(elseExpr) as Expression;
+            }
+        } else if (ctx.DO()) {
+            const doBody = (ctx._doBody ? this.visit(ctx._doBody) : this.visit(ctx.expr(0)!)) as Expression;
+            node.doBody = doBody;
+        }
+
+        return node;
+    }
+
+    // While loop: while cond do body
+    visitWhileLoopStatement = (ctx: WhileLoopStatementContext): WhileStatement => {
+        const position = this.getPosition(ctx);
+        const condition = (ctx._condition ? this.visit(ctx._condition) : this.visit(ctx.expr(0)!)) as Expression;
+        const body = (ctx._body ? this.visit(ctx._body) : this.visit(ctx.expr(1)!)) as Expression;
+        return new WhileStatement(condition, body, position);
+    }
+
+    // Do loop: do body while cond
+    visitDoLoopStatement = (ctx: DoLoopStatementContext): DoWhileStatement => {
+        const position = this.getPosition(ctx);
+        const body = (ctx._body ? this.visit(ctx._body) : this.visit(ctx.expr(0)!)) as Expression;
+        const condition = (ctx._condition ? this.visit(ctx._condition) : this.visit(ctx.expr(1)!)) as Expression;
+        return new DoWhileStatement(body, condition, position);
+    }
+
+    // For loop: for var [,index [,filtered]] in/= seq do/collect body
+    visitForLoopStatement = (ctx: ForLoopStatementContext): ForStatement => {
+        const position = this.getPosition(ctx);
+        const forBody = ctx.forBody();
+
+        const loopVarExpr = this.visit(forBody._var_ || forBody.reference(0)!) as Expression;
+        const loopVar = loopVarExpr instanceof VariableReference
+            ? loopVarExpr
+            : new VariableReference(forBody.reference(0)!.getText(), this.getPosition(forBody.reference(0)!));
+
+        const operator: 'in' | '=' = ctx.IN() ? 'in' : '=';
+        const action: 'do' | 'collect' = ctx.COLLECT() ? 'collect' : 'do';
+        const sequenceCtx = ctx.forSequence();
+        const sequence = this.visit(sequenceCtx.expr()) as Expression;
+        const body = (ctx._body ? this.visit(ctx._body) : this.visit(ctx.expr())) as Expression;
+
+        const node = new ForStatement(loopVar, operator, sequence, action, body, position);
+
+        if (forBody._index_name) {
+            const idxExpr = this.visit(forBody._index_name) as Expression;
+            if (idxExpr instanceof VariableReference) {
+                node.indexVariable = idxExpr;
+            }
+        }
+
+        if (forBody._filtered_index_name) {
+            const fIdxExpr = this.visit(forBody._filtered_index_name) as Expression;
+            if (fIdxExpr instanceof VariableReference) {
+                node.filteredIndexVariable = fIdxExpr;
+            }
+        }
+
+        const forTo = sequenceCtx.forTo();
+        if (forTo) {
+            node.toValue = this.visit(forTo.expr()) as Expression;
+        }
+
+        const forBy = sequenceCtx.forBy();
+        if (forBy) {
+            node.byValue = this.visit(forBy.expr()) as Expression;
+        }
+
+        const forWhere = sequenceCtx.forWhere();
+        if (forWhere) {
+            node.whereCondition = this.visit(forWhere.expr()) as Expression;
+        }
+
+        const forWhile = sequenceCtx.forWhile();
+        if (forWhile) {
+            node.whileCondition = this.visit(forWhile.expr()) as Expression;
+        }
+
+        return node;
+    }
+
+    // Try/catch statement: try expr catch expr
+    visitTryStatement = (ctx: TryStatementContext): TryStatement => {
+        const position = this.getPosition(ctx);
+        const tryBody = (ctx._tryBody ? this.visit(ctx._tryBody) : this.visit(ctx.expr(0)!)) as Expression;
+        const catchBody = (ctx._catchBody ? this.visit(ctx._catchBody) : this.visit(ctx.expr(1)!)) as Expression;
+        return new TryStatement(tryBody, catchBody, position);
+    }
+
+    // Case statement: case [expr] of (value: body ...)
+    visitCaseStatement = (ctx: CaseStatementContext): CaseStatement => {
+        const position = this.getPosition(ctx);
+        const node = new CaseStatement(position);
+
+        const testExpr = ctx.caseClause().expr();
+        if (testExpr) {
+            node.testValue = this.visit(testExpr) as Expression;
+        }
+
+        for (const itemCtx of ctx.caseItem()) {
+            const itemPosition = this.getPosition(itemCtx);
+            const value = this.visit(itemCtx.factor()) as Expression;
+            const body = this.visit(itemCtx.expr()) as Expression;
+            node.items.push(new CaseItem(value, body, itemPosition));
+        }
+
+        return node;
     }
     // Reference: identifier, global identifier, or &identifier
     visitReference = (ctx: ReferenceContext): Expression => {
