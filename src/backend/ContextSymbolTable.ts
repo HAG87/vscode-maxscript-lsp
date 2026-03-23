@@ -208,7 +208,7 @@ export class ContextSymbolTable extends SymbolTable {
         
         // filter: accept identifier and kw_reserved (keywords usable as identifiers)
         if (parent.ruleIndex !== mxsParser.RULE_identifier &&
-            parent.ruleIndex !== mxsParser.RULE_kw_reserved) {
+            parent.ruleIndex !== mxsParser.RULE_kwReserved) {
             return undefined;
         }
 
@@ -708,7 +708,7 @@ export class ContextSymbolTable extends SymbolTable {
                     result.push(ret()); return ret();
                 }
                 break;
-            case mxsParser.RULE_for_body:
+            case mxsParser.RULE_forBody:
             case mxsParser.RULE_fnArgs:
             case mxsParser.RULE_fnParams:
                 if (symbol.name !== symbol.parent!.name) {

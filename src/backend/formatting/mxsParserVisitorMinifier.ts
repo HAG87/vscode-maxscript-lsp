@@ -12,7 +12,7 @@ import {
   MacroscriptDefinitionContext, mxsParser, OperandContext, ParamNameContext,
   ParamContext, ParamsDefinitionContext, ParenPairContext,
   PluginDefinitionContext, ProgramContext, PropertyContext, RbContext,
-  Rc_submenudefinitionContext, RcContext, RcmenuControlContext, RcmenuDefinitionContext,
+  RcSubmenuDefinitionContext, RcContext, RcmenuControlContext, RcmenuDefinitionContext,
   RolloutControlContext, RolloutDefinitionContext, RolloutGroupDefinitionContext,
   RpContext, SimpleExpressionContext, StructBodyContext,
   StructDefinitionContext, ToolDefinitionContext, TryStatementContext,
@@ -47,7 +47,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     //-------------------------------------------------------
     visitToolDefinition = (ctx: ToolDefinitionContext): string =>
         this.visitChildren(ctx)!
-    // visitTool_clause = (ctx: Tool_clauseContext): string => { return this.visitChildren(ctx)! }
+    // visitToolClause = (ctx: ToolClauseContext): string => { return this.visitChildren(ctx)! }
     // visitTool_body = (ctx: Tool_bodyContext): string => { return this.visitChildren(ctx)! }
     //-------------------------------------------------------
     visitMacroscriptDefinition = (ctx: MacroscriptDefinitionContext): string =>
@@ -59,7 +59,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         this.visitChildren(ctx)!
     visitRolloutDefinition = (ctx: RolloutDefinitionContext): string =>
         this.visitChildren(ctx)!
-    // visitRollout_clause = (ctx: Rollout_clauseContext): string => { return this.visitChildren(ctx)! }
+    // visitRolloutClause = (ctx: RolloutClauseContext): string => { return this.visitChildren(ctx)! }
     // visitRollout_body = (ctx: Rollout_bodyContext): string => { return this.visitChildren(ctx)! }
     visitRolloutGroupDefinition = (ctx: RolloutGroupDefinitionContext): string =>
         this.visitChildren(ctx)!
@@ -70,7 +70,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         this.visitChildren(ctx)!
     visitRcmenuControl = (ctx: RcmenuControlContext): string =>
         this.visitChildren(ctx)!
-    visitRc_submenudefinition = (ctx: Rc_submenudefinitionContext): string =>
+    visitRc_submenudefinition = (ctx: RcSubmenuDefinitionContext): string =>
         this.visitChildren(ctx)!
     //-------------------------------------------------------
     visitAttributesDefinition = (ctx: AttributesDefinitionContext): string =>
@@ -147,8 +147,8 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         const forOperator = ctx._for_operator!.text!
         const forAction = ctx._for_action!.text!
         
-        return this.visit(ctx.FOR()!)! + this.visit(ctx.for_body())! + 
-               forOperator + this.visit(ctx.for_sequence())! + 
+        return this.visit(ctx.FOR()!)! + this.visit(ctx.forBody())! + 
+               forOperator + this.visit(ctx.forSequence())! + 
                forAction + this.visit(ctx._body!)!
     }
     visitTryStatement = (ctx: TryStatementContext): string =>
@@ -219,7 +219,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     visitParam = (ctx: ParamContext): string =>
         this.visitChildren(ctx)!
     // visitOperand_arg = (ctx: OperandArgContext): ParseTree => { return ctx.children[0] }
-    visitParam_name = (ctx: ParamNameContext): string => { return ctx.getText() }
+    visitParamName = (ctx: ParamNameContext): string => { return ctx.getText() }
     //-------------------------------------------------------
     visitIdentifier = (ctx: IdentifierContext): string => { return ctx.getText() }
     // visitString?: ((ctx: StringContext) => string) | undefined;
