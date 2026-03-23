@@ -8,8 +8,8 @@
  * Safe to run multiple times — won't double-patch already-patched files.
  */
 
-import { readdir, readFile, writeFile } from 'fs/promises';
-import { join } from 'path';
+const { readdir, readFile, writeFile } = require('fs/promises');
+const { join } = require('path');
 
 async function patchFile(filePath) {
     try {

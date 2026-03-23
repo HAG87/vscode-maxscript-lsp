@@ -22,7 +22,6 @@
   "engines": {
     "vscode": "^1.91.0"
   },
-  "type": "module",
   "main": "./out/extension.cjs",
   "contributes": {
     "languages": [
@@ -231,6 +230,41 @@
             "type": "string",
             "default": "https://help.autodesk.com/view/MAXDEV/2025/ENU/",
             "description": "MaxScript help source"
+          },
+          "maxScript.providers.ast.symbolProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Use AST-based document symbols provider (Outline)."
+          },
+          "maxScript.providers.ast.definitionProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Use AST-based go-to-definition provider before legacy fallback."
+          },
+          "maxScript.providers.ast.referenceProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Use AST-based find-references provider before legacy fallback."
+          },
+          "maxScript.providers.ast.hoverProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Use AST-based hover provider before legacy fallback."
+          },
+          "maxScript.providers.ast.renameProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Use AST-based rename provider before legacy fallback."
+          },
+          "maxScript.providers.fallbackToLegacy": {
+            "type": "boolean",
+            "default": true,
+            "description": "Allow provider fallback to legacy symbol table when AST misses."
+          },
+          "maxScript.providers.traceRouting": {
+            "type": "boolean",
+            "default": false,
+            "description": "Log provider routing decisions (AST/Legacy) to Extension Host output."
           }
         }
       },
@@ -306,6 +340,7 @@
     "test:ast:contexts": "npm run compile-tests && node out/backend/ast/test-context-handlers.js",
     "test:ast:definitions": "npm run compile-tests && node out/backend/ast/test-definition-blocks.js",
     "test:ast:ui": "npm run compile-tests && node out/backend/ast/test-definition-blocks.js",
+    "test:ast:positions": "npm run compile-tests && node out/backend/ast/test-query-positions.js",
     "generate": "antlr4ng -Dlanguage=TypeScript -visitor -Xexact-output-dir src/parser/grammars/mxsLexer.g4 src/parser/grammars/mxsParser.g4 -o src/parser"
   },
   "devDependencies": {
