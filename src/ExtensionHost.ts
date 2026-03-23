@@ -78,11 +78,17 @@ export class ExtensionHost
         // /*
         for (const document of workspace.textDocuments) {
             if (Utilities.isLanguageFile(document)) {
-                this.backend.getContext(document.uri.toString(), document.getText())
-                this.diagnosticCollection.set(
-                    document.uri,
-                    diagnosticAdapter(this.backend.getContext(document.uri.toString())?.getDiagnostics)
-                )
+                try {
+                    this.backend.getContext(document.uri.toString(), document.getText())
+                    this.diagnosticCollection.set(
+                        document.uri,
+                        diagnosticAdapter(this.backend.getContext(document.uri.toString())?.getDiagnostics)
+                    )
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error)
+                    console.error(`[language-maxscript] Failed to initialize context for ${document.uri.toString()}:`, error)
+                    void window.showErrorMessage(`MaxScript parser initialization failed for ${basename(document.fileName)}: ${message}`)
+                }
             }
         }
         // */
@@ -167,8 +173,12 @@ export class ExtensionHost
                         )
                         
                         // Refresh semantic tokens after reparse
-                        this.semanticTokensProvider.refresh();
-                        this.codeLensProvider.refresh();
+                        if (this.semanticTokensProvider) {
+                            this.semanticTokensProvider.refresh();
+                        }
+                        if (this.codeLensProvider) {
+                            this.codeLensProvider.refresh();
+                        }
                         // this.updateProviders(event.document.uri.toString())
                     }, reparseDelay))
                 }
@@ -227,59 +237,60 @@ export class ExtensionHost
     private registerProviders(ctx: ExtensionContext): void
     {
         ctx.subscriptions.push(
-            
+            // PASS
             languages.registerDocumentSymbolProvider(
                 ExtensionHost.langSelector,
                 new mxsSymbolProvider(this.backend)
             ),
-            /*
+            // PASS
             languages.registerReferenceProvider(
                 ExtensionHost.langSelector,
                 new mxsReferenceProvider(this.backend)
             ),
-            languages.registerDocumentHighlightProvider(
-                ExtensionHost.langSelector,
-                new mxsDocumentHighlightProvider(this.backend)
-            ),
+            // PASS
             languages.registerDefinitionProvider(
                 ExtensionHost.langSelector,
                 new mxsDefinitionProvider(this.backend)
             ),
-            languages.registerRenameProvider(
-                ExtensionHost.langSelector,
-                new mxsRenameProvider(this.backend)
-            ),
-            
+            // PASS
             languages.registerHoverProvider(
                 ExtensionHost.langSelector,
                 new mxsHoverProvider(this.backend)
             ),
-            
+            // PASS
+            languages.registerRenameProvider(
+                ExtensionHost.langSelector,
+                new mxsRenameProvider(this.backend)
+            ),
+            /*
+            languages.registerDocumentHighlightProvider(
+                ExtensionHost.langSelector,
+                new mxsDocumentHighlightProvider(this.backend)
+            ),
+            /*         
             languages.registerCompletionItemProvider(
                 ExtensionHost.langSelector,
                 new mxsCompletionProvider(this.backend, defaultSettings),
                 " ", ".", "="
             ),
+            /*
             languages.registerCodeLensProvider(
                 ExtensionHost.langSelector,
                 this.codeLensProvider = new mxsCodeLensProvider(this.backend)
             ),
+            /*
             languages.registerDocumentSemanticTokensProvider(
                 ExtensionHost.langSelector,
                 this.semanticTokensProvider = new mxsSemanticTokensProvider(this.backend),
                 mxsSemtoTokensLegend
             ),
+            /*
             languages.registerDocumentRangeSemanticTokensProvider(
                 ExtensionHost.langSelector,
                 new mxsRangeSemanticTokensProvider(this.backend),
                 mxsSemtoTokensLegend
             ),
-            /*
-             languages.registerDocumentFormattingEditProvider(
-                 ExtensionHost.langSelector,
-                 new mxsFormattingProvider(this.backend)
-             ),
-             // */
+            /*         
             languages.registerDocumentRangeFormattingEditProvider(
                 ExtensionHost.langSelector,
                 new mxsRangeFormattingProvider(
@@ -287,6 +298,13 @@ export class ExtensionHost
                     defaultSettings.formatter
                 )
             ),
+            //*/
+            /*
+             languages.registerDocumentFormattingEditProvider(
+                 ExtensionHost.langSelector,
+                 new mxsFormattingProvider(this.backend)
+             ),
+            */
             /*
             languages.registerWorkspaceSymbolProvider(
                 this.workspaceSymbolProvider

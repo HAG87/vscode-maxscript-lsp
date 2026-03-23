@@ -1,6 +1,6 @@
 import {
   CancellationToken, DocumentSymbol, DocumentSymbolProvider, ProviderResult,
-  Range, SymbolInformation, TextDocument,
+  Range, SymbolInformation, TextDocument, workspace,
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
@@ -44,8 +44,33 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
     {
         return new Promise((resolve) =>
         {
-            const symbols = this.backend.getContext(document.uri.toString())?.buildSymbolTree();
-            
+            const config = workspace.getConfiguration('maxScript');
+            const useAst = config.get<boolean>('providers.ast.symbolProvider', true);
+            const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
+            const traceRouting = config.get<boolean>('providers.traceRouting', false);
+
+            const sourceContext = this.backend.getContext(document.uri.toString());
+
+            if (traceRouting && !sourceContext) {
+                console.log(`[language-maxscript][SymbolProvider] sourceContext=undefined for ${document.uri.toString()}`);
+            }
+
+            let symbols: ISymbolInfo[] = [];
+
+            if (useAst) {
+                symbols = sourceContext?.buildSymbolTree(traceRouting) ?? [];
+                if (traceRouting) {
+                    console.log(`[language-maxscript][SymbolProvider] route=AST symbols=${symbols.length}`);
+                }
+            }
+
+            if ((!symbols || symbols.length === 0) && fallbackToLegacy) {
+                symbols = sourceContext?.listTopLevelSymbols(false) ?? [];
+                if (traceRouting) {
+                    console.log(`[language-maxscript][SymbolProvider] route=Legacy symbols=${symbols.length}`);
+                }
+            }
+
             if (!symbols || symbols.length === 0) {
                 resolve([]);
                 return;
@@ -60,7 +85,7 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
                 // Use symbolInfoToDocumentSymbol for all symbols (handles both with and without children)
                 symbolsList.push(this.symbolInfoToDocumentSymbol(symbol));
             }
-            
+
             resolve(symbolsList);
         });
     }

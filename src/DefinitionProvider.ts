@@ -7,16 +7,26 @@ TODO:
 */
 import {
   CancellationToken, Definition, DefinitionLink, DefinitionProvider,
-  Location, Position, ProviderResult, TextDocument,
-  Uri,
+    Location, Position, ProviderResult, Range, TextDocument,
+  Uri, workspace,
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
+import type { Position as AstPosition } from '@strumenta/tylasu';
 import { Utilities } from './utils.js';
 
 export class mxsDefinitionProvider implements DefinitionProvider
 {
     public constructor(private backend: mxsBackend) { }
+
+    private astPositionToRange(position: AstPosition): Range {
+        return new Range(
+            position.start.line - 1,
+            position.start.column,
+            position.end.line - 1,
+            position.end.column,
+        );
+    }
 
     provideDefinition(
         document: TextDocument,
@@ -25,9 +35,47 @@ export class mxsDefinitionProvider implements DefinitionProvider
     {
         return new Promise((resolve) =>
         {
-            const info = this.backend.getContext(document.uri.toString())?.symbolDefinition(  
+            const context = this.backend.getContext(document.uri.toString());
+// /*
+            const config = workspace.getConfiguration('maxScript');
+            const useAst = config.get<boolean>('providers.ast.definitionProvider', true);
+            const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
+            const traceRouting = config.get<boolean>('providers.traceRouting', false);
+
+            if (useAst) {
+                // Primary path: AST query layer
+                const declaration = context?.astDeclarationAtPosition(
+                    position.line + 1,
+                    position.character,
+                );
+                if (declaration?.position) {
+                    if (traceRouting) {
+                        console.log('[language-maxscript][DefinitionProvider] route=AST');
+                    }
+                    resolve(new Location(Uri.parse(context.sourceUri), this.astPositionToRange(declaration.position)));
+                    return;
+                }
+                if (traceRouting) {
+                    console.log('[language-maxscript][DefinitionProvider] route=AST-miss');
+                }
+            }
+// */
+            if (!fallbackToLegacy) {
+                if (traceRouting) {
+                    console.log('[language-maxscript][DefinitionProvider] route=None (legacy fallback disabled)');
+                }
+                resolve(null);
+                return;
+            }
+
+            // Fallback path: legacy symbol table
+            const info = context?.symbolDefinition(
                 position.line + 1,
-                position.character);
+                position.character,
+            );
+            if (traceRouting) {
+                console.log('[language-maxscript][DefinitionProvider] route=Legacy');
+            }
 
             if (info) {
                 // VS code shows the text for the range given here on holding ctrl/cmd, which is rather
