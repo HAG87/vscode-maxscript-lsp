@@ -4,20 +4,20 @@ import { mxsLexer } from '../../parser/mxsLexer.js';
 import {
   ArrayContext, ArrayListContext, Attributes_clauseContext,
   AttributesDefinitionContext, BitArrayContext, BitListContext,
-  Case_itemContext, Case_clauseContext, CaseStatementContext, CommaContext,
-  ContextStatementContext, De_refContext, DeclarationStatementContext,
-  DoLoopStatementContext, EventHandlerStatementContext, Expr_seqContext,
-  Fn_bodyContext, FnDefinitionContext, FnReturnStatementContext,
+  CaseItemContext, Case_clauseContext, CaseStatementContext, CommaContext,
+  ContextStatementContext, DeRefContext, DeclarationStatementContext,
+  DoLoopStatementContext, EventHandlerStatementContext, ExprSeqContext,
+  FnBodyContext, FnDefinitionContext, FnReturnStatementContext,
   For_sequenceContext, For_whereContext, For_whileContext,
   ForLoopStatementContext, Group_clauseContext, IdentifierContext,
   IfStatementContext, LbContext, LbkContext, LcContext,
   LpContext, Macroscript_clauseContext, MacroscriptDefinitionContext,
-  Params_clauseContext, ParamsDefinitionContext, Paren_pairContext,
+  Params_clauseContext, ParamsDefinitionContext, ParenPairContext,
   Plugin_clauseContext, PluginDefinitionContext, ProgramContext, RbContext,
   Rc_submenudefinitionContext, RcContext, Rcmenu_clauseContext, RcmenuControlContext,
   RcmenuDefinitionContext, ReferenceContext, Rollout_clauseContext, RolloutControlContext,
   RolloutDefinitionContext, RolloutGroupDefinitionContext, RpContext,
-  SimpleExpressionContext, Struct_accessContext, Struct_bodyContext,
+  SimpleExpressionContext, Struct_accessContext, StructBodyContext,
   StructDefinitionContext, Submenu_clauseContext, Tool_clauseContext,
   ToolDefinitionContext, TryStatementContext, Utility_clauseContext,
   UtilityDefinitionContext, WhenStatementContext, WhileLoopStatementContext,
@@ -908,7 +908,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     //#region Basic Definitions
     visitStructDefinition = (ctx: StructDefinitionContext): codeBlock =>
     {
-        const body = <codeBlock>this.visit(ctx.struct_body())
+        const body = <codeBlock>this.visit(ctx.structBody())
 
         body.start = [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak(false, this.indentLevel + 1)]
         body.end = [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())]
@@ -928,7 +928,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.DECL
         )
     }
-    visitStruct_body = (ctx: Struct_bodyContext): codeBlock =>
+    visitStructBody = (ctx: StructBodyContext): codeBlock =>
     {
         this.indentLevel++;
         //------------------
@@ -964,7 +964,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.DECL
         )
     }
-    visitFn_body = (ctx: Fn_bodyContext): codeBlock =>
+    visitFnBody = (ctx: FnBodyContext): codeBlock =>
     {
         const vals = [
             this.visit(ctx.EQ())!,
@@ -1101,9 +1101,9 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         //--------------------------------------------
         this.indentLevel++;
         //--------------------------------------------
-        // console.log(this.collectWithLineBreak(ctx.case_item(), false))
+        // console.log(this.collectWithLineBreak(ctx.caseItem(), false))
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.case_item(), false),
+            this.collectWithLineBreak(ctx.caseItem(), false),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -1120,7 +1120,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         )
     }
     visitCase_clause = (ctx: Case_clauseContext): R[] => this.visitChildren(ctx)
-    visitCase_item = (ctx: Case_itemContext): codeBlock =>
+    visitCaseItem = (ctx: CaseItemContext): codeBlock =>
     {
         // start val with the factor
         const vals: (R | R[])[] = [this.visit(ctx.factor())!]
@@ -1421,7 +1421,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     }
     //#endregion
     //-------------------------------------------------------
-    visitExpr_seq = (ctx: Expr_seqContext): codeBlock =>
+    visitExprSeq = (ctx: ExprSeqContext): codeBlock =>
     {
         this.indentLevel++;
         //--------------------------------------------
@@ -1445,7 +1445,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     {
         /*
         // enable this if fn_call is enabled
-        const operand = ctx.expr_operand()
+        const operand = ctx.exprOperand()
         if (operand) {
             return this.visitChildren(operand)?.[0]
         } else {
@@ -1466,7 +1466,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.EXPR
         ) // */
     }
-    // visitExpr_operand = (ctx: Expr_operandContext): string => this.visitChildren(ctx)!
+    // visitExprOperand = (ctx: ExprOperandContext): string => this.visitChildren(ctx)!
     //-------------------------------------------------------    
     // visitAssignment = (ctx: AssignmentContext): string => this.visitChildren(ctx)!
     // visitOperand = (ctx: OperandContext): string => this.visitChildren(ctx)!
@@ -1490,11 +1490,11 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     }
     // */
     // visitParam = (ctx: ParamContext): string => { return this.visitChildren(ctx) }
-    // visitOperand_arg = (ctx: Operand_argContext): ParseTree => { return ctx.children[0] }
-    // visitParam_name = (ctx: Param_nameContext): string => { return ctx.getText() }
+    // visitOperand_arg = (ctx: OperandArgContext): ParseTree => { return ctx.children[0] }
+    // visitParam_name = (ctx: ParamNameContext): string => { return ctx.getText() }
     //-------------------------------------------------------
     //#region Values
-    visitDe_ref = (ctx: De_refContext): R[] =>
+    visitDeRef = (ctx: DeRefContext): R[] =>
     {
         const vals = this.visitChildren(ctx)!;
         // change prefix state
@@ -1573,7 +1573,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     //#endregion
     //-------------------------------------------------------
     //#region Terminals
-    visitParen_pair = (ctx: Paren_pairContext): codeToken =>
+    visitParenPair = (ctx: ParenPairContext): codeToken =>
     {
         return new codeToken(
             ctx.LPAREN().getText() + ctx.RPAREN().getText(),

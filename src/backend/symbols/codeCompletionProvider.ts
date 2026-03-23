@@ -90,7 +90,7 @@ const PREFERRED_RULES = new Set([
     mxsParser.RULE_property,
     mxsParser.RULE_rolloutControl,
     mxsParser.RULE_rcmenuControl,
-    mxsParser.RULE_struct_member,
+    mxsParser.RULE_structMember,
 ]);
 
 /**
@@ -245,7 +245,7 @@ export class CodeCompletionProvider
                         break;
                     }
 
-                case mxsParser.RULE_struct_member:
+                case mxsParser.RULE_structMember:
                     keywords.push(
                         {
                             kind: SymbolKind.Keyword,

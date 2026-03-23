@@ -3,18 +3,18 @@ import { ParserRuleContext, TerminalNode } from 'antlr4ng';
 import { mxsLexer } from '../../parser/mxsLexer.js';
 import {
   AccessorContext, AssignmentContext, AttributesDefinitionContext,
-  Case_itemContext, CaseStatementContext, CommaContext,
+  CaseItemContext, CaseStatementContext, CommaContext,
   ContextStatementContext, DoLoopStatementContext, EventHandlerStatementContext,
-  Expr_operandContext, Expr_seqContext, ExprContext, FactorContext,
+  ExprOperandContext, ExprSeqContext, ExprContext, FactorContext,
   FnDefinitionContext, FnReturnStatementContext, ForLoopStatementContext,
   FunctionCallContext, IdentifierContext, IfStatementContext, IndexContext,
   LbContext, LbkContext, LcContext, LpContext,
-  MacroscriptDefinitionContext, mxsParser, OperandContext, Param_nameContext,
-  ParamContext, ParamsDefinitionContext, Paren_pairContext,
+  MacroscriptDefinitionContext, mxsParser, OperandContext, ParamNameContext,
+  ParamContext, ParamsDefinitionContext, ParenPairContext,
   PluginDefinitionContext, ProgramContext, PropertyContext, RbContext,
   Rc_submenudefinitionContext, RcContext, RcmenuControlContext, RcmenuDefinitionContext,
   RolloutControlContext, RolloutDefinitionContext, RolloutGroupDefinitionContext,
-  RpContext, SimpleExpressionContext, Struct_bodyContext,
+  RpContext, SimpleExpressionContext, StructBodyContext,
   StructDefinitionContext, ToolDefinitionContext, TryStatementContext,
   UtilityDefinitionContext, WhenStatementContext, WhileLoopStatementContext,
 } from '../../parser/mxsParser.js';
@@ -80,7 +80,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     //-------------------------------------------------------
     visitStructDefinition = (ctx: StructDefinitionContext): string =>
         this.visitChildren(ctx)!
-    visitStruct_body = (ctx: Struct_bodyContext): string =>
+    visitStructBody = (ctx: StructBodyContext): string =>
         this.visitChildren(ctx)!
     visitEventHandlerStatement = (ctx: EventHandlerStatementContext): string =>
         this.visitChildren(ctx)!
@@ -92,7 +92,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     visitCaseStatement = (ctx: CaseStatementContext): string =>
     {
         /*
-        console.log(ctx.case_item())
+        console.log(ctx.caseItem())
         let result = ''
         for (const child of ctx.children) {
             let res = this.aggregateResult(result, this.visit(child))
@@ -103,7 +103,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         return (this.visitChildren(ctx)! + this.options.newLineChar)
     }
     // case item
-    visitCase_item = (ctx: Case_itemContext): string =>
+    visitCaseItem = (ctx: CaseItemContext): string =>
     {
         const factor = this.visit(ctx.factor())!
         const expr = this.visit(ctx.expr())!
@@ -159,7 +159,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     visitContextStatement = (ctx: ContextStatementContext): string =>
         this.visitChildren(ctx)!
     //-------------------------------------------------------
-    visitExpr_seq = (ctx: Expr_seqContext): string =>
+    visitExprSeq = (ctx: ExprSeqContext): string =>
     {
 
         // /*
@@ -178,9 +178,9 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
 
                 if (
                     parentRule !== mxsParser.RULE_accessor &&
-                    parentRule !== mxsParser.RULE_fn_args &&
-                    parentRule !== mxsParser.RULE_fn_caller &&
-                    parentRule !== mxsParser.RULE_operand_arg
+                    parentRule !== mxsParser.RULE_fnArgs &&
+                    parentRule !== mxsParser.RULE_fnCaller &&
+                    parentRule !== mxsParser.RULE_operandArg
                 ) {
                     // console.log(parent)
                     // console.log(ctx.getText())
@@ -197,7 +197,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     //-------------------------------------------------------
     visitSimpleExpression = (ctx: SimpleExpressionContext): string =>
         this.visitChildren(ctx)!
-    visitExpr_operand = (ctx: Expr_operandContext): string =>
+    visitExprOperand = (ctx: ExprOperandContext): string =>
         this.visitChildren(ctx)!
     //-------------------------------------------------------    
     visitAssignment = (ctx: AssignmentContext): string =>
@@ -218,8 +218,8 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         this.visitChildren(ctx)!
     visitParam = (ctx: ParamContext): string =>
         this.visitChildren(ctx)!
-    // visitOperand_arg = (ctx: Operand_argContext): ParseTree => { return ctx.children[0] }
-    visitParam_name = (ctx: Param_nameContext): string => { return ctx.getText() }
+    // visitOperand_arg = (ctx: OperandArgContext): ParseTree => { return ctx.children[0] }
+    visitParam_name = (ctx: ParamNameContext): string => { return ctx.getText() }
     //-------------------------------------------------------
     visitIdentifier = (ctx: IdentifierContext): string => { return ctx.getText() }
     // visitString?: ((ctx: StringContext) => string) | undefined;
@@ -238,7 +238,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
     // visitBitArray = (ctx: BitArrayContext): string => { return this.visitChildren(ctx)}
     // visitBitList = (ctx: BitListContext): string => { return this.visitChildren(ctx)}
     //-------------------------------------------------------
-    visitParen_pair = (ctx: Paren_pairContext): string => ctx.getText()
+    visitParenPair = (ctx: ParenPairContext): string => ctx.getText()
     visitLp = (_ctx: LpContext): string => '('
     visitRp = (_ctx: RpContext): string => ')'
     visitLc = (_ctx: LcContext): string => '{'

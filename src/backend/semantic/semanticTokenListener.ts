@@ -1,7 +1,7 @@
 import { ParserRuleContext } from 'antlr4ng';
 
 import {
-    FunctionCallContext, IdentifierContext, Param_nameContext,
+    FunctionCallContext, IdentifierContext, ParamNameContext,
 } from '../../parser/mxsParser.js';
 import { mxsParserListener } from '../../parser/mxsParserListener.js';
 import { ISemanticToken } from '../../types.js';
@@ -34,8 +34,8 @@ export class semanticTokenListener extends mxsParserListener {
     public override enterProperty = (ctx: PropertyContext): void => { this.symbolStack.push(ctx); }
     public override exitProperty = (ctx: PropertyContext): void => { this.symbolStack.pop(); }
     */
-    public override enterParam_name = (_ctx: Param_nameContext): void => { this.collect = false; }
-    public override exitParam_name = (_ctx: Param_nameContext): void => { this.collect = true; }
+    public override enterParamName = (_ctx: ParamNameContext): void => { this.collect = false; }
+    public override exitParamName = (_ctx: ParamNameContext): void => { this.collect = true; }
     
     public override exitIdentifier = (ctx: IdentifierContext): void => {
         if (!this.collect) { return; }

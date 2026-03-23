@@ -314,7 +314,7 @@ export class SourceContext
         if (ruleScope) {
             let run = context;
             while (run
-                && !(run instanceof Expr_seqContext)
+                && !(run instanceof ExprSeqContext)
                 && !(run instanceof FnDefinitionContext)
                 && !(run instanceof StructDefinitionContext)
                 //...

@@ -354,8 +354,8 @@ export class ContextSymbolTable extends SymbolTable {
         if (parentRule) {
             switch (parentRule.ruleIndex) {
                 case mxsParser.RULE_variableDeclaration:
-                case mxsParser.RULE_fn_args:
-                case mxsParser.RULE_fn_params:
+                case mxsParser.RULE_fnArgs:
+                case mxsParser.RULE_fnParams:
                     // Only bail out if this symbol IS the declared name, not a RHS reference
                     if (symbol.parent && symbol.name === (symbol.parent as ExprSymbol).name) {
                         return symbol;
@@ -385,8 +385,8 @@ export class ContextSymbolTable extends SymbolTable {
             switch (parentRule.ruleIndex) {
                 case mxsParser.RULE_fnDefinition:
                     switch (prospectRule.ruleIndex) {
-                        case mxsParser.RULE_fn_args:
-                        case mxsParser.RULE_fn_params:
+                        case mxsParser.RULE_fnArgs:
+                        case mxsParser.RULE_fnParams:
                             // console.log('first appearance in paren is definition!');
                             return prospect;
                     }
@@ -710,8 +710,8 @@ export class ContextSymbolTable extends SymbolTable {
                 }
                 break;
             case mxsParser.RULE_for_body:
-            case mxsParser.RULE_fn_args:
-            case mxsParser.RULE_fn_params:
+            case mxsParser.RULE_fnArgs:
+            case mxsParser.RULE_fnParams:
                 if (symbol.name !== symbol.parent!.name) {
                     candidates.push(symbol);
                     break;
@@ -731,7 +731,7 @@ export class ContextSymbolTable extends SymbolTable {
                     result.push(ret()); return ret();
                 }
                 break;
-            case mxsParser.RULE_expr_seq:
+            case mxsParser.RULE_exprSeq:
                 if (ContextSymbolTable.isScopeSibling(scopeFound, scopeSymbol)) candidates.push(symbol);
                 break;
             case mxsParser.RULE_functionCall:
