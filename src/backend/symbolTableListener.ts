@@ -3,13 +3,13 @@ import { ParseTree, TerminalNode } from 'antlr4ng';
 
 import {
   AccessorContext, AttributesDefinitionContext, DeclarationStatementContext,
-  EventHandlerStatementContext, Expr_seqContext, Fn_argsContext, Fn_paramsContext,
+  EventHandlerStatementContext, ExprSeqContext, FnArgsContext, FnParamsContext,
   FnDefinitionContext, For_bodyContext, FunctionCallContext, IdentifierContext,
   IndexContext, Kw_overrideContext, MacroscriptDefinitionContext, mxsParser,
   ParamContext, ParamDefinitionContext, ParamsDefinitionContext, PathContext,
   PluginDefinitionContext, PropertyContext, Rc_submenudefinitionContext,
   RcmenuControlContext, RcmenuDefinitionContext, ReferenceContext, RolloutControlContext,
-  RolloutDefinitionContext, RolloutGroupDefinitionContext, Struct_memberContext,
+  RolloutDefinitionContext, RolloutGroupDefinitionContext, StructMemberContext,
   StructDefinitionContext, ToolDefinitionContext, UtilityDefinitionContext,
   VariableDeclarationContext,
 } from '../parser/mxsParser.js';
@@ -111,6 +111,10 @@ export class symbolTableListener extends mxsParserListener
         this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString());
     }
     public override exitExpr = (ctx: ExprContext): void => { this.popSymbol(); }
+
+    public override enterExpr_seq = (ctx: ExprSeqContext): void => {
+        this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString());
+    }
     // */
     
     // Plugin
@@ -260,11 +264,11 @@ export class symbolTableListener extends mxsParserListener
         // this.popScope();
     }
 
-    public override enterStruct_member = (ctx: Struct_memberContext): void =>
+    public override enterStructMember = (ctx: StructMemberContext): void =>
     {
         this.pushNewSymbol(StructMemberSymbol, ctx, ctx.identifier().getText());
     }
-    public override exitStruct_member = (ctx: Struct_memberContext): void => { this.popSymbol(); }
+    public override exitStructMember = (ctx: StructMemberContext): void => { this.popSymbol(); }
 
     //-------------------------------------------------------------
     /* fn defintition */
@@ -278,21 +282,21 @@ export class symbolTableListener extends mxsParserListener
         this.popSymbol();
         // this.popScope();
     }
-    public override enterFn_args = (ctx: Fn_argsContext): void => 
+    public override enterFnArgs = (ctx: FnArgsContext): void => 
     {
         this.pushNewSymbol(fnArgsSymbol, ctx, ctx.identifier()?.getText());
     }
-    public override exitFn_args = (ctx: Fn_argsContext): void => { this.popSymbol(); }
+    public override exitFnArgs = (ctx: FnArgsContext): void => { this.popSymbol(); }
 
-    public override enterFn_params = (ctx: Fn_paramsContext): void =>
+    public override enterFnParams = (ctx: FnParamsContext): void =>
     {
         // this is a workaround for param: without assignment
         this.pushNewSymbol(fnParamsSymbol, ctx, ctx.identifier()?.getText());
     }
-    public override exitFn_params = (ctx: Fn_paramsContext): void => { this.popSymbol(); }
+    public override exitFnParams = (ctx: FnParamsContext): void => { this.popSymbol(); }
 
-    // public override enterParam_name = (ctx: Param_nameContext): void => { this.pushNewSymbol(ParamSymbol, ctx, ctx.getText()); }
-    // public override exitParam_name = (ctx: Param_nameContext): void => { this.popSymbol(); }
+    // public override enterParamName = (ctx: ParamNameContext): void => { this.pushNewSymbol(ParamSymbol, ctx, ctx.getText()); }
+    // public override exitParamName = (ctx: ParamNameContext): void => { this.popSymbol(); }
 
     //-------------------------------------------------------------
     /* Variable declaration */
@@ -355,13 +359,13 @@ export class symbolTableListener extends mxsParserListener
     /* expression sequence */
     // Expression sequences are just grouping constructs and don't need symbol table entries
     /*
-    public override enterExpr_seq = (ctx: Expr_seqContext): void =>
+    public override enterExpr_seq = (ctx: ExprSeqContext): void =>
     {
         this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString())
         // this.pushScope( this.pushNewSymbol(ExpSeqSymbol, ctx, ctx.ruleIndex.toString()) );
     }
 
-    public override exitExpr_seq = (ctx: Expr_seqContext): void =>
+    public override exitExpr_seq = (ctx: ExprSeqContext): void =>
     {
         this.popSymbol();
         // this.popScope();
@@ -373,7 +377,7 @@ export class symbolTableListener extends mxsParserListener
     public override enterFunctionCall = (ctx: FunctionCallContext): void =>
     {
         //TODO: get caller definition...
-        this.pushNewSymbol(FnCallSymbol, ctx, ctx.fn_caller()?.getText());
+        this.pushNewSymbol(FnCallSymbol, ctx, ctx.fnCaller()?.getText());
     }
     public override exitFunctionCall = (ctx: FunctionCallContext): void => { this.popSymbol(); }
 
@@ -420,7 +424,7 @@ export class symbolTableListener extends mxsParserListener
     /*
     public override exitExprOperand = (ctx: ExprOperandContext): void =>
     {
-        const expr_operand = ctx.expr_operand()
+        const expr_operand = ctx.exprOperand()
         const op = expr_operand.operand()
         if (op) {
             const id = op.factor()?.identifier()
@@ -429,7 +433,7 @@ export class symbolTableListener extends mxsParserListener
             }
         }
     }
-    public override exitExpr_operand = (ctx: Expr_operandContext): void => { this.popSymbol(); }
+    public override exitExpr_operand = (ctx: ExprOperandContext): void => { this.popSymbol(); }
     // */
 
     /* Identifiers */
