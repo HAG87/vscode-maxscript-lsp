@@ -316,7 +316,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         
         // Add named parameters (fn test size:10 color:blue)
         for (const paramCtx of ctx.fnParams()) {
-            const paramName = paramCtx.identifier()?.getText() || paramCtx.kw_override()?.getText() || 'unnamed';
+            const paramName = paramCtx.identifier()?.getText() || paramCtx.kwOverride()?.getText() || 'unnamed';
             const paramPosition = this.getPosition(paramCtx);
             
             // Parse default value if present
@@ -397,7 +397,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         // Walk through children in order to track when accessibility changes
         for (const child of children) {
             // Check if this child is a struct_access context
-            if ('struct_access' in child.constructor.prototype || child.constructor.name === 'Struct_accessContext') {
+            if ('struct_access' in child.constructor.prototype || child.constructor.name === 'StructAccessContext') {
                 const accessText = child.getText().toLowerCase();
                 currentAccessibility = accessText === 'private' ? 'private' : 'public';
             }
@@ -720,7 +720,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
             
             if (child instanceof PropertyContext) {
                 // Property access: obj.prop
-                const propName = child.identifier()?.getText() || child.kw_override()?.getText() || '';
+                const propName = child.identifier()?.getText() || child.kwOverride()?.getText() || '';
                 const position = this.getPosition(child);
                 result = new MemberExpression(result, propName, position);
             } else if (child instanceof IndexContext) {
@@ -743,7 +743,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     visitProperty = (ctx: PropertyContext): Expression => {
         // Properties are handled within visitAccessor
         // This shouldn't be called directly, but return the property name if it is
-        const propName = ctx.identifier()?.getText() || ctx.kw_override()?.getText() || '';
+        const propName = ctx.identifier()?.getText() || ctx.kwOverride()?.getText() || '';
         const position = this.getPosition(ctx);
         return new NameLiteral(propName, position);
     }
