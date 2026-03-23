@@ -82,35 +82,35 @@ expr
 //*/
 //-------------------------------------- MACROSCRIPT_DEF
 macroscriptDefinition
-	: macroscript_clause NL*
+	: macroscriptClause NL*
     lp
-        (macroscript_members (lbk? macroscript_members)*)?
+        (macroscriptMembers (lbk? macroscriptMembers)*)?
     rp
 	;
-macroscript_clause: MacroScript NL* macro_name = identifier ( NL* param )*
+macroscriptClause: MacroScript NL* macro_name = identifier ( NL* param )*
 	;
-macroscript_members: expr | eventHandlerStatement
+macroscriptMembers: expr | eventHandlerStatement
 	;
 //-------------------------------------- UTILITY_DEF
 utilityDefinition
-	: utility_clause NL*
+	: utilityClause NL*
     lp
-        ( rollout_members (lbk? rollout_members)* )?
+        ( rolloutMembers (lbk? rolloutMembers)* )?
     rp
 	;
-utility_clause: Utility NL* utility_name = identifier NL* operand (NL* param)*
+utilityClause: Utility NL* utility_name = identifier NL* operand (NL* param)*
 	;
 //-------------------------------------- ROLLOUT_DEF
 rolloutDefinition
-	: rollout_clause NL*
+	: rolloutClause NL*
     lp
-        ( rollout_members (lbk? rollout_members)* )?
+        ( rolloutMembers (lbk? rolloutMembers)* )?
     rp
 	;
 
-rollout_clause: Rollout NL* rollout_name = identifier NL* operand (NL* param)*
+rolloutClause: Rollout NL* rollout_name = identifier NL* operand (NL* param)*
 	;
-rollout_members
+rolloutMembers
 	: declarationStatement
 	| rolloutControl
 	| rolloutGroupDefinition
@@ -122,12 +122,12 @@ rollout_members
 	;
 
 rolloutGroupDefinition
-	: group_clause NL*
+	: groupClause NL*
     lp
         ( rolloutControl (lbk? rolloutControl)* )?
     rp
 	;
-group_clause: Group NL* group_name = STRING?
+groupClause: Group NL* group_name = STRING?
 	;
 
 rolloutControl: rolloutControlType NL* controlName = identifier (NL* operand)? (NL* param)*
@@ -165,39 +165,39 @@ rolloutControlType
 
 //-------------------------------------- TOOL_DEF
 toolDefinition
-	: tool_clause NL*
+	: toolClause NL*
     lp
-        tool_members (lbk? tool_members)*
+        toolMembers (lbk? toolMembers)*
     rp
 	;
-tool_clause: Tool NL* tool_name = identifier (NL* param)*
+toolClause: Tool NL* tool_name = identifier (NL* param)*
 	;
-tool_members: declarationStatement | fnDefinition | structDefinition | eventHandlerStatement
+toolMembers: declarationStatement | fnDefinition | structDefinition | eventHandlerStatement
 	;
 
 //-------------------------------------- RCMENU_DEF
 rcmenuDefinition
-	: rcmenu_clause NL*
+	: rcmenuClause NL*
 	lp
-		(rc_members (lbk? rc_members)*)?
+		(rcMembers (lbk? rcMembers)*)?
 	rp
 	;
-rcmenu_clause: RCmenu NL* rc_name = identifier
+rcmenuClause: RCmenu NL* rc_name = identifier
 	;
-rc_submenudefinition
-	: submenu_clause NL*
+rcSubmenuDefinition
+	: submenuClause NL*
     lp
-        ( rc_members (lbk? rc_members)* )?
+        ( rcMembers (lbk? rcMembers)* )?
     rp
 	;
-submenu_clause: SubMenu NL* submenu_name = STRING (NL* param)*
+submenuClause: SubMenu NL* submenu_name = STRING (NL* param)*
 	;
-rc_members
+rcMembers
 	: declarationStatement
 	| fnDefinition
 	| structDefinition
 	| eventHandlerStatement
-	| rc_submenudefinition
+	| rcSubmenuDefinition
 	| rcmenuControl
 	;
 
@@ -208,14 +208,14 @@ rcmenuControl
 
 //-------------------------------------- PLUGIN_DEF
 pluginDefinition
-	: plugin_clause NL*
+	: pluginClause NL*
     lp
-        plugin_members (lbk? plugin_members)*
+        pluginMembers (lbk? pluginMembers)*
     rp
 	;
-plugin_clause: Plugin NL* plugin_kind = identifier NL* plugin_name = identifier (NL* param)*
+pluginClause: Plugin NL* plugin_kind = identifier NL* plugin_name = identifier (NL* param)*
 	;
-plugin_members
+pluginMembers
 	: declarationStatement
 	| fnDefinition
 	| structDefinition
@@ -230,32 +230,32 @@ plugin_members
 // deleted [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr>
 // objects var_name | path | array
 
-whenStatement: when_clause NL* DO NL* expr
+whenStatement: whenClause NL* DO NL* expr
 	;
 
-when_clause
+whenClause
 	: WHEN NL* (reference NL*)? (reference | path | exprSeq | array) NL* identifier  NL*  (NL* param)* (NL* operand)?
 	;
 
 //-------------------------------------- CONTEXT_EXPR
 
 contextStatement
-	: ctx_cascading
-	| ctx_set
+	: ctxCascading
+	| ctxSet
 	;
 
-ctx_cascading: ctx_clause (comma ctx_clause)* NL* expr
+ctxCascading: ctxClause (comma ctxClause)* NL* expr
 	;
 /*
 	set <context>      
 	Where, <context> is one of the MAXScript context prefixes: animate , time , in , coordsys , about , level , or undo .
  */
-ctx_set
+ctxSet
 	: SET (
 		(ANIMATE | TIME | LEVEL | IN) NL* operand
-		| ctx_coordsys
-		| ctx_about
-		| ctx_undo
+		| ctxCoordsys
+		| ctxAbout
+		| ctxUndo
 	)
 	;
 
@@ -276,23 +276,23 @@ ctx_set
 	[ with ] dontRepeatMessages <boolean>
 	[ with ] macroRecorderEmitterEnabled <boolean>
  */
-ctx_clause
+ctxClause
 	: AT NL* (LEVEL | TIME) NL* operand
-	| IN NL* (ctx_coordsys | operand)
-	| WITH NL* (ctx_undo | ctx_switches)
-	| ctx_about
-	| ctx_coordsys
-	| ctx_undo
-	| ctx_switches
+	| IN NL* (ctxCoordsys | operand)
+	| WITH NL* (ctxUndo | ctxSwitches)
+	| ctxAbout
+	| ctxCoordsys
+	| ctxUndo
+	| ctxSwitches
 	;
 
-ctx_about: ABOUT NL* (COORDSYS | operand)
+ctxAbout: ABOUT NL* (COORDSYS | operand)
 	;
-ctx_coordsys: COORDSYS NL* (LOCAL | operand)
+ctxCoordsys: COORDSYS NL* (LOCAL | operand)
 	;
-ctx_undo: UNDO NL* (STRING | param | reference)? NL* operand
+ctxUndo: UNDO NL* (STRING | param | reference)? NL* operand
 	;
-ctx_switches
+ctxSwitches
 	: ( ANIMATE
 	| DefaultAction
 	| DontRepeatMessages
@@ -305,14 +305,14 @@ ctx_switches
 
 //-------------------------------------- PARAMETER DEF
 paramsDefinition
-	: params_clause NL*
+	: paramsClause NL*
     lp
-        ( params_members (lbk params_members)* )?
+        ( paramsMembers (lbk paramsMembers)* )?
     rp
 	;
-params_clause: Parameters NL* identifier (NL* param)*
+paramsClause: Parameters NL* identifier (NL* param)*
 	;
-params_members
+paramsMembers
 	: paramDefinition
 	| eventHandlerStatement
 	;
@@ -323,14 +323,14 @@ paramDefinition: identifier (NL* param)*
 // [silentErrors:t/f] [initialRollupState:0xnnnnn] [remap:#(<old_param_names_array>,
 // <new_param_names_array>)]
 attributesDefinition
-	: attributes_clause NL*
+	: attributesClause NL*
     lp
-        attributes_members ( lbk attributes_members )*
+        attributesMembers ( lbk attributesMembers )*
     rp
 	;
-attributes_clause: Attributes NL* identifier (NL* param)*
+attributesClause: Attributes NL* identifier (NL* param)*
 	;
-attributes_members
+attributesMembers
 	: declarationStatement
 	| eventHandlerStatement
 	| paramsDefinition
@@ -339,10 +339,10 @@ attributes_members
 
 //-------------------------------------- EVENT HANDLER
 eventHandlerStatement
-	: ON NL* ev_args = event_args NL* ev_action = (DO | RETURN) NL* ev_body = expr
+	: ON NL* ev_args = eventArgs NL* ev_action = (DO | RETURN) NL* ev_body = expr
 	;
 
-event_args
+eventArgs
 	: refs += reference (NL* refs += reference)*
 	;
 
@@ -354,7 +354,7 @@ structDefinition
     rp
 	;
 
-structBody: (struct_access NL*)? structMembers ( comma (struct_access NL*)? structMembers )*
+structBody: (structAccess NL*)? structMembers ( comma (structAccess NL*)? structMembers )*
 	;
 
 structMembers
@@ -365,7 +365,7 @@ structMembers
 
 structMember: identifier assignment? ;
 
-struct_access: PUBLIC | PRIVATE
+structAccess: PUBLIC | PRIVATE
 	;
 
 //---------------------------------------- FUNCTION DEF
@@ -384,7 +384,7 @@ fnArgs
 	| identifier                             // arg - by-value parameter
 	;
 fnParams
-	: {this.colonBeNext()}? (identifier | kw_override) COLON (NL* operandArg)?
+	: {this.colonBeNext()}? (identifier | kwOverride) COLON (NL* operandArg)?
 	;
 
 //FN_RETURN
@@ -409,20 +409,20 @@ doLoopStatement: DO NL* body = expr NL* WHILE NL* condition = expr
  */
 
 forLoopStatement
-	: FOR NL* for_body NL* for_operator = (IN | EQ) NL* for_sequence NL* for_action = (DO | COLLECT) NL* body = expr
+	: FOR NL* forBody NL* for_operator = (IN | EQ) NL* forSequence NL* for_action = (DO | COLLECT) NL* body = expr
 	;
 
-for_body : var = reference ( comma index_name = reference ( comma filtered_index_name = reference )? )?
+forBody : var = reference ( comma index_name = reference ( comma filtered_index_name = reference )? )?
 	;
-for_sequence : expr ( NL* for_to NL* for_by? )? ( NL* (for_while NL* for_where? | for_where) )?
+forSequence : expr ( NL* forTo NL* forBy? )? ( NL* (forWhile NL* forWhere? | forWhere) )?
 	;
-for_to: TO NL* expr
+forTo: TO NL* expr
 	;
-for_by: BY NL* expr
+forBy: BY NL* expr
 	;
-for_while: WHILE NL* expr
+forWhile: WHILE NL* expr
 	;
-for_where: WHERE NL* expr
+forWhere: WHERE NL* expr
 	;
 loopExitStatement: EXIT (NL* WITH NL* exitValue = expr)?
 	;
@@ -433,12 +433,12 @@ tryStatement: TRY NL* tryBody = expr NL* CATCH NL* catchBody = expr
 
 //---------------------------------------- CASE-EXPR
 caseStatement
-	: case_clause NL*
+	: caseClause NL*
 	lp
 		caseItem (lbk caseItem)*
 	rp
 	;
-case_clause: CASE (NL* expr)? NL* OF
+caseClause: CASE (NL* expr)? NL* OF
 	;
 // This will produce errors at compile time...
 caseItem: factor COLON NL* expr
@@ -543,7 +543,7 @@ operand
 	| factor      // Primary: literals, identifiers, paths, etc.
 	;
 
-classname: ID | kw_reserved | exprSeq
+classname: ID | kwReserved | exprSeq
 	;
 
 //---------------------------------------- FUNCTION CALL Positional Arguments Keyword Arguments
@@ -590,7 +590,7 @@ fnCaller
 param: paramName NL* operandArg
 	;
 
-paramName: {this.colonBeNext()}? (identifier | kw_override) COLON
+paramName: {this.colonBeNext()}? (identifier | kwOverride) COLON
 	;
 
 operandArg
@@ -611,7 +611,7 @@ accessor
 
 // Property accessor
 property
-	: DOT NL* (identifier | kw_override)
+	: DOT NL* (identifier | kwOverride)
 	;
 
 //Index accessor
@@ -682,7 +682,7 @@ reference
 	;
 
 identifier
-	: (ID | QUOTED_ID | kw_reserved)
+	: (ID | QUOTED_ID | kwReserved)
 	;
 
 path
@@ -697,7 +697,7 @@ bool: (TRUE | FALSE | OFF | ON)
 	;
 //---------------------------------------- OVERRIDABLE KEYWORDS CONTEXTUAL KEYWORDS
 //...can be used as identifiers outside the context...
-kw_reserved
+kwReserved
 	: rolloutControlType |
 	( Group
 	| LEVEL
@@ -710,7 +710,7 @@ kw_reserved
 	| PrintAllElements )
 	;
 
-kw_override
+kwOverride
 	: ( Attributes
 	| Parameters
 	| Plugin
