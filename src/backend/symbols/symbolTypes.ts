@@ -168,7 +168,7 @@ export const topLevelSymbolsType: Array<new () => BaseSymbol> = [
     UtilityDefinitionSymbol,
     RolloutDefinitionSymbol,
     RcMenuDefinitionSymbol,
-    EventHandlerClauseSymbol,
+    EventHandlerStatementSymbol,
     StructDefinitionSymbol,
     StructMemberSymbol,
     FnDefinitionSymbol,
