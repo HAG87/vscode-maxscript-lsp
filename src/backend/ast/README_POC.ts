@@ -1,13 +1,18 @@
 /**
  * Example integration of Tylasu AST POC
- * Shows how to replace antlr4-c3 symbol resolution with O(1) AST approach
+ * Shows the intended AST pipeline and a small set of helper lookups.
+ *
+ * Note:
+ * This file is historical guidance, not the provider-facing query layer.
+ * The real migration target is a dedicated AST/query API that can serve
+ * definitions, references, scopes, and contextual lookups consistently.
  */
 
 import { CharStream, CommonTokenStream } from 'antlr4ng';
 import { mxsLexer } from '../../parser/mxsLexer.js';
 import { mxsParser } from '../../parser/mxsParser.js';
 import { ASTBuilder } from './ASTBuilder.js';
-import { Program } from './ASTNodes.js';
+import { Program, VariableDeclaration, VariableReference } from './ASTNodes.js';
 import { SymbolResolver } from './SymbolResolver.js';
 
 /**
@@ -32,41 +37,70 @@ export function buildAST(code: string): Program {
     return ast;
 }
 
-/**
- * Example: Find all references to a variable at a given position
- * Replaces ContextSymbolTable.getScopedSymbolOccurrences (O(n²) → O(1))
- */
-export function findReferencesAt(ast: Program, line: number, column: number) {
-    // Find declaration at position (simplified for POC)
-    let targetDecl;
-    for (const [name, decl] of ast.declarations) {
-        if (decl.position &&
-            decl.position.start.line === line &&
-            decl.position.start.column <= column &&
-            decl.position.end.column >= column) {
-            targetDecl = decl;
-            break;
+function containsPosition(line: number, column: number, node: { position?: Program['position'] }): boolean {
+    const position = node.position;
+    if (!position) {
+        return false;
+    }
+
+    const startsBefore = position.start.line < line
+        || (position.start.line === line && position.start.column <= column);
+    const endsAfter = position.end.line > line
+        || (position.end.line === line && position.end.column >= column);
+
+    return startsBefore && endsAfter;
+}
+
+function nodeSpanScore(node: { position?: Program['position'] }): number {
+    const position = node.position;
+    if (!position) {
+        return Number.MAX_SAFE_INTEGER;
+    }
+
+    return (position.end.line - position.start.line) * 100000 + (position.end.column - position.start.column);
+}
+
+function findInnermostNode<T>(ast: Program, line: number, column: number, predicate: (node: unknown) => node is T): T | undefined {
+    let bestMatch: T | undefined;
+    let bestScore = Number.MAX_SAFE_INTEGER;
+
+    for (const node of ast.walk()) {
+        if (!predicate(node) || !containsPosition(line, column, node)) {
+            continue;
+        }
+
+        const score = nodeSpanScore(node);
+        if (score <= bestScore) {
+            bestMatch = node;
+            bestScore = score;
         }
     }
-    
-    if (!targetDecl) return [];
-    
-    // O(1) lookup - just return the references array!
-    return targetDecl.references;
+
+    return bestMatch;
 }
 
 /**
- * Example: Find definition for a reference at a given position
- * Replaces complex scope traversal with direct link
+ * Example: Find all references to the declaration or reference under a position.
+ *
+ * Lookup of the declaration's references remains O(1); locating the node by position
+ * is still a tree walk until the dedicated query layer is added.
+ */
+export function findReferencesAt(ast: Program, line: number, column: number) {
+    const referenceNode = findInnermostNode(ast, line, column, (node): node is VariableReference => node instanceof VariableReference);
+    if (referenceNode?.declaration?.referred) {
+        return referenceNode.declaration.referred.references;
+    }
+
+    const declarationNode = findInnermostNode(ast, line, column, (node): node is VariableDeclaration => node instanceof VariableDeclaration);
+    return declarationNode?.references ?? [];
+}
+
+/**
+ * Example: Find the declaration referenced at a given position.
  */
 export function findDefinitionAt(ast: Program, line: number, column: number) {
-    // Find reference at position (would need full AST walk in real implementation)
-    // For POC, just demonstrate O(1) lookup once we have the reference
-    
-    // Assuming we found a VariableReference node...
-    // return reference.declaration; // O(1)!
-    
-    return null; // Placeholder for POC
+    const referenceNode = findInnermostNode(ast, line, column, (node): node is VariableReference => node instanceof VariableReference);
+    return referenceNode?.declaration?.referred;
 }
 
 /**
@@ -79,11 +113,13 @@ export function findDefinitionAt(ast: Program, line: number, column: number) {
  * 4. → O(n²) complexity, unreliable scope matching
  * 
  * NEW (Tylasu AST):
- * 1. Find VariableDeclaration node
- * 2. → Return declaration.references array
- * 3. → O(1) direct array access
- * 4. → 100% reliable - references were resolved during AST build
+ * 1. Locate the AST node at the cursor position
+ * 2. → Follow `VariableReference.declaration.referred` to the declaration
+ * 3. → Use `declaration.references` for O(1) reference access after node lookup
+ * 4. → 100% reliable binding once references are resolved during AST build
  * 
- * Performance gain: 40-100x for large files
- * Reliability gain: Eliminates scope matching bugs
+ * Performance note:
+ * The O(1) guarantee applies to resolved declaration/reference relationships,
+ * not to cursor-to-node lookup. That lookup still needs a query layer, which is
+ * the next migration step before providers switch over.
  */
