@@ -835,13 +835,13 @@ export class ContextSymbolTable extends SymbolTable {
         const results: BaseSymbol[] = [];
         const candidates: BaseSymbol[] = [];
         const definition = _dfs(root, results, candidates);
-
+        /*
         console.log('--- search result ---');
         console.log('definition:');
         console.log(definition);
         console.log('candidates:');
         console.log(candidates);
-
+        //*/
         return { definition, results, candidates };
     }
     //---------------------------------------------------------------
