@@ -31,17 +31,17 @@ expr
 	: simpleExpression
 	| declarationExpression
 	| assignmentExpression
-	| ifExpression
-	| whileLoopExpression
-	| doLoopExpression
-	| forLoopExpression
+	| ifStatement
+	| whileLoopStatement
+	| doLoopStatement
+	| forLoopStatement
 	| loopExitStatement
-	| caseExpression
+	| caseStatement
 	| structDefinition
-	| tryExpression
+	| tryStatement
 	| fnDefinition
 	| fnReturnStatement
-	| contextExpression
+	| contextStatement
 	| attributesDefinition
 	| whenStatement
 	| utilityDefinition
@@ -64,7 +64,7 @@ expr
 	| fnDefinition                 // FN | MAPPED
 	| fnReturnStatement            // RETURN
 	| structDefinition             // STRUCT
-	| contexStatement              // AT | IN | WITH | SET | ABOUT
+	| contextStatement              // AT | IN | WITH | SET | ABOUT
 	| whenStatement                // WHEN
 	| loopExitStatement            // EXIT
 	// Definition blocks - keyword-led
@@ -76,7 +76,7 @@ expr
 	| pluginDefinition              // Plugin
 	| attributesDefinition          // Attributes
 	// Ambiguous cases - must be last (can start with identifier/accessor/path)
-	| doLoopExpression              // DO (conflicts with if-do, while-do, etc.)
+	| doLoopStatement              // DO (conflicts with if-do, while-do, etc.)
 	| simpleExpression              // Fallback - expressions, assignments, function calls, etc.
 	;
 //*/
@@ -179,7 +179,7 @@ tool_members: declarationStatement | fnDefinition | structDefinition | eventHand
 rcmenuDefinition
 	: rcmenu_clause NL*
 	lp
-		(rc_clause (lbk? rc_clause)*)?
+		(rc_members (lbk? rc_members)*)?
 	rp
 	;
 rcmenu_clause: RCmenu NL* rc_name = identifier
@@ -233,13 +233,13 @@ plugin_members
 whenStatement: when_clause NL* DO NL* expr
 	;
 
-when_predicate
+when_clause
 	: WHEN NL* (reference NL*)? (reference | path | expr_seq | array) NL* identifier  NL*  (NL* param)* (NL* operand)?
 	;
 
 //-------------------------------------- CONTEXT_EXPR
 
-contextExpression
+contextStatement
 	: ctx_cascading
 	| ctx_set
 	;
@@ -276,7 +276,7 @@ ctx_set
 	[ with ] dontRepeatMessages <boolean>
 	[ with ] macroRecorderEmitterEnabled <boolean>
  */
-ctx_predicate
+ctx_clause
 	: AT NL* (LEVEL | TIME) NL* operand
 	| IN NL* (ctx_coordsys | operand)
 	| WITH NL* (ctx_undo | ctx_switches)
@@ -533,10 +533,9 @@ simpleExpression
 // - &obj.prop is parsed as &(obj.prop), not (&obj).prop
 // - *arr[0] is parsed as *(arr[0]), not (*arr)[0]
 expr_operand
-	: by_ref      // Prefix: & (binds to everything after)
-	| de_ref      // Prefix: * (binds to everything after)
-	| functionCall // Postfix: function calls with () or args
-	| operand      // Postfix accessor (.[]]) or Primary (literals)
+	: functionCall
+	| de_ref
+	| operand
 	;
 
 operand
@@ -672,13 +671,13 @@ arrayList: expr ( comma expr)*
 // Dereference operator: *identifier, *path, *accessor
 de_ref: {this.noWSBeNext()}? PROD (accessor | reference | path)
 	;
-	;
 // Reference operator: &identifier, &path, &accessor
 // by_ref: {this.noWSBeNext()}? AMP (accessor | reference | path);
 
 // Identifiers
 reference
 	: GLOB identifier
+	| {this.noWSBeNext()}? AMP identifier //by_ref
 	| identifier
 	;
 
@@ -686,7 +685,9 @@ identifier
 	: (ID | QUOTED_ID | kw_reserved)
 	;
 
-path: PATH
+path
+	: {this.noWSBeNext()}? AMP PATH
+	| PATH
 	;
 
 name: NAME
