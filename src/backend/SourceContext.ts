@@ -31,6 +31,7 @@ import { ASTBuilder } from './ast/ASTBuilder.js';
 import { Program } from './ast/ASTNodes.js';
 import { SymbolResolver } from './ast/SymbolResolver.js';
 import { SymbolTreeBuilder } from './ast/SymbolTreeBuilder';
+import { ASTQuery } from './ast/ASTQuery.js';
 
 // One context for each valid document
 export class SourceContext
@@ -178,11 +179,16 @@ export class SourceContext
         ParseTreeWalker.DEFAULT.walk(symbolsListener, this.tree);
         //---------------------------------------------------------------
         // 2. Build AST from parse tree
-        const builder = new ASTBuilder();
-        this.ast = builder.visitProgram(this.tree);
-        // 3. Resolve all symbol references
-        const resolver = new SymbolResolver(this.ast); // Takes existing AST
-        resolver.resolve(); // MUTATES the AST (no return value)
+        try {
+            const builder = new ASTBuilder();
+            this.ast = builder.visitProgram(this.tree);
+            // 3. Resolve all symbol references
+            const resolver = new SymbolResolver(this.ast); // Takes existing AST
+            resolver.resolve(); // MUTATES the AST (no return value)
+        } catch (err) {
+            console.error('[language-maxscript][SourceContext] AST build/resolve failed:', err);
+            this.ast = undefined;
+        }
         //---------------------------------------------------------------
         // TODO: this.info.unreferencedRules = this.symbolTable.getUnreferencedSymbols();
         // TODO: this can be used to add dependencies... imports come from the listener
@@ -193,11 +199,67 @@ export class SourceContext
     }
     //---------------------------------------------------------------
     // 3. Build hierarchical symbol tree for VS Code
-    public buildSymbolTree(): ISymbolInfo[] {
-        if (!this.ast) {
+    public buildSymbolTree(trace = false): ISymbolInfo[] {
+        if (!this.tree) {
+            if (trace) console.log('[language-maxscript][SourceContext] buildSymbolTree: no parse tree');
             return [];
         }
-        return SymbolTreeBuilder.buildSymbolTree(this.ast, this.sourceUri);
+
+        const wasDirty = this.symbolTableDirty;
+        // AST is built lazily in ensureSymbolTable() during parse-dependent operations.
+        this.ensureSymbolTable();
+
+        if (!this.ast) {
+            if (trace) console.log(`[language-maxscript][SourceContext] buildSymbolTree: ast=undefined (wasDirty=${wasDirty})`);
+            return [];
+        }
+
+        if (trace) {
+            console.log(`[language-maxscript][SourceContext] buildSymbolTree: ast ok, stmts=${this.ast.statements.length}, decls=${this.ast.declarations.size}`);
+        }
+
+        const result = SymbolTreeBuilder.buildSymbolTree(this.ast, this.sourceUri);
+        if (trace) console.log(`[language-maxscript][SourceContext] buildSymbolTree: result=${result.length}`);
+        return result;
+    }
+
+    /**
+     * Returns the resolved AST for this source context, ensuring it is built first.
+     */
+    public getResolvedAST(): Program | undefined {
+        if (!this.tree) {
+            return undefined;
+        }
+        this.ensureSymbolTable();
+        return this.ast;
+    }
+
+    /**
+     * Returns the declaration at a source position using the AST query layer.
+     * @param row 1-based line number
+     * @param column 0-based column number
+     */
+    public astDeclarationAtPosition(row: number, column: number)
+    {
+        const ast = this.getResolvedAST();
+        if (!ast) {
+            return undefined;
+        }
+        return ASTQuery.findDeclarationAtPosition(ast, row, column);
+    }
+
+    /**
+     * Returns all references for the symbol at a source position using the AST query layer.
+     * @param row 1-based line number
+     * @param column 0-based column number
+     */
+    public astReferencesAtPosition(row: number, column: number)
+    {
+        const declaration = this.astDeclarationAtPosition(row, column);
+        if (!declaration) {
+            return undefined;
+        }
+        return ASTQuery.findReferencesForDeclaration(declaration);
     }
     //---------------------------------------------------------------
 
