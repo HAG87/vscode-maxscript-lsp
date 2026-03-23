@@ -334,7 +334,7 @@ export class symbolTableListener extends mxsParserListener
     public override enterEventHandlerStatement = (ctx: EventHandlerStatementContext): void =>
     {
         const refs = ctx._ev_args?._refs;
-        const evType = refs && refs.length > 1 ? refs[1] : refs?.[0];
+        const evType = refs && refs.length >= 2 ? refs[1] : refs?.[0];
         this.pushNewSymbol(EventHandlerStatementSymbol, ctx, evType?.getText());
     }
     public override exitEventHandlerStatement = (ctx: EventHandlerStatementContext): void => { this.popSymbol(); }

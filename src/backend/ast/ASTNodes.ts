@@ -28,6 +28,7 @@
  * - NameLiteral: Name literals (#myName, #'name with spaces')
  * - UndefinedLiteral: undefined/unsupplied
  * - ArrayLiteral: Array literals #(1, 2, 3) - currently empty elements
+ * - PathLiteral: File path literals ($scripts/test.ms)
  * - VectorLiteral: Vector literals [x, y, z] for point2/3/4 values
  *
  * Advanced Literals:
@@ -57,6 +58,8 @@
  * - CaseStatement: case/of switch statements with case items
  * - ReturnStatement: return statements with optional value
  * - ExitStatement: exit statements with optional value
+ * - ContextStatement: at/in/with/set context expressions
+ * - ContextClause: individual context prefixes within a context statement
  * - WhenStatement: when change handlers for object monitoring
  * 
  * Event Handlers:
@@ -72,14 +75,7 @@
  * 
  * ⏳ Pending AST Nodes:
  * 
- * Context Statement:
- * - contexStatement: at/in/with/set level/time/coordsys expressions
- * - AtLevelExpression: at level context
- * - InCoordSysExpression: in coordsys context
- * - WithExpression: with context
- * 
  * Advanced Literals:
- * - PathLiteral: File path literals ($scripts/test.ms)
  * - IntervalLiteral: Time interval literals (interval start end)
  * - TimeValueLiteral: Time value literals (10f, 10t, 10s)
  * 
@@ -229,9 +225,9 @@ export class FunctionDefinition extends ScopeNode implements PossiblyNamed {
 export class StructMember extends Node implements PossiblyNamed {
     name?: string;
     accessibility: 'public' | 'private'; // MaxScript struct member accessibility
-    value?: VariableDeclaration | FunctionDefinition ; // The actual member (field, method or event)
+    value?: VariableDeclaration | FunctionDefinition | Expression; // The actual member (field, method or event)
     
-    constructor(name: string, value: VariableDeclaration | FunctionDefinition, accessibility: 'public' | 'private' = 'public', position?: Position) {
+    constructor(name: string, value: VariableDeclaration | FunctionDefinition | Expression, accessibility: 'public' | 'private' = 'public', position?: Position) {
         super(position);
         this.name = name;
         this.value = value;
@@ -357,6 +353,16 @@ export class ArrayLiteral extends Expression {
     constructor(values: Expression[] = [], position?: Position) {
         super(position);
         this.values = values;
+    }
+}
+
+// Path literal: $scripts/test.ms, @&$path
+export class PathLiteral extends Expression {
+    value: string;
+
+    constructor(value: string, position?: Position) {
+        super(position);
+        this.value = value;
     }
 }
 
@@ -624,6 +630,32 @@ export class ExitStatement extends Expression {
     
     constructor(value?: Expression, position?: Position) {
         super(position);
+        this.value = value;
+    }
+}
+
+// Context statement: at/in/with/set context prefixes applied to an expression or environment
+export class ContextStatement extends Expression {
+    mode: 'cascading' | 'set';
+    clauses: ContextClause[] = [];
+    body?: Expression;
+
+    constructor(mode: 'cascading' | 'set', position?: Position) {
+        super(position);
+        this.mode = mode;
+    }
+}
+
+// Context clause: a single context prefix such as 'at time', 'with undo', or 'set animate'
+export class ContextClause extends Node {
+    kind: string;
+    label?: string;
+    value?: Expression;
+
+    constructor(kind: string, label?: string, value?: Expression, position?: Position) {
+        super(position);
+        this.kind = kind;
+        this.label = label;
         this.value = value;
     }
 }

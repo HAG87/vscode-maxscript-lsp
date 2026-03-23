@@ -302,6 +302,8 @@
     "test:ast:nested": "npm run compile-tests && node out/backend/ast/test-nested.js",
     "test:ast:performance": "npm run compile-tests && node out/backend/ast/test-performance.js",
     "test:ast:symboltree": "npm run compile-tests && node out/backend/ast/test-symboltree.js",
+    "test:ast:control-flow": "npm run compile-tests && node out/backend/ast/test-control-flow.js",
+    "test:ast:contexts": "npm run compile-tests && node out/backend/ast/test-context-handlers.js",
     "generate": "antlr4ng -Dlanguage=TypeScript -visitor -Xexact-output-dir src/parser/grammars/mxsLexer.g4 src/parser/grammars/mxsParser.g4 -o src/parser"
   },
   "devDependencies": {

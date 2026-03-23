@@ -48,7 +48,9 @@ import {
     AssignmentExpression,
     BlockExpression,
     CaseStatement,
+    ContextStatement,
     DoWhileStatement,
+    EventHandlerStatement,
     Expression,
     ExitStatement,
     ForStatement,
@@ -61,6 +63,7 @@ import {
     TryStatement,
     VariableDeclaration,
     VariableReference,
+    WhenStatement,
     WhileStatement,
 } from './ASTNodes.js';
 
@@ -214,6 +217,32 @@ export class SymbolResolver {
     private visitExitStatement(node: ExitStatement): void {
         if (node.value) this.visit(node.value);
     }
+
+    private visitContextStatement(node: ContextStatement): void {
+        for (const clause of node.clauses) {
+            this.visit(clause);
+        }
+        if (node.body) this.visit(node.body);
+    }
+
+    private visitWhenStatement(node: WhenStatement): void {
+        if (node.targetType) this.visit(node.targetType);
+        this.visit(node.targets);
+        for (const parameter of node.parameters) {
+            this.visit(parameter);
+        }
+        if (node.handler) this.visit(node.handler);
+        this.visit(node.body);
+    }
+
+    private visitEventHandlerStatement(node: EventHandlerStatement): void {
+        if (node.target) this.visit(node.target);
+        this.visit(node.eventType);
+        for (const arg of node.eventArgs) {
+            this.visit(arg);
+        }
+        this.visit(node.body);
+    }
     
     /**
      * Generic visit dispatcher
@@ -253,6 +282,12 @@ export class SymbolResolver {
             this.visitReturnStatement(node);
         } else if (node instanceof ExitStatement) {
             this.visitExitStatement(node);
+        } else if (node instanceof ContextStatement) {
+            this.visitContextStatement(node);
+        } else if (node instanceof WhenStatement) {
+            this.visitWhenStatement(node);
+        } else if (node instanceof EventHandlerStatement) {
+            this.visitEventHandlerStatement(node);
         } else {
             // FIX #2: Catch-all for expression nodes (BinaryExpression, CallExpression, etc)
             // Walk children to find any nested VariableReferences

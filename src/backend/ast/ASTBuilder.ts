@@ -7,6 +7,7 @@
  * - expr: Expression dispatcher
  * - expr_seq: Parenthesized expression blocks
  * - declarationStatement: local/global/persistent variable declarations
+ * - contextStatement: at/in/with/set context expressions
  * - fnDefinition: Function definitions with arguments, parameters, and body
  * - structDefinition: Struct definitions
  * - struct_body: Struct body with accessibility modifiers
@@ -36,9 +37,7 @@
  * - loopExitStatement: exit with/continue statements
  * - fnReturnStatement: return statements
  * - whenStatement: when construct
- * 
- * Context Expressions:
- * - contexStatement: at/in/with/set/about level/time/coordsys
+ * - eventHandlerStatement: on <event> do <handler>
  * 
  * Definitions:
  * - macroscriptDefinition: MacroScript blocks
@@ -48,9 +47,6 @@
  * - rcmenuDefinition: Right-click menu definitions
  * - pluginDefinition: Plugin definitions
  * - attributesDefinition: Attribute definitions
- * 
- * Event Handlers:
- * - eventHandlerStatement: on <event> do <handler>
  * 
  * Operators & Expressions:
  * - binaryExpression: Binary operators (+, -, *, /, etc.)
@@ -83,11 +79,16 @@ import { ParserRuleContext } from 'antlr4ng';
 import { Position, Point, Node } from '@strumenta/tylasu';
 import {
     AccessorContext,
+    ArrayContext,
     BoolContext,
     CaseStatementContext,
+    ContextStatementContext,
+    CtxClauseContext,
+    CtxSetContext,
     DoLoopStatementContext,
     DeRefContext,
     DeclarationStatementContext,
+    EventHandlerStatementContext,
     ExprContext,
     ExprOperandContext,
     ExprSeqContext,
@@ -101,7 +102,10 @@ import {
     LoopExitStatementContext,
     mxsParser,
     OperandContext,
+    OperandArgContext,
     ForLoopStatementContext,
+    ParamContext,
+    PathContext,
     ProgramContext,
     PropertyContext,
     ReferenceContext,
@@ -110,6 +114,8 @@ import {
     StructDefinitionContext,
     TryStatementContext,
     VariableDeclarationContext,
+    WhenClauseContext,
+    WhenStatementContext,
     WhileLoopStatementContext,
 } from '../../parser/mxsParser.js';
 import { mxsParserVisitor } from '../../parser/mxsParserVisitor.js';
@@ -138,6 +144,8 @@ import {
     ScopeNode,
     CaseItem,
     CaseStatement,
+    ContextClause,
+    ContextStatement,
     StringLiteral,
     StructDefinition,
     StructMember,
@@ -149,6 +157,9 @@ import {
     VariableReference,
     WhileStatement,
     DoWhileStatement,
+    EventHandlerStatement,
+    PathLiteral,
+    WhenStatement,
 } from './ASTNodes.js';
 
 export class ASTBuilder extends mxsParserVisitor<any> {
@@ -218,6 +229,14 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     // Expression - visit all children to collect references
     visitExpr = (ctx: ExprContext): Expression | Expression[] | null => {
         // Check if this expression directly contains specific node types
+        const contextStmt = ctx.contextStatement();
+        if (contextStmt) {
+            return this.visit(contextStmt);
+        }
+        const whenStmt = ctx.whenStatement();
+        if (whenStmt) {
+            return this.visit(whenStmt);
+        }
         const fnDef = ctx.fnDefinition();
         if (fnDef) {
             return this.visit(fnDef);
@@ -230,7 +249,6 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         if (declExpr) {
             return this.visit(declExpr);
         }
-
         // Visit all children to find identifiers and other expressions
         const result = this.visitChildren(ctx);
         
@@ -300,6 +318,93 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         }
         
         return declarations;
+    }
+
+    visitContextStatement = (ctx: ContextStatementContext): ContextStatement => {
+        const position = this.getPosition(ctx);
+
+        if (ctx.ctxCascading()) {
+            const node = new ContextStatement('cascading', position);
+            const cascading = ctx.ctxCascading()!;
+            node.clauses = cascading.ctxClause().map(clause => this.buildContextClause(clause));
+            node.body = this.visit(cascading.expr()) as Expression;
+            return node;
+        }
+
+        const node = new ContextStatement('set', position);
+        const setContext = ctx.ctxSet();
+        if (setContext) {
+            node.clauses.push(this.buildContextSetClause(setContext));
+        }
+        return node;
+    }
+
+    visitWhenStatement = (ctx: WhenStatementContext): WhenStatement => {
+        const position = this.getPosition(ctx);
+        const clause = ctx.whenClause();
+        const targetReferences = clause.reference();
+
+        let targetType: VariableReference | undefined;
+        let targets: Expression;
+
+        if (clause.path()) {
+            targets = this.visit(clause.path()!) as Expression;
+        } else if (clause.exprSeq()) {
+            targets = this.visit(clause.exprSeq()!) as Expression;
+        } else if (clause.array()) {
+            targets = this.visit(clause.array()!) as Expression;
+        } else if (targetReferences.length > 1) {
+            targetType = this.unwrapVariableReference(this.visit(targetReferences[0]) as Expression);
+            targets = this.visit(targetReferences[1]) as Expression;
+        } else if (targetReferences.length === 1) {
+            targets = this.visit(targetReferences[0]) as Expression;
+        } else {
+            targets = new UndefinedLiteral(position);
+        }
+
+        const eventText = clause.identifier().getText().toLowerCase();
+        const event: 'change' | 'deleted' = eventText === 'deleted' ? 'deleted' : 'change';
+        const body = this.visit(ctx.expr()) as Expression;
+        const node = new WhenStatement(targets, event, body, position);
+
+        if (targetType) {
+            node.targetType = targetType;
+        }
+
+        node.parameters = clause.param()
+            .map(param => this.visit(param) as Expression | null)
+            .filter((param): param is Expression => param instanceof Expression);
+
+        const handler = clause.operand();
+        if (handler) {
+            node.handler = this.visit(handler) as Expression;
+        }
+
+        return node;
+    }
+
+    visitEventHandlerStatement = (ctx: EventHandlerStatementContext): EventHandlerStatement => {
+        const position = this.getPosition(ctx);
+        const references = ctx._ev_args?._refs ?? [];
+        const action: 'do' | 'return' = ctx._ev_action?.text?.toLowerCase() === 'return' ? 'return' : 'do';
+        const body = (ctx._ev_body ? this.visit(ctx._ev_body) : this.visit(ctx.expr())) as Expression;
+
+        const eventTypeRef = references.length >= 2 ? references[1] : references[0];
+        const eventType = this.unwrapVariableReference(this.visit(eventTypeRef) as Expression)
+            ?? new VariableReference(eventTypeRef?.getText() || 'anonymous', this.getPosition(eventTypeRef));
+        const node = new EventHandlerStatement(eventType, action, body, position);
+
+        if (references.length >= 2) {
+            node.target = this.unwrapVariableReference(this.visit(references[0]) as Expression);
+        }
+
+        if (references.length >= 3) {
+            node.eventArgs = references.slice(2)
+                .map(ref => this.unwrapVariableReference(this.visit(ref) as Expression))
+                .filter((ref): ref is VariableReference => ref instanceof VariableReference);
+        }
+
+        return node;
     }
     
     // Function definition: fn myFunc x y = (...)
@@ -665,6 +770,11 @@ export class ASTBuilder extends mxsParserVisitor<any> {
             const refCtx = ctx.reference();
             if (refCtx) return this.visit(refCtx);
         }
+
+        if (ctx.path()) {
+            const pathCtx = ctx.path();
+            if (pathCtx) return this.visit(pathCtx);
+        }
         
         if (ctx.exprSeq()) {
             const exprSeqCtx = ctx.exprSeq();
@@ -672,9 +782,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         }
         
         if (ctx.array()) {
-            // Array literal: #(1, 2, 3)
-            // TODO: Parse array elements
-            return new ArrayLiteral([], position);
+            return this.visit(ctx.array()!);
         }
         
         if (ctx.QUESTION()) {
@@ -694,6 +802,38 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         const text = ctx.getText().toLowerCase();
         const value = text === 'true' || text === 'on';
         return new BooleanLiteral(value, position);
+    }
+
+    visitArray = (ctx: ArrayContext): ArrayLiteral => {
+        const position = this.getPosition(ctx);
+        const values = ctx.arrayList()?.expr().map(expr => this.visit(expr) as Expression) ?? [];
+        return new ArrayLiteral(values, position);
+    }
+
+    visitPath = (ctx: PathContext): Expression => {
+        const position = this.getPosition(ctx);
+        const path = new PathLiteral(ctx.PATH().getText(), position);
+
+        if (ctx.AMP()) {
+            return new ReferenceExpression(path, position);
+        }
+
+        return path;
+    }
+
+    visitParam = (ctx: ParamContext): Expression | null => {
+        return this.visit(ctx.operandArg()) as Expression | null;
+    }
+
+    visitOperandArg = (ctx: OperandArgContext): Expression => {
+        const position = this.getPosition(ctx);
+        const operand = this.visit(ctx.operand()) as Expression;
+
+        if (ctx.UNARY_MINUS()) {
+            return new UnaryExpression('-', operand, position);
+        }
+
+        return operand;
     }
     
     // Simple expression: handles operators and builds expression tree
@@ -910,5 +1050,132 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     // Default: return null for unsupported nodes in POC
     protected defaultResult(): null {
         return null;
+    }
+
+    private buildContextClause(ctx: CtxClauseContext): ContextClause {
+        const position = this.getPosition(ctx);
+
+        if (ctx.AT()) {
+            const label = ctx.LEVEL() ? 'level' : 'time';
+            return new ContextClause('at', label, this.visit(ctx.operand()!) as Expression, position);
+        }
+
+        if (ctx.IN()) {
+            if (ctx.ctxCoordsys()) {
+                return this.buildNestedContextClause('in', ctx.ctxCoordsys()!, position);
+            }
+            return new ContextClause('in', undefined, this.visit(ctx.operand()!) as Expression, position);
+        }
+
+        if (ctx.WITH()) {
+            if (ctx.ctxUndo()) {
+                return this.buildUndoClause('with', ctx.ctxUndo()!, position);
+            }
+            if (ctx.ctxSwitches()) {
+                const switchName = ctx.ctxSwitches()!.getChild(0)?.getText().toLowerCase();
+                return new ContextClause('with', switchName, this.visit(ctx.ctxSwitches()!.operand()) as Expression, position);
+            }
+        }
+
+        if (ctx.ctxAbout()) {
+            return this.buildAboutClause(ctx.ctxAbout()!, position);
+        }
+
+        if (ctx.ctxCoordsys()) {
+            return this.buildCoordsysClause(ctx.ctxCoordsys()!, position);
+        }
+
+        if (ctx.ctxUndo()) {
+            return this.buildUndoClause('undo', ctx.ctxUndo()!, position);
+        }
+
+        if (ctx.ctxSwitches()) {
+            const switchName = ctx.ctxSwitches()!.getChild(0)?.getText().toLowerCase();
+            return new ContextClause('switch', switchName, this.visit(ctx.ctxSwitches()!.operand()) as Expression, position);
+        }
+
+        return new ContextClause('unknown', undefined, undefined, position);
+    }
+
+    private buildContextSetClause(ctx: CtxSetContext): ContextClause {
+        const position = this.getPosition(ctx);
+
+        if (ctx.ANIMATE()) {
+            return new ContextClause('set', 'animate', this.visit(ctx.operand()!) as Expression, position);
+        }
+        if (ctx.TIME()) {
+            return new ContextClause('set', 'time', this.visit(ctx.operand()!) as Expression, position);
+        }
+        if (ctx.LEVEL()) {
+            return new ContextClause('set', 'level', this.visit(ctx.operand()!) as Expression, position);
+        }
+        if (ctx.IN()) {
+            return new ContextClause('set', 'in', this.visit(ctx.operand()!) as Expression, position);
+        }
+        if (ctx.ctxCoordsys()) {
+            return this.buildNestedContextClause('set', ctx.ctxCoordsys()!, position);
+        }
+        if (ctx.ctxAbout()) {
+            return this.buildNestedContextClause('set', ctx.ctxAbout()!, position);
+        }
+        if (ctx.ctxUndo()) {
+            return this.buildUndoClause('set', ctx.ctxUndo()!, position);
+        }
+
+        return new ContextClause('set', undefined, undefined, position);
+    }
+
+    private buildNestedContextClause(kind: string, nested: ParserRuleContext, position?: Position): ContextClause {
+        if (nested.constructor.name === 'CtxCoordsysContext') {
+            const clause = this.buildCoordsysClause(nested as any, position);
+            return new ContextClause(kind, clause.label, clause.value, position);
+        }
+        if (nested.constructor.name === 'CtxAboutContext') {
+            const clause = this.buildAboutClause(nested as any, position);
+            return new ContextClause(kind, clause.label, clause.value, position);
+        }
+
+        return new ContextClause(kind, nested.getText().toLowerCase(), undefined, position);
+    }
+
+    private buildAboutClause(ctx: any, position?: Position): ContextClause {
+        const label = ctx.COORDSYS() ? 'coordsys' : undefined;
+        const value = ctx.operand() ? this.visit(ctx.operand()) as Expression : undefined;
+        return new ContextClause('about', label, value, position);
+    }
+
+    private buildCoordsysClause(ctx: any, position?: Position): ContextClause {
+        const label = ctx.LOCAL() ? 'local' : undefined;
+        const value = ctx.operand() ? this.visit(ctx.operand()) as Expression : undefined;
+        return new ContextClause('coordsys', label, value, position);
+    }
+
+    private buildUndoClause(kind: string, ctx: any, position?: Position): ContextClause {
+        let label: string | undefined;
+        if (ctx.STRING()) {
+            label = ctx.STRING().getText();
+        } else if (ctx.param()) {
+            label = ctx.param().getText();
+        } else if (ctx.reference()) {
+            label = ctx.reference().getText();
+        }
+
+        return new ContextClause(kind, label, this.visit(ctx.operand()) as Expression, position);
+    }
+
+    private unwrapVariableReference(expr: Expression | null | undefined): VariableReference | undefined {
+        if (!expr) {
+            return undefined;
+        }
+
+        if (expr instanceof VariableReference) {
+            return expr;
+        }
+
+        if (expr instanceof ReferenceExpression && expr.operand instanceof VariableReference) {
+            return expr.operand;
+        }
+
+        return undefined;
     }
 }
