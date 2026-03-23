@@ -2,24 +2,24 @@ import { ParserRuleContext, ParseTree, TerminalNode } from 'antlr4ng';
 
 import { mxsLexer } from '../../parser/mxsLexer.js';
 import {
-  ArrayContext, ArrayListContext, Attributes_clauseContext,
+  ArrayContext, ArrayListContext, AttributesClauseContext,
   AttributesDefinitionContext, BitArrayContext, BitListContext,
-  CaseItemContext, Case_clauseContext, CaseStatementContext, CommaContext,
+  CaseItemContext, CaseClauseContext, CaseStatementContext, CommaContext,
   ContextStatementContext, DeRefContext, DeclarationStatementContext,
   DoLoopStatementContext, EventHandlerStatementContext, ExprSeqContext,
   FnBodyContext, FnDefinitionContext, FnReturnStatementContext,
-  For_sequenceContext, For_whereContext, For_whileContext,
-  ForLoopStatementContext, Group_clauseContext, IdentifierContext,
+  ForSequenceContext, ForWhereContext, ForWhileContext,
+  ForLoopStatementContext, GroupClauseContext, IdentifierContext,
   IfStatementContext, LbContext, LbkContext, LcContext,
-  LpContext, Macroscript_clauseContext, MacroscriptDefinitionContext,
-  Params_clauseContext, ParamsDefinitionContext, ParenPairContext,
-  Plugin_clauseContext, PluginDefinitionContext, ProgramContext, RbContext,
-  Rc_submenudefinitionContext, RcContext, Rcmenu_clauseContext, RcmenuControlContext,
-  RcmenuDefinitionContext, ReferenceContext, Rollout_clauseContext, RolloutControlContext,
+  LpContext, MacroscriptClauseContext, MacroscriptDefinitionContext,
+  ParamsClauseContext, ParamsDefinitionContext, ParenPairContext,
+  PluginClauseContext, PluginDefinitionContext, ProgramContext, RbContext,
+  RcSubmenuDefinitionContext, RcContext, RcmenuClauseContext, RcmenuControlContext,
+  RcmenuDefinitionContext, ReferenceContext, RolloutClauseContext, RolloutControlContext,
   RolloutDefinitionContext, RolloutGroupDefinitionContext, RpContext,
-  SimpleExpressionContext, Struct_accessContext, StructBodyContext,
-  StructDefinitionContext, Submenu_clauseContext, Tool_clauseContext,
-  ToolDefinitionContext, TryStatementContext, Utility_clauseContext,
+  SimpleExpressionContext, StructAccessContext, StructBodyContext,
+  StructDefinitionContext, SubmenuClauseContext, ToolClauseContext,
+  ToolDefinitionContext, TryStatementContext, UtilityClauseContext,
   UtilityDefinitionContext, WhenStatementContext, WhileLoopStatementContext,
 } from '../../parser/mxsParser.js';
 import { mxsParserVisitor } from '../../parser/mxsParserVisitor.js';
@@ -574,12 +574,12 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     //#region High-level Definitions
     visitPluginDefinition = (ctx: PluginDefinitionContext): codeBlock =>
     {
-        const vals = [this.visit(ctx.plugin_clause())!].flat()
+        const vals = [this.visit(ctx.pluginClause())!].flat()
         //--------------------------------------------
         this.indentLevel++;
         //--------------------------------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.plugin_members()),
+            this.collectWithLineBreak(ctx.pluginMembers()),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -595,7 +595,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.DECL
         )
     }
-    visitPlugin_clause = (ctx: Plugin_clauseContext): codeBlock => // this.visitChildren(ctx)
+    visitPluginClause = (ctx: PluginClauseContext): codeBlock => // this.visitChildren(ctx)
     {
         const vals = [
             this.visit(ctx.Plugin())!,
@@ -620,12 +620,12 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     //-------------------------------------------------------
     visitParamsDefinition = (ctx: ParamsDefinitionContext): codeBlock =>
     {
-        const vals = [this.visit(ctx.params_clause())!].flat()
+        const vals = [this.visit(ctx.paramsClause())!].flat()
         //--------------------------------------------
         this.indentLevel++;
         //--------------------------------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.params_members()),
+            this.collectWithLineBreak(ctx.paramsMembers()),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -641,16 +641,16 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.DECL
         )
     }
-    visitParams_clause = (ctx: Params_clauseContext): R[] => this.visitChildren(ctx)
+    visitParamsClause = (ctx: ParamsClauseContext): R[] => this.visitChildren(ctx)
     //-------------------------------------------------------
     visitToolDefinition = (ctx: ToolDefinitionContext): codeBlock =>
     {
-        const vals = [this.visit(ctx.tool_clause())!].flat()
+        const vals = [this.visit(ctx.toolClause())!].flat()
         //------------------
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.tool_members()),
+            this.collectWithLineBreak(ctx.toolMembers()),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -666,16 +666,16 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.DECL
         )
     }
-    visitTool_clause = (ctx: Tool_clauseContext): R[] => this.visitChildren(ctx)
+    visitToolClause = (ctx: ToolClauseContext): R[] => this.visitChildren(ctx)
     //-------------------------------------------------------
     visitMacroscriptDefinition = (ctx: MacroscriptDefinitionContext): codeBlock =>
     {
-        const vals = [this.visit(ctx.macroscript_clause())!].flat()
+        const vals = [this.visit(ctx.macroscriptClause())!].flat()
         //------------------
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.macroscript_members()),
+            this.collectWithLineBreak(ctx.macroscriptMembers()),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -692,7 +692,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         )
     }
 
-    visitMacroscript_clause = (ctx: Macroscript_clauseContext): codeBlock =>
+    visitMacroscriptClause = (ctx: MacroscriptClauseContext): codeBlock =>
     {
         const vals = [
             this.visit(ctx.MacroScript())!,
@@ -717,12 +717,12 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     //-------------------------------------------------------
     visitUtilityDefinition = (ctx: UtilityDefinitionContext): codeBlock =>
     {
-        const vals = [this.visit(ctx.utility_clause())!].flat()
+        const vals = [this.visit(ctx.utilityClause())!].flat()
         //------------------
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.rollout_members()),
+            this.collectWithLineBreak(ctx.rolloutMembers()),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -738,15 +738,15 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.DECL
         )
     }
-    visitUtility_clause = (ctx: Utility_clauseContext): R[] => this.visitChildren(ctx)
+    visitUtilityClause = (ctx: UtilityClauseContext): R[] => this.visitChildren(ctx)
     visitRolloutDefinition = (ctx: RolloutDefinitionContext): codeBlock =>
     {
-        const vals = [this.visit(ctx.rollout_clause())!].flat()
+        const vals = [this.visit(ctx.rolloutClause())!].flat()
         //------------------
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.rollout_members()),
+            this.collectWithLineBreak(ctx.rolloutMembers()),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -762,10 +762,10 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.DECL
         )
     }
-    visitRollout_clause = (ctx: Rollout_clauseContext): R[] => this.visitChildren(ctx)
+    visitRolloutClause = (ctx: RolloutClauseContext): R[] => this.visitChildren(ctx)
     visitRolloutGroupDefinition = (ctx: RolloutGroupDefinitionContext): codeBlock =>
     {
-        const vals = [this.visit(ctx.group_clause())!].flat()
+        const vals = [this.visit(ctx.groupClause())!].flat()
         //------------------
         this.indentLevel++;
         //------------------
@@ -787,7 +787,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.DECL
         )
     }
-    visitGroup_clause = (ctx: Group_clauseContext): R[] => this.visitChildren(ctx)
+    visitGroupClause = (ctx: GroupClauseContext): R[] => this.visitChildren(ctx)
     visitRolloutControl = (ctx: RolloutControlContext): codeBlock =>
     {
         return new codeBlock(
@@ -801,12 +801,12 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     //-------------------------------------------------------
     visitRcmenuDefinition = (ctx: RcmenuDefinitionContext): codeBlock =>
     {
-        const vals = [this.visit(ctx.rcmenu_clause())!].flat()
+        const vals = [this.visit(ctx.rcmenuClause())!].flat()
         //------------------
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.rc_members()),
+            this.collectWithLineBreak(ctx.rcMembers()),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -822,7 +822,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.DECL
         )
     }
-    visitRcmenu_clause = (ctx: Rcmenu_clauseContext): R[] => this.visitChildren(ctx)
+    visitRcmenuClause = (ctx: RcmenuClauseContext): R[] => this.visitChildren(ctx)
     visitRcmenuControl = (ctx: RcmenuControlContext): codeBlock =>
     {
         return new codeBlock(
@@ -833,14 +833,14 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.EXPR
         )
     }
-    visitRc_submenudefinition = (ctx: Rc_submenudefinitionContext): codeBlock =>
+    visitRc_submenudefinition = (ctx: RcSubmenuDefinitionContext): codeBlock =>
     {
-        const vals = [this.visit(ctx.submenu_clause())!].flat()
+        const vals = [this.visit(ctx.submenuClause())!].flat()
         //------------------
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.rc_members()),
+            this.collectWithLineBreak(ctx.rcMembers()),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -856,16 +856,16 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.DECL
         )
     }
-    visitSubmenu_clause = (ctx: Submenu_clauseContext): R[] => this.visitChildren(ctx)
+    visitSubmenuClause = (ctx: SubmenuClauseContext): R[] => this.visitChildren(ctx)
     //-------------------------------------------------------
     visitAttributesDefinition = (ctx: AttributesDefinitionContext): codeBlock =>
     {
-        const vals = [this.visit(ctx.attributes_clause())!].flat()
+        const vals = [this.visit(ctx.attributesClause())!].flat()
         //------------------
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.attributes_members()),
+            this.collectWithLineBreak(ctx.attributesMembers()),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -881,7 +881,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.DECL
         )
     }
-    visitAttributes_clause = (ctx: Attributes_clauseContext): codeBlock => // this.visitChildren(ctx)
+    visitAttributes_clause = (ctx: AttributesClauseContext): codeBlock => // this.visitChildren(ctx)
     {
         const vals = [
             this.visit(ctx.Attributes())!,
@@ -936,7 +936,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
 
         for (const [i, member] of ctx.children.entries()) {
             body.push(this.visit(member)!)
-            if (member instanceof CommaContext || member instanceof Struct_accessContext) {
+            if (member instanceof CommaContext || member instanceof StructAccessContext) {
                 body.push(this.emmitLineBreak())
             }
         }
@@ -1097,7 +1097,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     // case item
     visitCaseStatement = (ctx: CaseStatementContext): codeBlock =>
     {
-        const vals = [this.visit(ctx.case_clause())!].flat()
+        const vals = [this.visit(ctx.caseClause())!].flat()
         //--------------------------------------------
         this.indentLevel++;
         //--------------------------------------------
@@ -1119,7 +1119,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.EXPR
         )
     }
-    visitCase_clause = (ctx: Case_clauseContext): R[] => this.visitChildren(ctx)
+    visitCaseClause = (ctx: CaseClauseContext): R[] => this.visitChildren(ctx)
     visitCaseItem = (ctx: CaseItemContext): codeBlock =>
     {
         // start val with the factor
@@ -1249,11 +1249,11 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         const vals: (R | R[])[] = []
         
         vals.push(this.visit(ctx.FOR()!)!)
-        vals.push(this.visit(ctx.for_body())!)
+        vals.push(this.visit(ctx.forBody())!)
         
         // _for_operator and _for_action are Token objects, not rule contexts
         vals.push(new codeToken(ctx._for_operator!.text!, tokenToCodeType.get(ctx._for_operator!.type) ?? codeTypes.KEYWORD))
-        vals.push(this.visit(ctx.for_sequence())!)
+        vals.push(this.visit(ctx.forSequence())!)
         vals.push(new codeToken(ctx._for_action!.text!, tokenToCodeType.get(ctx._for_action!.type) ?? codeTypes.KEYWORD))
         
         const body = ctx._body!
@@ -1270,7 +1270,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.EXPR
         )
     }
-    visitFor_sequence = (ctx: For_sequenceContext): codeBlock =>
+    visitForSequence = (ctx: ForSequenceContext): codeBlock =>
     {
         const vals: (R | R[])[] = []
         let last: ParseTree | undefined;
@@ -1306,7 +1306,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.EXPR
         )
     }
-    visitFor_where = (ctx: For_whereContext): codeBlock =>
+    visitForWhere = (ctx: ForWhereContext): codeBlock =>
     {
         const vals: (R | R[])[] = []
         let last: ParseTree | undefined;
@@ -1343,7 +1343,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.EXPR
         )
     }
-    visitFor_while = (ctx: For_whileContext): codeBlock =>
+    visitForWhile = (ctx: ForWhileContext): codeBlock =>
     {
         const vals: (R | R[])[] = []
         let last: ParseTree | undefined;
@@ -1491,7 +1491,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     // */
     // visitParam = (ctx: ParamContext): string => { return this.visitChildren(ctx) }
     // visitOperand_arg = (ctx: OperandArgContext): ParseTree => { return ctx.children[0] }
-    // visitParam_name = (ctx: ParamNameContext): string => { return ctx.getText() }
+    // visitParamName = (ctx: ParamNameContext): string => { return ctx.getText() }
     //-------------------------------------------------------
     //#region Values
     visitDeRef = (ctx: DeRefContext): R[] =>
