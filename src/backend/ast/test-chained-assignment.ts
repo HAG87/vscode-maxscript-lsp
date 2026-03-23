@@ -7,7 +7,11 @@ import { CharStream, CommonTokenStream } from 'antlr4ng';
 import { mxsLexer } from '../../parser/mxsLexer.js';
 import { mxsParser } from '../../parser/mxsParser.js';
 import { ASTBuilder } from './ASTBuilder.js';
-import { AssignmentExpression, VariableReference, NumberLiteral } from './ASTNodes.js';
+import { AssignmentExpression, Expression, NumberLiteral, VariableReference } from './ASTNodes.js';
+
+function getTargetName(target?: Expression): string | undefined {
+    return target instanceof VariableReference ? target.name : undefined;
+}
 
 const code = `var1 = var2 = var3 = 10`;
 
@@ -43,15 +47,15 @@ try {
         console.log('Statement[0]:', stmt.constructor.name);
         
         if (stmt instanceof AssignmentExpression) {
-            console.log('  ├─ target:', stmt.target?.name);
+            console.log('  ├─ target:', getTargetName(stmt.target));
             console.log('  └─ value:', stmt.value?.constructor.name);
             
             if (stmt.value instanceof AssignmentExpression) {
-                console.log('      ├─ target:', stmt.value.target?.name);
+                console.log('      ├─ target:', getTargetName(stmt.value.target));
                 console.log('      └─ value:', stmt.value.value?.constructor.name);
                 
                 if (stmt.value.value instanceof AssignmentExpression) {
-                    console.log('          ├─ target:', stmt.value.value.target?.name);
+                    console.log('          ├─ target:', getTargetName(stmt.value.value.target));
                     console.log('          └─ value:', stmt.value.value.value?.constructor.name);
                     
                     if (stmt.value.value.value instanceof NumberLiteral) {

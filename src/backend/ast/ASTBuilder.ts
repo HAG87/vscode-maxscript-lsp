@@ -439,31 +439,8 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         
         return field;
     }
-    /* // ASSIGNMENT EXPRESSIONS ARE CURRENTLY HANDLED IN visitSimpleExpression FOR POC, BUT THIS MAY NEED TO BE REWORKED TO PROPERLY CAPTURE COMPLEX ASSIGNMENT TARGETS (ACCESSORS, DEREFS, ETC.)
-    // Assignment expression: x = 5, obj.prop = value
-    visitAssignmentExpression = (ctx: AssignmentExpressionContext): AssignmentExpression => {
-        const position = this.getPosition(ctx);
-        
-        // Parse the target (left-hand side)
-        // For now, we'll handle simple references (identifiers)
-        // TODO: Handle de_ref, path, accessor for complex assignments
-        const destination = ctx.destination();
-        let target: VariableReference | undefined;
-        
-        const refCtx = destination.reference();
-        if (refCtx) {
-            target = this.visit(refCtx) as VariableReference;
-        }
-        // TODO: Handle other destination types (de_ref, path, accessor)
-        
-        // Parse the value (right-hand side)
-        const value = this.visit(ctx.expr()) as Expression;
-        
-        return new AssignmentExpression(target, value, position);
-    }
-    */
     // Reference: identifier, global identifier, or &identifier
-    visitReference = (ctx: ReferenceContext): VariableReference => {
+    visitReference = (ctx: ReferenceContext): Expression => {
         const name = ctx.identifier().getText();
         const position = this.getPosition(ctx);
         
@@ -472,7 +449,12 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         
         // Track for resolution
         this.allReferences.push(ref);
-        
+
+        // &identifier: wrap in ReferenceExpression
+        if (ctx.AMP()) {
+            return new ReferenceExpression(ref, position);
+        }
+
         return ref;
     }
     
@@ -563,9 +545,16 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     }
     
     // Simple expression: handles operators and builds expression tree
-    // TODO: needs to include assignment expressions and other operator types
+    // Handles assignment, binary and unary operators based on parser precedence
     visitSimpleExpression = (ctx: SimpleExpressionContext): Expression => {
         const position = this.getPosition(ctx);
+
+        // Assignment (lowest precedence): left = expr, left := expr
+        if (ctx._left && ctx._assignExpr && (ctx.ASSIGN() || ctx.EQ())) {
+            const target = this.visit(ctx._left) as Expression;
+            const value = this.visit(ctx._assignExpr) as Expression;
+            return new AssignmentExpression(target, value, position);
+        }
         
         // Check for binary operators (left recursion handled by ANTLR)
         // The grammar defines operator precedence, so we get the proper tree
@@ -713,6 +702,14 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     visitAccessor = (ctx: AccessorContext): Expression => {
         // Start with the base factor
         let result: Expression = this.visit(ctx.factor());
+
+        // If base is a reference expression, apply property/index chain inside the reference
+        // so '&obj.prop' becomes '&(obj.prop)' instead of '(&obj).prop'.
+        let referenced: ReferenceExpression | undefined;
+        if (result instanceof ReferenceExpression) {
+            referenced = result;
+            result = referenced.operand;
+        }
         
         // Get all accessors (properties and indices) in order
         const children = ctx.children || [];
@@ -734,6 +731,11 @@ export class ASTBuilder extends mxsParserVisitor<any> {
             }
         }
         
+        if (referenced) {
+            referenced.operand = result;
+            return referenced;
+        }
+
         return result;
     }
     

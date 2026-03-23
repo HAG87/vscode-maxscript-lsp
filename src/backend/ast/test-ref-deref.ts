@@ -46,7 +46,8 @@ function printAST(node: any, indent = 0): void {
         printAST(node.operand, indent + 1);
     } else if (node instanceof AssignmentExpression) {
         console.log(`${prefix}AssignmentExpression`);
-        console.log(`${prefix}├─ target: ${node.target?.name}`);
+        const targetName = node.target instanceof VariableReference ? node.target.name : node.target?.constructor.name;
+        console.log(`${prefix}├─ target: ${targetName}`);
         console.log(`${prefix}└─ value:`);
         printAST(node.value, indent + 1);
     } else if (node instanceof MemberExpression) {

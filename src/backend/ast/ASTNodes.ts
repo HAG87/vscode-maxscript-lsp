@@ -444,10 +444,10 @@ export class IndexExpression extends Expression {
 
 // Assignment expression
 export class AssignmentExpression extends Expression {
-    target?: VariableReference;
+    target?: Expression;
     value?: Expression;
     
-    constructor(target?: VariableReference, value?: Expression, position?: Position) {
+    constructor(target?: Expression, value?: Expression, position?: Position) {
         super(position);
         this.target = target;
         this.value = value;

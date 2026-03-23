@@ -127,6 +127,11 @@ export class SymbolTreeBuilder {
         
         // Then, process all statements (functions, structs, etc.)
         for (const stmt of program.statements) {
+            // Top-level variables were already emitted from program.declarations.
+            if (stmt instanceof VariableDeclaration) {
+                continue;
+            }
+
             const symbol = this.buildSymbolForNode(stmt, sourceUri);
             if (symbol) {
                 symbols.push(symbol);

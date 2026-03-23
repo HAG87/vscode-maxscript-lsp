@@ -7,7 +7,11 @@ import { CharStream, CommonTokenStream } from 'antlr4ng';
 import { mxsLexer } from '../../parser/mxsLexer.js';
 import { mxsParser } from '../../parser/mxsParser.js';
 import { ASTBuilder } from './ASTBuilder.js';
-import { AssignmentExpression, BinaryExpression, VariableReference } from './ASTNodes.js';
+import { AssignmentExpression, BinaryExpression, Expression, VariableReference } from './ASTNodes.js';
+
+function getTargetName(target?: Expression): string | undefined {
+    return target instanceof VariableReference ? target.name : undefined;
+}
 
 const code = `val = varname1 + varname3`;
 
@@ -46,7 +50,7 @@ try {
         if (stmt instanceof AssignmentExpression) {
             console.log('    AssignmentExpression:');
             console.log('      target type:', stmt.target?.constructor.name);
-            console.log('      target name:', stmt.target?.name);
+            console.log('      target name:', getTargetName(stmt.target));
             console.log('      value type:', stmt.value?.constructor.name);
             
             if (stmt.value instanceof BinaryExpression) {
