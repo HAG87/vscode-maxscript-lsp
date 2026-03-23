@@ -80,6 +80,7 @@ import { Position, Point, Node } from '@strumenta/tylasu';
 import {
     AccessorContext,
     ArrayContext,
+    AttributesDefinitionContext,
     BoolContext,
     CaseStatementContext,
     ContextStatementContext,
@@ -100,19 +101,31 @@ import {
     IfStatementContext,
     IndexContext,
     LoopExitStatementContext,
+    MacroscriptDefinitionContext,
     mxsParser,
     OperandContext,
     OperandArgContext,
     ForLoopStatementContext,
     ParamContext,
+    ParamDefinitionContext,
     PathContext,
+    ParamsDefinitionContext,
+    PluginDefinitionContext,
     ProgramContext,
     PropertyContext,
+    RcSubmenuDefinitionContext,
+    RcmenuControlContext,
     ReferenceContext,
+    RcmenuDefinitionContext,
+    RolloutControlContext,
+    RolloutDefinitionContext,
+    RolloutGroupDefinitionContext,
     SimpleExpressionContext,
     StructBodyContext,
     StructDefinitionContext,
+    ToolDefinitionContext,
     TryStatementContext,
+    UtilityDefinitionContext,
     VariableDeclarationContext,
     WhenClauseContext,
     WhenStatementContext,
@@ -127,6 +140,7 @@ import {
     BooleanLiteral,
     CallExpression,
     DereferenceExpression,
+    DefinitionBlock,
     Expression,
     FunctionArgument,
     FunctionDefinition,
@@ -159,6 +173,9 @@ import {
     DoWhileStatement,
     EventHandlerStatement,
     PathLiteral,
+    ParameterDefinition,
+    RcMenuItem,
+    RolloutControl,
     WhenStatement,
 } from './ASTNodes.js';
 
@@ -236,6 +253,34 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         const whenStmt = ctx.whenStatement();
         if (whenStmt) {
             return this.visit(whenStmt);
+        }
+        const macroscriptDef = ctx.macroscriptDefinition();
+        if (macroscriptDef) {
+            return this.visit(macroscriptDef);
+        }
+        const utilityDef = ctx.utilityDefinition();
+        if (utilityDef) {
+            return this.visit(utilityDef);
+        }
+        const rolloutDef = ctx.rolloutDefinition();
+        if (rolloutDef) {
+            return this.visit(rolloutDef);
+        }
+        const toolDef = ctx.toolDefinition();
+        if (toolDef) {
+            return this.visit(toolDef);
+        }
+        const rcmenuDef = ctx.rcmenuDefinition();
+        if (rcmenuDef) {
+            return this.visit(rcmenuDef);
+        }
+        const pluginDef = ctx.pluginDefinition();
+        if (pluginDef) {
+            return this.visit(pluginDef);
+        }
+        const attributesDef = ctx.attributesDefinition();
+        if (attributesDef) {
+            return this.visit(attributesDef);
         }
         const fnDef = ctx.fnDefinition();
         if (fnDef) {
@@ -381,6 +426,166 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         }
 
         return node;
+    }
+
+    visitMacroscriptDefinition = (ctx: MacroscriptDefinitionContext): DefinitionBlock => {
+        const clause = ctx.macroscriptClause();
+        const parameters = this.collectExpressions(clause.param());
+        return this.buildDefinitionBlock(
+            'macroscript',
+            clause._macro_name?.getText() || 'anonymous',
+            this.getPosition(ctx),
+            parameters,
+            ctx.macroscriptMembers(),
+        );
+    }
+
+    visitUtilityDefinition = (ctx: UtilityDefinitionContext): DefinitionBlock => {
+        const clause = ctx.utilityClause();
+        const parameters = [
+            this.visit(clause.operand()) as Expression,
+            ...this.collectExpressions(clause.param()),
+        ];
+        return this.buildDefinitionBlock(
+            'utility',
+            clause._utility_name?.getText() || 'anonymous',
+            this.getPosition(ctx),
+            parameters,
+            ctx.rolloutMembers(),
+        );
+    }
+
+    visitRolloutDefinition = (ctx: RolloutDefinitionContext): DefinitionBlock => {
+        const clause = ctx.rolloutClause();
+        const parameters = [
+            this.visit(clause.operand()) as Expression,
+            ...this.collectExpressions(clause.param()),
+        ];
+        return this.buildDefinitionBlock(
+            'rollout',
+            clause._rollout_name?.getText() || 'anonymous',
+            this.getPosition(ctx),
+            parameters,
+            ctx.rolloutMembers(),
+        );
+    }
+
+    visitRolloutGroupDefinition = (ctx: RolloutGroupDefinitionContext): DefinitionBlock => {
+        const clause = ctx.groupClause();
+        return this.buildDefinitionBlock(
+            'rolloutGroup',
+            this.parseQuotedText(clause._group_name?.text) || 'anonymous',
+            this.getPosition(ctx),
+            [],
+            ctx.rolloutControl(),
+        );
+    }
+
+    visitRolloutControl = (ctx: RolloutControlContext): RolloutControl => {
+        const position = this.getPosition(ctx);
+        const name = ctx._controlName?.getText() || 'anonymous';
+        const controlType = ctx.rolloutControlType().getText();
+        const caption = ctx.operand() ? this.visit(ctx.operand()!) as Expression : undefined;
+        const parameters = this.collectExpressions(ctx.param());
+
+        const control = new RolloutControl(name, controlType, caption, parameters, position);
+        this.getCurrentScope().addDeclaration(control);
+        return control;
+    }
+
+    visitToolDefinition = (ctx: ToolDefinitionContext): DefinitionBlock => {
+        const clause = ctx.toolClause();
+        const parameters = this.collectExpressions(clause.param());
+        return this.buildDefinitionBlock(
+            'tool',
+            clause._tool_name?.getText() || 'anonymous',
+            this.getPosition(ctx),
+            parameters,
+            ctx.toolMembers(),
+        );
+    }
+
+    visitRcmenuDefinition = (ctx: RcmenuDefinitionContext): DefinitionBlock => {
+        const clause = ctx.rcmenuClause();
+        return this.buildDefinitionBlock(
+            'rcmenu',
+            clause._rc_name?.getText() || 'anonymous',
+            this.getPosition(ctx),
+            [],
+            ctx.rcMembers(),
+        );
+    }
+
+    visitRcSubmenuDefinition = (ctx: RcSubmenuDefinitionContext): DefinitionBlock => {
+        const clause = ctx.submenuClause();
+        return this.buildDefinitionBlock(
+            'submenu',
+            this.parseQuotedText(clause._submenu_name?.text) || 'anonymous',
+            this.getPosition(ctx),
+            this.collectExpressions(clause.param()),
+            ctx.rcMembers(),
+        );
+    }
+
+    visitRcmenuControl = (ctx: RcmenuControlContext): RcMenuItem => {
+        const position = this.getPosition(ctx);
+        const itemType: 'menuitem' | 'separator' = ctx.MenuItem() ? 'menuitem' : 'separator';
+        const name = ctx.identifier()?.getText()
+            ?? ctx.operand()?.[0]?.getText()
+            ?? itemType;
+        const operands = ctx.operand().map(operand => this.visit(operand) as Expression);
+        const parameters = this.collectExpressions(ctx.param());
+
+        const item = new RcMenuItem(name, itemType, operands, parameters, position);
+        this.getCurrentScope().addDeclaration(item);
+        return item;
+    }
+
+    visitPluginDefinition = (ctx: PluginDefinitionContext): DefinitionBlock => {
+        const clause = ctx.pluginClause();
+        const parameters = this.collectExpressions(clause.param());
+        return this.buildDefinitionBlock(
+            'plugin',
+            clause._plugin_name?.getText() || 'anonymous',
+            this.getPosition(ctx),
+            parameters,
+            ctx.pluginMembers(),
+            clause._plugin_kind?.getText(),
+        );
+    }
+
+    visitParamsDefinition = (ctx: ParamsDefinitionContext): DefinitionBlock => {
+        const clause = ctx.paramsClause();
+        return this.buildDefinitionBlock(
+            'parameters',
+            clause.identifier().getText(),
+            this.getPosition(ctx),
+            this.collectExpressions(clause.param()),
+            ctx.paramsMembers(),
+        );
+    }
+
+    visitParamDefinition = (ctx: ParamDefinitionContext): ParameterDefinition => {
+        const position = this.getPosition(ctx);
+        const definition = new ParameterDefinition(
+            ctx.identifier().getText(),
+            this.collectExpressions(ctx.param()),
+            position,
+        );
+        this.getCurrentScope().addDeclaration(definition);
+        return definition;
+    }
+
+    visitAttributesDefinition = (ctx: AttributesDefinitionContext): DefinitionBlock => {
+        const clause = ctx.attributesClause();
+        const parameters = this.collectExpressions(clause.param());
+        return this.buildDefinitionBlock(
+            'attributes',
+            clause.identifier().getText(),
+            this.getPosition(ctx),
+            parameters,
+            ctx.attributesMembers(),
+        );
     }
 
     visitEventHandlerStatement = (ctx: EventHandlerStatementContext): EventHandlerStatement => {
@@ -1177,5 +1382,62 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         }
 
         return undefined;
+    }
+
+    private collectExpressions(contexts: ParserRuleContext[]): Expression[] {
+        return contexts
+            .map(context => this.visit(context) as Expression | null)
+            .filter((expr): expr is Expression => expr instanceof Expression);
+    }
+
+    private parseQuotedText(text?: string): string | undefined {
+        if (!text) {
+            return undefined;
+        }
+
+        if (text.length >= 2 && text.startsWith('"') && text.endsWith('"')) {
+            return text.substring(1, text.length - 1);
+        }
+
+        return text;
+    }
+
+    private buildDefinitionBlock(
+        kind: DefinitionBlock['kind'],
+        name: string,
+        position: Position | undefined,
+        parameters: Expression[],
+        memberContexts: ParserRuleContext[],
+        pluginKind?: string,
+    ): DefinitionBlock {
+        const block = new DefinitionBlock(kind, name, position);
+        block.parameters = parameters;
+        block.pluginKind = pluginKind;
+
+        const blockDecl = new VariableDeclaration(name, 'local', position);
+        this.getCurrentScope().addDeclaration(blockDecl);
+
+        this.pushScope(block);
+        for (const memberContext of memberContexts) {
+            this.appendDefinitionClause(block, this.visit(memberContext));
+        }
+        this.popScope();
+
+        return block;
+    }
+
+    private appendDefinitionClause(block: DefinitionBlock, value: any): void {
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                if (item instanceof Node) {
+                    block.clauses.push(item);
+                }
+            }
+            return;
+        }
+
+        if (value instanceof Node) {
+            block.clauses.push(value);
+        }
     }
 }

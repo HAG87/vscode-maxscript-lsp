@@ -64,9 +64,12 @@
  * 
  * Event Handlers:
  * - EventHandlerStatement: on <event> do <handler> clauses (on target event args do/return body)
+ * - RolloutControl: Rollout UI control declarations (button, spinner, checkbox, etc.)
+ * - RcMenuItem: RCMenu item/separator declarations
+ * - ParameterDefinition: Parameter block entries inside plugin/attributes definitions
  * 
  * Definition Blocks:
- * - DefinitionBlock: Unified node for all definition blocks (MacroScript, Utility, Rollout, RolloutGroup, Tool, RCMenu, Plugin, Attributes)
+ * - DefinitionBlock: Unified node for all definition blocks (MacroScript, Utility, Rollout, RolloutGroup, Tool, RCMenu, RC submenu, Plugin, Parameters, Attributes)
  *   Each has: kind, name, parameters, and body clauses (expressions, functions, structs, event handlers)
  * 
  * Note: Matrix3, Quat, Angle, and Color are not implemented as literals since they use
@@ -225,9 +228,9 @@ export class FunctionDefinition extends ScopeNode implements PossiblyNamed {
 export class StructMember extends Node implements PossiblyNamed {
     name?: string;
     accessibility: 'public' | 'private'; // MaxScript struct member accessibility
-    value?: VariableDeclaration | FunctionDefinition | Expression; // The actual member (field, method or event)
+    value?: VariableDeclaration | StructMemberField | FunctionDefinition | Expression; // The actual member (field, method or event)
     
-    constructor(name: string, value: VariableDeclaration | FunctionDefinition | Expression, accessibility: 'public' | 'private' = 'public', position?: Position) {
+    constructor(name: string, value: VariableDeclaration | StructMemberField | FunctionDefinition | Expression, accessibility: 'public' | 'private' = 'public', position?: Position) {
         super(position);
         this.name = name;
         this.value = value;
@@ -256,7 +259,7 @@ export class StructDefinition extends ScopeNode implements PossiblyNamed {
 // Definition block (scope node) - MacroScript, Utility, Rollout, Tool, RCMenu, Plugin, Attributes
 // All follow similar pattern: <keyword> <name> <params>? ( <clauses> )
 export class DefinitionBlock extends ScopeNode implements PossiblyNamed {
-    kind: 'macroscript' | 'utility' | 'rollout' | 'tool' | 'rcmenu' | 'plugin' | 'attributes';
+    kind: 'macroscript' | 'utility' | 'rollout' | 'rolloutGroup' | 'tool' | 'rcmenu' | 'submenu' | 'plugin' | 'parameters' | 'attributes';
     name?: string;
     parameters: Expression[] = []; // Optional parameters in the predicate
     clauses: Node[] = []; // Body clauses: expressions, functions, structs, event handlers, controls, etc.
@@ -457,6 +460,57 @@ export class AssignmentExpression extends Expression {
         super(position);
         this.target = target;
         this.value = value;
+    }
+}
+
+// Rollout control declaration: button btn "Run" width:120
+// Controls become declarations in the containing rollout/group scope so handlers can resolve them.
+export class RolloutControl extends VariableDeclaration {
+    controlType: string;
+    caption?: Expression;
+    parameters: Expression[] = [];
+
+    constructor(
+        name: string,
+        controlType: string,
+        caption?: Expression,
+        parameters: Expression[] = [],
+        position?: Position,
+    ) {
+        super(name, 'local', position);
+        this.controlType = controlType;
+        this.caption = caption;
+        this.parameters = parameters;
+    }
+}
+
+// RCMenu item/separator declaration.
+export class RcMenuItem extends VariableDeclaration {
+    itemType: 'menuitem' | 'separator';
+    operands: Expression[] = [];
+    parameters: Expression[] = [];
+
+    constructor(
+        name: string,
+        itemType: 'menuitem' | 'separator',
+        operands: Expression[] = [],
+        parameters: Expression[] = [],
+        position?: Position,
+    ) {
+        super(name, 'local', position);
+        this.itemType = itemType;
+        this.operands = operands;
+        this.parameters = parameters;
+    }
+}
+
+// Parameter block entry: width type:#float default:10
+export class ParameterDefinition extends VariableDeclaration {
+    parameters: Expression[] = [];
+
+    constructor(name: string, parameters: Expression[] = [], position?: Position) {
+        super(name, 'local', position);
+        this.parameters = parameters;
     }
 }
 

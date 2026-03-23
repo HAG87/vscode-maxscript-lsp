@@ -88,6 +88,8 @@
 
 import { ISymbolInfo, SymbolKind, IDefinition, ILexicalRange } from '../../types.js';
 import {
+    DefinitionBlock,
+    EventHandlerStatement,
     Program,
     ScopeNode,
     VariableDeclaration,
@@ -97,6 +99,9 @@ import {
     StructDefinition,
     StructMemberField,
     BlockExpression,
+    ParameterDefinition,
+    RcMenuItem,
+    RolloutControl,
 } from './ASTNodes.js';
 
 export class SymbolTreeBuilder {
@@ -116,8 +121,11 @@ export class SymbolTreeBuilder {
             const isStructDecl = program.statements.some(
                 stmt => stmt instanceof StructDefinition && stmt.name === name
             );
+            const isDefinitionDecl = program.statements.some(
+                stmt => stmt instanceof DefinitionBlock && stmt.name === name
+            );
             
-            if (!isFunctionDecl && !isStructDecl) {
+            if (!isFunctionDecl && !isStructDecl && !isDefinitionDecl) {
                 const symbol = this.buildVariableSymbol(decl, sourceUri);
                 if (symbol) {
                     symbols.push(symbol);
@@ -151,8 +159,14 @@ export class SymbolTreeBuilder {
         if (node instanceof StructDefinition) {
             return this.buildStructSymbol(node, sourceUri);
         }
+        if (node instanceof DefinitionBlock) {
+            return this.buildDefinitionBlockSymbol(node, sourceUri);
+        }
         if (node instanceof VariableDeclaration) {
             return this.buildVariableSymbol(node, sourceUri);
+        }
+        if (node instanceof EventHandlerStatement) {
+            return this.buildEventHandlerSymbol(node, sourceUri);
         }
         // Add more node types here as needed
         
@@ -251,6 +265,14 @@ export class SymbolTreeBuilder {
                     description: member.accessibility === 'private' ? 'private' : undefined,
                 };
                 children.push(fieldSymbol);
+            } else if (member.value instanceof EventHandlerStatement) {
+                const eventSymbol = this.buildEventHandlerSymbol(member.value, sourceUri);
+                if (member.accessibility === 'private') {
+                    eventSymbol.description = eventSymbol.description
+                        ? `${eventSymbol.description}, private`
+                        : 'private';
+                }
+                children.push(eventSymbol);
             }
         }
         
@@ -260,6 +282,32 @@ export class SymbolTreeBuilder {
             source: sourceUri,
             definition: this.positionToDefinition(struct),
             children: children.length > 0 ? children : undefined,
+        };
+    }
+
+    private static buildDefinitionBlockSymbol(block: DefinitionBlock, sourceUri: string): ISymbolInfo {
+        const children = this.buildDefinitionBlockChildren(block, sourceUri);
+
+        return {
+            name: block.name || '<anonymous>',
+            kind: this.definitionBlockKind(block),
+            source: sourceUri,
+            definition: this.positionToDefinition(block),
+            description: block.kind === 'plugin' ? block.pluginKind : undefined,
+            children: children.length > 0 ? children : undefined,
+        };
+    }
+
+    private static buildEventHandlerSymbol(eventHandler: EventHandlerStatement, sourceUri: string): ISymbolInfo {
+        const targetName = eventHandler.target?.name;
+        const eventName = eventHandler.eventType.name || '<event>';
+
+        return {
+            name: targetName ? `${targetName}.${eventName}` : eventName,
+            kind: SymbolKind.Event,
+            source: sourceUri,
+            definition: this.positionToDefinition(eventHandler),
+            description: eventHandler.action === 'return' ? 'return' : undefined,
         };
     }
     
@@ -277,18 +325,26 @@ export class SymbolTreeBuilder {
         // Determine symbol kind based on scope type
         let symbolKind = kind;
         if (!symbolKind) {
-            switch (decl.scope) {
-                case 'local':
-                    symbolKind = SymbolKind.LocalVar;
-                    break;
-                case 'global':
-                    symbolKind = SymbolKind.GlobalVar;
-                    break;
-                case 'persistent':
-                    symbolKind = SymbolKind.GlobalVar; // Treat persistent as global for now
-                    break;
-                default:
-                    symbolKind = SymbolKind.Variable;
+            if (decl instanceof RolloutControl) {
+                symbolKind = SymbolKind.Control;
+            } else if (decl instanceof RcMenuItem) {
+                symbolKind = SymbolKind.RcMenuControl;
+            } else if (decl instanceof ParameterDefinition) {
+                symbolKind = SymbolKind.Parameter;
+            } else {
+                switch (decl.scope) {
+                    case 'local':
+                        symbolKind = SymbolKind.LocalVar;
+                        break;
+                    case 'global':
+                        symbolKind = SymbolKind.GlobalVar;
+                        break;
+                    case 'persistent':
+                        symbolKind = SymbolKind.GlobalVar; // Treat persistent as global for now
+                        break;
+                    default:
+                        symbolKind = SymbolKind.Variable;
+                }
             }
         }
         
@@ -313,9 +369,75 @@ export class SymbolTreeBuilder {
             kind: symbolKind,
             source: sourceUri,
             definition: this.positionToDefinition(decl),
-            description: decl.scope !== 'local' ? decl.scope : undefined,
+            description: this.variableDescription(decl),
             children,
         };
+    }
+
+    private static buildDefinitionBlockChildren(block: DefinitionBlock, sourceUri: string): ISymbolInfo[] {
+        const children: ISymbolInfo[] = [];
+        const scopedClauseNames = new Set(
+            block.clauses
+                .filter(clause => clause instanceof FunctionDefinition || clause instanceof StructDefinition || clause instanceof DefinitionBlock)
+                .map(clause => clause.name)
+                .filter((name): name is string => Boolean(name))
+        );
+
+        for (const [name, decl] of block.declarations) {
+            if (!scopedClauseNames.has(name)) {
+                children.push(this.buildVariableSymbol(decl, sourceUri));
+            }
+        }
+
+        for (const clause of block.clauses) {
+            if (clause instanceof VariableDeclaration) {
+                continue;
+            }
+
+            const symbol = this.buildSymbolForNode(clause, sourceUri);
+            if (symbol) {
+                children.push(symbol);
+            }
+        }
+
+        return children;
+    }
+
+    private static definitionBlockKind(block: DefinitionBlock): SymbolKind {
+        switch (block.kind) {
+            case 'macroscript':
+                return SymbolKind.MacroScript;
+            case 'utility':
+                return SymbolKind.Utility;
+            case 'rollout':
+                return SymbolKind.Rollout;
+            case 'rolloutGroup':
+                return SymbolKind.Object;
+            case 'tool':
+                return SymbolKind.Tool;
+            case 'rcmenu':
+                return SymbolKind.RcMenu;
+            case 'submenu':
+                return SymbolKind.Object;
+            case 'plugin':
+                return SymbolKind.Plugin;
+            case 'parameters':
+                return SymbolKind.Parameters;
+            case 'attributes':
+                return SymbolKind.Attributes;
+        }
+    }
+
+    private static variableDescription(decl: VariableDeclaration): string | undefined {
+        if (decl instanceof RolloutControl) {
+            return decl.controlType;
+        }
+
+        if (decl instanceof RcMenuItem) {
+            return decl.itemType;
+        }
+
+        return decl.scope !== 'local' ? decl.scope : undefined;
     }
     
     /**

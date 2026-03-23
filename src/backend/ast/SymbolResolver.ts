@@ -49,6 +49,7 @@ import {
     BlockExpression,
     CaseStatement,
     ContextStatement,
+    DefinitionBlock,
     DoWhileStatement,
     EventHandlerStatement,
     Expression,
@@ -56,8 +57,11 @@ import {
     ForStatement,
     FunctionDefinition,
     IfStatement,
+    ParameterDefinition,
     Program,
+    RcMenuItem,
     ReturnStatement,
+    RolloutControl,
     ScopeNode,
     StructDefinition,
     TryStatement,
@@ -97,6 +101,30 @@ export class SymbolResolver {
         // Resolve any initializer expressions
         if (node.initializer) {
             this.visit(node.initializer);
+        }
+
+        if (node instanceof RolloutControl) {
+            if (node.caption) {
+                this.visit(node.caption);
+            }
+            for (const parameter of node.parameters) {
+                this.visit(parameter);
+            }
+        }
+
+        if (node instanceof RcMenuItem) {
+            for (const operand of node.operands) {
+                this.visit(operand);
+            }
+            for (const parameter of node.parameters) {
+                this.visit(parameter);
+            }
+        }
+
+        if (node instanceof ParameterDefinition) {
+            for (const parameter of node.parameters) {
+                this.visit(parameter);
+            }
         }
     }
     
@@ -243,6 +271,21 @@ export class SymbolResolver {
         }
         this.visit(node.body);
     }
+
+    private visitDefinitionBlock(node: DefinitionBlock): void {
+        const previousScope = this.currentScope;
+        this.currentScope = node;
+
+        for (const parameter of node.parameters) {
+            this.visit(parameter);
+        }
+
+        for (const clause of node.clauses) {
+            this.visit(clause);
+        }
+
+        this.currentScope = previousScope;
+    }
     
     /**
      * Generic visit dispatcher
@@ -288,6 +331,8 @@ export class SymbolResolver {
             this.visitWhenStatement(node);
         } else if (node instanceof EventHandlerStatement) {
             this.visitEventHandlerStatement(node);
+        } else if (node instanceof DefinitionBlock) {
+            this.visitDefinitionBlock(node);
         } else {
             // FIX #2: Catch-all for expression nodes (BinaryExpression, CallExpression, etc)
             // Walk children to find any nested VariableReferences
