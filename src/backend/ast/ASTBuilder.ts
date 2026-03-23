@@ -76,7 +76,7 @@
  */
 
 import { ParserRuleContext } from 'antlr4ng';
-import { Position, Point, Node } from '@strumenta/tylasu';
+import { Position, Point, Node, assignParents } from '@strumenta/tylasu';
 import {
     AccessorContext,
     ArrayContext,
@@ -94,8 +94,10 @@ import {
     ExprOperandContext,
     ExprSeqContext,
     FactorContext,
+    FnCallerContext,
     FnDefinitionContext,
     FnReturnStatementContext,
+    FunctionCallContext,
     FnParamsContext,
     IdentifierContext,
     IfStatementContext,
@@ -223,7 +225,10 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         if (!ctx.start || !ctx.stop) return undefined;
         
         const start = new Point(ctx.start.line, ctx.start.column);
-        const end = new Point(ctx.stop.line, ctx.stop.column);
+        const stopText = ctx.stop.text ?? '';
+        // ctx.stop.column is the start column of the stop token; add its text length
+        // so that the position spans the full token rather than ending at its first char.
+        const end = new Point(ctx.stop.line, ctx.stop.column + stopText.length);
         return new Position(start, end);
     }
     
@@ -240,6 +245,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
             }
         }
         
+        assignParents(this.program);
         return this.program;
     }
     
@@ -1039,6 +1045,45 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         }
 
         return operand;
+    }
+
+    visitFnCaller = (ctx: FnCallerContext): Expression => {
+        if (ctx.accessor()) {
+            return this.visit(ctx.accessor()!) as Expression;
+        }
+
+        if (ctx.reference()) {
+            return this.visit(ctx.reference()!) as Expression;
+        }
+
+        if (ctx.path()) {
+            return this.visit(ctx.path()!) as Expression;
+        }
+
+        if (ctx.exprSeq()) {
+            return this.visit(ctx.exprSeq()!) as Expression;
+        }
+
+        return new UndefinedLiteral(this.getPosition(ctx));
+    }
+
+    visitFunctionCall = (ctx: FunctionCallContext): Expression => {
+        const position = this.getPosition(ctx);
+        const callee = this.visit(ctx.fnCaller()) as Expression;
+        const args: Expression[] = [];
+
+        for (const argCtx of ctx.operandArg()) {
+            args.push(this.visit(argCtx) as Expression);
+        }
+
+        for (const paramCtx of ctx.param()) {
+            const paramValue = this.visit(paramCtx) as Expression | null;
+            if (paramValue) {
+                args.push(paramValue);
+            }
+        }
+
+        return new CallExpression(callee, args, position);
     }
     
     // Simple expression: handles operators and builds expression tree

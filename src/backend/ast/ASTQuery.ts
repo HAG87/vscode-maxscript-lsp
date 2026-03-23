@@ -24,6 +24,14 @@ import {
     VariableDeclaration,
     VariableReference,
     DefinitionBlock,
+    FunctionDefinition,
+    StructDefinition,
+    FunctionArgument,
+    FunctionParameter,
+    RolloutControl,
+    RcMenuItem,
+    ParameterDefinition,
+    StructMemberField,
 } from './ASTNodes.js';
 
 // ---------------------------------------------------------------------------
@@ -63,18 +71,18 @@ export class ASTQuery {
         line: number,
         column: number,
     ): VariableDeclaration | undefined {
-        // Prefer reference -> follow its link first (reference span is smaller)
+        // 1. Cursor may be on a VariableReference — follow its link (fastest path)
         const ref = this.findReferenceAtPosition(ast, line, column);
         if (ref) {
             return ref.declaration?.referred ?? undefined;
         }
-        // Cursor may be sitting directly on the declaration name
-        return this.findInnermost(
-            ast,
-            line,
-            column,
-            (n): n is VariableDeclaration => n instanceof VariableDeclaration,
-        );
+
+        // 2. Try to find a declaration-defining node at this position.
+        //    These include FunctionDefinition, StructDefinition, DefinitionBlock,
+        //    FunctionArgument, FunctionParameter, StructMemberField, etc.
+        //    Their corresponding VariableDeclaration lives in the parent/owner scope's
+        //    declarations map — not in the tree itself.
+        return this.findDeclarationLikeNodeAtPosition(ast, line, column);
     }
 
     /**
@@ -95,6 +103,55 @@ export class ASTQuery {
         reference: VariableReference,
     ): VariableDeclaration | undefined {
         return reference.declaration?.referred ?? undefined;
+    }
+
+    /**
+     * Returns the richest AST node corresponding to a bound declaration.
+     * This is useful when a reference resolves to a scope declaration entry
+     * but the user-facing hover/outline should describe the actual construct
+     * (function, struct, parameter, rollout control, etc.).
+     */
+    static findSemanticNodeForDeclaration(
+        ast: Program,
+        declaration: VariableDeclaration,
+    ): Node {
+        const declarationName = declaration.name;
+        const declarationPosition = declaration.position;
+
+        if (!declarationName || !declarationPosition) {
+            return declaration;
+        }
+
+        let fallback: Node = declaration;
+
+        for (const node of this.walkNodes(ast)) {
+            if (!(node instanceof Node)) {
+                continue;
+            }
+
+            const nodeName = (node as { name?: string }).name;
+            if (nodeName !== declarationName || !this.samePosition(node, declaration)) {
+                continue;
+            }
+
+            if (
+                node instanceof FunctionDefinition ||
+                node instanceof StructDefinition ||
+                node instanceof DefinitionBlock ||
+                node instanceof FunctionArgument ||
+                node instanceof FunctionParameter ||
+                node instanceof RolloutControl ||
+                node instanceof RcMenuItem ||
+                node instanceof ParameterDefinition ||
+                node instanceof StructMemberField
+            ) {
+                return node;
+            }
+
+            fallback = node;
+        }
+
+        return fallback;
     }
 
     /**
@@ -203,9 +260,138 @@ export class ASTQuery {
         return (pos.end.line - pos.start.line) * 100_000 + (pos.end.column - pos.start.column);
     }
 
+    private static findDeclarationLikeNodeAtPosition(
+        ast: Program,
+        line: number,
+        column: number,
+    ): VariableDeclaration | undefined {
+        // Find the innermost declaration-defining AST node at (line, column).
+        // These nodes define names but their corresponding VariableDeclaration entries
+        // live in a scope's `declarations` Map, not in the tree proper.
+        const declarationNode = this.findInnermost(
+            ast,
+            line,
+            column,
+            (n): n is Node => this.isDeclarationLikeNode(n),
+        );
+
+        if (!declarationNode) {
+            return undefined;
+        }
+
+        const declarationName = (declarationNode as { name?: string }).name;
+        if (!declarationName) {
+            return undefined;
+        }
+
+        // Determine which scope holds the declaration entry:
+        //
+        // FunctionDefinition "myFunc": its VariableDeclaration is in the parentScope
+        // StructDefinition "MyStruct":  its VariableDeclaration is in the parentScope
+        // DefinitionBlock "myUtil":     its VariableDeclaration is in the parentScope
+        //
+        // FunctionArgument "x":        its VariableDeclaration is in the FunctionDefinition scope
+        // FunctionParameter "size":    its VariableDeclaration is in the FunctionDefinition scope
+        // StructMemberField "field1":  its VariableDeclaration is in the StructDefinition scope
+        // RolloutControl "btn":        its VariableDeclaration is already a VariableDeclaration (subclass)
+        // RcMenuItem "item":           its VariableDeclaration is already a VariableDeclaration (subclass)
+        // ParameterDefinition "width": its VariableDeclaration is already a VariableDeclaration (subclass)
+
+        // Case 1: the node IS already a VariableDeclaration (subclasses like RolloutControl)
+        if (declarationNode instanceof VariableDeclaration) {
+            return declarationNode;
+        }
+
+        // Case 2: FunctionDefinition / StructDefinition / DefinitionBlock
+        //         → look up name in parentScope
+        if (
+            declarationNode instanceof FunctionDefinition
+            || declarationNode instanceof StructDefinition
+            || declarationNode instanceof DefinitionBlock
+        ) {
+            // Only resolve to the definition name when the cursor is actually on the
+            // definition's own start line/column (i.e. on the name keyword token),
+            // not anywhere inside the body that happens to be enclosed by this node.
+            const defPos = declarationNode.position;
+            if (defPos && defPos.start.line === line && defPos.start.column <= column) {
+                return (declarationNode as FunctionDefinition | StructDefinition | DefinitionBlock).parentScope?.declarations.get(declarationName);
+            }
+            return undefined;
+        }
+
+        // Case 3: FunctionArgument / FunctionParameter / StructMemberField
+        //         → these are children of a FunctionDefinition or StructDefinition;
+        //           find the innermost ScopeNode whose position contains (line, col)
+        //           and whose declarations map has this name.
+        return this.findDeclarationInEnclosingScopeByName(ast, line, column, declarationName);
+    }
+
+    /**
+     * Walks all ScopeNodes in the tree to find the innermost one that contains
+     * (line, column) and has a declaration with the given name.
+     * Used for FunctionArgument / FunctionParameter / StructMemberField.
+     */
+    private static findDeclarationInEnclosingScopeByName(
+        ast: Program,
+        line: number,
+        column: number,
+        name: string,
+    ): VariableDeclaration | undefined {
+        let bestScope: ScopeNode | undefined;
+        let bestScore = Number.MAX_SAFE_INTEGER;
+
+        for (const node of ast.walk()) {
+            if (!(node instanceof ScopeNode)) continue;
+            if (!this.containsPosition(line, column, node)) continue;
+            const decl = node.declarations.get(name);
+            if (!decl) continue;
+            const score = this.spanScore(node);
+            if (score < bestScore) {
+                bestScore = score;
+                bestScope = node;
+            }
+        }
+
+        return bestScope?.declarations.get(name);
+    }
+
+    private static isDeclarationLikeNode(node: Node): boolean {
+        return node instanceof VariableDeclaration
+            || node instanceof FunctionDefinition
+            || node instanceof StructDefinition
+            || node instanceof DefinitionBlock
+            || node instanceof FunctionArgument
+            || node instanceof FunctionParameter
+            || node instanceof StructMemberField
+            || node instanceof RolloutControl
+            || node instanceof RcMenuItem
+            || node instanceof ParameterDefinition;
+    }
+
+    private static samePosition(left: Node, right: Node): boolean {
+        const leftPos = left.position;
+        const rightPos = right.position;
+        if (!leftPos || !rightPos) {
+            return false;
+        }
+
+        return leftPos.start.line === rightPos.start.line
+            && leftPos.start.column === rightPos.start.column
+            && leftPos.end.line === rightPos.end.line
+            && leftPos.end.column === rightPos.end.column;
+    }
+
+    /** Exposes the full-tree walk for external diagnostics/tests. */
+    static *walkAllNodes(root: Program): Iterable<Node> {
+        yield* root.walk();
+    }
+
+    private static *walkNodes(root: Program): Iterable<Node> {
+        yield* root.walk();
+    }
+
     /**
      * Returns the smallest-span AST node at (line, column) that satisfies predicate.
-     * Walks the full tree via Tylasu node.walk() generator.
      */
     private static findInnermost<T extends Node>(
         root: Program,
@@ -216,7 +402,7 @@ export class ASTQuery {
         let best: T | undefined;
         let bestScore = Number.MAX_SAFE_INTEGER;
 
-        for (const node of root.walk()) {
+        for (const node of this.walkNodes(root)) {
             if (!predicate(node) || !this.containsPosition(line, column, node)) continue;
             const score = this.spanScore(node);
             if (score <= bestScore) {

@@ -140,6 +140,11 @@ export class SymbolTreeBuilder {
                 continue;
             }
 
+            if (stmt instanceof BlockExpression) {
+                symbols.push(...this.buildTransparentBlockSymbols(stmt, sourceUri));
+                continue;
+            }
+
             const symbol = this.buildSymbolForNode(stmt, sourceUri);
             if (symbol) {
                 symbols.push(symbol);
@@ -201,29 +206,15 @@ export class SymbolTreeBuilder {
             });
         }
         
-        // Add local variables declared in function body scope
-        if (func.body) {
-            for (const decl of func.body.getDeclarations()) {
-                // Skip if it's a function (will be added as nested function below)
-                const isFunc = func.body.expressions.some(
-                    expr => expr instanceof FunctionDefinition && expr.name === decl.name
-                );
-                if (!isFunc) {
-                    children.push(this.buildVariableSymbol(decl, sourceUri));
-                }
-            }
-        }
-        
-        // Add nested functions and structures from child scopes
-        // func.getChildScopes() returns [body] where body is BlockExpression
-        // BlockExpression.getChildScopes() returns nested functions/blocks
         for (const childScope of func.getChildScopes()) {
-            // Recursively collect symbols from nested scopes
-            for (const nestedScope of childScope.getChildScopes()) {
-                const symbol = this.buildSymbolForNode(nestedScope, sourceUri);
-                if (symbol) {
-                    children.push(symbol);
-                }
+            if (childScope instanceof BlockExpression) {
+                children.push(...this.buildTransparentBlockSymbols(childScope, sourceUri));
+                continue;
+            }
+
+            const symbol = this.buildSymbolForNode(childScope, sourceUri);
+            if (symbol) {
+                children.push(symbol);
             }
         }
         
@@ -351,14 +342,7 @@ export class SymbolTreeBuilder {
         // Check if initializer contains nested scopes (e.g., local x = (fn inner y = y * 2))
         let children: ISymbolInfo[] | undefined;
         if (decl.initializer instanceof BlockExpression) {
-            children = [];
-            // Traverse child scopes in the initializer block
-            for (const childScope of decl.initializer.getChildScopes()) {
-                const symbol = this.buildSymbolForNode(childScope, sourceUri);
-                if (symbol) {
-                    children.push(symbol);
-                }
-            }
+            children = this.buildTransparentBlockSymbols(decl.initializer, sourceUri);
             if (children.length === 0) {
                 children = undefined;
             }
@@ -401,6 +385,40 @@ export class SymbolTreeBuilder {
         }
 
         return children;
+    }
+
+    private static buildTransparentBlockSymbols(block: BlockExpression, sourceUri: string): ISymbolInfo[] {
+        const symbols: ISymbolInfo[] = [];
+        const scopedExpressionNames = new Set(
+            block.expressions
+                .filter(expr => expr instanceof FunctionDefinition || expr instanceof StructDefinition || expr instanceof DefinitionBlock)
+                .map(expr => expr.name)
+                .filter((name): name is string => Boolean(name))
+        );
+
+        for (const [name, decl] of block.declarations) {
+            if (!scopedExpressionNames.has(name)) {
+                symbols.push(this.buildVariableSymbol(decl, sourceUri));
+            }
+        }
+
+        for (const expr of block.expressions) {
+            if (expr instanceof VariableDeclaration) {
+                continue;
+            }
+
+            if (expr instanceof BlockExpression) {
+                symbols.push(...this.buildTransparentBlockSymbols(expr, sourceUri));
+                continue;
+            }
+
+            const symbol = this.buildSymbolForNode(expr, sourceUri);
+            if (symbol) {
+                symbols.push(symbol);
+            }
+        }
+
+        return symbols;
     }
 
     private static definitionBlockKind(block: DefinitionBlock): SymbolKind {

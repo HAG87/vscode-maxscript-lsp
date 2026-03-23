@@ -87,7 +87,7 @@
  *   (Currently AssignmentExpression only supports simple VariableReference targets)
  */
 
-import { Node, Position, ReferenceByName, PossiblyNamed } from '@strumenta/tylasu';
+import { Node, Position, ReferenceByName, PossiblyNamed, Child, Children, Reference } from '@strumenta/tylasu';
 
 // Scope node - can contain declarations
 export abstract class ScopeNode extends Node {
@@ -131,6 +131,7 @@ export abstract class ScopeNode extends Node {
 
 // Root program node
 export class Program extends ScopeNode {
+    @Children()
     statements: Node[] = [];
     
     getChildScopes(): ScopeNode[] {
@@ -143,6 +144,7 @@ export class Program extends ScopeNode {
 export class VariableDeclaration extends Node implements PossiblyNamed {
     name?: string;
     scope: 'local' | 'global' | 'persistent'; // MaxScript specific
+    @Child()
     initializer?: Expression;
     
     // All references to this declaration
@@ -160,6 +162,7 @@ export class VariableReference extends Node implements PossiblyNamed {
     name?: string;
     
     // Tylasu reference - links to declaration
+    @Reference()
     declaration?: ReferenceByName<VariableDeclaration>;
     
     constructor(name: string, position?: Position) {
@@ -185,6 +188,7 @@ export class FunctionArgument extends Node implements PossiblyNamed {
 // Function parameter: named parameter with optional default (fn test size:10 color:blue)
 export class FunctionParameter extends Node implements PossiblyNamed {
     name?: string;
+    @Child()
     defaultValue?: Expression;
     
     constructor(name: string, defaultValue?: Expression, position?: Position) {
@@ -197,6 +201,7 @@ export class FunctionParameter extends Node implements PossiblyNamed {
 // Struct member field: identifier with optional assignment (myField, myField = 10)
 export class StructMemberField extends Node implements PossiblyNamed {
     name?: string;
+    @Child()
     initializer?: Expression;
     
     constructor(name: string, initializer?: Expression, position?: Position) {
@@ -209,8 +214,11 @@ export class StructMemberField extends Node implements PossiblyNamed {
 // Function definition (scope node)
 export class FunctionDefinition extends ScopeNode implements PossiblyNamed {
     name?: string;
+    @Children()
     arguments: FunctionArgument[] = [];  // Simple args: fn test a b c
+    @Children()
     parameters: FunctionParameter[] = []; // Named params: fn test size:10
+    @Child()
     body?: BlockExpression;
     
     constructor(name: string, position?: Position) {
@@ -228,6 +236,7 @@ export class FunctionDefinition extends ScopeNode implements PossiblyNamed {
 export class StructMember extends Node implements PossiblyNamed {
     name?: string;
     accessibility: 'public' | 'private'; // MaxScript struct member accessibility
+    @Child()
     value?: VariableDeclaration | StructMemberField | FunctionDefinition | Expression; // The actual member (field, method or event)
     
     constructor(name: string, value: VariableDeclaration | StructMemberField | FunctionDefinition | Expression, accessibility: 'public' | 'private' = 'public', position?: Position) {
@@ -241,6 +250,7 @@ export class StructMember extends Node implements PossiblyNamed {
 // Struct definition (scope node)
 export class StructDefinition extends ScopeNode implements PossiblyNamed {
     name?: string;
+    @Children()
     members: StructMember[] = []; // All struct members (fields, methods, events)
     
     constructor(name: string, position?: Position) {
@@ -261,7 +271,9 @@ export class StructDefinition extends ScopeNode implements PossiblyNamed {
 export class DefinitionBlock extends ScopeNode implements PossiblyNamed {
     kind: 'macroscript' | 'utility' | 'rollout' | 'rolloutGroup' | 'tool' | 'rcmenu' | 'submenu' | 'plugin' | 'parameters' | 'attributes';
     name?: string;
+    @Children()
     parameters: Expression[] = []; // Optional parameters in the predicate
+    @Children()
     clauses: Node[] = []; // Body clauses: expressions, functions, structs, event handlers, controls, etc.
     
     // Plugin-specific: plugin kind (e.g., 'geometry', 'modifier', 'material')
@@ -281,6 +293,7 @@ export class DefinitionBlock extends ScopeNode implements PossiblyNamed {
 
 // Block expression (scope node) - (expr1; expr2; expr3)
 export class BlockExpression extends ScopeNode {
+    @Children()
     expressions: Node[] = [];  // Can contain Expression, FunctionDefinition, VariableDeclaration, etc.
     
     getChildScopes(): ScopeNode[] {
@@ -351,6 +364,7 @@ export class UndefinedLiteral extends Expression {
 
 // Array literal: #(1, 2, 3)
 export class ArrayLiteral extends Expression {
+    @Children()
     values: Expression[] = [];
     
     constructor(values: Expression[] = [], position?: Position) {
@@ -372,6 +386,7 @@ export class PathLiteral extends Expression {
 // Vector literal: [x, y], [x, y, z], [x, y, z, w]
 // Used for point2, point3, point4 values
 export class VectorLiteral extends Expression {
+    @Children()
     values: Expression[];
     
     constructor(values: Expression[], position?: Position) {
@@ -392,7 +407,9 @@ export class VectorLiteral extends Expression {
 // Binary expression: a + b, x * y, etc.
 export class BinaryExpression extends Expression {
     operator: string;
+    @Child()
     left: Expression;
+    @Child()
     right: Expression;
     
     constructor(operator: string, left: Expression, right: Expression, position?: Position) {
@@ -406,6 +423,7 @@ export class BinaryExpression extends Expression {
 // Unary expression: -x, not y
 export class UnaryExpression extends Expression {
     operator: string;
+    @Child()
     operand: Expression;
     
     constructor(operator: string, operand: Expression, position?: Position) {
@@ -417,7 +435,9 @@ export class UnaryExpression extends Expression {
 
 // Function call expression: myFunc(a, b)
 export class CallExpression extends Expression {
+    @Child()
     callee: Expression; // Function being called (could be reference, member access, etc.)
+    @Children()
     arguments: Expression[] = [];
     
     constructor(callee: Expression, args: Expression[] = [], position?: Position) {
@@ -429,6 +449,7 @@ export class CallExpression extends Expression {
 
 // Member access expression: obj.property
 export class MemberExpression extends Expression {
+    @Child()
     object: Expression;
     property: string;
     
@@ -441,7 +462,9 @@ export class MemberExpression extends Expression {
 
 // Index access expression: arr[1], obj[#prop]
 export class IndexExpression extends Expression {
+    @Child()
     object: Expression;
+    @Child()
     index: Expression;
     
     constructor(object: Expression, index: Expression, position?: Position) {
@@ -453,7 +476,9 @@ export class IndexExpression extends Expression {
 
 // Assignment expression
 export class AssignmentExpression extends Expression {
+    @Child()
     target?: Expression;
+    @Child()
     value?: Expression;
     
     constructor(target?: Expression, value?: Expression, position?: Position) {
@@ -467,7 +492,9 @@ export class AssignmentExpression extends Expression {
 // Controls become declarations in the containing rollout/group scope so handlers can resolve them.
 export class RolloutControl extends VariableDeclaration {
     controlType: string;
+    @Child()
     caption?: Expression;
+    @Children()
     parameters: Expression[] = [];
 
     constructor(
@@ -487,7 +514,9 @@ export class RolloutControl extends VariableDeclaration {
 // RCMenu item/separator declaration.
 export class RcMenuItem extends VariableDeclaration {
     itemType: 'menuitem' | 'separator';
+    @Children()
     operands: Expression[] = [];
+    @Children()
     parameters: Expression[] = [];
 
     constructor(
@@ -506,6 +535,7 @@ export class RcMenuItem extends VariableDeclaration {
 
 // Parameter block entry: width type:#float default:10
 export class ParameterDefinition extends VariableDeclaration {
+    @Children()
     parameters: Expression[] = [];
 
     constructor(name: string, parameters: Expression[] = [], position?: Position) {
@@ -517,6 +547,7 @@ export class ParameterDefinition extends VariableDeclaration {
 // Reference expression: &variable, &obj.prop, &$path
 // The & operator creates a reference (pointer) to a variable or property
 export class ReferenceExpression extends Expression {
+    @Child()
     operand: Expression;
     
     constructor(operand: Expression, position?: Position) {
@@ -528,6 +559,7 @@ export class ReferenceExpression extends Expression {
 // Dereference expression: *variable, *ref.prop, *$path
 // The * operator dereferences a reference (pointer) to access its value
 export class DereferenceExpression extends Expression {
+    @Child()
     operand: Expression;
     
     constructor(operand: Expression, position?: Position) {
@@ -545,9 +577,13 @@ export class DereferenceExpression extends Expression {
 // 1. if <condition> then <body> [else <altBody>]  - traditional if-then-else
 // 2. if <condition> do <body>                      - do-variant (no else)
 export class IfStatement extends Expression {
+    @Child()
     condition: Expression;
+    @Child()
     thenBody?: Expression;  // Body for 'if...then' variant
+    @Child()
     elseBody?: Expression;  // Optional else clause
+    @Child()
     doBody?: Expression;    // Body for 'if...do' variant
     
     constructor(condition: Expression, position?: Position) {
@@ -563,7 +599,9 @@ export class IfStatement extends Expression {
 
 // While statement: while condition do body
 export class WhileStatement extends Expression {
+    @Child()
     condition: Expression;
+    @Child()
     body: Expression;
     
     constructor(condition: Expression, body: Expression, position?: Position) {
@@ -575,7 +613,9 @@ export class WhileStatement extends Expression {
 
 // Do-While statement: do body while condition
 export class DoWhileStatement extends Expression {
+    @Child()
     body: Expression;
+    @Child()
     condition: Expression;
     
     constructor(body: Expression, condition: Expression, position?: Position) {
@@ -589,7 +629,9 @@ export class DoWhileStatement extends Expression {
 // MaxScript's try-catch is simple: try <expr> catch <expr>
 // The catch body is executed if any error occurs in the try body
 export class TryStatement extends Expression {
+    @Child()
     tryBody: Expression;
+    @Child()
     catchBody: Expression;
     
     constructor(tryBody: Expression, catchBody: Expression, position?: Position) {
@@ -606,16 +648,25 @@ export class TryStatement extends Expression {
 // - for i in array collect expr
 // - for i = 1 to 10 by 2 where condition while condition do expr
 export class ForStatement extends Expression {
+    @Child()
     variable: VariableReference;           // Loop variable
+    @Child()
     indexVariable?: VariableReference;     // Optional index variable
+    @Child()
     filteredIndexVariable?: VariableReference; // Optional filtered index variable
     operator: 'in' | '=';                  // in (iterate collection) or = (numeric range)
+    @Child()
     sequence: Expression;                  // Collection or start value
+    @Child()
     toValue?: Expression;                  // End value (for = loops)
+    @Child()
     byValue?: Expression;                  // Step value (for = loops)
+    @Child()
     whereCondition?: Expression;           // Optional where filter
+    @Child()
     whileCondition?: Expression;           // Optional while condition
     action: 'do' | 'collect';              // do (execute) or collect (accumulate results)
+    @Child()
     body: Expression;                      // Loop body
     
     constructor(
@@ -647,7 +698,9 @@ export class ForStatement extends Expression {
 
 // Case statement: case [expr] of ( item1: expr1; item2: expr2; ... )
 export class CaseStatement extends Expression {
+    @Child()
     testValue?: Expression;    // Optional value to test (case expr of)
+    @Children()
     items: CaseItem[] = [];    // Case items (value: body)
     
     constructor(position?: Position) {
@@ -657,7 +710,9 @@ export class CaseStatement extends Expression {
 
 // Case item: value : body
 export class CaseItem extends Node {
+    @Child()
     value: Expression;   // Case value (can be any factor)
+    @Child()
     body: Expression;    // Body to execute when matched
     
     constructor(value: Expression, body: Expression, position?: Position) {
@@ -669,6 +724,7 @@ export class CaseItem extends Node {
 
 // Return statement: return [expr]
 export class ReturnStatement extends Expression {
+    @Child()
     value?: Expression;  // Optional return value
     
     constructor(value?: Expression, position?: Position) {
@@ -680,6 +736,7 @@ export class ReturnStatement extends Expression {
 // Exit statement: exit [with expr]
 // Used to exit loops, optionally with a value
 export class ExitStatement extends Expression {
+    @Child()
     value?: Expression;  // Optional exit value (with clause)
     
     constructor(value?: Expression, position?: Position) {
@@ -691,7 +748,9 @@ export class ExitStatement extends Expression {
 // Context statement: at/in/with/set context prefixes applied to an expression or environment
 export class ContextStatement extends Expression {
     mode: 'cascading' | 'set';
+    @Children()
     clauses: ContextClause[] = [];
+    @Child()
     body?: Expression;
 
     constructor(mode: 'cascading' | 'set', position?: Position) {
@@ -704,6 +763,7 @@ export class ContextStatement extends Expression {
 export class ContextClause extends Node {
     kind: string;
     label?: string;
+    @Child()
     value?: Expression;
 
     constructor(kind: string, label?: string, value?: Expression, position?: Position) {
@@ -717,11 +777,16 @@ export class ContextClause extends Node {
 // When statement: when [type] objects change[s]/deleted [params] do expr
 // MaxScript's change handler for monitoring object changes
 export class WhenStatement extends Expression {
+    @Child()
     targetType?: VariableReference;    // Optional type filter
+    @Child()
     targets: Expression;               // Objects to monitor (reference, path, array)
     event: 'change' | 'deleted';       // Event type
+    @Children()
     parameters: Expression[] = [];     // Optional parameters
+    @Child()
     handler?: Expression;              // Optional handler parameter
+    @Child()
     body: Expression;                  // Handler body
     
     constructor(
@@ -744,10 +809,14 @@ export class WhenStatement extends Expression {
 //   on myRollout open do initialize()
 //   on myControl changed val do updateUI val
 export class EventHandlerStatement extends Expression {
+    @Child()
     target?: VariableReference;        // Optional target object (on btn pressed do...)
+    @Child()
     eventType: VariableReference;      // Event type (pressed, changed, open, etc.)
+    @Children()
     eventArgs: VariableReference[] = [];  // Optional event arguments
     action: 'do' | 'return';           // do (execute) or return (return value)
+    @Child()
     body: Expression;                  // Handler body
     
     constructor(

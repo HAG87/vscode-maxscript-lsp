@@ -334,12 +334,10 @@ export class SymbolResolver {
         } else if (node instanceof DefinitionBlock) {
             this.visitDefinitionBlock(node);
         } else {
-            // FIX #2: Catch-all for expression nodes (BinaryExpression, CallExpression, etc)
-            // Walk children to find any nested VariableReferences
-            if (typeof node.walkChildren === 'function') {
-                for (const child of node.walkChildren()) {
-                    this.visit(child);
-                }
+            // Catch-all for expression nodes (BinaryExpression, CallExpression, etc)
+            // Walk immediate children to find any nested VariableReferences
+            for (const child of node.children) {
+                this.visit(child);
             }
         }
     }
