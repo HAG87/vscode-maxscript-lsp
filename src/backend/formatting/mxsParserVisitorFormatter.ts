@@ -5,7 +5,7 @@ import {
   ArrayContext, ArrayListContext, Attributes_clauseContext,
   AttributesDefinitionContext, BitArrayContext, BitListContext,
   Case_itemContext, Case_clauseContext, CaseStatementContext, CommaContext,
-  ContexStatementContext, De_refContext, DeclarationStatementContext,
+  ContextStatementContext, De_refContext, DeclarationStatementContext,
   DoLoopStatementContext, EventHandlerStatementContext, Expr_seqContext,
   Fn_bodyContext, FnDefinitionContext, FnReturnStatementContext,
   For_sequenceContext, For_whereContext, For_whileContext,
@@ -1409,7 +1409,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.EXPR
         )
     }
-    visitContexStatement = (ctx: ContexStatementContext): codeBlock =>
+    visitContextStatement = (ctx: ContextStatementContext): codeBlock =>
     {
         return new codeBlock(
             this.visitChildren(ctx)!,

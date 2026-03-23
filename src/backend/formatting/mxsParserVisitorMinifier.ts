@@ -4,7 +4,7 @@ import { mxsLexer } from '../../parser/mxsLexer.js';
 import {
   AccessorContext, AssignmentContext, AttributesDefinitionContext,
   Case_itemContext, CaseStatementContext, CommaContext,
-  ContexStatementContext, DoLoopStatementContext, EventHandlerStatementContext,
+  ContextStatementContext, DoLoopStatementContext, EventHandlerStatementContext,
   Expr_operandContext, Expr_seqContext, ExprContext, FactorContext,
   FnDefinitionContext, FnReturnStatementContext, ForLoopStatementContext,
   FunctionCallContext, IdentifierContext, IfStatementContext, IndexContext,
@@ -156,7 +156,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         return this.visit(ctx.TRY()!)! + this.visit(ctx._tryBody!)! + 
                this.visit(ctx.CATCH()!)! + this.visit(ctx._catchBody!)!
     }
-    visitContexStatement = (ctx: ContexStatementContext): string =>
+    visitContextStatement = (ctx: ContextStatementContext): string =>
         this.visitChildren(ctx)!
     //-------------------------------------------------------
     visitExpr_seq = (ctx: Expr_seqContext): string =>
