@@ -304,6 +304,8 @@
     "test:ast:symboltree": "npm run compile-tests && node out/backend/ast/test-symboltree.js",
     "test:ast:control-flow": "npm run compile-tests && node out/backend/ast/test-control-flow.js",
     "test:ast:contexts": "npm run compile-tests && node out/backend/ast/test-context-handlers.js",
+    "test:ast:definitions": "npm run compile-tests && node out/backend/ast/test-definition-blocks.js",
+    "test:ast:ui": "npm run compile-tests && node out/backend/ast/test-definition-blocks.js",
     "generate": "antlr4ng -Dlanguage=TypeScript -visitor -Xexact-output-dir src/parser/grammars/mxsLexer.g4 src/parser/grammars/mxsParser.g4 -o src/parser"
   },
   "devDependencies": {
