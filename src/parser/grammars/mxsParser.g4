@@ -253,7 +253,7 @@ whenStatement: when_clause NL* DO NL* expr
 	;
 
 when_clause
-	: WHEN NL* (reference NL*)? (reference | path | expr_seq | array) NL* identifier  NL*  (NL* param)* (NL* operand)?
+	: WHEN NL* (reference NL*)? (reference | path | exprSeq | array) NL* identifier  NL*  (NL* param)* (NL* operand)?
 	;
 
 //-------------------------------------- CONTEXT_EXPR
@@ -369,20 +369,20 @@ event_args
 structDefinition
 	: STRUCT NL* str_name = identifier NL*
     lp
-        struct_body
+        structBody
     rp
 	;
 
-struct_body: (struct_access NL*)? struct_members ( comma (struct_access NL*)? struct_members )*
+structBody: (struct_access NL*)? structMembers ( comma (struct_access NL*)? structMembers )*
 	;
 
-struct_members
-	: struct_member
+structMembers
+	: structMember
 	| fnDefinition
 	| eventHandlerStatement	
 	;
 
-struct_member: identifier assignment? ;
+structMember: identifier assignment? ;
 
 struct_access: PUBLIC | PRIVATE
 	;
@@ -390,20 +390,20 @@ struct_access: PUBLIC | PRIVATE
 //---------------------------------------- FUNCTION DEF
 fnDefinition
 	: (fn_mod = MAPPED NL* fn_decl = FN | fn_decl = FN) NL* fn_name = identifier NL*
-		( NL* fn_args )*
-		( NL* fn_params )*
-		NL* fn_body
+		( NL* fnArgs )*
+		( NL* fnParams )*
+		NL* fnBody
 	;
 
-fn_body
+fnBody
 	: EQ NL* expr
 	;
-fn_args
+fnArgs
 	: {this.noWSBeNext()}? AMP identifier   // &arg - by-reference parameter
 	| identifier                             // arg - by-value parameter
 	;
-fn_params
-	: {this.colonBeNext()}? (identifier | kw_override) COLON (NL* operand_arg)?
+fnParams
+	: {this.colonBeNext()}? (identifier | kw_override) COLON (NL* operandArg)?
 	;
 
 //FN_RETURN
@@ -454,13 +454,13 @@ tryStatement: TRY NL* tryBody = expr NL* CATCH NL* catchBody = expr
 caseStatement
 	: case_clause NL*
 	lp
-		case_item (lbk case_item)*
+		caseItem (lbk caseItem)*
 	rp
 	;
 case_clause: CASE (NL* expr)? NL* OF
 	;
 // This will produce errors at compile time...
-case_item: factor COLON NL* expr
+caseItem: factor COLON NL* expr
 	;
 
 //---------------------------------------- IF-CLAUSE
@@ -493,12 +493,12 @@ if_statement
 
 //---------------------------------------- DECLARATIONS
 declarationStatement
-	: scope = decl_scope NL*
+	: scope = declScope NL*
         decl += variableDeclaration ( comma decl += variableDeclaration )*
 	;
 variableDeclaration: identifier assignment?
 	;
-decl_scope: ( LOCAL | GLOBAL | PERSISTENT NL* GLOBAL)
+declScope: ( LOCAL | GLOBAL | PERSISTENT NL* GLOBAL)
 	;
 
 assignment: EQ NL* expr
@@ -520,7 +520,7 @@ assignment: EQ NL* expr
 // ASSIGNMENT EXPRESSION is now integrated into simpleExpression as its lowest-precedence operator.
 
 simpleExpression
-	: left = simpleExpression (ASSIGN | EQ) NL* assignExpr = expr							//# AssignmentExpr (LOWEST precedence)
+	: left = simpleExpression (ASSIGN | EQ) NL* assignExpr = expr						//# AssignmentExpr (LOWEST precedence)
 	| left = simpleExpression AS NL* classname	                                        //# TypecastExpr
 	| left = simpleExpression OR NL* right = simpleExpression					        //# LogicOrExpr
 	| left = simpleExpression AND NL* right = simpleExpression					        //# LogicAndExpr
@@ -530,10 +530,10 @@ simpleExpression
 	| <assoc = right> left = simpleExpression POW NL* right = simpleExpression			//# ExponentExpr (right assoc)
 	| (MINUS | UNARY_MINUS) right = simpleExpression									//# UnaryMinusExpr (prefix)
 	| <assoc = right> NOT NL* right = simpleExpression									//# LogicNotExpr (prefix)
-	| expr_operand							                                            //# ExprOperand (HIGHEST precedence)
+	| exprOperand							                                            //# ExprOperand (HIGHEST precedence)
 	;
 
-// MaxScript operator precedence within expr_operand:
+// MaxScript operator precedence within exprOperand:
 // Ordered choice in ANTLR: first match wins
 //
 // 1. Try prefix operators (&, *) first - they bind to the tightest construct after them
@@ -551,9 +551,9 @@ simpleExpression
 // operators that have lower precedence than postfix operators (. [] ()), meaning:
 // - &obj.prop is parsed as &(obj.prop), not (&obj).prop
 // - *arr[0] is parsed as *(arr[0]), not (*arr)[0]
-expr_operand
+exprOperand
 	: functionCall
-	| de_ref
+	| deRef
 	| operand
 	;
 
@@ -562,7 +562,7 @@ operand
 	| factor      // Primary: literals, identifiers, paths, etc.
 	;
 
-classname: ID | kw_reserved | expr_seq
+classname: ID | kw_reserved | exprSeq
 	;
 
 //---------------------------------------- FUNCTION CALL Positional Arguments Keyword Arguments
@@ -576,7 +576,7 @@ classname: ID | kw_reserved | expr_seq
  correctly parenthesizing function arguments
  
  Strategy to reduce backtracking:
- 1. fn_caller now excludes de_ref (handled separately in expr_operand)
+ 1. fnCaller now excludes deRef (handled separately in exprOperand)
  2. Parser tries functionCall first, which requires call syntax
  3. If no call syntax present, falls back to plain operand
  4. This still requires backtracking but is necessary for MaxScript's syntax
@@ -587,32 +587,32 @@ classname: ID | kw_reserved | expr_seq
  */
 
 functionCall
-	: fn_caller (
-		paren_pair                                    // foo()
-		| (args += operand_arg)+ (params += param)*   // foo arg1 arg2 x:val
+	: fnCaller (
+		parenPair                                    // foo()
+		| (args += operandArg)+ (params += param)*   // foo arg1 arg2 x:val
 		| (params += param)+                          // foo x:val y:val
 	)
 	;
 
-paren_pair: {this.closedParens()}? LPAREN RPAREN
+parenPair: {this.closedParens()}? LPAREN RPAREN
 	;
 
-fn_caller
+fnCaller
 	: accessor
 	| reference
 	| path
-	| expr_seq
+	| exprSeq
 	| QUESTION
 	;
 
 //---------------------------------------- PARAMETER
-param: param_name NL* operand_arg
+param: paramName NL* operandArg
 	;
 
-param_name: {this.colonBeNext()}? (identifier | kw_override) COLON
+paramName: {this.colonBeNext()}? (identifier | kw_override) COLON
 	;
 
-operand_arg
+operandArg
 	: UNARY_MINUS operand
 	| operand
 	;
@@ -651,11 +651,11 @@ factor
 	| array
 	| bitArray
 	| vector
-	| expr_seq //EXPRESSION SEQUENCE
+	| exprSeq //EXPRESSION SEQUENCE
 	;
 
-//---------------------------------------- EXPR_SEQ <expr_seq> ::= ( <expr> { ( ; | <eol>) <expr> }
-expr_seq:
+//---------------------------------------- EXPR_SEQ <exprSeq> ::= ( <expr> { ( ; | <eol>) <expr> }
+exprSeq:
 	lp
 		(expr (lbk expr)*)?
 	rp
@@ -688,7 +688,7 @@ arrayList: expr ( comma expr)*
 	;
 
 // Dereference operator: *identifier, *path, *accessor
-de_ref: {this.noWSBeNext()}? PROD (accessor | reference | path)
+deRef: {this.noWSBeNext()}? PROD (accessor | reference | path)
 	;
 // Reference operator: &identifier, &path, &accessor
 // by_ref: {this.noWSBeNext()}? AMP (accessor | reference | path);
