@@ -5,7 +5,7 @@ TODO:
 */
 import {
   CancellationToken, Location, Position, ProviderResult,
-  ReferenceContext, ReferenceProvider, TextDocument, Uri,
+    ReferenceContext, ReferenceProvider, TextDocument,
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
@@ -30,15 +30,9 @@ export class mxsReferenceProvider implements ReferenceProvider
 
             if (occurrences) {
                 const result: Location[] = [];
-                for (const symbol of occurrences) {
-                    if (symbol.definition) {
-                        const location =
-                            new Location(
-                                Uri.parse(symbol.source),
-                                Utilities.symbolNameRange(symbol)
-                            );
-                        result.push(location);
-                    }
+                const targets = Utilities.symbolTargets(occurrences);
+                for (const target of targets) {
+                    result.push(new Location(target.uri, target.range));
                 }
                 resolve(result);
             } else {

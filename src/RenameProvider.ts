@@ -1,7 +1,7 @@
 /* THIS IS BROKEN! */
 import {
-  CancellationToken, Position, ProviderResult, RenameProvider,
-  TextDocument, Uri, WorkspaceEdit,
+        CancellationToken, Position, ProviderResult, RenameProvider,
+        TextDocument, WorkspaceEdit,
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
@@ -26,14 +26,9 @@ export class mxsRenameProvider implements RenameProvider
 
             if (occurrences) {
                 const workspaceEdit = new WorkspaceEdit();
-                for (const symbol of occurrences) {
-                    // if (symbol.definition) {
-                        workspaceEdit.replace(
-                            Uri.parse(symbol.source),
-                            Utilities.symbolNameRange(symbol),
-                            newName
-                        );
-                    // }
+                const targets = Utilities.symbolTargetsWithWordAtPosition(occurrences, document, position);
+                for (const target of targets) {
+                    workspaceEdit.replace(target.uri, target.range, newName);
                 }
                 resolve(workspaceEdit);
             } else {
