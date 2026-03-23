@@ -59,6 +59,17 @@ struct MyStruct
 
 -- Local variable
 local localVar = 42
+
+-- Top-level isolated scope block
+(
+    local wrappedLocal = 7
+
+    fn wrappedFn a =
+    (
+        local wrappedInner = a + wrappedLocal
+        wrappedInner
+    )
+)
 `;
 
 console.log('=== SymbolTreeBuilder Test ===');
@@ -264,6 +275,34 @@ try {
         }
     } else {
         console.log('❌ Local variable "localVar" not found');
+        errors++;
+    }
+
+    const wrappedLocal = symbolTree.find(s => s.name === 'wrappedLocal');
+    if (wrappedLocal) {
+        console.log('✓ Found wrapped local variable "wrappedLocal"');
+        if (wrappedLocal.kind === SymbolKind.LocalVar) {
+            console.log('  ✓ Correct kind: LocalVar');
+        } else {
+            console.log(`  ❌ Wrong kind: expected LocalVar, got ${SymbolKind[wrappedLocal.kind]}`);
+            errors++;
+        }
+    } else {
+        console.log('❌ Wrapped local variable "wrappedLocal" not found');
+        errors++;
+    }
+
+    const wrappedFn = symbolTree.find(s => s.name === 'wrappedFn');
+    if (wrappedFn) {
+        console.log('✓ Found wrapped function "wrappedFn"');
+        if (wrappedFn.kind === SymbolKind.Function) {
+            console.log('  ✓ Correct kind: Function');
+        } else {
+            console.log(`  ❌ Wrong kind: expected Function, got ${SymbolKind[wrappedFn.kind]}`);
+            errors++;
+        }
+    } else {
+        console.log('❌ Wrapped function "wrappedFn" not found');
         errors++;
     }
     

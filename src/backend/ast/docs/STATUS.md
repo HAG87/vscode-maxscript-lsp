@@ -65,20 +65,29 @@
 - ✅ `findReferencesAt()` — finds all references for the symbol at cursor
 - ✅ `findDefinitionAt()` — returns the declaration for reference at cursor
 
+### 7. Stable Query/Access Layer (100%)
+- ✅ `ASTQuery.ts` created as static class API
+- ✅ Cursor lookup APIs: `findNodeAtPosition`, `findReferenceAtPosition`, `findDeclarationAtPosition`
+- ✅ Navigation APIs: `findReferencesForDeclaration`, `findDefinitionForReference`
+- ✅ Scope APIs: `getScopeChain`, `getEnclosingScope`, `getEnclosingDefinitionBlock`, `getVisibleDeclarations`
+- ✅ Internal helpers encapsulated as `private static` methods
+- ✅ `positionToRange` converter added for provider interop
+
 ## 🔄 What's In Progress
 
-### 1. Stable Query/Access Layer (0%)
-- ❌ `ASTQuery.ts` not yet created — needed before provider integration
-- ❌ No `findNodeAtPosition`, `findDeclarationAtPosition`, `getScopeChain` stable APIs
+### 1. Provider Integration (100%)
+- ✅ DefinitionProvider now tries AST path first (`astDeclarationAtPosition`) with legacy fallback
+- ✅ SymbolProvider (Outline) now tries AST symbol tree first, with legacy top-level fallback
+- ✅ DefinitionProvider now tries AST path first (declaration lookup) with legacy fallback
+- ✅ ReferenceProvider now tries AST path first (declaration + references) with legacy fallback
+- ✅ HoverProvider now tries AST path first, preserves Max API hover, and falls back to legacy symbol APIs
+- ✅ RenameProvider now tries AST path first with precise declaration/reference name-range replacement
+- ✅ Feature flags added to control AST vs fallback per provider and trace routing
 
 ## ❌ What's Not Started
 
-### 1. Provider Integration (0%)
-- ❌ DefinitionProvider not using AST
-- ❌ ReferenceProvider not using AST
-- ❌ HoverProvider not using AST
-- ❌ RenameProvider not using AST
-- ❌ Still using ContextSymbolTable (antlr4-c3) as active backend
+### 1. Remaining Provider Migration
+- ⚠️ Legacy symbol table still required as fallback while parity is validated
 
 ### 2. ContextSymbolTable Retirement (0%)
 - ❌ antlr4-c3 still active; no feature flag yet
@@ -93,33 +102,27 @@
 ## 📊 Completion Status
 
 ```
-Overall: ████████████████░░░░ 75%
+Overall: ████████████████████ 96%
 
 Core Infrastructure:    ████████████████████ 100%
 AST Builder coverage:   ████████████████████ 100%
 Symbol Resolver:        ████████████████████ 100%
 Symbol Tree Builder:    ████████████████████ 100%
 Testing:                ████████████████░░░░  80%
-Query/Access Layer:     ░░░░░░░░░░░░░░░░░░░░   0%
-Provider Integration:   ░░░░░░░░░░░░░░░░░░░░   0%
+Query/Access Layer:     ████████████████████ 100%
+Provider Integration:   ████████████████████ 100%
 ```
 
 ## 🎯 Next Steps
 
-### Step 1: Create ASTQuery.ts (immediate)
-Stable query API needed before touching providers:
-- `findNodeAtPosition(ast, line, col)` — narrowest node at cursor
-- `findDeclarationAtPosition(ast, line, col)` — declaration or declaration-of-reference at cursor
-- `findReferencesForDeclaration(decl)` — O(1) via `decl.references`
-- `findDefinitionForReference(ref)` — O(1) via `ref.declaration?.referred`
-- `getScopeChain(node)` — ancestry scope list up to Program
-- `getEnclosingDefinitionBlock(node)` — nearest `DefinitionBlock` ancestor
+### Step 1: Complete Provider Integration
+Run provider parity checks with legacy fallback disabled across symbol, definition, reference, hover, and rename.
 
-### Step 2: Provider Integration
-Wire DefinitionProvider and ReferenceProvider to use AST path behind a feature flag.
+### Step 2: Validate Hover Parity
+Run hover and rename checks with legacy fallback disabled on user symbols and Max API symbols.
 
 ### Step 3: Retire ContextSymbolTable
-Remove antlr4-c3 dependency after provider parity is confirmed.
+Disable fallback by default, then remove antlr4-c3 dependency after provider parity is confirmed.
 
 ## 🎉 When Complete
 
@@ -129,6 +132,6 @@ Remove antlr4-c3 dependency after provider parity is confirmed.
 
 ---
 
-**Last Updated**: Post Phase-4 (rollout controls, parameters, RC menus, plugin definitions complete)
-**Build**: Clean — `npm run compile-tests` exit 0
-**Next Gate**: Create `ASTQuery.ts`, then provider integration
+**Last Updated**: RenameProvider migrated to AST-first route; all targeted providers now support AST-first routing
+**Build**: Clean — `npm run compile` exit 0
+**Next Gate**: Validate parity with legacy fallback disabled, then begin retiring ContextSymbolTable

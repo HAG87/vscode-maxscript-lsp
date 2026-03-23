@@ -5,6 +5,7 @@
 import { CharStream, CommonTokenStream } from 'antlr4ng';
 import { mxsLexer } from '../../parser/mxsLexer.js';
 import { mxsParser } from '../../parser/mxsParser.js';
+import { ASTQuery } from './ASTQuery.js';
 import { ASTBuilder } from './ASTBuilder.js';
 import { SymbolResolver } from './SymbolResolver.js';
 import { VariableReference } from './ASTNodes.js';
@@ -76,6 +77,22 @@ try {
     console.log(`Implicit global 'b':`);
     console.log(`  - References: ${bRefs.length}`);
     console.log(`  - Resolved: ${bRefs.some(r => r.declaration?.referred)}`);
+
+    const fnDeclAtName = ASTQuery.findDeclarationAtPosition(ast, 2, 3);
+    console.log(`Declaration at function name:`);
+    console.log(`  - Resolved: ${fnDeclAtName?.name}`);
+
+    const fnDeclAtReference = ASTQuery.findDeclarationAtPosition(ast, 9, 4);
+    console.log(`Declaration at function call:`);
+    console.log(`  - Resolved: ${fnDeclAtReference?.name}`);
+
+    const argDeclAtName = ASTQuery.findDeclarationAtPosition(ast, 2, 10);
+    console.log(`Declaration at function argument:`);
+    console.log(`  - Resolved: ${argDeclAtName?.name}`);
+
+    if (fnDeclAtName?.name !== 'myFunc' || fnDeclAtReference?.name !== 'myFunc' || argDeclAtName?.name !== 'x') {
+        throw new Error('ASTQuery declaration lookup failed for declaration-like nodes');
+    }
     
     console.log();
     console.log('✅ Test passed!');
