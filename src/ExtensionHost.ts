@@ -10,6 +10,7 @@ import {
 import { mxsBackend } from './backend/Backend.js';
 import { mxsCompletionProvider } from './CompletionItemProvider.js';
 import { mxsDefinitionProvider } from './DefinitionProvider.js';
+import { mxsDocumentHighlightProvider } from './DocumentHighlightProvider.js';
 import { diagnosticAdapter } from './Diagnostics.js';
 import { mxsRangeFormattingProvider } from './FormattingProvider.js';
 import { mxsHoverProvider } from './HoverProvider.js';
@@ -232,6 +233,10 @@ export class ExtensionHost
             languages.registerReferenceProvider(
                 ExtensionHost.langSelector,
                 new mxsReferenceProvider(this.backend)
+            ),
+            languages.registerDocumentHighlightProvider(
+                ExtensionHost.langSelector,
+                new mxsDocumentHighlightProvider(this.backend)
             ),
             languages.registerDefinitionProvider(
                 ExtensionHost.langSelector,
