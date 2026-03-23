@@ -18,7 +18,7 @@ import { mxsHoverProvider } from './HoverProvider.js';
 import { mxsReferenceProvider } from './ReferenceProvider.js';
 import { mxsRenameProvider } from './RenameProvider.js';
 import {
-  mxsSemanticTokensProvider, mxsSemtoTokensLegend,
+    mxsRangeSemanticTokensProvider, mxsSemanticTokensProvider, mxsSemtoTokensLegend,
 } from './SemanticTokensProvider.js';
 import {
   defaultSettings, minifySettings, prettifySettings,
@@ -267,13 +267,11 @@ export class ExtensionHost
                 this.semanticTokensProvider = new mxsSemanticTokensProvider(this.backend),
                 mxsSemtoTokensLegend
             ),
-            /*
             languages.registerDocumentRangeSemanticTokensProvider(
                 ExtensionHost.langSelector,
                 new mxsRangeSemanticTokensProvider(this.backend),
                 mxsSemtoTokensLegend
             ),
-            */
             /*
              languages.registerDocumentFormattingEditProvider(
                  ExtensionHost.langSelector,

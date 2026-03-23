@@ -14,10 +14,6 @@ export const mxsSemtoTokensLegend = new SemanticTokensLegend(semTokenTypes, semT
  */
 export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider 
 {
-    // private tokensBuilder: SemanticTokensBuilder;
-    // private currentTokens: ISemanticToken[] = [];
-    // private documentTokenBuilder: Map<string,SemanticTokensBuilder> = new Map<string,SemanticTokensBuilder>();
-
     private _onDidChangeSemanticTokens = new EventEmitter<void>();
 
     constructor(private backend: mxsBackend) { }
@@ -34,45 +30,54 @@ export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider
         this._onDidChangeSemanticTokens.fire();
     }
 
-    provideDocumentSemanticTokens(document: TextDocument, _token: CancellationToken): ProviderResult<SemanticTokens>
+    provideDocumentSemanticTokens(document: TextDocument, token: CancellationToken): ProviderResult<SemanticTokens>
     {
-        /*
-        // note: seems that SemanticTokensBuilder cant be reused...
-        const uri = document.uri.toString();
-        let tokensBuilder: SemanticTokensBuilder;
-        if (this.documentTokenBuilder.has(uri)) {
-            tokensBuilder = this.documentTokenBuilder.get(uri)!;
-        } else {
-            tokensBuilder = new SemanticTokensBuilder(mxsSemtoTokensLegend);
-            this.documentTokenBuilder.set(uri, tokensBuilder);
+        if (token.isCancellationRequested) {
+            return undefined;
         }
-        */
-       
-       return new Promise((resolve) =>
-        {
-            // TODO: if no parse tree is available, fallback to simple method
-            // const tokens = this.backend.getDocumentSemanticTokens(document.uri.toString());
-            const tokens = this.backend.getContext(document.uri.toString())?.getSemanticTokens;
 
-            // some optimizations to recompute the tokens only if they have changed...
-            if (tokens && tokens.length > 0) {
-                const tokensBuilder = new SemanticTokensBuilder(mxsSemtoTokensLegend);
-                tokens.forEach(token => tokensBuilder.push(
-                    new Range(token.line - 1, token.startCharacter, token.line - 1, token.startCharacter + token.length),
-                    token.tokenType as string,
-                    token.tokenModifiers as string[]));
-                resolve(tokensBuilder.build());
-            } else {
-                resolve(undefined);
+        // TODO: if no parse tree is available, fallback to simple method
+        // const tokens = this.backend.getDocumentSemanticTokens(document.uri.toString());
+        const tokens = this.backend.getContext(document.uri.toString())?.getSemanticTokens;
+
+        // some optimizations to recompute the tokens only if they have changed...
+        if (!tokens || tokens.length === 0) {
+            return undefined;
+        }
+
+        const tokensBuilder = new SemanticTokensBuilder(mxsSemtoTokensLegend);
+        for (const semToken of tokens) {
+            if (token.isCancellationRequested) {
+                return undefined;
             }
-        });
+
+            tokensBuilder.push(
+                new Range(
+                    semToken.line - 1,
+                    semToken.startCharacter,
+                    semToken.line - 1,
+                    semToken.startCharacter + semToken.length,
+                ),
+                semToken.tokenType as string,
+                semToken.tokenModifiers as string[],
+            );
+        }
+
+        return tokensBuilder.build();
     }
     /*
-    provideDocumentSemanticTokensEdits?(document: TextDocument, previousResultId: string, token: CancellationToken): ProviderResult<SemanticTokens | SemanticTokensEdits>
+    // TODO(semantic-edits): Feasible, but currently low value with the existing full-refresh model.
+    // Notes for future implementation:
+    // 1) Update signature to: ProviderResult<SemanticTokens | SemanticTokensEdits>.
+    // 2) Keep a per-document cache: { resultId, encodedTokenData }.
+    // 3) Build current encoded token data and diff against cached data for previousResultId.
+    // 4) Return SemanticTokensEdits only for small/contiguous deltas; otherwise return full SemanticTokens.
+    // 5) On unknown previousResultId, cancellation, or large churn, fallback to full tokens.
+    provideDocumentSemanticTokensEdits?(document: TextDocument, previousResultId: string, token: CancellationToken): ProviderResult<SemanticTokens>
     {
         throw new Error("Method not implemented.");
     }
-    */
+    // */
 }
 /**
  * Works only on a range.
@@ -80,7 +85,7 @@ export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider
 export class mxsRangeSemanticTokensProvider implements DocumentRangeSemanticTokensProvider
 {
 
-    constructor(/* private backend: mxsBackend */) { }
+    constructor(private backend: mxsBackend) { }
 
     /**
      * Provides all tokens of a document range.
@@ -90,7 +95,50 @@ export class mxsRangeSemanticTokensProvider implements DocumentRangeSemanticToke
      */
     provideDocumentRangeSemanticTokens(document: TextDocument, range: Range, token: CancellationToken): ProviderResult<SemanticTokens>
     {
-        // console.log(range);
-        throw new Error("Method not implemented.");
+        if (token.isCancellationRequested) {
+            return undefined;
+        }
+
+        const tokens = this.backend.getContext(document.uri.toString())?.getSemanticTokens;
+        if (!tokens || tokens.length === 0) {
+            return undefined;
+        }
+
+        const builder = new SemanticTokensBuilder(mxsSemtoTokensLegend);
+        const rangeStartLine = range.start.line;
+        const rangeStartCharacter = range.start.character;
+        const rangeEndLine = range.end.line;
+        const rangeEndCharacter = range.end.character;
+
+        for (const semToken of tokens) {
+            if (token.isCancellationRequested) {
+                return undefined;
+            }
+
+            const tokenLine = semToken.line - 1;
+            const tokenStart = semToken.startCharacter;
+            const tokenEnd = semToken.startCharacter + semToken.length;
+
+            // Skip tokens outside requested line range.
+            if (tokenLine < rangeStartLine || tokenLine > rangeEndLine) {
+                continue;
+            }
+
+            // Line boundary overlap checks.
+            if (tokenLine === rangeStartLine && tokenEnd <= rangeStartCharacter) {
+                continue;
+            }
+            if (tokenLine === rangeEndLine && tokenStart >= rangeEndCharacter) {
+                continue;
+            }
+
+            builder.push(
+                new Range(tokenLine, tokenStart, tokenLine, tokenEnd),
+                semToken.tokenType as string,
+                semToken.tokenModifiers as string[],
+            );
+        }
+
+        return builder.build();
     }
 }
