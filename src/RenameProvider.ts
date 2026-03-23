@@ -1,7 +1,6 @@
-/* THIS IS BROKEN! */
 import {
-        CancellationToken, Position, ProviderResult, RenameProvider,
-        TextDocument, WorkspaceEdit,
+    CancellationToken, Position, ProviderResult, Range, RenameProvider,
+    TextDocument, WorkspaceEdit,
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
@@ -10,6 +9,29 @@ import { Utilities } from './utils.js';
 export class mxsRenameProvider implements RenameProvider
 {
     public constructor(private backend: mxsBackend) { }
+
+    public prepareRename(
+        document: TextDocument,
+        position: Position,
+        _token: CancellationToken): ProviderResult<Range | { range: Range; placeholder: string }>
+    {
+        return new Promise((resolve, reject) =>
+        {
+            const ctx = this.backend.getContext(document.uri.toString());
+            const symbol = ctx.symbolAtPosition(position.line + 1, position.character);
+
+            if (!symbol || !symbol.definition) {
+                // Reject positions that are not on a renameable symbol.
+                reject(new Error('No renameable symbol at this position.'));
+                return;
+            }
+
+            resolve({
+                range: Utilities.symbolNameRange(symbol),
+                placeholder: symbol.name,
+            });
+        });
+    }
 
     public provideRenameEdits(
         document: TextDocument,
