@@ -59,37 +59,19 @@ import {
 export class SymbolResolver {
     // Track current scope during traversal
     private currentScope: ScopeNode;
-    private allReferences: VariableReference[];
     
     constructor(private program: Program, references: VariableReference[] = []) {
         this.currentScope = program;
-        this.allReferences = references;
     }
     
+    /**
+     * Main entry point - resolves all symbol references in the AST
+     * FIX #1: Removed the incorrect first resolution pass that used program.resolve()
+     * Now uses a single tree walk that respects scope boundaries
+     */
     resolve(): void {
-        // Resolve all collected references
-        for (const ref of this.allReferences) {
-            this.resolveReference(ref);
-        }
-        
-        // Also walk the tree for any references not in the list
+        // Single pass: walk AST respecting scope boundaries
         this.visitProgram(this.program);
-    }
-    
-    private resolveReference(node: VariableReference): void {
-        if (!node.name || !node.declaration) return;
-        
-        // Resolve using scope chain (walk up from program root)
-        const resolved = this.program.resolve(node.name);
-        
-        if (resolved) {
-            // Use Tylasu's ReferenceByName to link
-            node.declaration.referred = resolved;
-            
-            // Add back-reference from declaration
-            resolved.references.push(node);
-        }
-        // If no declaration found, reference remains unresolved (implicit global in MaxScript)
     }
     
     private visitProgram(node: Program): void {
@@ -101,13 +83,16 @@ export class SymbolResolver {
     
     private visitVariableDeclaration(node: VariableDeclaration): void {
         // Declaration is already added to scope by ASTBuilder
-        // Nothing to resolve here
+        // Resolve any initializer expressions
+        if (node.initializer) {
+            this.visit(node.initializer);
+        }
     }
     
     private visitVariableReference(node: VariableReference): void {
         if (!node.name || !node.declaration) return;
         
-        // Resolve using scope chain
+        // Resolve using scope chain - this respects lexical scoping
         const resolved = this.currentScope.resolve(node.name);
         
         if (resolved) {
@@ -121,42 +106,36 @@ export class SymbolResolver {
     }
     
     private visitFunctionDefinition(node: FunctionDefinition): void {
-        // Save current scope
+        // Functions create a new scope
         const previousScope = this.currentScope;
-        
-        // Enter function scope
         this.currentScope = node;
         
-        // Resolve body
+        // Resolve body expressions
         if (node.body) {
             this.visit(node.body);
         }
         
-        // Restore scope
         this.currentScope = previousScope;
     }
     
     private visitStructDefinition(node: StructDefinition): void {
-        // Save current scope
+        // Structs create a new scope
         const previousScope = this.currentScope;
-        
-        // Enter struct scope
         this.currentScope = node;
         
-        // Resolve methods
-        for (const method of node.members) {
-            this.visit(method);
+        // Resolve members (if they contain expressions)
+        for (const member of node.members) {
+            if (member.value) {
+                this.visit(member.value);
+            }
         }
         
-        // Restore scope
         this.currentScope = previousScope;
     }
     
     private visitBlockExpression(node: BlockExpression): void {
         // Blocks create new scope in MaxScript
         const previousScope = this.currentScope;
-        
-        // Use block as scope
         this.currentScope = node;
         
         for (const expr of node.expressions) {
@@ -178,8 +157,14 @@ export class SymbolResolver {
         }
     }
     
-    // Generic visit dispatcher using Tylasu's walk pattern
+    /**
+     * Generic visit dispatcher
+     * FIX #2: Added catch-all for expression nodes not explicitly handled
+     * This ensures references nested in BinaryExpression, CallExpression, etc. are resolved
+     */
     private visit(node: any): void {
+        if (!node) return;
+        
         if (node instanceof Program) {
             this.visitProgram(node);
         } else if (node instanceof VariableDeclaration) {
@@ -194,7 +179,14 @@ export class SymbolResolver {
             this.visitBlockExpression(node);
         } else if (node instanceof AssignmentExpression) {
             this.visitAssignmentExpression(node);
+        } else {
+            // FIX #2: Catch-all for expression nodes (BinaryExpression, CallExpression, etc)
+            // Walk children to find any nested VariableReferences
+            if (typeof node.walkChildren === 'function') {
+                for (const child of node.walkChildren()) {
+                    this.visit(child);
+                }
+            }
         }
-        // Add more node types as needed
     }
 }
