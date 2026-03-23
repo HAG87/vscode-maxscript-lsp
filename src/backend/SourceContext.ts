@@ -167,6 +167,7 @@ export class SourceContext
         this.symbolTable.tree = this.tree;
         const symbolsListener = new symbolTableListener(this.symbolTable);
         ParseTreeWalker.DEFAULT.walk(symbolsListener, this.tree);
+        this.symbolTable.rebuildReferenceIndex();
         
         this.symbolTableDirty = false;
     }

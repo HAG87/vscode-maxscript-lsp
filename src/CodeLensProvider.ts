@@ -1,86 +1,92 @@
 import {
-  CancellationToken, CodeLens, CodeLensProvider, Event,
-  ProviderResult, TextDocument,
+  CancellationToken, CodeLens, CodeLensProvider, Event, EventEmitter,
+    Location, ProviderResult, Range, TextDocument, Uri,
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
+import { ISymbolInfo } from './types.js';
+import { Utilities } from './utils.js';
 
-//TODO: add codeLens for references in structs, functions, declarations, rollouts, etc
+/** CodeLens that carries the symbol info and document URI for deferred resolution. */
+class SymbolCodeLens extends CodeLens
+{
+    constructor(
+        range: Range,
+        public readonly symbol: ISymbolInfo,
+        public readonly uri: Uri,
+    ) {
+        super(range);
+    }
+}
 
+/** Provides "N references" code lenses above top-level symbol definitions. */
 export class mxsCodeLensProvider implements CodeLensProvider
 {
     public constructor(private backend: mxsBackend) { }
 
-    // private changeEvent = new EventEmitter<void>();
-    // private documentName: string;
+    private _onDidChangeCodeLenses = new EventEmitter<void>();
 
-    onDidChangeCodeLenses?: Event<void> | undefined;
-
-    /*
-     public get onDidChangeCodeLenses(): Event<void> {
-        return this.changeEvent.event;
+    public get onDidChangeCodeLenses(): Event<void> {
+        return this._onDidChangeCodeLenses.event;
     }
 
+    /** Notify VS Code that code lenses have changed and should be refreshed. */
     public refresh(): void {
-        this.changeEvent.fire();
+        this._onDidChangeCodeLenses.fire();
     }
-    */
-    
-    provideCodeLenses(document: TextDocument, token: CancellationToken): ProviderResult<CodeLens[]>
+
+    provideCodeLenses(document: TextDocument, _token: CancellationToken): ProviderResult<CodeLens[]>
     {
-        throw new Error("Method not implemented.");
-        /*
-                return new Promise((resolve) => {
-            if (workspace.getConfiguration("antlr4.referencesCodeLens").enabled !== true) {
-                resolve(null);
-            } else {
-                this.documentName = document.fileName;
-                const symbols = this.backend.listTopLevelSymbols(document.fileName, false);
-                const lenses = [];
-                for (const symbol of symbols) {
-                    if (!symbol.definition) {
-                        continue;
-                    }
+        const uri = document.uri;
+        const symbols = this.backend.getContext(uri.toString())?.listTopLevelSymbols(false) ?? [];
+        const lenses: CodeLens[] = [];
 
-                    switch (symbol.kind) {
-                        case SymbolKind.FragmentLexerToken:
-                        case SymbolKind.LexerRule:
-                        case SymbolKind.LexerMode:
-                        case SymbolKind.ParserRule: {
-                            const range = new Range(
-                                symbol.definition.range.start.row - 1,
-                                symbol.definition.range.start.column,
-                                symbol.definition.range.end.row - 1,
-                                symbol.definition.range.end.column,
-                            );
-                            const lens = new SymbolCodeLens(symbol, range);
-                            lenses.push(lens);
-
-                            break;
-                        }
-
-                        default:
-                    }
-                }
-
-                resolve(lenses);
+        for (const symbol of symbols) {
+            if (!symbol.definition) {
+                continue;
             }
-        });
-        */
+            const range = Utilities.lexicalRangeToRange(symbol.definition.range);
+            lenses.push(new SymbolCodeLens(range, symbol, uri));
+        }
+
+        return lenses;
     }
-    
-    resolveCodeLens?(codeLens: CodeLens, token: CancellationToken): ProviderResult<CodeLens>
+
+    resolveCodeLens(codeLens: CodeLens, _token: CancellationToken): ProviderResult<CodeLens>
     {
-        throw new Error("Method not implemented.");
-        /*
-        const refs = this.backend.countReferences(this.documentName, (codeLens as SymbolCodeLens).symbol.name);
-        codeLens.command = {
-            title: (refs === 1) ? "1 reference" : `${refs} references`,
-            command: "",
-            arguments: undefined,
+        const lens = codeLens as SymbolCodeLens;
+        if (!lens.symbol?.definition) {
+            return codeLens;
+        }
+
+        // Resolve both count and targets from the same scoped occurrence set.
+        const symbolNameRange = Utilities.symbolNameRange(lens.symbol);
+        const occurrences =
+            this.backend.getContext(lens.uri.toString())
+                ?.symbolInfoAtPositionCtxOccurrences(
+                    symbolNameRange.start.line + 1,
+                    symbolNameRange.start.character,
+                ) ?? [];
+        const locations = Utilities.symbolTargets(occurrences)
+            .map(target => new Location(target.uri, target.range));
+
+        const refs = Math.max(0, locations.length - 1);
+        const title = refs === 1 ? '1 reference' : `${refs} references`;
+
+        if (refs === 0) {
+            lens.command = {
+                title,
+                command: '',
+            };
+            return lens;
+        }
+
+        lens.command = {
+            title,
+            command: 'editor.action.showReferences',
+            arguments: [lens.uri, symbolNameRange.start, locations],
         };
 
-        return codeLens;
-        */
+        return lens;
     }
 }

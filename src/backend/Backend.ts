@@ -496,6 +496,7 @@ export class mxsBackend
     // TODO: references
     /**
      * Count how many times a symbol has been referenced. The given file must contain the definition of this symbol.
+     * @deprecated Consider using: backend.contexts.get(uri)?.context.getReferenceCount(symbol)
      *
      * @param uri The grammar file name.
      * @param symbol The symbol for which to determine the reference count.

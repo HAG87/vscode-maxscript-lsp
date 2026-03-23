@@ -42,6 +42,11 @@ const declRules: Set<number> = new Set([
 
 export class ContextSymbolTable extends SymbolTable {
     public tree?: ParserRuleContext;
+    // NOTE: Transitional reference index.
+    // TODO(ast-refactor): Replace this name-only counter map with an AST-backed
+    // reference graph keyed by resolved symbol identity (not only string name).
+    // The proper AST branch should own declaration/reference classification,
+    // scope resolution, and cross-file link tracking.
     private symbolReferences = new Map<string, number>();
 
     public constructor(
@@ -846,9 +851,103 @@ export class ContextSymbolTable extends SymbolTable {
     }
     //---------------------------------------------------------------
 
+    private isDeclarationIdentifier(symbol: BaseSymbol): boolean {
+        if (!(symbol instanceof IdentifierSymbol) || !symbol.parent || !symbol.parent.context) {
+            return false;
+        }
+
+        // Declaration-like wrapper symbols: declaration names are not references.
+        if (
+            symbol.parent instanceof VariableDeclSymbol ||
+            symbol.parent instanceof fnArgsSymbol ||
+            symbol.parent instanceof fnParamsSymbol
+        ) {
+            return symbol.name === symbol.parent.name;
+        }
+
+        const parentRule = symbol.parent.context as unknown as ParserRuleContext;
+        return declRules.has(parentRule.ruleIndex) && symbol.name === symbol.parent.name;
+    }
+
+    /**
+     * Rebuild the per-symbol reference index from the current symbol table content.
+     * This should be called after the symbol table has been populated from a parse run.
+        *
+        * TODO(ast-refactor): This heuristic scan should be removed once references are
+        * emitted directly by the proper AST pipeline. At that point we should consume
+        * explicit reference edges (definition -> references) instead of re-deriving
+        * them from IdentifierSymbol instances.
+     */
+    public rebuildReferenceIndex(): void {
+        this.symbolReferences.clear();
+
+        const seenByName = new Map<string, Set<string>>();
+        for (const symbol of this.getAllSymbolsSync(BaseSymbol, false)) {
+            if (!(symbol instanceof IdentifierSymbol) || !symbol.context) {
+                continue;
+            }
+
+            if (this.isDeclarationIdentifier(symbol)) {
+                continue;
+            }
+
+            const ctx = symbol.context as unknown as ParserRuleContext;
+            const line = ctx.start?.line ?? 0;
+            const column = ctx.start?.column ?? 0;
+            const tokenIndex = ctx.start?.tokenIndex ?? -1;
+            const key = `${line}:${column}:${tokenIndex}`;
+
+            let seen = seenByName.get(symbol.name);
+            if (!seen) {
+                seen = new Set<string>();
+                seenByName.set(symbol.name, seen);
+            }
+
+            if (!seen.has(key)) {
+                seen.add(key);
+            }
+        }
+
+        for (const [name, seen] of seenByName) {
+            this.symbolReferences.set(name, seen.size);
+        }
+    }
+
     public getReferenceCount(symbolName: string): number {
         const reference = this.symbolReferences.get(symbolName);
-        return reference !== undefined ? reference : 0;
+        if (reference !== undefined) {
+            return reference;
+        }
+
+        // Fallback path: some parser/listener flows don't populate symbolReferences yet.
+        // TODO(ast-refactor): Remove this fallback when AST reference indexing is
+        // authoritative and always available after parse.
+        const seen = new Set<string>();
+        let count = 0;
+
+        for (const symbol of this.getAllSymbolsSync(BaseSymbol, false)) {
+            if (!(symbol instanceof IdentifierSymbol) || symbol.name !== symbolName || !symbol.context) {
+                continue;
+            }
+
+            if (this.isDeclarationIdentifier(symbol)) {
+                continue;
+            }
+
+            const ctx = symbol.context as unknown as ParserRuleContext;
+            const line = ctx.start?.line ?? 0;
+            const column = ctx.start?.column ?? 0;
+            const tokenIndex = ctx.start?.tokenIndex ?? -1;
+            const key = `${line}:${column}:${tokenIndex}:${symbol.name}`;
+
+            if (seen.has(key)) {
+                continue;
+            }
+            seen.add(key);
+            count++;
+        }
+
+        return count;
     }
 
     public getUnreferencedSymbols(): string[] {

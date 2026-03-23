@@ -8,6 +8,7 @@ import {
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
+import { mxsCodeLensProvider } from './CodeLensProvider.js';
 import { mxsCompletionProvider } from './CompletionItemProvider.js';
 import { mxsDefinitionProvider } from './DefinitionProvider.js';
 import { mxsDocumentHighlightProvider } from './DocumentHighlightProvider.js';
@@ -39,6 +40,8 @@ export class ExtensionHost
     private workspaceSymbolProvider: mxsWorkspaceSymbolProvider
     // Semantic tokens provider - need reference for refresh notifications
     private semanticTokensProvider!: mxsSemanticTokensProvider
+    // CodeLens provider - need reference for refresh notifications
+    private codeLensProvider!: mxsCodeLensProvider
     // diagnostics for the extension
     private readonly diagnosticCollection = languages.createDiagnosticCollection('maxscript');
     //----------------------------------------------------------------
@@ -165,9 +168,7 @@ export class ExtensionHost
                         
                         // Refresh semantic tokens after reparse
                         this.semanticTokensProvider.refresh();
-                        
-                        //TODO:
-                        // this.codeLensProvider.refresh();
+                        this.codeLensProvider.refresh();
                         // this.updateProviders(event.document.uri.toString())
                     }, reparseDelay))
                 }
@@ -256,6 +257,10 @@ export class ExtensionHost
                 ExtensionHost.langSelector,
                 new mxsCompletionProvider(this.backend, defaultSettings),
                 " ", ".", "="
+            ),
+            languages.registerCodeLensProvider(
+                ExtensionHost.langSelector,
+                this.codeLensProvider = new mxsCodeLensProvider(this.backend)
             ),
             languages.registerDocumentSemanticTokensProvider(
                 ExtensionHost.langSelector,

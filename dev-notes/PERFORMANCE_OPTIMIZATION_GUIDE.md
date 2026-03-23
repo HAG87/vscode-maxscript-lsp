@@ -281,6 +281,44 @@ public parse(): void {
 **Phase 4 (Advanced - optional):**
 1. Parallel processing (#7) - For workspace operations only
 
+## Future Work: AST-Backed Symbol References
+
+Current reference tracking in `ContextSymbolTable` is a transitional approach. It derives
+reference counts from `IdentifierSymbol` scans and name-based deduplication. This is good
+enough for now, but it should be replaced by the ongoing proper AST work.
+
+### Why migrate
+- Name-based counting cannot reliably model symbol identity in all scopes.
+- Heuristic declaration/reference filtering is hard to maintain.
+- Cross-file references and overload-like patterns need explicit edges.
+
+### Migration plan (extend -> update -> rewrite)
+
+1. Extend (short term):
+- Keep current API (`getReferenceCount`, occurrence queries), but add AST-level metadata
+    for declaration/reference nodes during parse.
+- Start emitting stable symbol IDs (not only names) from the AST branch.
+
+2. Update (mid term):
+- Replace `rebuildReferenceIndex()` internals to consume AST reference edges.
+- Re-key the index by symbol identity + source location, not plain name.
+- Keep fallback path temporarily behind a feature flag for safe rollout.
+
+3. Rewrite (long term):
+- Remove heuristic scans of `IdentifierSymbol` for counting.
+- Remove declaration-site guess logic from reference counting.
+- Make AST reference graph the single source of truth for:
+    - CodeLens reference counts
+    - Find references
+    - Rename validation/scope decisions
+
+### Validation checklist for migration branch
+- Same-file references match or exceed current behavior.
+- Cross-file references are deterministic and stable across reparses.
+- Shadowed/local symbols do not leak into sibling scopes.
+- CodeLens count equals references peek list size (excluding declaration site).
+- Rename/reference providers use the same symbol identity source.
+
 ## Realistic Expectations
 
 ### Typical Performance Profile:
