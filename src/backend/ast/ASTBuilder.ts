@@ -84,14 +84,14 @@ import { Position, Point, Node } from '@strumenta/tylasu';
 import {
     AccessorContext,
     BoolContext,
-    De_refContext,
+    DeRefContext,
     DeclarationStatementContext,
     ExprContext,
-    Expr_operandContext,
-    Expr_seqContext,
+    ExprOperandContext,
+    ExprSeqContext,
     FactorContext,
     FnDefinitionContext,
-    Fn_paramsContext,
+    FnParamsContext,
     IdentifierContext,
     IndexContext,
     mxsParser,
@@ -100,7 +100,7 @@ import {
     PropertyContext,
     ReferenceContext,
     SimpleExpressionContext,
-    Struct_bodyContext,
+    StructBodyContext,
     StructDefinitionContext,
     VariableDeclarationContext,
 } from '../../parser/mxsParser.js';
@@ -224,7 +224,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     // Expression sequence: ( expr ; expr ; ... )
     // In MaxScript, parenthesized blocks can be used as values or as code blocks
     // Examples: local x = (5 + 5), fn test = ( ... ), if cond then ( ... )
-    visitExpr_seq = (ctx: Expr_seqContext): BlockExpression => {
+    visitExprSeq = (ctx: ExprSeqContext): BlockExpression => {
         const block = new BlockExpression();
         const position = this.getPosition(ctx);
         if (position) {
@@ -300,7 +300,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         this.pushScope(fnDef);
         
         // Add simple arguments as declarations (fn test a b c, fn test &a &b)
-        for (const argCtx of ctx.fn_args()) {
+        for (const argCtx of ctx.fnArgs()) {
             // Check if it's by-reference (&arg) or by-value (arg)
             const isByReference = argCtx.AMP() !== null;
             const argName = argCtx.identifier().getText();
@@ -315,13 +315,13 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         }
         
         // Add named parameters (fn test size:10 color:blue)
-        for (const paramCtx of ctx.fn_params()) {
+        for (const paramCtx of ctx.fnParams()) {
             const paramName = paramCtx.identifier()?.getText() || paramCtx.kw_override()?.getText() || 'unnamed';
             const paramPosition = this.getPosition(paramCtx);
             
             // Parse default value if present
             let defaultValue: Expression | undefined;
-            const operandCtx = paramCtx.operand_arg();
+            const operandCtx = paramCtx.operandArg();
             if (operandCtx) {
                 defaultValue = this.visit(operandCtx) as Expression;
             }
@@ -335,8 +335,8 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         }
         
         // Visit body - fn_body contains a single expr (could be expr_seq or simple expr)
-        if (ctx.fn_body()) {
-            const bodyExpr = this.visit(ctx.fn_body());
+        if (ctx.fnBody()) {
+            const bodyExpr = this.visit(ctx.fnBody());
             
             if (bodyExpr instanceof BlockExpression) {
                 // expr_seq produces BlockExpression - use directly
@@ -372,8 +372,8 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         this.pushScope(structDef);
         
         // Visit body to collect members and methods
-        if (ctx.struct_body()) {
-            this.visit(ctx.struct_body());
+        if (ctx.structBody()) {
+            this.visit(ctx.structBody());
         }
         
         // Pop struct scope
@@ -383,7 +383,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     }
     
     // Struct body - wrapper that coordinates cascading accessibility with members
-    visitStruct_body = (ctx: Struct_bodyContext): null => {
+    visitStructBody = (ctx: StructBodyContext): null => {
         // Grammar: (struct_access)? struct_members ( comma (struct_access)? struct_members )*
         // Accessibility cascades: once set to private, all following members are private until public is set
         // Default is public, so no keyword needed for public members
@@ -402,7 +402,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
                 currentAccessibility = accessText === 'private' ? 'private' : 'public';
             }
             // Check if this child is a struct_members context
-            else if ('struct_member' in child.constructor.prototype || child.constructor.name === 'Struct_membersContext') {
+            else if ('struct_member' in child.constructor.prototype || child.constructor.name === 'StructMembersContext') {
                 // Visit the child node to get the actual member value (StructMemberField, FunctionDefinition, etc.)
                 const memberValue = this.visit(child);
                 if (memberValue) {
@@ -418,7 +418,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     }
     
     // Struct member field visitor: identifier assignment?
-    visitStruct_member = (ctx: any): StructMemberField => {
+    visitStructMember = (ctx: any): StructMemberField => {
         const fieldName = ctx.identifier().getText();
         const position = this.getPosition(ctx);
         
@@ -514,8 +514,8 @@ export class ASTBuilder extends mxsParserVisitor<any> {
             if (refCtx) return this.visit(refCtx);
         }
         
-        if (ctx.expr_seq()) {
-            const exprSeqCtx = ctx.expr_seq();
+        if (ctx.exprSeq()) {
+            const exprSeqCtx = ctx.exprSeq();
             if (exprSeqCtx) return this.visit(exprSeqCtx);
         }
         
@@ -616,7 +616,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         }
         
         // Base case: expr_operand (highest precedence)
-        const operand = ctx.expr_operand();
+        const operand = ctx.exprOperand();
         if (operand) {
             return this.visit(operand) as Expression;
         }
@@ -626,7 +626,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     }
     
     // Expression operand: by_ref | de_ref | functionCall | operand
-    visitExpr_operand = (ctx: Expr_operandContext): Expression => {
+    visitExprOperand = (ctx: ExprOperandContext): Expression => {
         // Check for by_ref (reference operator: &obj, &obj.prop, &$path)
         /*
         const byRef = ctx.by_ref();
@@ -635,7 +635,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         }
         */
         // Check for de_ref (dereference operator: *ref, *ref.prop, *$path)
-        const deRef = ctx.de_ref();
+        const deRef = ctx.deRef();
         if (deRef) {
             return this.visit(deRef) as Expression;
         }
@@ -668,7 +668,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     }
     */
     // Dereference operator: *ref, *ref.prop, *$path
-    visitDe_ref = (ctx: De_refContext): Expression => {
+    visitDeRef = (ctx: DeRefContext): Expression => {
         const position = this.getPosition(ctx);
         
         // The grammar is: de_ref: {noWSBeNext}? PROD (accessor | reference | path)
