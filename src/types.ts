@@ -93,14 +93,13 @@ export const semTokenTypes =
         'struct',
         'type',
         'variable',
+        'parameter',
+        'property',
+        'accessor',
         // 'enumMember',
         // 'string',
         // 'number',
-        // 'enum',
-        // 'typeParameter',
         // 'member',
-        // 'property',
-        // 'parameter',
     ];
 
 export const semTokenModifiers =
