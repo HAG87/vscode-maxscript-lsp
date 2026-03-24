@@ -178,6 +178,16 @@ export class mxsCompletionProvider implements CompletionItemProvider
                 return;
             }
 
+            // FUTURE PLAN (control-flow-aware completions):
+            // Current visibility is lexical (scope chain + declaration position).
+            // Implement CFG-based reachability to avoid suggesting symbols that are
+            // out of execution flow at the cursor (branch/path aware visibility).
+            // Proposed steps:
+            // 1) Build basic blocks per function/definition block.
+            // 2) Compute reachable predecessor blocks for cursor location.
+            // 3) Filter declarations by both scope and reaching definitions.
+            // 4) Keep lexical fallback when CFG cannot be built.
+
             // Non-member context: AST scope declarations + antlr-c3 + API prefix matching.
             const completionList: CompletionItem[] = [];
             const seenNames = new Set<string>();
