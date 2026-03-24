@@ -189,7 +189,7 @@ export class mxsBackend
     {
         const ctxEntry = this.sourceContexts.get(uri.toString());
         if (ctxEntry) {
-            this.parseDocument(ctxEntry);
+            ctxEntry.context.parse();
         }
     }
 
@@ -221,29 +221,6 @@ export class mxsBackend
     //------------------------------------------------------------------
     // Private Context Management
     //------------------------------------------------------------------
-    private parseDocument(contextEntry: IContextEntry): void
-    {
-        contextEntry.context.parse();
-        /* //TODO:
-            const oldDependencies = contextEntry.dependencies;
-            contextEntry.dependencies = [];
-            const newDependencies = contextEntry.context.parse();
-
-            for (const dep of newDependencies) {
-                const depContext = this.loadDependency(contextEntry, dep);
-                if (depContext) {
-                    contextEntry.context.addAsReferenceTo(depContext);
-                }
-            }
-
-            // Release all old dependencies. This will only unload grammars which have
-            // not been ref-counted by the above dependency loading (or which are not used by other
-            // grammars).
-            for (const dep of oldDependencies) {
-                this.unloadDocument(dep);
-            }
-        */
-    }
 
     /**
      * Add sourceContext
@@ -268,7 +245,7 @@ export class mxsBackend
             // add to SourceContexts
             this.sourceContexts.set(uri, ctxEntry);            
             // do an initial parse run
-            this.parseDocument(ctxEntry);
+            ctxEntry.context.parse();
         }
         /*
         if (!ctxEntry.context.compareText(source ?? this.getDocumentText(uri)))
@@ -364,11 +341,11 @@ export class mxsBackend
 
     /**
      * Returns a list of top level symbols from a file (and optionally its dependencies).
+     * @deprecated Consider using: backend.contexts.get(uri)?.context.listTopLevelSymbols(!fullList)
      *
      * @param fileName The grammar file name.
      * @param full If true, includes symbols from all dependencies as well.
      * @returns A list of symbol info entries.
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.listTopLevelSymbols(!fullList)
      */
     public listTopLevelSymbols(uri: string, fullList: boolean): ISymbolInfo[]
     {
@@ -487,6 +464,7 @@ export class mxsBackend
         return this.getContext(uri).getReferenceCount(symbol);
     }
 
+    
     public getDependencies(uri: string): string[] {
         const entry = this.sourceContexts.get(uri);
         if (!entry) {
