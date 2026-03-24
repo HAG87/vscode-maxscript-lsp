@@ -6,6 +6,7 @@ import {
   ParseCancellationException, ParserRuleContext, ParseTree, ParseTreeWalker,
   PredictionMode, TerminalNode, Token,
 } from 'antlr4ng';
+import { workspace } from 'vscode';
 
 import { mxsLexer } from '../parser/mxsLexer.js';
 import { mxsParser, ProgramContext } from '../parser/mxsParser.js';
@@ -24,11 +25,24 @@ import {
   codeBlock, mxsParserVisitorFormatter,
 } from './formatting/mxsParserVisitorFormatter.js';
 import { mxsParserVisitorMinifier } from './formatting/mxsParserVisitorMinifier.js';
-import { semanticTokenListener } from './semantic/semanticTokenListener.js';
+import { IIdentifierCandidate, semanticTokenListener } from './semantic/semanticTokenListener.js';
 import { CodeCompletionProvider } from './symbols/codeCompletionProvider.js';
 import { symbolTableListener } from './symbolTableListener.js';
 import { ASTBuilder } from './ast/ASTBuilder.js';
-import { Program, ScopeNode, VariableDeclaration } from './ast/ASTNodes.js';
+import {
+    CallExpression,
+    DefinitionBlock,
+    FunctionArgument,
+    FunctionDefinition,
+    FunctionParameter,
+    MemberExpression,
+    Program,
+    ScopeNode,
+    StructDefinition,
+    StructMemberField,
+    VariableDeclaration,
+    VariableReference,
+} from './ast/ASTNodes.js';
 import { SymbolResolver } from './ast/SymbolResolver.js';
 import { SymbolTreeBuilder } from './ast/SymbolTreeBuilder';
 import { ASTQuery } from './ast/ASTQuery.js';
@@ -60,6 +74,8 @@ export class SourceContext
     public diagnostics: IDiagnosticEntry[] = [];
     // semantic tokens
     public semanticTokens: ISemanticToken[] = [];
+    // Lower-cased identifier text -> candidate token positions from parse-tree listener
+    private identifierCandidates: Map<string, IIdentifierCandidate[]> = new Map();
     // TODO: Contexts referencing us.
     private references: SourceContext[] = [];
     //-------------------------------------------------
@@ -72,6 +88,171 @@ export class SourceContext
 
     // Flag to track if symbol table needs population (lazy loading)
     private symbolTableDirty: boolean = false;
+    // Flag to track if AST + semantic tokens need population (lazy loading)
+    private astModelDirty: boolean = false;
+
+    private astTokenLocationForName(
+        nodePosition: { start: { line: number; column: number }; end: { line: number; column: number } },
+        name: string,
+    ): { line: number; startCharacter: number; length: number } | undefined {
+        const inSpan = (candidate: IIdentifierCandidate): boolean => {
+            const line = candidate.line;
+            const column = candidate.startCharacter;
+
+            if (line < nodePosition.start.line || line > nodePosition.end.line) {
+                return false;
+            }
+            if (line === nodePosition.start.line && column < nodePosition.start.column) {
+                return false;
+            }
+            // End position is treated as exclusive.
+            if (line === nodePosition.end.line && column >= nodePosition.end.column) {
+                return false;
+            }
+            return true;
+        };
+
+        const targetName = name.toLowerCase();
+        const candidates = this.identifierCandidates.get(targetName) ?? [];
+
+        for (const candidate of candidates) {
+            if (!inSpan(candidate)) {
+                continue;
+            }
+
+            return {
+                line: candidate.line,
+                startCharacter: candidate.startCharacter,
+                length: candidate.length,
+            };
+        }
+
+        // Fallback keeps behavior predictable even if token lookup misses edge cases.
+        return {
+            line: nodePosition.start.line,
+            startCharacter: Math.max(0, nodePosition.start.column),
+            length: name.length,
+        };
+    }
+
+    private appendAstSemanticTokens(): void {
+        if (!this.ast) {
+            return;
+        }
+
+        const traceRouting = workspace.getConfiguration('maxScript').get<boolean>('providers.traceRouting', false);
+        const beforeCount = this.semanticTokens.length;
+
+        const existing = new Set<string>(
+            this.semanticTokens.map((t) => `${t.line}:${t.startCharacter}:${t.length}:${String(t.tokenType)}`),
+        );
+
+        const pushNamedToken = (
+            name: string | undefined,
+            nodePosition: { start: { line: number; column: number }; end: { line: number; column: number } } | undefined,
+            tokenType: string,
+            tokenModifiers: string[] = [],
+        ) => {
+            if (!name || !nodePosition) {
+                return;
+            }
+            const loc = this.astTokenLocationForName(nodePosition, name);
+            if (!loc || loc.length <= 0) {
+                return;
+            }
+
+            const key = `${loc.line}:${loc.startCharacter}:${loc.length}:${tokenType}`;
+            if (existing.has(key)) {
+                return;
+            }
+            existing.add(key);
+
+            this.semanticTokens.push({
+                line: loc.line,
+                startCharacter: loc.startCharacter,
+                length: loc.length,
+                tokenType,
+                tokenModifiers,
+            });
+        };
+
+        for (const node of ASTQuery.walkAllNodes(this.ast)) {
+            if (node instanceof FunctionDefinition) {
+                const isStructMethod = !!(node.parent instanceof StructMemberField
+                    || node.parent instanceof StructDefinition
+                    || node.parent?.parent instanceof StructDefinition);
+                pushNamedToken(
+                    node.name,
+                    node.position,
+                    isStructMethod ? 'method' : 'function',
+                    ['declaration'],
+                );
+                continue;
+            }
+
+            if (node instanceof StructDefinition) {
+                pushNamedToken(node.name, node.position, 'struct', ['declaration']);
+                continue;
+            }
+
+            if (node instanceof DefinitionBlock) {
+                pushNamedToken(node.name, node.position, 'namespace', ['declaration']);
+                continue;
+            }
+
+            if (node instanceof VariableReference) {
+                const resolvedDeclaration = node.declaration?.referred;
+                if (resolvedDeclaration) {
+                    const semanticNode = ASTQuery.findSemanticNodeForDeclaration(this.ast, resolvedDeclaration);
+                    if (semanticNode instanceof FunctionDefinition) {
+                        const isCallLike = node.parent instanceof CallExpression || node.parent instanceof MemberExpression;
+                        pushNamedToken(node.name, node.position, isCallLike ? 'method' : 'function');
+                    } else if (semanticNode instanceof StructDefinition) {
+                        pushNamedToken(node.name, node.position, 'struct');
+                    } else if (semanticNode instanceof DefinitionBlock) {
+                        pushNamedToken(node.name, node.position, 'namespace');
+                    }
+                }
+            }
+        }
+
+        // Reinforce function tokens from resolved declaration/reference graph.
+        // This ensures call sites like `foo 1` are typed from semantic binding,
+        // even when parse-shape differs from expected call-expression forms.
+        for (const node of ASTQuery.walkAllNodes(this.ast)) {
+            if (!(node instanceof FunctionDefinition) || !node.name) {
+                continue;
+            }
+
+            const declaration = node.parentScope?.declarations.get(node.name);
+            if (!declaration) {
+                continue;
+            }
+
+            const isStructMethod = !!(node.parent instanceof StructMemberField
+                || node.parent instanceof StructDefinition
+                || node.parent?.parent instanceof StructDefinition);
+            const fnTokenType = isStructMethod ? 'method' : 'function';
+
+            // declaration site
+            pushNamedToken(node.name, declaration.position ?? node.position, fnTokenType, ['declaration']);
+
+            // all bound references
+            for (const ref of declaration.references) {
+                pushNamedToken(ref.name, ref.position, fnTokenType);
+            }
+        }
+
+        // SemanticTokensBuilder.push(range, ...) requires document order (line asc, then char asc).
+        // Listener tokens and AST tokens are collected independently so the combined array
+        // may be unsorted; fix that here before the provider reads it.
+        this.semanticTokens.sort((a, b) => a.line !== b.line ? a.line - b.line : a.startCharacter - b.startCharacter);
+
+        if (traceRouting) {
+            const afterCount = this.semanticTokens.length;
+            console.log(`[language-maxscript][SemanticTokens][AST] appended=${afterCount - beforeCount} total=${afterCount}`);
+        }
+    }
 
     public constructor(uri: string, /*settings*/)
     {
@@ -109,9 +290,12 @@ export class SourceContext
     {
         // Clear previous parse results
         this.tree = undefined;
+        this.ast = undefined;
+        this.semanticTokens.length = 0;
         this.diagnostics.length = 0;
-        // Mark symbol table as dirty instead of clearing immediately (lazy loading)
+        // Mark derived models as dirty instead of rebuilding immediately (lazy loading)
         this.symbolTableDirty = true;
+        this.astModelDirty = true;
         // TODO: add Global symbols here
         //this.symbolTable.addDependencies(SourceContext.globalSymbols);
         
@@ -165,37 +349,53 @@ export class SourceContext
             return;
         }
 
-        // Clear and repopulate symbol table and semantic tokens
+        // Clear and repopulate symbol table only.
         this.symbolTable.clear();
-        this.semanticTokens.length = 0;
-        
-        // Semantic tokens
-        const semanticListener = new semanticTokenListener(this.semanticTokens);
-        ParseTreeWalker.DEFAULT.walk(semanticListener, this.tree);
         
         // Load symbols
         this.symbolTable.tree = this.tree;
         const symbolsListener = new symbolTableListener(this.symbolTable);
         ParseTreeWalker.DEFAULT.walk(symbolsListener, this.tree);
-        //---------------------------------------------------------------
-        // 2. Build AST from parse tree
-        try {
-            const builder = new ASTBuilder();
-            this.ast = builder.visitProgram(this.tree);
-            // 3. Resolve all symbol references
-            const resolver = new SymbolResolver(this.ast); // Takes existing AST
-            resolver.resolve(); // MUTATES the AST (no return value)
-        } catch (err) {
-            console.error('[language-maxscript][SourceContext] AST build/resolve failed:', err);
-            this.ast = undefined;
-        }
-        //---------------------------------------------------------------
+
         // TODO: this.info.unreferencedRules = this.symbolTable.getUnreferencedSymbols();
         // TODO: this can be used to add dependencies... imports come from the listener
         // return this.info.imports;
         this.symbolTable.rebuildReferenceIndex();
         
         this.symbolTableDirty = false;
+    }
+
+    /**
+     * Ensure AST and semantic tokens are populated.
+     * This path is independent from the deprecated symbol table pipeline.
+     */
+    private ensureAstModel(): void {
+        if (!this.astModelDirty || !this.tree) {
+            return;
+        }
+
+        this.semanticTokens.length = 0;
+        this.identifierCandidates.clear();
+
+        // Keep existing parse-tree API tokenization (MaxAPI defaults).
+        const semanticListener = new semanticTokenListener(this.semanticTokens, this.identifierCandidates);
+        ParseTreeWalker.DEFAULT.walk(semanticListener, this.tree);
+
+        // Build AST and resolve references, then append user-code semantic tokens.
+        try {
+            const builder = new ASTBuilder();
+            this.ast = builder.visitProgram(this.tree);
+            // 3. Resolve all symbol references
+            const resolver = new SymbolResolver(this.ast); // Takes existing AST
+            resolver.resolve(); // MUTATES the AST (no return value)
+            
+            this.appendAstSemanticTokens();
+            
+        } catch (err) {
+            console.error('[language-maxscript][SourceContext] AST build/resolve failed:', err);
+            this.ast = undefined;
+        }
+        this.astModelDirty = false;
     }
     //---------------------------------------------------------------
     // 3. Build hierarchical symbol tree for VS Code
@@ -205,9 +405,9 @@ export class SourceContext
             return [];
         }
 
-        const wasDirty = this.symbolTableDirty;
-        // AST is built lazily in ensureSymbolTable() during parse-dependent operations.
-        this.ensureSymbolTable();
+        const wasDirty = this.astModelDirty;
+        // AST is built lazily in ensureAstModel() during parse-dependent operations.
+        this.ensureAstModel();
 
         if (!this.ast) {
             if (trace) console.log(`[language-maxscript][SourceContext] buildSymbolTree: ast=undefined (wasDirty=${wasDirty})`);
@@ -230,7 +430,7 @@ export class SourceContext
         if (!this.tree) {
             return undefined;
         }
-        this.ensureSymbolTable();
+        this.ensureAstModel();
         return this.ast;
     }
 
@@ -593,6 +793,7 @@ export class SourceContext
     //-------------------------------------------------semantic tokens
     public get getSemanticTokens(): ISemanticToken[]
     {
+        this.ensureAstModel();
         return this.semanticTokens;
     }
     // -------------------------------------------------format code

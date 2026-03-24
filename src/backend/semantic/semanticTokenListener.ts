@@ -1,42 +1,49 @@
-import { ParserRuleContext } from 'antlr4ng';
-
 import {
-    FunctionCallContext, IdentifierContext, ParamNameContext,
+    FnArgsContext,
+    FnParamsContext,
+    IdentifierContext, ParamNameContext,
 } from '../../parser/mxsParser.js';
 import { mxsParserListener } from '../../parser/mxsParserListener.js';
 import { ISemanticToken } from '../../types.js';
-import { maxAPI, maxAPILookup } from '../schemas/mxsAPI.js';
+import { maxAPILookup } from '../schemas/mxsAPI.js';
+
+export interface IIdentifierCandidate {
+    line: number;
+    startCharacter: number;
+    length: number;
+}
 
 // Pre-allocated modifier arrays to avoid repeated allocations
+/*
 const MODIFIERS_DEFAULT_LIBRARY = ['defaultLibrary'];
 const MODIFIERS_DEFAULT_LIBRARY_STATIC = ['defaultLibrary', 'static'];
 const MODIFIERS_DEFAULT_LIBRARY_READONLY = ['defaultLibrary', 'readonly'];
-
+*/
 // Use shared lookup exported from mxsAPI for fast classification
 
-export class semanticTokenListener extends mxsParserListener {
-    // private symbolStack: ParserRuleContext[] = [];
-
+export class semanticTokenListener extends mxsParserListener
+{
     private collect: boolean = true
-    public constructor(private tokenStack: ISemanticToken[]) {
+    public constructor(
+        private tokenStack: ISemanticToken[],
+        private identifierCandidates?: Map<string, IIdentifierCandidate[]>,
+    ) {
         // clear the token list
         tokenStack.length = 0;
         super();
     }
+    // filter out identifiers that are part of declarations, as opposed to references
+    public override enterFnArgs = (ctx: FnArgsContext): void => { this.collect = false; }
+    public override exitFnArgs = (ctx: FnArgsContext): void => { this.collect = true; }
 
-    // public override enterFunctionCall = (ctx: FunctionCallContext): void => { this.symbolStack.push(ctx); }
-    // public override exitFunctionCall = (_ctx: FunctionCallContext): void => { this.symbolStack.pop(); }
+    public override enterFnParams = (ctx: FnParamsContext): void => { this.collect = false; }
+    public override exitFnParams = (ctx: FnParamsContext): void => { this.collect = true; }
 
-    /*
-    public override enterVariableDeclaration = (ctx: VariableDeclarationContext): void => { this.symbolStack.push(ctx); }
-    public override exitVariableDeclaration = (ctx: VariableDeclarationContext): void => { this.symbolStack.pop(); }
-
-    public override enterProperty = (ctx: PropertyContext): void => { this.symbolStack.push(ctx); }
-    public override exitProperty = (ctx: PropertyContext): void => { this.symbolStack.pop(); }
-    */
     public override enterParamName = (_ctx: ParamNameContext): void => { this.collect = false; }
     public override exitParamName = (_ctx: ParamNameContext): void => { this.collect = true; }
     
+    //...
+
     public override exitIdentifier = (ctx: IdentifierContext): void => {
         if (!this.collect) { return; }
         
@@ -60,21 +67,20 @@ export class semanticTokenListener extends mxsParserListener {
             });
             return;
         }
-        
-        /*
-        if (this.symbolStack.length > 0) { 
-            const curr = this.symbolStack[this.symbolStack.length - 1];
-            if (curr.ruleIndex === mxsParser.RULE_functionCall) {
-                this.tokenStack.push({
-                    line,
-                    startCharacter: column,
-                    length,
-                    tokenType: 'method',
-                    tokenModifiers: ['modification'],
-                });
-                return;
+
+        // Only non-API identifiers are collected as AST placement candidates.
+        if (this.identifierCandidates) {
+            const bucket = this.identifierCandidates.get(txt);
+            const candidate: IIdentifierCandidate = {
+                line,
+                startCharacter: column,
+                length,
+            };
+            if (bucket) {
+                bucket.push(candidate);
+            } else {
+                this.identifierCandidates.set(txt, [candidate]);
             }
         }
-        */
     }
 }
