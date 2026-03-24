@@ -173,7 +173,7 @@ export class ExtensionHost
                             diagnosticAdapter(diagnostics)
                         )
                         
-                        // Refresh semantic tokens after reparse
+                        // Refresh providers after reparse
                         if (this.semanticTokensProvider) {
                             this.semanticTokensProvider.refresh();
                         }
@@ -252,12 +252,7 @@ export class ExtensionHost
             languages.registerDefinitionProvider(
                 ExtensionHost.langSelector,
                 new mxsDefinitionProvider(this.backend)
-            ),
-            // PASS
-            languages.registerHoverProvider(
-                ExtensionHost.langSelector,
-                new mxsHoverProvider(this.backend)
-            ),
+            ),            
             // PASS
             languages.registerRenameProvider(
                 ExtensionHost.langSelector,
@@ -277,24 +272,26 @@ export class ExtensionHost
                 new mxsSignatureHelpProvider(this.backend),
                 "(", ",", " "
             ),
-            /*
-            languages.registerCodeLensProvider(
-                ExtensionHost.langSelector,
-                this.codeLensProvider = new mxsCodeLensProvider(this.backend)
-            ),
-            /*
             languages.registerDocumentSemanticTokensProvider(
                 ExtensionHost.langSelector,
                 this.semanticTokensProvider = new mxsSemanticTokensProvider(this.backend),
                 mxsSemtoTokensLegend
             ),
-            /*
             languages.registerDocumentRangeSemanticTokensProvider(
                 ExtensionHost.langSelector,
                 new mxsRangeSemanticTokensProvider(this.backend),
                 mxsSemtoTokensLegend
             ),
-            /*         
+            // PASS
+            languages.registerHoverProvider(
+                ExtensionHost.langSelector,
+                new mxsHoverProvider(this.backend)
+            ),
+            
+            languages.registerCodeLensProvider(
+                ExtensionHost.langSelector,
+                this.codeLensProvider = new mxsCodeLensProvider(this.backend)
+            ),
             languages.registerDocumentRangeFormattingEditProvider(
                 ExtensionHost.langSelector,
                 new mxsRangeFormattingProvider(
@@ -302,7 +299,6 @@ export class ExtensionHost
                     defaultSettings.formatter
                 )
             ),
-            //*/
             /*
              languages.registerDocumentFormattingEditProvider(
                  ExtensionHost.langSelector,
