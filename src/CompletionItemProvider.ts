@@ -109,26 +109,48 @@ export class mxsCompletionProvider implements CompletionItemProvider
             const useAst = config.get<boolean>('providers.ast.completionProvider', true);
 
             const completionList: CompletionItem[] = [];
-
-            // AST path: inject locally-scoped user symbols ahead of antlr-c3 candidates.
-            // Deduplicated by name so they won't double-up with symbol-table candidates.
             const seenNames = new Set<string>();
+
+            // AST path: Check for member access completions first (foo.b<cursor>)
+            // If we're completing a member access, prioritize its members
             if (useAst) {
-                const astResult = sourceContext?.astCompletionsAtPosition(
+                const memberResult = sourceContext?.astMemberCompletionsAtPosition(
                     position.line + 1,
                     position.character,
                 );
-                if (astResult) {
-                    for (const decl of astResult.declarations) {
-                        if (!decl.name) {
+                if (memberResult && memberResult.members.length > 0) {
+                    // Member completions found - return them prioritized
+                    for (const member of memberResult.members) {
+                        if (!member.name) {
                             continue;
                         }
-                        seenNames.add(decl.name.toLowerCase());
-                        const semanticNode = ASTQuery.findSemanticNodeForDeclaration(astResult.ast, decl);
+                        seenNames.add(member.name.toLowerCase());
+                        const semanticNode = ASTQuery.findSemanticNodeForDeclaration(memberResult.ast, member);
                         const kind = completionKindForSemanticNode(semanticNode);
-                        const item = new CompletionItem(decl.name, kind);
-                        item.sortText = `0_${decl.name}`;   // sort above API/grammar candidates
+                        const item = new CompletionItem(member.name, kind);
+                        item.sortText = `0_${member.name}`;   // sort above other candidates
                         completionList.push(item);
+                    }
+                    // For member completions, skip scope-based completions
+                    // (members take precedence)
+                } else {
+                    // No member completions - fall back to scope-based completions
+                    const astResult = sourceContext?.astCompletionsAtPosition(
+                        position.line + 1,
+                        position.character,
+                    );
+                    if (astResult) {
+                        for (const decl of astResult.declarations) {
+                            if (!decl.name) {
+                                continue;
+                            }
+                            seenNames.add(decl.name.toLowerCase());
+                            const semanticNode = ASTQuery.findSemanticNodeForDeclaration(astResult.ast, decl);
+                            const kind = completionKindForSemanticNode(semanticNode);
+                            const item = new CompletionItem(decl.name, kind);
+                            item.sortText = `0_${decl.name}`;   // sort above API/grammar candidates
+                            completionList.push(item);
+                        }
                     }
                 }
             }

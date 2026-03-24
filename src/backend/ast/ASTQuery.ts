@@ -269,6 +269,34 @@ export class ASTQuery {
     }
 
     /**
+     * Returns member declarations from a struct/definition scope accessible from the given declaration.
+     * Used for member access completions (foo.bar where foo is a struct instance).
+     *
+     * Returns all visible declarations from the struct/definition scope (members, methods, properties).
+     */
+    static getMemberCompletions(
+        ast: Program,
+        declaration: VariableDeclaration,
+    ): VariableDeclaration[] {
+        const structScope = this.findStructScopeForDeclaration(ast, declaration);
+        if (!structScope) {
+            return [];
+        }
+        return this.getVisibleDeclarations(structScope);
+    }
+
+    /**
+     * Resolves the object (left side of dot) in a member access expression.
+     * For `foo.bar`, this returns the declaration for `foo`.
+     */
+    static findDeclarationForMemberExpressionObject(
+        ast: Program,
+        memberExpression: MemberExpression,
+    ): VariableDeclaration | undefined {
+        return this.findDeclarationForExpression(ast, memberExpression.object);
+    }
+
+    /**
      * Converts a Tylasu Position to a plain object compatible with VS Code Range.
      * (0-based lines, 0-based columns as VS Code uses)
      *
@@ -339,6 +367,41 @@ export class ASTQuery {
         if (expression instanceof MemberExpression) {
             const memberDeclaration = this.findDeclarationForMemberExpression(ast, expression);
             return memberDeclaration ? this.findStructScopeForDeclaration(ast, memberDeclaration) : undefined;
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Resolves an expression to the VariableDeclaration it refers to.
+     * Used internally for member completion lookups.
+     */
+    private static findDeclarationForExpression(
+        ast: Program,
+        expression: Expression,
+    ): VariableDeclaration | undefined {
+        if (expression instanceof VariableReference) {
+            const declaration = this.findDefinitionForReference(expression);
+            if (declaration) {
+                return declaration;
+            }
+            return this.findInferredDeclarationForReference(ast, expression);
+        }
+
+        if (expression instanceof CallExpression) {
+            // For calls, try to find what struct is being constructed
+            if (expression.callee instanceof VariableReference) {
+                const calleeDeclaration = this.findDefinitionForReference(expression.callee);
+                if (calleeDeclaration) {
+                    return calleeDeclaration;
+                }
+            }
+            return undefined;
+        }
+
+        if (expression instanceof MemberExpression) {
+            // Recursively resolve the member expression
+            return this.findDeclarationForMemberExpression(ast, expression);
         }
 
         return undefined;

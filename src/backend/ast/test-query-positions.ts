@@ -276,6 +276,43 @@ for (const [line, col, expectedName, label] of implicitProbes) {
     if (!ok) { errors++; }
 }
 
+// --- struct member completions regression ---------------------------------
+const memberCompletionCode = `struct foo (
+	fn bar = (print "hello"),
+	fn baz x = x + 1
+)
+st = foo()`;
+
+const memberInputStream = CharStream.fromString(memberCompletionCode);
+const memberLexer = new mxsLexer(memberInputStream);
+const memberTokenStream = new CommonTokenStream(memberLexer);
+const memberParser = new mxsParser(memberTokenStream);
+const memberAst = new ASTBuilder().visitProgram(memberParser.program());
+new SymbolResolver(memberAst).resolve();
+
+console.log();
+console.log('=== struct member completion probes ===');
+
+// Test 1: Get member completions for st
+// st is assigned the result of foo(), which is a struct instance
+const stDecl = ASTQuery.findDeclarationAtPosition(memberAst, 5, 0);
+if (stDecl) {
+    const members = ASTQuery.getMemberCompletions(memberAst, stDecl);
+    const memberNames = members.map(m => m.name).filter(Boolean);
+    const hasBar = members.some(m => m.name === 'bar');
+    const hasBaz = members.some(m => m.name === 'baz');
+    const ok = hasBar && hasBaz && members.length >= 2;
+    const status = ok ? `✓ Found ${memberNames.length} members [${memberNames.join(', ')}]` : 
+                       `❌ Expected [bar, baz], got [${memberNames.join(', ')}] (bar: ${hasBar}, baz: ${hasBaz})`;
+    console.log(`  st member completions`);
+    console.log(`       => ${status}`);
+    if (!ok) { errors++; }
+} else {
+    console.log(`  st member completions`);
+    console.log(`       => ❌ Could not resolve st declaration`);
+    errors++;
+}
+
 console.log();
 if (errors > 0) {
     console.log(`❌ ${errors} total probe(s) failed`);

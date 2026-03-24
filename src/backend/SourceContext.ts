@@ -289,6 +289,40 @@ export class SourceContext
         }
         return { ast, declarations: ASTQuery.getVisibleDeclarations(scope) };
     }
+
+    /**
+     * Returns member completions if the cursor is after a dot (member access).
+     * For example: `foo.b|` returns members of the struct/definition that foo resolves to.
+     * @param row 1-based line number
+     * @param column 0-based column number
+     */
+    public astMemberCompletionsAtPosition(
+        row: number,
+        column: number,
+    ): { ast: Program; members: VariableDeclaration[] } | undefined {
+        const ast = this.getResolvedAST();
+        if (!ast) {
+            return undefined;
+        }
+
+        // Check if cursor is positioned after a dot in a member access context
+        // by looking for a MemberExpression node at this position
+        const memberExpr = ASTQuery.findMemberExpressionAtPosition(ast, row, column);
+        if (!memberExpr) {
+            return undefined;
+        }
+
+        // Resolve the object (left side of .) to its declaration
+        const objectDeclaration = ASTQuery.findDeclarationForMemberExpressionObject(ast, memberExpr);
+        if (!objectDeclaration) {
+            return undefined;
+        }
+
+        // Get member completions from the resolved struct/definition
+        const members = ASTQuery.getMemberCompletions(ast, objectDeclaration);
+        return { ast, members };
+    }
+
     //---------------------------------------------------------------
 
     /**
