@@ -160,6 +160,48 @@ for (const [line, col, expectedName, label] of smProbes) {
     if (!ok) { errors++; }
 }
 
+// --- shuffleIndices sample from provider report --------------------------------
+const shuffleIndicesCode = `fn shuffleIndices indexArray =
+		(
+			local current = indexArray.count
+			while current > 1 do (
+				local rnd = random 1 (current)
+				local itm = copy indexArray[current]
+				indexArray[current] = indexArray[rnd]
+				indexArray[rnd] = itm 
+				current -= 1
+			)
+			indexArray
+		)`;
+
+const siInputStream = CharStream.fromString(shuffleIndicesCode);
+const siLexer = new mxsLexer(siInputStream);
+const siTokenStream = new CommonTokenStream(siLexer);
+const siParser = new mxsParser(siTokenStream);
+const siAst = new ASTBuilder().visitProgram(siParser.program());
+new SymbolResolver(siAst).resolve();
+
+const siProbes: Array<[number, number, string, string]> = [
+    [3, 9, 'current', 'declaration name "current"'],
+    [4, 9, 'current', 'while condition reference "current"'],
+    [5, 27, 'current', 'random argument reference "current"'],
+    [6, 32, 'current', 'index accessor reference "current" in copy expression'],
+    [7, 15, 'current', 'index accessor reference "current" in assignment target'],
+    [7, 38, 'rnd', 'index accessor reference "rnd" in assignment value'],
+    [8, 15, 'rnd', 'index accessor reference "rnd" in assignment target'],
+];
+
+console.log();
+console.log('=== shuffleIndices index accessor regression probes ===');
+for (const [line, col, expectedName, label] of siProbes) {
+    const result = ASTQuery.findDeclarationAtPosition(siAst, line, col);
+    const ok = result?.name === expectedName;
+    const status = ok ? `✓  ${result!.name}` : `❌  got ${result?.name ?? 'undefined'}, expected ${expectedName}`;
+    console.log(`  (${line}:${col}) ${label}`);
+    console.log(`       => ${status}`);
+    if (!ok) { errors++; }
+}
+
 console.log();
 if (errors > 0) {
     console.log(`❌ ${errors} total probe(s) failed`);

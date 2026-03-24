@@ -1083,6 +1083,57 @@ export class ASTBuilder extends mxsParserVisitor<any> {
             }
         }
 
+        // The grammar can surface bracket indexing like `arr[idx]` through the
+        // function-call path when the whole expression is standalone. Normalize
+        // that shape back into an IndexExpression so symbol resolution can reach
+        // the index operand inside assignments and other standalone uses.
+        const fullText = ctx.getText();
+        const callerText = ctx.fnCaller().getText();
+        const operandArgs = ctx.operandArg();
+        const singleOperandText = operandArgs[0]?.getText();
+        if (
+            !ctx.parenPair()
+            && ctx.param().length === 0
+            && operandArgs.length === 1
+            && args.length === 1
+            && typeof singleOperandText === 'string'
+            && singleOperandText.startsWith('[')
+            && singleOperandText.endsWith(']')
+            && fullText === `${callerText}${singleOperandText}`
+        ) {
+            let indexOperand = args[0];
+
+            // In this ambiguity branch, operandArg text can be "[expr]" and visiting
+            // operandArg may yield UndefinedLiteral. Recover by visiting the inner expr.
+            if (indexOperand instanceof UndefinedLiteral) {
+                const exprChild = (operandArgs[0].children || []).find(
+                    (child): child is ExprContext => child instanceof ExprContext,
+                );
+                if (exprChild) {
+                    indexOperand = this.visit(exprChild) as Expression;
+                } else {
+                    const innerText = singleOperandText.slice(1, -1).trim();
+                    // Fast-path for common arr[identifier] cases.
+                    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(innerText)) {
+                        const argPos = this.getPosition(operandArgs[0]);
+                        const innerStartCol = (argPos?.start.column ?? 0) + 1;
+                        const innerEndCol = innerStartCol + innerText.length;
+                        const innerPos = argPos
+                            ? new Position(
+                                new Point(argPos.start.line, innerStartCol),
+                                new Point(argPos.start.line, innerEndCol),
+                            )
+                            : undefined;
+                        const ref = new VariableReference(innerText, innerPos);
+                        this.allReferences.push(ref);
+                        indexOperand = ref;
+                    }
+                }
+            }
+
+            return new IndexExpression(callee, indexOperand, position);
+        }
+
         return new CallExpression(callee, args, position);
     }
     

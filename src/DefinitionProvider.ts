@@ -1,9 +1,7 @@
 /*
-THIS IS BROKEN!
 TODO:
- - Fix definition for symbols with the same name or referenced from an enclosed construct (linke calling a method of a structure that initiated into a variable)
- - I should implement a method to derive a reference tree, instead of looking at the symbol table, of find a better implementation of the symbol table, keeping track of references in the listener
- - keep track of named symbols, definition, references and aliases (assignations and re-assignation). respect scope
+ - Fix definition for symbols referenced from an enclosed construct (e.g. calling a method of a
+   struct instance variable — requires tracking struct instance types at call sites)
 */
 import {
   CancellationToken, Definition, DefinitionLink, DefinitionProvider,
@@ -13,6 +11,7 @@ import {
 
 import { mxsBackend } from './backend/Backend.js';
 import type { Position as AstPosition } from '@strumenta/tylasu';
+import { ASTQuery } from './backend/ast/ASTQuery.js';
 import { Utilities } from './utils.js';
 
 export class mxsDefinitionProvider implements DefinitionProvider
@@ -26,6 +25,24 @@ export class mxsDefinitionProvider implements DefinitionProvider
             position.end.line - 1,
             position.end.column,
         );
+    }
+
+    /** Finds the range of `name` within the given AST node's position span. */
+    private astNameRange(document: TextDocument, position: AstPosition, name: string): Range | undefined {
+        const enclosingRange = this.astPositionToRange(position);
+        const snippet = document.getText(enclosingRange);
+        const offset = snippet.indexOf(name);
+        if (offset < 0) {
+            return undefined;
+        }
+        const prefix = snippet.slice(0, offset);
+        const lines = prefix.split(/\r?\n/);
+        const lineOffset = lines.length - 1;
+        const startLine = enclosingRange.start.line + lineOffset;
+        const startCharacter = lineOffset === 0
+            ? enclosingRange.start.character + lines[0].length
+            : lines[lineOffset].length;
+        return new Range(startLine, startCharacter, startLine, startCharacter + name.length);
     }
 
     provideDefinition(
@@ -48,12 +65,20 @@ export class mxsDefinitionProvider implements DefinitionProvider
                     position.line + 1,
                     position.character,
                 );
-                if (declaration?.position) {
-                    if (traceRouting) {
-                        console.log('[language-maxscript][DefinitionProvider] route=AST');
+                const ast = context?.getResolvedAST();
+                if (ast && declaration?.name) {
+                    const semanticNode = ASTQuery.findSemanticNodeForDeclaration(ast, declaration);
+                    const targetPosition = semanticNode.position ?? declaration.position;
+                    if (targetPosition) {
+                        // Navigate to the name token, not the entire declaration span
+                        const nameRange = this.astNameRange(document, targetPosition, declaration.name)
+                            ?? this.astPositionToRange(targetPosition);
+                        if (traceRouting) {
+                            console.log('[language-maxscript][DefinitionProvider] route=AST');
+                        }
+                        resolve(new Location(Uri.parse(context.sourceUri), nameRange));
+                        return;
                     }
-                    resolve(new Location(Uri.parse(context.sourceUri), this.astPositionToRange(declaration.position)));
-                    return;
                 }
                 if (traceRouting) {
                     console.log('[language-maxscript][DefinitionProvider] route=AST-miss');
