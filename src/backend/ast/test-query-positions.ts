@@ -6,6 +6,7 @@ import { SymbolResolver } from './SymbolResolver.js';
 import {
     FunctionDefinition,
     FunctionArgument,
+    ScopeNode,
     VariableReference,
     VariableDeclaration,
     StructDefinition,
@@ -275,6 +276,44 @@ for (const [line, col, expectedName, label] of implicitProbes) {
     console.log(`       => ${status}`);
     if (!ok) { errors++; }
 }
+
+// --- linear visibility in completions regression -------------------------------
+const linearVisibilityCode = `foo
+local foo = "hello"`;
+
+const linearInputStream = CharStream.fromString(linearVisibilityCode);
+const linearLexer = new mxsLexer(linearInputStream);
+const linearTokenStream = new CommonTokenStream(linearLexer);
+const linearParser = new mxsParser(linearTokenStream);
+const linearAst = new ASTBuilder().visitProgram(linearParser.program());
+new SymbolResolver(linearAst).resolve();
+
+console.log();
+console.log('=== linear declaration visibility probes ===');
+
+const beforeNode = ASTQuery.findNodeAtPosition(linearAst, 1, 0);
+const beforeScope = beforeNode
+    ? (beforeNode instanceof ScopeNode ? beforeNode : ASTQuery.getEnclosingScope(beforeNode))
+    : undefined;
+const beforeVisible = beforeScope
+    ? ASTQuery.getVisibleDeclarationsAtPosition(beforeScope, 1, 0)
+    : [];
+const hasFooBefore = beforeVisible.some(d => d.name === 'foo');
+console.log('  completions before declaration (line 1, col 0)');
+console.log(`       => ${hasFooBefore ? '❌ contains foo' : '✓ foo not visible before declaration'}`);
+if (hasFooBefore) { errors++; }
+
+const afterNode = ASTQuery.findNodeAtPosition(linearAst, 2, 8);
+const afterScope = afterNode
+    ? (afterNode instanceof ScopeNode ? afterNode : ASTQuery.getEnclosingScope(afterNode))
+    : undefined;
+const afterVisible = afterScope
+    ? ASTQuery.getVisibleDeclarationsAtPosition(afterScope, 2, 8)
+    : [];
+const hasFooAfter = afterVisible.some(d => d.name === 'foo');
+console.log('  completions after declaration start (line 2, col 8)');
+console.log(`       => ${hasFooAfter ? '✓ foo visible after declaration' : '❌ foo missing after declaration'}`);
+if (!hasFooAfter) { errors++; }
 
 // --- struct member completions regression ---------------------------------
 const memberCompletionCode = `struct foo (

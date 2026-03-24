@@ -269,6 +269,39 @@ export class ASTQuery {
     }
 
     /**
+     * Returns visible declarations at a specific source position.
+     *
+     * This applies linear-flow visibility: a declaration is visible only if it
+     * starts at or before (line, column). Declarations defined later in the file
+     * are excluded.
+     */
+    static getVisibleDeclarationsAtPosition(
+        scope: ScopeNode,
+        line: number,
+        column: number,
+    ): VariableDeclaration[] {
+        const seen = new Set<string>();
+        const result: VariableDeclaration[] = [];
+
+        let current: ScopeNode | undefined = scope;
+        while (current) {
+            for (const [name, decl] of current.declarations) {
+                if (seen.has(name)) {
+                    continue;
+                }
+                if (!this.isDeclarationVisibleAtPosition(decl, line, column)) {
+                    continue;
+                }
+                seen.add(name);
+                result.push(decl);
+            }
+            current = current.parentScope;
+        }
+
+        return result;
+    }
+
+    /**
      * Returns member declarations from a struct/definition scope accessible from the given declaration.
      * Used for member access completions (foo.bar where foo is a struct instance).
      *
@@ -328,6 +361,25 @@ export class ASTQuery {
         const endsAfter =
             pos.end.line > line || (pos.end.line === line && pos.end.column >= column);
         return startsBefore && endsAfter;
+    }
+
+    private static isDeclarationVisibleAtPosition(
+        declaration: VariableDeclaration,
+        line: number,
+        column: number,
+    ): boolean {
+        const pos = declaration.position;
+        if (!pos) {
+            return true;
+        }
+
+        if (pos.start.line < line) {
+            return true;
+        }
+        if (pos.start.line > line) {
+            return false;
+        }
+        return pos.start.column <= column;
     }
 
     private static spanScore(node: Node): number {

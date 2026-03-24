@@ -287,7 +287,7 @@ export class SourceContext
         if (!scope) {
             return undefined;
         }
-        return { ast, declarations: ASTQuery.getVisibleDeclarations(scope) };
+        return { ast, declarations: ASTQuery.getVisibleDeclarationsAtPosition(scope, row, column) };
     }
 
     /**
