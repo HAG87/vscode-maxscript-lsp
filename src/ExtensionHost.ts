@@ -262,12 +262,10 @@ export class ExtensionHost
                 ExtensionHost.langSelector,
                 new mxsRenameProvider(this.backend)
             ),
-            /*
             languages.registerDocumentHighlightProvider(
                 ExtensionHost.langSelector,
                 new mxsDocumentHighlightProvider(this.backend)
             ),
-            /*         
             languages.registerCompletionItemProvider(
                 ExtensionHost.langSelector,
                 new mxsCompletionProvider(this.backend, defaultSettings),

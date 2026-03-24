@@ -1,9 +1,12 @@
 import {
     CancellationToken, DocumentHighlight, DocumentHighlightKind,
-    DocumentHighlightProvider, Position, ProviderResult, TextDocument,
+    DocumentHighlightProvider, Position, ProviderResult, Range, TextDocument,
+    workspace,
 } from 'vscode';
 
+import type { Position as AstPosition } from '@strumenta/tylasu';
 import { mxsBackend } from './backend/Backend.js';
+import { ASTQuery } from './backend/ast/ASTQuery.js';
 import { SymbolKind } from './types.js';
 import { Utilities } from './utils.js';
 
@@ -38,6 +41,33 @@ export class mxsDocumentHighlightProvider implements DocumentHighlightProvider
 {
     public constructor(private backend: mxsBackend) { }
 
+    private astPositionToRange(position: AstPosition): Range {
+        return new Range(
+            position.start.line - 1,
+            position.start.column,
+            position.end.line - 1,
+            position.end.column,
+        );
+    }
+
+    /** Finds the range of `name` within the given AST node's position span. */
+    private astNameRange(document: TextDocument, position: AstPosition, name: string): Range | undefined {
+        const enclosingRange = this.astPositionToRange(position);
+        const snippet = document.getText(enclosingRange);
+        const offset = snippet.indexOf(name);
+        if (offset < 0) {
+            return undefined;
+        }
+        const prefix = snippet.slice(0, offset);
+        const lines = prefix.split(/\r?\n/);
+        const lineOffset = lines.length - 1;
+        const startLine = enclosingRange.start.line + lineOffset;
+        const startCharacter = lineOffset === 0
+            ? enclosingRange.start.character + lines[0].length
+            : lines[lineOffset].length;
+        return new Range(startLine, startCharacter, startLine, startCharacter + name.length);
+    }
+
     provideDocumentHighlights(
         document: TextDocument,
         position: Position,
@@ -45,36 +75,91 @@ export class mxsDocumentHighlightProvider implements DocumentHighlightProvider
     {
         return new Promise((resolve) =>
         {
-            const occurrences = this.backend.getContext(document.uri.toString())
-                .symbolInfoAtPositionCtxOccurrences(position.line + 1, position.character);
+            const sourceContext = this.backend.getContext(document.uri.toString());
+            const config = workspace.getConfiguration('maxScript');
+            const useAst = config.get<boolean>('providers.ast.documentHighlightProvider', true);
+            const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
+            const traceRouting = config.get<boolean>('providers.traceRouting', false);
 
-            if (occurrences) {
-                const docUriStr = document.uri.toString();
-                // Deduplicate by start position within the current document.
-                const seen = new Set<string>();
-                const result: DocumentHighlight[] = [];
+            if (useAst) {
+                const ast = sourceContext?.getResolvedAST();
+                const declaration = sourceContext?.astDeclarationAtPosition(
+                    position.line + 1,
+                    position.character,
+                );
 
-                for (const occurrence of occurrences) {
-                    if (!occurrence.definition || occurrence.source !== docUriStr) {
-                        continue;
+                if (ast && declaration) {
+                    const result: DocumentHighlight[] = [];
+
+                    // Declaration site → Write highlight (scoped to name token only)
+                    if (declaration.position && declaration.name) {
+                        const semanticNode = ASTQuery.findSemanticNodeForDeclaration(ast, declaration);
+                        const targetPosition = semanticNode.position ?? declaration.position;
+                        const nameRange = this.astNameRange(document, targetPosition, declaration.name);
+                        if (nameRange) {
+                            result.push(new DocumentHighlight(nameRange, DocumentHighlightKind.Write));
+                        }
                     }
 
-                    const range = Utilities.symbolNameRange(occurrence);
-                    const key = `${range.start.line}:${range.start.character}`;
-                    if (seen.has(key)) {
-                        continue;
+                    // All reference sites → Read highlights
+                    for (const ref of declaration.references) {
+                        if (!ref.position) {
+                            continue;
+                        }
+                        result.push(new DocumentHighlight(
+                            this.astPositionToRange(ref.position),
+                            DocumentHighlightKind.Read,
+                        ));
                     }
-                    seen.add(key);
-                    result.push(new DocumentHighlight(range, highlightKindFromSymbolKind(occurrence.kind)));
+
+                    if (result.length > 0) {
+                        if (traceRouting) {
+                            console.log(`[language-maxscript][DocumentHighlightProvider] route=AST highlights=${result.length}`);
+                        }
+                        resolve(result);
+                        return;
+                    }
                 }
-
-                if (result.length > 0) {
-                    resolve(result);
-                    return;
+                if (traceRouting) {
+                    console.log('[language-maxscript][DocumentHighlightProvider] route=AST-miss');
                 }
             }
 
-            // Fallback: if the backend found nothing, at least highlight the word under the cursor.
+            if (fallbackToLegacy) {
+                const occurrences = sourceContext.symbolInfoAtPositionCtxOccurrences(
+                    position.line + 1,
+                    position.character,
+                );
+
+                if (occurrences) {
+                    const docUriStr = document.uri.toString();
+                    const seen = new Set<string>();
+                    const result: DocumentHighlight[] = [];
+
+                    for (const occurrence of occurrences) {
+                        if (!occurrence.definition || occurrence.source !== docUriStr) {
+                            continue;
+                        }
+                        const range = Utilities.symbolNameRange(occurrence);
+                        const key = `${range.start.line}:${range.start.character}`;
+                        if (seen.has(key)) {
+                            continue;
+                        }
+                        seen.add(key);
+                        result.push(new DocumentHighlight(range, highlightKindFromSymbolKind(occurrence.kind)));
+                    }
+
+                    if (result.length > 0) {
+                        if (traceRouting) {
+                            console.log('[language-maxscript][DocumentHighlightProvider] route=Legacy');
+                        }
+                        resolve(result);
+                        return;
+                    }
+                }
+            }
+
+            // Last resort: word under cursor
             const wordRange = document.getWordRangeAtPosition(position);
             resolve(wordRange ? [new DocumentHighlight(wordRange, DocumentHighlightKind.Text)] : undefined);
         });

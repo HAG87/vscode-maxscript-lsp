@@ -1,11 +1,17 @@
-/* THIS IS BROKEN! */
 import {
   CancellationToken, CompletionContext, CompletionItem, CompletionItemKind,
   CompletionItemProvider, CompletionList, Position, ProviderResult,
-  Range, TextDocument,
+  Range, TextDocument, workspace,
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
+import { ASTQuery } from './backend/ast/ASTQuery.js';
+import {
+    DefinitionBlock, FunctionArgument, FunctionDefinition, FunctionParameter,
+    ParameterDefinition, RcMenuItem, RolloutControl, StructDefinition, StructMemberField,
+    VariableDeclaration,
+} from './backend/ast/ASTNodes.js';
+import { Node } from '@strumenta/tylasu';
 import {
   maxCompletions, mxsLanguageCompletions,
 } from './backend/schemas/mxsCompletions-base.js';
@@ -18,6 +24,34 @@ import {
   symbolDescriptionFromEnum, translateCompletionKind,
 } from './Symbol.js';
 import { IMaxScriptSettings } from './types.js';
+
+/** Maps an AST semantic node to the most appropriate CompletionItemKind. */
+function completionKindForSemanticNode(node: Node): CompletionItemKind {
+    if (node instanceof FunctionDefinition) {
+        return CompletionItemKind.Function;
+    }
+    if (node instanceof StructDefinition) {
+        return CompletionItemKind.Class;
+    }
+    if (node instanceof DefinitionBlock) {
+        return CompletionItemKind.Module;
+    }
+    if (node instanceof FunctionArgument || node instanceof FunctionParameter || node instanceof ParameterDefinition) {
+        return CompletionItemKind.TypeParameter;
+    }
+    if (node instanceof StructMemberField) {
+        return CompletionItemKind.Field;
+    }
+    if (node instanceof RolloutControl || node instanceof RcMenuItem) {
+        return CompletionItemKind.Event;
+    }
+    if (node instanceof VariableDeclaration) {
+        return node.scope === 'global' || node.scope === 'persistent'
+            ? CompletionItemKind.Variable
+            : CompletionItemKind.Variable;
+    }
+    return CompletionItemKind.Variable;
+}
 
 export class mxsCompletionProvider implements CompletionItemProvider
 {
@@ -70,23 +104,46 @@ export class mxsCompletionProvider implements CompletionItemProvider
     {
         return new Promise((resolve, reject) =>
         {
+            const sourceContext = this.backend.getContext(document.uri.toString());
+            const config = workspace.getConfiguration('maxScript');
+            const useAst = config.get<boolean>('providers.ast.completionProvider', true);
+
             const completionList: CompletionItem[] = [];
 
-            // Method to provide API completions
-            // vscode will filter the list of completions, so I can provide the entire list, check if there is a perfomance gain providing partial lists
-            // completionList.push(...this.completionsFromAPI(document, position, context));
+            // AST path: inject locally-scoped user symbols ahead of antlr-c3 candidates.
+            // Deduplicated by name so they won't double-up with symbol-table candidates.
+            const seenNames = new Set<string>();
+            if (useAst) {
+                const astResult = sourceContext?.astCompletionsAtPosition(
+                    position.line + 1,
+                    position.character,
+                );
+                if (astResult) {
+                    for (const decl of astResult.declarations) {
+                        if (!decl.name) {
+                            continue;
+                        }
+                        seenNames.add(decl.name.toLowerCase());
+                        const semanticNode = ASTQuery.findSemanticNodeForDeclaration(astResult.ast, decl);
+                        const kind = completionKindForSemanticNode(semanticNode);
+                        const item = new CompletionItem(decl.name, kind);
+                        item.sortText = `0_${decl.name}`;   // sort above API/grammar candidates
+                        completionList.push(item);
+                    }
+                }
+            }
 
-            // antlr-c3 used to provide code completion items
-            this.backend.getContext(document.uri.toString())?.getCodeCompletionCandidates(position.line + 1, position.character)
+            // antlr-c3 grammar-based candidates (deduplicated against AST names)
+            sourceContext?.getCodeCompletionCandidates(position.line + 1, position.character)
                 .then((candidates) =>
                 {
-                    candidates.forEach((info) =>
-                    {
-                        const item = new CompletionItem(info.name, translateCompletionKind(info.kind));
-                        //     item.sortText = sortKeys[info.kind] + info.name;
-                        item.detail = info.description || symbolDescriptionFromEnum(info.kind);
-                        completionList.push(item);
-                    });
+                    for (const info of candidates) {
+                        if (!seenNames.has(info.name.toLowerCase())) {
+                            const item = new CompletionItem(info.name, translateCompletionKind(info.kind));
+                            item.detail = info.description || symbolDescriptionFromEnum(info.kind);
+                            completionList.push(item);
+                        }
+                    }
                     if (this.options.completions.dataBaseCompletion) {
                         completionList.push(...this.completionsFromAPI(document, position, context));
                     }
@@ -94,11 +151,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
                 }).catch((reason) =>
                 {
                     reject(reason);
-                    // completionList.push(...this.completionsFromAPI(document, position, context));
                 });
-            // */
-            // resolve(new CompletionList(completionList, false));
-            // resolve(new CompletionList(completionList, true));
         });
     }
     /*

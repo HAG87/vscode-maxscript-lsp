@@ -28,7 +28,7 @@ import { semanticTokenListener } from './semantic/semanticTokenListener.js';
 import { CodeCompletionProvider } from './symbols/codeCompletionProvider.js';
 import { symbolTableListener } from './symbolTableListener.js';
 import { ASTBuilder } from './ast/ASTBuilder.js';
-import { Program } from './ast/ASTNodes.js';
+import { Program, ScopeNode, VariableDeclaration } from './ast/ASTNodes.js';
 import { SymbolResolver } from './ast/SymbolResolver.js';
 import { SymbolTreeBuilder } from './ast/SymbolTreeBuilder';
 import { ASTQuery } from './ast/ASTQuery.js';
@@ -260,6 +260,34 @@ export class SourceContext
             return undefined;
         }
         return ASTQuery.findReferencesForDeclaration(declaration);
+    }
+
+    /**
+     * Returns the resolved AST and the visible VariableDeclarations at a cursor position,
+     * ordered from innermost scope outward (nearest-first, shadowing respected).
+     * Used by CompletionItemProvider to offer locally-scoped symbol completions.
+     * @param row 1-based line number
+     * @param column 0-based column number
+     */
+    public astCompletionsAtPosition(
+        row: number,
+        column: number,
+    ): { ast: Program; declarations: VariableDeclaration[] } | undefined {
+        const ast = this.getResolvedAST();
+        if (!ast) {
+            return undefined;
+        }
+        const node = ASTQuery.findNodeAtPosition(ast, row, column);
+        if (!node) {
+            return undefined;
+        }
+        const scope = (node instanceof ScopeNode)
+            ? node
+            : ASTQuery.getEnclosingScope(node);
+        if (!scope) {
+            return undefined;
+        }
+        return { ast, declarations: ASTQuery.getVisibleDeclarations(scope) };
     }
     //---------------------------------------------------------------
 

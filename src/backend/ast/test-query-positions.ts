@@ -202,6 +202,53 @@ for (const [line, col, expectedName, label] of siProbes) {
     if (!ok) { errors++; }
 }
 
+// --- struct member access regression -----------------------------------------
+const structMemberCode = `struct foo (
+	fn bar = (print "hello")
+)
+st = foo()
+foo.bar()
+st.bar()`;
+
+const structInputStream = CharStream.fromString(structMemberCode);
+const structLexer = new mxsLexer(structInputStream);
+const structTokenStream = new CommonTokenStream(structLexer);
+const structParser = new mxsParser(structTokenStream);
+const structAst = new ASTBuilder().visitProgram(structParser.program());
+new SymbolResolver(structAst).resolve();
+
+const structProbes: Array<[number, number, string, string]> = [
+    [4, 5, 'foo', 'instance variable initializer callee "foo"'],
+    [5, 0, 'foo', 'struct name reference in "foo.bar()"'],
+    [5, 4, 'bar', 'member method reference in "foo.bar()"'],
+    [6, 0, 'foo', 'instance variable reference "st" should infer struct foo'],
+    [6, 3, 'bar', 'member method reference in "st.bar()"'],
+];
+
+console.log();
+console.log('=== struct member regression probes ===');
+for (const [line, col, expectedName, label] of structProbes) {
+    const result = ASTQuery.findDeclarationAtPosition(structAst, line, col);
+    const ok = result?.name === expectedName;
+    const status = ok ? `✓  ${result!.name}` : `❌  got ${result?.name ?? 'undefined'}, expected ${expectedName}`;
+    console.log(`  (${line}:${col}) ${label}`);
+    console.log(`       => ${status}`);
+    if (!ok) { errors++; }
+}
+
+const barDeclaration = ASTQuery.findDeclarationAtPosition(structAst, 5, 4);
+const barMemberRefs = barDeclaration
+    ? ASTQuery.findMemberReferencesForDeclaration(structAst, barDeclaration)
+    : [];
+const barMemberRefCountOk = barMemberRefs.length >= 2;
+console.log(`  member references for "bar" => ${barMemberRefs.length} (expected >= 2 from foo.bar and st.bar)`);
+if (!barMemberRefCountOk) {
+    console.log('       => ❌ member references are incomplete');
+    errors++;
+} else {
+    console.log('       => ✓ member references include struct and instance calls');
+}
+
 console.log();
 if (errors > 0) {
     console.log(`❌ ${errors} total probe(s) failed`);

@@ -10,6 +10,7 @@ import {
 
 import type { Position as AstPosition } from '@strumenta/tylasu';
 import { mxsBackend } from './backend/Backend.js';
+import { ASTQuery } from './backend/ast/ASTQuery.js';
 import { Utilities } from './utils.js';
 
 export class mxsReferenceProvider implements ReferenceProvider
@@ -40,6 +41,7 @@ export class mxsReferenceProvider implements ReferenceProvider
             const traceRouting = config.get<boolean>('providers.traceRouting', false);
 // /*
             if (useAst) {
+                const ast = sourceContext.getResolvedAST();
                 const declaration = sourceContext.astDeclarationAtPosition(
                     position.line + 1,
                     position.character,
@@ -59,6 +61,17 @@ export class mxsReferenceProvider implements ReferenceProvider
                             continue;
                         }
                         result.push(new Location(document.uri, this.astPositionToRange(reference.position)));
+                    }
+
+                    // Member/property references (foo.bar, st.bar) are represented as
+                    // MemberExpression nodes, not VariableReference nodes.
+                    if (ast) {
+                        for (const memberReference of ASTQuery.findMemberReferencesForDeclaration(ast, declaration)) {
+                            if (!memberReference.position) {
+                                continue;
+                            }
+                            result.push(new Location(document.uri, this.astPositionToRange(memberReference.position)));
+                        }
                     }
 
                     if (traceRouting) {

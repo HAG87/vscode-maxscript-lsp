@@ -23,6 +23,10 @@ import {
     ScopeNode,
     VariableDeclaration,
     VariableReference,
+    Expression,
+    AssignmentExpression,
+    CallExpression,
+    MemberExpression,
     DefinitionBlock,
     FunctionDefinition,
     StructDefinition,
@@ -74,7 +78,15 @@ export class ASTQuery {
         // 1. Cursor may be on a VariableReference — follow its link (fastest path)
         const ref = this.findReferenceAtPosition(ast, line, column);
         if (ref) {
-            return ref.declaration?.referred ?? undefined;
+            return ref.declaration?.referred
+                ?? this.findInferredDeclarationForReference(ast, ref);
+        }
+
+        // 1b. Cursor may be on a member/property token like `foo.bar` where `bar`
+        // is modeled as MemberExpression.property (string), not a VariableReference.
+        const member = this.findMemberExpressionAtPosition(ast, line, column);
+        if (member) {
+            return this.findDeclarationForMemberExpression(ast, member);
         }
 
         // 2. Try to find a declaration-defining node at this position.
@@ -96,6 +108,30 @@ export class ASTQuery {
     }
 
     /**
+     * Returns all MemberExpression nodes whose property resolves to the declaration.
+     * This complements declaration.references for member lookups (e.g. foo.bar, st.bar).
+     */
+    static findMemberReferencesForDeclaration(
+        ast: Program,
+        declaration: VariableDeclaration,
+    ): readonly MemberExpression[] {
+        const result: MemberExpression[] = [];
+
+        for (const node of this.walkNodes(ast)) {
+            if (!(node instanceof MemberExpression)) {
+                continue;
+            }
+
+            const resolved = this.findDeclarationForMemberExpression(ast, node);
+            if (resolved === declaration) {
+                result.push(node);
+            }
+        }
+
+        return result;
+    }
+
+    /**
      * Returns the VariableDeclaration that a reference resolves to.
      * O(1) - follows the pre-linked ReferenceByName.
      */
@@ -103,6 +139,17 @@ export class ASTQuery {
         reference: VariableReference,
     ): VariableDeclaration | undefined {
         return reference.declaration?.referred ?? undefined;
+    }
+
+    /**
+     * Returns the MemberExpression node whose property token contains (line, column), if any.
+     */
+    static findMemberExpressionAtPosition(
+        ast: Program,
+        line: number,
+        column: number,
+    ): MemberExpression | undefined {
+        return this.findInnermost(ast, line, column, (n): n is MemberExpression => n instanceof MemberExpression);
     }
 
     /**
@@ -258,6 +305,139 @@ export class ASTQuery {
         const pos = node.position;
         if (!pos) return Number.MAX_SAFE_INTEGER;
         return (pos.end.line - pos.start.line) * 100_000 + (pos.end.column - pos.start.column);
+    }
+
+    private static findDeclarationForMemberExpression(
+        ast: Program,
+        memberExpression: MemberExpression,
+    ): VariableDeclaration | undefined {
+        const structScope = this.findStructScopeForExpression(ast, memberExpression.object);
+        if (!structScope) {
+            return undefined;
+        }
+        return structScope.declarations.get(memberExpression.property);
+    }
+
+    private static findStructScopeForExpression(
+        ast: Program,
+        expression: Expression,
+    ): StructDefinition | undefined {
+        if (expression instanceof VariableReference) {
+            const declaration = this.findDefinitionForReference(expression);
+            if (declaration) {
+                return this.findStructScopeForDeclaration(ast, declaration);
+            }
+
+            const inferredDeclaration = this.findInferredDeclarationForReference(ast, expression);
+            return inferredDeclaration ? this.findStructScopeForDeclaration(ast, inferredDeclaration) : undefined;
+        }
+
+        if (expression instanceof CallExpression) {
+            return this.findStructScopeForCallExpression(ast, expression);
+        }
+
+        if (expression instanceof MemberExpression) {
+            const memberDeclaration = this.findDeclarationForMemberExpression(ast, expression);
+            return memberDeclaration ? this.findStructScopeForDeclaration(ast, memberDeclaration) : undefined;
+        }
+
+        return undefined;
+    }
+
+    private static findInferredDeclarationForReference(
+        ast: Program,
+        reference: VariableReference,
+    ): VariableDeclaration | undefined {
+        const referenceName = reference.name;
+        const referencePosition = reference.position;
+        if (!referenceName || !referencePosition) {
+            return undefined;
+        }
+
+        let bestStructDeclaration: VariableDeclaration | undefined;
+        let bestAssignmentPosition: Position | undefined;
+
+        for (const node of this.walkNodes(ast)) {
+            if (!(node instanceof VariableReference) || node === reference) {
+                continue;
+            }
+
+            const parent = node.parent;
+            if (!(parent instanceof AssignmentExpression)) {
+                continue;
+            }
+
+            if (parent.target !== node || node.name !== referenceName) {
+                continue;
+            }
+
+            const assignmentPosition = parent.position;
+            if (!assignmentPosition || !this.isPositionBeforeOrEqual(assignmentPosition.start, referencePosition.start)) {
+                continue;
+            }
+
+            const inferredStruct = parent.value
+                ? this.findStructScopeForExpression(ast, parent.value)
+                : undefined;
+            if (!inferredStruct?.name) {
+                continue;
+            }
+
+            const structDeclaration = inferredStruct.parentScope?.declarations.get(inferredStruct.name);
+            if (!structDeclaration) {
+                continue;
+            }
+
+            if (!bestAssignmentPosition || this.isPositionBeforeOrEqual(bestAssignmentPosition.start, assignmentPosition.start)) {
+                bestAssignmentPosition = assignmentPosition;
+                bestStructDeclaration = structDeclaration;
+            }
+        }
+
+        return bestStructDeclaration;
+    }
+
+    private static isPositionBeforeOrEqual(left: { line: number; column: number }, right: { line: number; column: number }): boolean {
+        return left.line < right.line || (left.line === right.line && left.column <= right.column);
+    }
+
+    private static findStructScopeForDeclaration(
+        ast: Program,
+        declaration: VariableDeclaration,
+    ): StructDefinition | undefined {
+        const semanticNode = this.findSemanticNodeForDeclaration(ast, declaration);
+        if (semanticNode instanceof StructDefinition) {
+            return semanticNode;
+        }
+
+        const initializer = declaration.initializer;
+        if (initializer instanceof CallExpression) {
+            return this.findStructScopeForCallExpression(ast, initializer);
+        }
+
+        if (initializer instanceof VariableReference) {
+            const aliasedDeclaration = this.findDefinitionForReference(initializer);
+            return aliasedDeclaration ? this.findStructScopeForDeclaration(ast, aliasedDeclaration) : undefined;
+        }
+
+        return undefined;
+    }
+
+    private static findStructScopeForCallExpression(
+        ast: Program,
+        callExpression: CallExpression,
+    ): StructDefinition | undefined {
+        if (callExpression.callee instanceof VariableReference) {
+            const calleeDeclaration = this.findDefinitionForReference(callExpression.callee);
+            return calleeDeclaration ? this.findStructScopeForDeclaration(ast, calleeDeclaration) : undefined;
+        }
+
+        if (callExpression.callee instanceof MemberExpression) {
+            const memberDeclaration = this.findDeclarationForMemberExpression(ast, callExpression.callee);
+            return memberDeclaration ? this.findStructScopeForDeclaration(ast, memberDeclaration) : undefined;
+        }
+
+        return undefined;
     }
 
     private static findDeclarationLikeNodeAtPosition(
