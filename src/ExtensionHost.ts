@@ -43,12 +43,33 @@ export class ExtensionHost
     private semanticTokensProvider!: mxsSemanticTokensProvider
     // CodeLens provider - need reference for refresh notifications
     private codeLensProvider!: mxsCodeLensProvider
+    // Coalesce provider refreshes to avoid duplicate UI updates in the same tick.
+    private providersRefreshScheduled: boolean = false
     // diagnostics for the extension
     private readonly diagnosticCollection = languages.createDiagnosticCollection('maxscript');
     //----------------------------------------------------------------
     public updateProviders(uri: string)
     {
         this.workspaceSymbolProvider.updateWorkspaceSymbols(uri)
+    }
+
+    private scheduleProvidersRefresh(): void
+    {
+        if (this.providersRefreshScheduled) {
+            return
+        }
+
+        this.providersRefreshScheduled = true
+        queueMicrotask(() =>
+        {
+            this.providersRefreshScheduled = false
+            if (this.semanticTokensProvider) {
+                this.semanticTokensProvider.refresh()
+            }
+            if (this.codeLensProvider) {
+                this.codeLensProvider.refresh()
+            }
+        })
     }
     //----------------------------------------------------------------
     public constructor(ctx: ExtensionContext)
@@ -173,13 +194,8 @@ export class ExtensionHost
                             diagnosticAdapter(diagnostics)
                         )
                         
-                        // Refresh providers after reparse
-                        if (this.semanticTokensProvider) {
-                            this.semanticTokensProvider.refresh();
-                        }
-                        if (this.codeLensProvider) {
-                            this.codeLensProvider.refresh();
-                        }
+                        // Refresh providers after reparse (coalesced).
+                        this.scheduleProvidersRefresh()
                         // this.updateProviders(event.document.uri.toString())
                     }, reparseDelay))
                 }

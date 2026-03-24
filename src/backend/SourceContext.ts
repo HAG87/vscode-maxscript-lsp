@@ -92,6 +92,37 @@ export class SourceContext
     // Flag to track if AST + semantic tokens need population (lazy loading)
     private astModelDirty: boolean = false;
 
+    // Incremented after each successful parse to invalidate position-query caches.
+    private parseGeneration: number = 0;
+    private queryCacheGeneration: number = -1;
+    private declarationAtPositionCache: Map<string, VariableDeclaration | undefined> = new Map();
+    private completionsAtPositionCache: Map<string, VariableDeclaration[] | undefined> = new Map();
+    private memberCompletionsAtPositionCache: Map<string, { members: VariableDeclaration[] | undefined; fingerprint: string }> = new Map();
+
+    private memberDeclarationsFingerprint(members: VariableDeclaration[]): string {
+        // Stable content fingerprint to detect membership changes even when count is unchanged.
+        return members
+            .map((member) => {
+                const pos = member.position;
+                const posKey = pos
+                    ? `${pos.start.line}:${pos.start.column}:${pos.end.line}:${pos.end.column}`
+                    : 'nopos';
+                return `${member.name ?? ''}|${member.scope}|${posKey}`;
+            })
+            .sort()
+            .join('||');
+    }
+
+    private ensureQueryCachesCurrent(): void {
+        if (this.queryCacheGeneration === this.parseGeneration) {
+            return;
+        }
+        this.declarationAtPositionCache.clear();
+        this.completionsAtPositionCache.clear();
+        this.memberCompletionsAtPositionCache.clear();
+        this.queryCacheGeneration = this.parseGeneration;
+    }
+
     public constructor(uri: string, /*settings*/)
     {
         this.sourceUri = uri;
@@ -176,6 +207,10 @@ export class SourceContext
         }
         // Symbol table and semantic tokens are now populated lazily when needed
         // This improves parse performance by 20-40% for syntax validation only
+
+        // A successful parse defines a new snapshot generation for AST/tree queries.
+        this.parseGeneration++;
+        this.queryCacheGeneration = -1;
     }
 
     /**
@@ -285,7 +320,16 @@ export class SourceContext
         if (!ast) {
             return undefined;
         }
-        return ASTQuery.findDeclarationAtPosition(ast, row, column);
+        this.ensureQueryCachesCurrent();
+
+        const cacheKey = `${row}:${column}`;
+        if (this.declarationAtPositionCache.has(cacheKey)) {
+            return this.declarationAtPositionCache.get(cacheKey);
+        }
+
+        const declaration = ASTQuery.findDeclarationAtPosition(ast, row, column);
+        this.declarationAtPositionCache.set(cacheKey, declaration);
+        return declaration;
     }
 
     /**
@@ -317,17 +361,29 @@ export class SourceContext
         if (!ast) {
             return undefined;
         }
+
+        this.ensureQueryCachesCurrent();
+        const cacheKey = `${row}:${column}`;
+        if (this.completionsAtPositionCache.has(cacheKey)) {
+            const cached = this.completionsAtPositionCache.get(cacheKey);
+            return cached ? { ast, declarations: cached } : undefined;
+        }
+
         const node = ASTQuery.findNodeAtPosition(ast, row, column);
         if (!node) {
+            this.completionsAtPositionCache.set(cacheKey, undefined);
             return undefined;
         }
         const scope = (node instanceof ScopeNode)
             ? node
             : ASTQuery.getEnclosingScope(node);
         if (!scope) {
+            this.completionsAtPositionCache.set(cacheKey, undefined);
             return undefined;
         }
-        return { ast, declarations: ASTQuery.getVisibleDeclarationsAtPosition(scope, row, column) };
+        const declarations = ASTQuery.getVisibleDeclarationsAtPosition(scope, row, column);
+        this.completionsAtPositionCache.set(cacheKey, declarations);
+        return { ast, declarations };
     }
 
     /**
@@ -356,6 +412,10 @@ export class SourceContext
             return undefined;
         }
 
+        // Include current line prefix in cache key to avoid stale member-access reads
+        // when callers provide transient source snapshots.
+        this.ensureQueryCachesCurrent();
+
         // Convert source to array of lines for position-based access
         const lines = text.split(/\r?\n/);
         if (row < 1 || row > lines.length) {
@@ -364,11 +424,17 @@ export class SourceContext
 
         const currentLine = lines[row - 1];
         const beforeCursor = currentLine.substring(0, column);
+        const cacheKey = `${row}:${column}:${beforeCursor}`;
+        if (this.memberCompletionsAtPositionCache.has(cacheKey)) {
+            const cached = this.memberCompletionsAtPositionCache.get(cacheKey);
+            return cached?.members ? { ast, members: cached.members } : undefined;
+        }
 
         // Look for member access pattern: something.identifier<cursor>
         // Match: any word character sequence, followed by dot, followed by identifier characters
         const memberAccessMatch = beforeCursor.match(/(\w+)\.(\w*)$/);
         if (!memberAccessMatch) {
+            this.memberCompletionsAtPositionCache.set(cacheKey, { members: undefined, fingerprint: '' });
             return undefined;
         }
 
@@ -382,12 +448,26 @@ export class SourceContext
         
         const objectDeclaration = ASTQuery.findDeclarationAtPosition(ast, objectLine, objectColumn);
         if (!objectDeclaration) {
+            this.memberCompletionsAtPositionCache.set(cacheKey, { members: undefined, fingerprint: '' });
             return undefined;
         }
 
-        // Get member completions from the resolved struct/definition
+        // Get member completions from the resolved struct/definition.
         const members = ASTQuery.getMemberCompletions(ast, objectDeclaration);
-        return members.length > 0 ? { ast, members } : undefined;
+        const fingerprint = this.memberDeclarationsFingerprint(members);
+
+        const existing = this.memberCompletionsAtPositionCache.get(cacheKey);
+        if (existing && existing.fingerprint === fingerprint) {
+            return existing.members ? { ast, members: existing.members } : undefined;
+        }
+
+        if (members.length === 0) {
+            this.memberCompletionsAtPositionCache.set(cacheKey, { members: undefined, fingerprint });
+            return undefined;
+        }
+
+        this.memberCompletionsAtPositionCache.set(cacheKey, { members, fingerprint });
+        return { ast, members };
     }
 
     //---------------------------------------------------------------
