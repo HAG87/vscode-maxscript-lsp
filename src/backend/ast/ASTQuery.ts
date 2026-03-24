@@ -282,7 +282,8 @@ export class ASTQuery {
         if (!structScope) {
             return [];
         }
-        return this.getVisibleDeclarations(structScope);
+        // Return ONLY the struct's own members — do NOT walk up parentScope.
+        return [...structScope.declarations.values()];
     }
 
     /**

@@ -293,34 +293,61 @@ export class SourceContext
     /**
      * Returns member completions if the cursor is after a dot (member access).
      * For example: `foo.b|` returns members of the struct/definition that foo resolves to.
+     * 
+     * Detects member access by looking at source text before cursor (pattern: identifier.identifier|)
+     * 
      * @param row 1-based line number
      * @param column 0-based column number
+     * @param source Optional source text (uses lexer if not provided)
      */
     public astMemberCompletionsAtPosition(
         row: number,
         column: number,
+        source?: string,
     ): { ast: Program; members: VariableDeclaration[] } | undefined {
         const ast = this.getResolvedAST();
         if (!ast) {
             return undefined;
         }
 
-        // Check if cursor is positioned after a dot in a member access context
-        // by looking for a MemberExpression node at this position
-        const memberExpr = ASTQuery.findMemberExpressionAtPosition(ast, row, column);
-        if (!memberExpr) {
+        // Get the source text to analyze
+        const text = source ?? this.lexer.text;
+        if (!text) {
             return undefined;
         }
 
-        // Resolve the object (left side of .) to its declaration
-        const objectDeclaration = ASTQuery.findDeclarationForMemberExpressionObject(ast, memberExpr);
+        // Convert source to array of lines for position-based access
+        const lines = text.split(/\r?\n/);
+        if (row < 1 || row > lines.length) {
+            return undefined;
+        }
+
+        const currentLine = lines[row - 1];
+        const beforeCursor = currentLine.substring(0, column);
+
+        // Look for member access pattern: something.identifier<cursor>
+        // Match: any word character sequence, followed by dot, followed by identifier characters
+        const memberAccessMatch = beforeCursor.match(/(\w+)\.(\w*)$/);
+        if (!memberAccessMatch) {
+            return undefined;
+        }
+
+        const objectName = memberAccessMatch[1];
+        const memberPrefix = memberAccessMatch[2]; // partial member being typed
+
+        // Find the declaration for the object (left side of dot)
+        // Use a position that should be in the object identifier
+        const objectLine = row;
+        const objectColumn = column - memberPrefix.length - 1 - objectName.length;
+        
+        const objectDeclaration = ASTQuery.findDeclarationAtPosition(ast, objectLine, objectColumn);
         if (!objectDeclaration) {
             return undefined;
         }
 
         // Get member completions from the resolved struct/definition
         const members = ASTQuery.getMemberCompletions(ast, objectDeclaration);
-        return { ast, members };
+        return members.length > 0 ? { ast, members } : undefined;
     }
 
     //---------------------------------------------------------------

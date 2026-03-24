@@ -108,54 +108,70 @@ export class mxsCompletionProvider implements CompletionItemProvider
             const config = workspace.getConfiguration('maxScript');
             const useAst = config.get<boolean>('providers.ast.completionProvider', true);
 
-            const completionList: CompletionItem[] = [];
-            const seenNames = new Set<string>();
+            // Strategy 1: API dot completion.
+            // If the object left of the dot is a known API class/struct/interface,
+            // return ONLY those members — no local vars, no AST symbols.
+            if (this.options.completions.dataBaseCompletion &&
+                context.triggerKind === 1 && context.triggerCharacter === '.') {
+                const apiMembers = this.completionsFromAPI(document, position, context);
+                if (apiMembers.length > 0) {
+                    resolve(new CompletionList(apiMembers, false));
+                    return;
+                }
+            }
 
-            // AST path: Check for member access completions first (foo.b<cursor>)
-            // If we're completing a member access, prioritize its members
+            // Strategy 2: AST member completion.
+            // If the cursor is after `identifier.` and that identifier resolves to a
+            // user-defined struct/definition in the AST, return ONLY its members.
             if (useAst) {
                 const memberResult = sourceContext?.astMemberCompletionsAtPosition(
                     position.line + 1,
                     position.character,
+                    document.getText(),
                 );
                 if (memberResult && memberResult.members.length > 0) {
-                    // Member completions found - return them prioritized
+                    const items: CompletionItem[] = [];
                     for (const member of memberResult.members) {
                         if (!member.name) {
                             continue;
                         }
-                        seenNames.add(member.name.toLowerCase());
                         const semanticNode = ASTQuery.findSemanticNodeForDeclaration(memberResult.ast, member);
                         const kind = completionKindForSemanticNode(semanticNode);
                         const item = new CompletionItem(member.name, kind);
-                        item.sortText = `0_${member.name}`;   // sort above other candidates
-                        completionList.push(item);
+                        item.sortText = `0_${member.name}`;
+                        items.push(item);
                     }
-                    // For member completions, skip scope-based completions
-                    // (members take precedence)
-                } else {
-                    // No member completions - fall back to scope-based completions
-                    const astResult = sourceContext?.astCompletionsAtPosition(
-                        position.line + 1,
-                        position.character,
-                    );
-                    if (astResult) {
-                        for (const decl of astResult.declarations) {
-                            if (!decl.name) {
-                                continue;
-                            }
-                            seenNames.add(decl.name.toLowerCase());
-                            const semanticNode = ASTQuery.findSemanticNodeForDeclaration(astResult.ast, decl);
-                            const kind = completionKindForSemanticNode(semanticNode);
-                            const item = new CompletionItem(decl.name, kind);
-                            item.sortText = `0_${decl.name}`;   // sort above API/grammar candidates
-                            completionList.push(item);
-                        }
+                    if (items.length > 0) {
+                        resolve(new CompletionList(items, false));
+                        return;
                     }
                 }
             }
 
-            // antlr-c3 grammar-based candidates (deduplicated against AST names)
+            // Strategy 3: Fallback — AST scope declarations + antlr-c3 + API prefix matching.
+            const completionList: CompletionItem[] = [];
+            const seenNames = new Set<string>();
+
+            if (useAst) {
+                const astResult = sourceContext?.astCompletionsAtPosition(
+                    position.line + 1,
+                    position.character,
+                );
+                if (astResult) {
+                    for (const decl of astResult.declarations) {
+                        if (!decl.name) {
+                            continue;
+                        }
+                        seenNames.add(decl.name.toLowerCase());
+                        const semanticNode = ASTQuery.findSemanticNodeForDeclaration(astResult.ast, decl);
+                        const kind = completionKindForSemanticNode(semanticNode);
+                        const item = new CompletionItem(decl.name, kind);
+                        item.sortText = `0_${decl.name}`;
+                        completionList.push(item);
+                    }
+                }
+            }
+
             sourceContext?.getCodeCompletionCandidates(position.line + 1, position.character)
                 .then((candidates) =>
                 {
