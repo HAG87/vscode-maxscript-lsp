@@ -46,6 +46,7 @@ import {
 import { SymbolResolver } from './ast/SymbolResolver.js';
 import { SymbolTreeBuilder } from './ast/SymbolTreeBuilder';
 import { ASTQuery } from './ast/ASTQuery.js';
+import appendAstSemanticTokens from './semantic/astSemanticTokens.js';
 
 // One context for each valid document
 export class SourceContext
@@ -90,169 +91,6 @@ export class SourceContext
     private symbolTableDirty: boolean = false;
     // Flag to track if AST + semantic tokens need population (lazy loading)
     private astModelDirty: boolean = false;
-
-    private astTokenLocationForName(
-        nodePosition: { start: { line: number; column: number }; end: { line: number; column: number } },
-        name: string,
-    ): { line: number; startCharacter: number; length: number } | undefined {
-        const inSpan = (candidate: IIdentifierCandidate): boolean => {
-            const line = candidate.line;
-            const column = candidate.startCharacter;
-
-            if (line < nodePosition.start.line || line > nodePosition.end.line) {
-                return false;
-            }
-            if (line === nodePosition.start.line && column < nodePosition.start.column) {
-                return false;
-            }
-            // End position is treated as exclusive.
-            if (line === nodePosition.end.line && column >= nodePosition.end.column) {
-                return false;
-            }
-            return true;
-        };
-
-        const targetName = name.toLowerCase();
-        const candidates = this.identifierCandidates.get(targetName) ?? [];
-
-        for (const candidate of candidates) {
-            if (!inSpan(candidate)) {
-                continue;
-            }
-
-            return {
-                line: candidate.line,
-                startCharacter: candidate.startCharacter,
-                length: candidate.length,
-            };
-        }
-
-        // Fallback keeps behavior predictable even if token lookup misses edge cases.
-        return {
-            line: nodePosition.start.line,
-            startCharacter: Math.max(0, nodePosition.start.column),
-            length: name.length,
-        };
-    }
-
-    private appendAstSemanticTokens(): void {
-        if (!this.ast) {
-            return;
-        }
-
-        const traceRouting = workspace.getConfiguration('maxScript').get<boolean>('providers.traceRouting', false);
-        const beforeCount = this.semanticTokens.length;
-
-        const existing = new Set<string>(
-            this.semanticTokens.map((t) => `${t.line}:${t.startCharacter}:${t.length}:${String(t.tokenType)}`),
-        );
-
-        const pushNamedToken = (
-            name: string | undefined,
-            nodePosition: { start: { line: number; column: number }; end: { line: number; column: number } } | undefined,
-            tokenType: string,
-            tokenModifiers: string[] = [],
-        ) => {
-            if (!name || !nodePosition) {
-                return;
-            }
-            const loc = this.astTokenLocationForName(nodePosition, name);
-            if (!loc || loc.length <= 0) {
-                return;
-            }
-
-            const key = `${loc.line}:${loc.startCharacter}:${loc.length}:${tokenType}`;
-            if (existing.has(key)) {
-                return;
-            }
-            existing.add(key);
-
-            this.semanticTokens.push({
-                line: loc.line,
-                startCharacter: loc.startCharacter,
-                length: loc.length,
-                tokenType,
-                tokenModifiers,
-            });
-        };
-
-        for (const node of ASTQuery.walkAllNodes(this.ast)) {
-            if (node instanceof FunctionDefinition) {
-                const isStructMethod = !!(node.parent instanceof StructMemberField
-                    || node.parent instanceof StructDefinition
-                    || node.parent?.parent instanceof StructDefinition);
-                pushNamedToken(
-                    node.name,
-                    node.position,
-                    isStructMethod ? 'method' : 'function',
-                    ['declaration'],
-                );
-                continue;
-            }
-
-            if (node instanceof StructDefinition) {
-                pushNamedToken(node.name, node.position, 'struct', ['declaration']);
-                continue;
-            }
-
-            if (node instanceof DefinitionBlock) {
-                pushNamedToken(node.name, node.position, 'namespace', ['declaration']);
-                continue;
-            }
-
-            if (node instanceof VariableReference) {
-                const resolvedDeclaration = node.declaration?.referred;
-                if (resolvedDeclaration) {
-                    const semanticNode = ASTQuery.findSemanticNodeForDeclaration(this.ast, resolvedDeclaration);
-                    if (semanticNode instanceof FunctionDefinition) {
-                        const isCallLike = node.parent instanceof CallExpression || node.parent instanceof MemberExpression;
-                        pushNamedToken(node.name, node.position, isCallLike ? 'method' : 'function');
-                    } else if (semanticNode instanceof StructDefinition) {
-                        pushNamedToken(node.name, node.position, 'struct');
-                    } else if (semanticNode instanceof DefinitionBlock) {
-                        pushNamedToken(node.name, node.position, 'namespace');
-                    }
-                }
-            }
-        }
-
-        // Reinforce function tokens from resolved declaration/reference graph.
-        // This ensures call sites like `foo 1` are typed from semantic binding,
-        // even when parse-shape differs from expected call-expression forms.
-        for (const node of ASTQuery.walkAllNodes(this.ast)) {
-            if (!(node instanceof FunctionDefinition) || !node.name) {
-                continue;
-            }
-
-            const declaration = node.parentScope?.declarations.get(node.name);
-            if (!declaration) {
-                continue;
-            }
-
-            const isStructMethod = !!(node.parent instanceof StructMemberField
-                || node.parent instanceof StructDefinition
-                || node.parent?.parent instanceof StructDefinition);
-            const fnTokenType = isStructMethod ? 'method' : 'function';
-
-            // declaration site
-            pushNamedToken(node.name, declaration.position ?? node.position, fnTokenType, ['declaration']);
-
-            // all bound references
-            for (const ref of declaration.references) {
-                pushNamedToken(ref.name, ref.position, fnTokenType);
-            }
-        }
-
-        // SemanticTokensBuilder.push(range, ...) requires document order (line asc, then char asc).
-        // Listener tokens and AST tokens are collected independently so the combined array
-        // may be unsorted; fix that here before the provider reads it.
-        this.semanticTokens.sort((a, b) => a.line !== b.line ? a.line - b.line : a.startCharacter - b.startCharacter);
-
-        if (traceRouting) {
-            const afterCount = this.semanticTokens.length;
-            console.log(`[language-maxscript][SemanticTokens][AST] appended=${afterCount - beforeCount} total=${afterCount}`);
-        }
-    }
 
     public constructor(uri: string, /*settings*/)
     {
@@ -385,11 +223,13 @@ export class SourceContext
         try {
             const builder = new ASTBuilder();
             this.ast = builder.visitProgram(this.tree);
+
             // 3. Resolve all symbol references
             const resolver = new SymbolResolver(this.ast); // Takes existing AST
             resolver.resolve(); // MUTATES the AST (no return value)
             
-            this.appendAstSemanticTokens();
+            // 4. Append semantic tokens for user-defined identifiers based on resolved AST
+            appendAstSemanticTokens(this.ast, this.semanticTokens, this.identifierCandidates);
             
         } catch (err) {
             console.error('[language-maxscript][SourceContext] AST build/resolve failed:', err);
