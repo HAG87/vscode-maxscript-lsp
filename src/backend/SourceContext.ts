@@ -15,7 +15,7 @@ import {
   ILexicalRange, IMinifySettings, IPrettifySettings, ISemanticToken,
   ISymbolInfo, SymbolKind,
 } from '../types.js';
-import { BackendUtils } from './BackendUtils.js';
+import { TreeQuery } from './TreeQuery.js';
 import { IformatterResult, mxsSimpleFormatter } from './formatting/simpleCodeFormatter.js';
 import { ContextErrorListener } from './diagnostics/ContextErrorListener.js';
 import { ContextLexerErrorListener } from './diagnostics/ContextLexerErrorListener.js';
@@ -492,7 +492,7 @@ export class SourceContext
         if (!this.tree) { return; }
         this.ensureSymbolTable();
 
-        let context = BackendUtils.parseTreeFromPosition(this.tree, row, column);
+        let context = TreeQuery.parseTreeFromPosition(this.tree, row, column);
 
         if (context instanceof TerminalNode) {
             context = context!.parent;
@@ -654,7 +654,7 @@ export class SourceContext
         if ('stop' in range) {
             return formatter.formatRange(range.start, range.stop);
         } else {
-            const contextToFormat = BackendUtils.parseTreeContainingRange(<ParseTree>this.tree, range);
+            const contextToFormat = TreeQuery.parseTreeContainingRange(<ParseTree>this.tree, range);
             return formatter.formatTokenRange(
                 contextToFormat.start?.tokenIndex,
                 contextToFormat.stop?.tokenIndex

@@ -6,7 +6,7 @@ import { ParserRuleContext, ParseTree, TerminalNode } from 'antlr4ng';
 
 import { mxsParser } from '../parser/mxsParser.js';
 import { IDefinition, ISymbolInfo, SymbolKind } from '../types.js';
-import { BackendUtils } from './BackendUtils.js';
+import { TreeQuery } from './TreeQuery.js';
 import { SymbolUtils } from './symbols/symbolUtils.js';
 import { SourceContext } from './SourceContext.js';
 import {
@@ -200,7 +200,7 @@ export class ContextSymbolTable extends SymbolTable {
         }
 
         // this will return the token at the position
-        const terminal = BackendUtils.parseTreeFromPosition(this.tree, row, column);
+        const terminal = TreeQuery.parseTreeFromPosition(this.tree, row, column);
         if (!terminal || !(terminal instanceof TerminalNode)) {
             return undefined;
         }
