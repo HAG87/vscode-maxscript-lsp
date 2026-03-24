@@ -678,6 +678,30 @@ export class ASTQuery {
     }
 
     /** Exposes the full-tree walk for external diagnostics/tests. */
+    /**
+     * Returns the first VariableDeclaration whose name matches (case-insensitive)
+     * found by walking every ScopeNode in the AST. Prefers global/persistent scope
+     * over local scope when multiple matches exist.
+     * Used as a position-independent fallback for stale-AST situations.
+     */
+    static findDeclarationByName(ast: Program, name: string): VariableDeclaration | undefined {
+        const lowerName = name.toLowerCase();
+        let best: VariableDeclaration | undefined;
+        for (const node of ast.walk()) {
+            if (!(node instanceof ScopeNode)) {
+                continue;
+            }
+            const decl = node.declarations.get(lowerName);
+            if (!decl) {
+                continue;
+            }
+            if (!best || decl.scope === 'global' || decl.scope === 'persistent') {
+                best = decl;
+            }
+        }
+        return best;
+    }
+
     static *walkAllNodes(root: Program): Iterable<Node> {
         yield* root.walk();
     }
