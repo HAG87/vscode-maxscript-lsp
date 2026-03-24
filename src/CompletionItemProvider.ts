@@ -59,6 +59,27 @@ export class mxsCompletionProvider implements CompletionItemProvider
 
     public constructor(private backend: mxsBackend, private options: IMaxScriptSettings) { }
 
+    /**
+     * Returns API members for a named object if it is a known API class/struct/interface.
+     * Returns undefined when the name is not in the API schema.
+     */
+    private apiMembersForObject(objectName: string): CompletionItem[] | undefined {
+        const parent = mxsLanguageCompletions.has(objectName);
+        if (!parent) {
+            return undefined;
+        }
+        switch (parent.kind) {
+            case CompletionItemKind.Class:
+                return mxClassMembers?.[parent.label as string];
+            case CompletionItemKind.Struct:
+                return mxStructsMembers?.[parent.label as string];
+            case CompletionItemKind.Interface:
+                return mxInterfaceMembers?.[parent.label as string];
+            default:
+                return undefined;
+        }
+    }
+
     private completionsFromAPI(document: TextDocument, position: Position, context: CompletionContext): CompletionItem[]
     {
         let wordAtPos: string = '';
@@ -108,47 +129,56 @@ export class mxsCompletionProvider implements CompletionItemProvider
             const config = workspace.getConfiguration('maxScript');
             const useAst = config.get<boolean>('providers.ast.completionProvider', true);
 
-            // Strategy 1: API dot completion.
-            // If the object left of the dot is a known API class/struct/interface,
-            // return ONLY those members — no local vars, no AST symbols.
-            if (this.options.completions.dataBaseCompletion &&
-                context.triggerKind === 1 && context.triggerCharacter === '.') {
-                const apiMembers = this.completionsFromAPI(document, position, context);
-                if (apiMembers.length > 0) {
-                    resolve(new CompletionList(apiMembers, false));
-                    return;
-                }
-            }
+            // Detect member-access context (identifier.partial) via source text,
+            // regardless of trigger kind. When in this context, scope variables must
+            // NEVER be offered — only members from the resolved object.
+            const lineBeforeCursor = document.getText(
+                new Range(position.line, 0, position.line, position.character));
+            const memberMatch = lineBeforeCursor.match(/(\w+)\.(\w*)$/);
 
-            // Strategy 2: AST member completion.
-            // If the cursor is after `identifier.` and that identifier resolves to a
-            // user-defined struct/definition in the AST, return ONLY its members.
-            if (useAst) {
-                const memberResult = sourceContext?.astMemberCompletionsAtPosition(
-                    position.line + 1,
-                    position.character,
-                    document.getText(),
-                );
-                if (memberResult && memberResult.members.length > 0) {
-                    const items: CompletionItem[] = [];
-                    for (const member of memberResult.members) {
-                        if (!member.name) {
-                            continue;
-                        }
-                        const semanticNode = ASTQuery.findSemanticNodeForDeclaration(memberResult.ast, member);
-                        const kind = completionKindForSemanticNode(semanticNode);
-                        const item = new CompletionItem(member.name, kind);
-                        item.sortText = `0_${member.name}`;
-                        items.push(item);
-                    }
-                    if (items.length > 0) {
-                        resolve(new CompletionList(items, false));
+            if (memberMatch) {
+                const objectName = memberMatch[1];
+
+                // Path A: known API object — return its type members only.
+                if (this.options.completions.dataBaseCompletion) {
+                    const apiMembers = this.apiMembersForObject(objectName);
+                    if (apiMembers && apiMembers.length > 0) {
+                        resolve(new CompletionList(apiMembers, false));
                         return;
                     }
                 }
+
+                // Path B: user-defined struct/definition resolved by AST.
+                if (useAst) {
+                    const memberResult = sourceContext?.astMemberCompletionsAtPosition(
+                        position.line + 1,
+                        position.character,
+                        document.getText(),
+                    );
+                    if (memberResult && memberResult.members.length > 0) {
+                        const items: CompletionItem[] = [];
+                        for (const member of memberResult.members) {
+                            if (!member.name) {
+                                continue;
+                            }
+                            const semanticNode = ASTQuery.findSemanticNodeForDeclaration(memberResult.ast, member);
+                            const item = new CompletionItem(member.name, completionKindForSemanticNode(semanticNode));
+                            item.sortText = `0_${member.name}`;
+                            items.push(item);
+                        }
+                        if (items.length > 0) {
+                            resolve(new CompletionList(items, false));
+                            return;
+                        }
+                    }
+                }
+
+                // Object not resolved — return empty rather than polluting with scope vars.
+                resolve(new CompletionList([], false));
+                return;
             }
 
-            // Strategy 3: Fallback — AST scope declarations + antlr-c3 + API prefix matching.
+            // Non-member context: AST scope declarations + antlr-c3 + API prefix matching.
             const completionList: CompletionItem[] = [];
             const seenNames = new Set<string>();
 
@@ -164,8 +194,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
                         }
                         seenNames.add(decl.name.toLowerCase());
                         const semanticNode = ASTQuery.findSemanticNodeForDeclaration(astResult.ast, decl);
-                        const kind = completionKindForSemanticNode(semanticNode);
-                        const item = new CompletionItem(decl.name, kind);
+                        const item = new CompletionItem(decl.name, completionKindForSemanticNode(semanticNode));
                         item.sortText = `0_${decl.name}`;
                         completionList.push(item);
                     }
