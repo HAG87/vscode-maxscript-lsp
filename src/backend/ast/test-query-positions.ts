@@ -221,7 +221,7 @@ const structProbes: Array<[number, number, string, string]> = [
     [4, 5, 'foo', 'instance variable initializer callee "foo"'],
     [5, 0, 'foo', 'struct name reference in "foo.bar()"'],
     [5, 4, 'bar', 'member method reference in "foo.bar()"'],
-    [6, 0, 'foo', 'instance variable reference "st" should infer struct foo'],
+    [6, 0, 'st', 'instance variable reference "st" (type inferred from assignment)'],
     [6, 3, 'bar', 'member method reference in "st.bar()"'],
 ];
 
@@ -247,6 +247,33 @@ if (!barMemberRefCountOk) {
     errors++;
 } else {
     console.log('       => ✓ member references include struct and instance calls');
+}
+
+// --- implicit variable declarations regression ---------------------------------
+const implicitCode = `f = 10
+g = f + 5`;
+
+const implicitInputStream = CharStream.fromString(implicitCode);
+const implicitLexer = new mxsLexer(implicitInputStream);
+const implicitTokenStream = new CommonTokenStream(implicitLexer);
+const implicitParser = new mxsParser(implicitTokenStream);
+const implicitAst = new ASTBuilder().visitProgram(implicitParser.program());
+new SymbolResolver(implicitAst).resolve();
+
+const implicitProbes: Array<[number, number, string, string]> = [
+    [1, 0, 'f', 'implicit declaration assignment "f = 10"'],
+    [2, 4, 'f', 'implicit reference "f" in g = f + 5'],
+];
+
+console.log();
+console.log('=== implicit variable declaration probes ===');
+for (const [line, col, expectedName, label] of implicitProbes) {
+    const result = ASTQuery.findDeclarationAtPosition(implicitAst, line, col);
+    const ok = result?.name === expectedName;
+    const status = ok ? `✓  ${result!.name}` : `❌  got ${result?.name ?? 'undefined'}, expected ${expectedName}`;
+    console.log(`  (${line}:${col}) ${label}`);
+    console.log(`       => ${status}`);
+    if (!ok) { errors++; }
 }
 
 console.log();

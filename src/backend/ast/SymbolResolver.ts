@@ -185,14 +185,53 @@ export class SymbolResolver {
     }
     
     private visitAssignmentExpression(node: AssignmentExpression): void {
+        // Visit value (right side) first
+        if (node.value) {
+            this.visit(node.value);
+        }
+        
         // Visit target (left side - may be a reference)
+        // For implicit declarations: if target is a VariableReference that doesn't
+        // yet have a declaration, create an implicit VariableDeclaration entry
+        if (node.target && node.target instanceof VariableReference) {
+            const targetName = node.target.name;
+            if (targetName) {
+                // Check if this name is already declared in current scope
+                const existing = this.currentScope.declarations.get(targetName);
+                if (!existing) {
+                    // Create implicit declaration from this assignment
+                    this.createImplicitDeclaration(targetName, node.target, node);
+                }
+            }
+        }
+        
+        // Now visit target reference to link it
         if (node.target) {
             this.visit(node.target);
         }
+    }
+
+    /**
+     * Creates an implicit VariableDeclaration for a variable assignment.
+     * Used for MaxScript's implicit variable binding (f = 10 implicitly declares f).
+     */
+    private createImplicitDeclaration(
+        name: string,
+        reference: VariableReference,
+        assignmentNode: AssignmentExpression,
+    ): void {
+        // Determine scope: uppercase → global, otherwise → local
+        const scope: 'local' | 'global' = (name === name.toUpperCase() && name.length > 1) ? 'global' : 'local';
         
-        // Visit value (right side)
-        if (node.value) {
-            this.visit(node.value);
+        const declaration = new VariableDeclaration(name, scope, reference.position ?? assignmentNode.position);
+        declaration.initializer = assignmentNode.value ?? undefined;
+        
+        // Add to current scope's declarations map
+        this.currentScope.declarations.set(name, declaration);
+        
+        // Set up the reference's declaration link
+        if (reference.declaration) {
+            reference.declaration.referred = declaration;
         }
     }
 
