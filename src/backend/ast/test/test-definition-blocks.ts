@@ -5,11 +5,11 @@
  */
 
 import { CharStream, CommonTokenStream } from 'antlr4ng';
-import { mxsLexer } from '../../parser/mxsLexer.js';
-import { mxsParser } from '../../parser/mxsParser.js';
-import { SymbolKind } from '../../types.js';
-import { ASTBuilder } from './ASTBuilder.js';
-import { SymbolTreeBuilder } from './SymbolTreeBuilder.js';
+import { mxsLexer } from '../../../parser/mxsLexer.js';
+import { mxsParser } from '../../../parser/mxsParser.js';
+import { SymbolKind } from '../../../types.js';
+import { ASTBuilder } from '../ASTBuilder.js';
+import { SymbolTreeBuilder } from '../SymbolTreeBuilder.js';
 import {
     DefinitionBlock,
     EventHandlerStatement,
@@ -19,7 +19,7 @@ import {
     RolloutControl,
     StructDefinition,
     VariableDeclaration,
-} from './ASTNodes.js';
+} from '../ASTNodes.js';
 
 const code = `
 macroscript MyMacro category:"Demo" (

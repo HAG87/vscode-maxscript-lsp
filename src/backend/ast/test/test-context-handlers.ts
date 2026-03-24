@@ -4,16 +4,16 @@
  */
 
 import { CharStream, CommonTokenStream } from 'antlr4ng';
-import { mxsLexer } from '../../parser/mxsLexer.js';
-import { mxsParser } from '../../parser/mxsParser.js';
-import { ASTBuilder } from './ASTBuilder.js';
+import { mxsLexer } from '../../../parser/mxsLexer.js';
+import { mxsParser } from '../../../parser/mxsParser.js';
+import { ASTBuilder } from '../ASTBuilder.js';
 import {
     ContextStatement,
     EventHandlerStatement,
     StructDefinition,
     VariableReference,
     WhenStatement,
-} from './ASTNodes.js';
+} from '../ASTNodes.js';
 
 const code = `
 at time t print t

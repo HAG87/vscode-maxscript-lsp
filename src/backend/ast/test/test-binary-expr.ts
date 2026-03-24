@@ -4,10 +4,10 @@
  */
 
 import { CharStream, CommonTokenStream } from 'antlr4ng';
-import { mxsLexer } from '../../parser/mxsLexer.js';
-import { mxsParser } from '../../parser/mxsParser.js';
-import { ASTBuilder } from './ASTBuilder.js';
-import { AssignmentExpression, BinaryExpression, Expression, VariableReference } from './ASTNodes.js';
+import { mxsLexer } from '../../../parser/mxsLexer.js';
+import { mxsParser } from '../../../parser/mxsParser.js';
+import { ASTBuilder } from '../ASTBuilder.js';
+import { AssignmentExpression, BinaryExpression, Expression, VariableReference } from '../ASTNodes.js';
 
 function getTargetName(target?: Expression): string | undefined {
     return target instanceof VariableReference ? target.name : undefined;

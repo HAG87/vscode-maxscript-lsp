@@ -1,8 +1,8 @@
 import { CharStream, CommonTokenStream } from 'antlr4ng';
-import { mxsLexer } from '../../parser/mxsLexer.js';
-import { mxsParser } from '../../parser/mxsParser.js';
-import { ASTBuilder } from './ASTBuilder.js';
-import { SymbolResolver } from './SymbolResolver.js';
+import { mxsLexer } from '../../../parser/mxsLexer.js';
+import { mxsParser } from '../../../parser/mxsParser.js';
+import { ASTBuilder } from '../ASTBuilder.js';
+import { SymbolResolver } from '../SymbolResolver.js';
 import {
     FunctionDefinition,
     FunctionArgument,
@@ -10,8 +10,8 @@ import {
     VariableReference,
     VariableDeclaration,
     StructDefinition,
-} from './ASTNodes.js';
-import { ASTQuery } from './ASTQuery.js';
+} from '../ASTNodes.js';
+import { ASTQuery } from '../ASTQuery.js';
 
 const code = `
 fn myFunc x = (

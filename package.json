@@ -56,7 +56,16 @@
           "classclass.defaultLibrary": [
             "support.class.mxs"
           ],
+          "function": [
+            "entity.name.function.mxs"
+          ],
           "function.defaultLibrary": [
+            "support.function.mxs"
+          ],
+          "method": [
+            "entity.name.function.mxs"
+          ],
+          "method.defaultLibrary": [
             "support.function.mxs"
           ],
           "interface": [
@@ -329,17 +338,17 @@
     "pretest": "npm run compile-tests && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test",
-    "test:ast": "npx tsx src/backend/ast/run-tests.ts",
-    "test:ast:simple": "npx tsx src/backend/ast/test-simple.ts",
-    "test:ast:functions": "npx tsx src/backend/ast/test-functions.ts",
-    "test:ast:nested": "npx tsx src/backend/ast/test-nested.ts",
-    "test:ast:performance": "npx tsx src/backend/ast/test-performance.ts",
-    "test:ast:symboltree": "npx tsx src/backend/ast/test-symboltree.ts",
-    "test:ast:control-flow": "npx tsx src/backend/ast/test-control-flow.ts",
-    "test:ast:contexts": "npx tsx src/backend/ast/test-context-handlers.ts",
-    "test:ast:definitions": "npx tsx src/backend/ast/test-definition-blocks.ts",
-    "test:ast:ui": "npx tsx src/backend/ast/test-definition-blocks.ts",
-    "test:ast:positions": "npx tsx src/backend/ast/test-query-positions.ts",
+    "test:ast": "npx tsx src/backend/ast/test/run-tests.ts",
+    "test:ast:simple": "npx tsx src/backend/ast/test/test-simple.ts",
+    "test:ast:functions": "npx tsx src/backend/ast/test/test-functions.ts",
+    "test:ast:nested": "npx tsx src/backend/ast/test/test-nested.ts",
+    "test:ast:performance": "npx tsx src/backend/ast/test/test-performance.ts",
+    "test:ast:symboltree": "npx tsx src/backend/ast/test/test-symboltree.ts",
+    "test:ast:control-flow": "npx tsx src/backend/ast/test/test-control-flow.ts",
+    "test:ast:contexts": "npx tsx src/backend/ast/test/test-context-handlers.ts",
+    "test:ast:definitions": "npx tsx src/backend/ast/test/test-definition-blocks.ts",
+    "test:ast:ui": "npx tsx src/backend/ast/test/test-definition-blocks.ts",
+    "test:ast:positions": "npx tsx src/backend/ast/test/test-query-positions.ts",
     "generate": "antlr4ng -Dlanguage=TypeScript -visitor -Xexact-output-dir src/parser/grammars/mxsLexer.g4 src/parser/grammars/mxsParser.g4 -o src/parser"
   },
   "devDependencies": {

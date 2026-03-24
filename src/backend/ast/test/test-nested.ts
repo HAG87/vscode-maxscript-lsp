@@ -3,10 +3,10 @@
  */
 
 import { CharStream, CommonTokenStream } from 'antlr4ng';
-import { mxsLexer } from '../../parser/mxsLexer.js';
-import { mxsParser } from '../../parser/mxsParser.js';
-import { ASTBuilder } from './ASTBuilder.js';
-import { SymbolResolver } from './SymbolResolver.js';
+import { mxsLexer } from '../../../parser/mxsLexer.js';
+import { mxsParser } from '../../../parser/mxsParser.js';
+import { ASTBuilder } from '../ASTBuilder.js';
+import { SymbolResolver } from '../SymbolResolver.js';
 
 const code = `
 local outer = 100

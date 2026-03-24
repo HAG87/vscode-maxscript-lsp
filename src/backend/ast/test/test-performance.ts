@@ -3,11 +3,11 @@
  */
 
 import { CharStream, CommonTokenStream } from 'antlr4ng';
-import { mxsLexer } from '../../parser/mxsLexer.js';
-import { mxsParser } from '../../parser/mxsParser.js';
-import { ASTBuilder } from './ASTBuilder.js';
-import { SymbolResolver } from './SymbolResolver.js';
-import { VariableReference } from './ASTNodes.js';
+import { mxsLexer } from '../../../parser/mxsLexer.js';
+import { mxsParser } from '../../../parser/mxsParser.js';
+import { ASTBuilder } from '../ASTBuilder.js';
+import { SymbolResolver } from '../SymbolResolver.js';
+import { VariableReference } from '../ASTNodes.js';
 
 // Generate code with many variables
 function generateCode(numVars: number): string {

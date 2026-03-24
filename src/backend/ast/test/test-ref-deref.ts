@@ -9,9 +9,9 @@
  */
 
 import { CharStream, CommonTokenStream } from 'antlr4ng';
-import { mxsLexer } from '../../parser/mxsLexer.js';
-import { mxsParser } from '../../parser/mxsParser.js';
-import { ASTBuilder } from './ASTBuilder.js';
+import { mxsLexer } from '../../../parser/mxsLexer.js';
+import { mxsParser } from '../../../parser/mxsParser.js';
+import { ASTBuilder } from '../ASTBuilder.js';
 import {
     Program,
     AssignmentExpression,
@@ -19,7 +19,7 @@ import {
     DereferenceExpression,
     VariableReference,
     MemberExpression,
-} from './ASTNodes.js';
+} from '../ASTNodes.js';
 
 function parseCode(code: string): Program {
     const inputStream = CharStream.fromString(code);
