@@ -17,6 +17,7 @@ import { mxsRangeFormattingProvider } from './FormattingProvider.js';
 import { mxsHoverProvider } from './HoverProvider.js';
 import { mxsReferenceProvider } from './ReferenceProvider.js';
 import { mxsRenameProvider } from './RenameProvider.js';
+import { mxsSignatureHelpProvider } from './SignatureHelpProvider.js';
 import {
     mxsRangeSemanticTokensProvider, mxsSemanticTokensProvider, mxsSemtoTokensLegend,
 } from './SemanticTokensProvider.js';
@@ -270,6 +271,11 @@ export class ExtensionHost
                 ExtensionHost.langSelector,
                 new mxsCompletionProvider(this.backend, defaultSettings),
                 " ", ".", "="
+            ),
+            languages.registerSignatureHelpProvider(
+                ExtensionHost.langSelector,
+                new mxsSignatureHelpProvider(this.backend),
+                "(", ",", " "
             ),
             /*
             languages.registerCodeLensProvider(
