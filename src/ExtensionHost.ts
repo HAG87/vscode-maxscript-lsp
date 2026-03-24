@@ -1,4 +1,6 @@
 import { writeFile } from 'fs/promises';
+import { existsSync } from 'fs';
+import { dirname, isAbsolute, resolve } from 'path';
 import { basename } from 'path';
 import {
   commands, ConfigurationChangeEvent, DiagnosticChangeEvent, ExtensionContext,
@@ -32,7 +34,9 @@ import { mxsWorkspaceSymbolProvider } from './WorkspaceSymbolProvider.js';
 
 export class ExtensionHost
 {
+    private static readonly fileInLiteralPattern = /\bfilein\s*\(?\s*@?"([^"]+)"\s*\)?/ig;
     private changeTimers = new Map<string, ReturnType<typeof setTimeout>>();
+    private runtimeDependencies = new Map<string, Set<string>>();
     public static readonly langSelector = { language: 'maxscript', scheme: 'file' }
     private readonly backend: mxsBackend
     //----------------------------------------------------------------
@@ -51,6 +55,116 @@ export class ExtensionHost
     public updateProviders(uri: string)
     {
         this.workspaceSymbolProvider.updateWorkspaceSymbols(uri)
+    }
+
+    private resolveWorkspaceFileInUri(sourceUri: string, fileInTarget: string): string | undefined
+    {
+        const target = fileInTarget.trim();
+        if (!target || target.startsWith('$')) {
+            return undefined;
+        }
+
+        const sourceFsPath = Uri.parse(sourceUri).fsPath;
+        const sourceDir = dirname(sourceFsPath);
+        const resolvedPath = isAbsolute(target)
+            ? target
+            : resolve(sourceDir, target);
+
+        if (!existsSync(resolvedPath)) {
+            return undefined;
+        }
+
+        const uri = Uri.file(resolvedPath);
+        if (!workspace.getWorkspaceFolder(uri)) {
+            return undefined;
+        }
+
+        const lower = resolvedPath.toLowerCase();
+        if (!lower.endsWith('.ms') && !lower.endsWith('.mcr')) {
+            return undefined;
+        }
+
+        return uri.toString();
+    }
+
+    private collectRuntimeDependencyUris(sourceUri: string, sourceText: string): Set<string>
+    {
+        const uris = new Set<string>();
+        ExtensionHost.fileInLiteralPattern.lastIndex = 0;
+
+        let match: RegExpExecArray | null;
+        while ((match = ExtensionHost.fileInLiteralPattern.exec(sourceText)) !== null) {
+            const rawPath = match[1];
+            const depUri = this.resolveWorkspaceFileInUri(sourceUri, rawPath);
+            if (depUri && depUri !== sourceUri) {
+                uris.add(depUri);
+            }
+        }
+
+        return uris;
+    }
+
+    private reconcileRuntimeDependencies(sourceUri: string, sourceText: string): void
+    {
+        const current = this.collectRuntimeDependencyUris(sourceUri, sourceText);
+        const previous = this.runtimeDependencies.get(sourceUri) ?? new Set<string>();
+
+        const sourceEntry = this.backend.contexts.get(sourceUri);
+        if (!sourceEntry) {
+            this.runtimeDependencies.set(sourceUri, current);
+            return;
+        }
+
+        for (const depUri of previous) {
+            if (current.has(depUri)) {
+                continue;
+            }
+            const depEntry = this.backend.contexts.get(depUri);
+            if (depEntry) {
+                sourceEntry.context.removeDependency(depEntry.context);
+            }
+        }
+
+        for (const depUri of current) {
+            if (previous.has(depUri)) {
+                continue;
+            }
+            const depContext = this.backend.getContext(depUri);
+            sourceEntry.context.addAsReferenceTo(depContext);
+        }
+
+        this.runtimeDependencies.set(sourceUri, current);
+        this.backend.setRuntimeDependencyTargets(sourceUri, current);
+    }
+
+    private removeRuntimeDependencyGraphFor(uri: string): void
+    {
+        const sourceEntry = this.backend.contexts.get(uri);
+        const outgoing = this.runtimeDependencies.get(uri);
+        if (sourceEntry && outgoing) {
+            for (const depUri of outgoing) {
+                const depEntry = this.backend.contexts.get(depUri);
+                if (depEntry) {
+                    sourceEntry.context.removeDependency(depEntry.context);
+                }
+            }
+        }
+        this.runtimeDependencies.delete(uri);
+        this.backend.removeRuntimeDependencyNode(uri);
+
+        for (const [sourceUri, deps] of this.runtimeDependencies.entries()) {
+            if (!deps.has(uri)) {
+                continue;
+            }
+
+            const source = this.backend.contexts.get(sourceUri);
+            const closed = this.backend.contexts.get(uri);
+            if (source && closed) {
+                source.context.removeDependency(closed.context);
+            }
+            deps.delete(uri);
+            this.backend.setRuntimeDependencyTargets(sourceUri, deps);
+        }
     }
 
     private scheduleProvidersRefresh(): void
@@ -101,10 +215,16 @@ export class ExtensionHost
         for (const document of workspace.textDocuments) {
             if (Utilities.isLanguageFile(document)) {
                 try {
-                    this.backend.getContext(document.uri.toString(), document.getText())
+                    const uri = document.uri.toString()
+                    const context = this.backend.getContext(uri, document.getText())
+                    this.reconcileRuntimeDependencies(uri, document.getText())
+                    const diagnostics = [
+                        ...context.getDiagnostics,
+                        ...this.backend.getWorkspaceGlobalAmbiguityDiagnostics(uri),
+                    ]
                     this.diagnosticCollection.set(
                         document.uri,
-                        diagnosticAdapter(this.backend.getContext(document.uri.toString())?.getDiagnostics)
+                        diagnosticAdapter(diagnostics)
                     )
                 } catch (error) {
                     const message = error instanceof Error ? error.message : String(error)
@@ -144,16 +264,23 @@ export class ExtensionHost
             workspace.onDidOpenTextDocument((document: TextDocument) =>
             {
                 if (Utilities.isLanguageFile(document)) {
-                    this.backend.getContext(document.uri.toString(), document.getText())
+                    const uri = document.uri.toString()
+                    const context = this.backend.getContext(uri, document.getText())
+                    this.reconcileRuntimeDependencies(document.uri.toString(), document.getText())
+                    const diagnostics = [
+                        ...context.getDiagnostics,
+                        ...this.backend.getWorkspaceGlobalAmbiguityDiagnostics(uri),
+                    ]
                     this.diagnosticCollection.set(
                         document.uri,
-                        diagnosticAdapter(this.backend.getContext(document.uri.toString())?.getDiagnostics)
+                        diagnosticAdapter(diagnostics)
                     )
                 }
             }),
             workspace.onDidCloseTextDocument((document: TextDocument) =>
             {
                 if (Utilities.isLanguageFile(document)) {
+                    this.removeRuntimeDependencyGraphFor(document.uri.toString())
                     this.backend.releaseContext(document.uri.toString())
                     // clear diagnostics for the document
                     this.diagnosticCollection.set(document.uri, [])
@@ -184,10 +311,15 @@ export class ExtensionHost
                         
                         // Reparse the document
                         this.backend.reparse(event.document.uri)
+                        this.reconcileRuntimeDependencies(event.document.uri.toString(), event.document.getText())
                         
                         // Get fresh diagnostics after reparse
                         const context = this.backend.getContext(event.document.uri.toString());
-                        const diagnostics = context?.getDiagnostics ?? [];
+                        const uri = event.document.uri.toString();
+                        const diagnostics = [
+                            ...(context?.getDiagnostics ?? []),
+                            ...this.backend.getWorkspaceGlobalAmbiguityDiagnostics(uri),
+                        ];
                         
                         this.diagnosticCollection.set(
                             event.document.uri,
@@ -326,6 +458,9 @@ export class ExtensionHost
                 this.workspaceSymbolProvider
             )
             // */
+            languages.registerWorkspaceSymbolProvider(
+                this.workspaceSymbolProvider
+            )
             //...
         )
     }

@@ -38,6 +38,7 @@ import {
     MemberExpression,
     Program,
     ScopeNode,
+    StringLiteral,
     StructDefinition,
     StructMemberField,
     VariableDeclaration,
@@ -95,9 +96,53 @@ export class SourceContext
     // Incremented after each successful parse to invalidate position-query caches.
     private parseGeneration: number = 0;
     private queryCacheGeneration: number = -1;
+    private queryCacheWorkspaceGlobalsVersion: number = -1;
     private declarationAtPositionCache: Map<string, VariableDeclaration | undefined> = new Map();
     private completionsAtPositionCache: Map<string, VariableDeclaration[] | undefined> = new Map();
     private memberCompletionsAtPositionCache: Map<string, { members: VariableDeclaration[] | undefined; fingerprint: string }> = new Map();
+    private workspaceGlobalResolver?: (name: string, requesterUri: string) => VariableDeclaration | undefined;
+    private workspaceGlobalVersionProvider?: () => number;
+    private workspaceDeclarationAstProvider?: (decl: VariableDeclaration) => Program | undefined;
+    private workspaceFileInAstProvider?: (sourceUri: string, fileInTarget: string) => Program | undefined;
+
+    private resolveDeclarationFromReference(reference: VariableReference, ast: Program): VariableDeclaration | undefined {
+        if (!reference.name) {
+            return reference.declaration?.referred ?? undefined;
+        }
+        return reference.declaration?.referred
+            ?? ASTQuery.findDeclarationByName(ast, reference.name)
+            ?? undefined;
+    }
+
+    private resolveFileInImportedAst(declaration: VariableDeclaration): Program | undefined {
+        const initializer = declaration.initializer;
+        if (!(initializer instanceof CallExpression)) {
+            return undefined;
+        }
+        if (!(initializer.callee instanceof VariableReference) || !initializer.callee.name) {
+            return undefined;
+        }
+        if (initializer.callee.name.toLowerCase() !== 'filein') {
+            return undefined;
+        }
+
+        const target = initializer.arguments[0];
+        if (!(target instanceof StringLiteral)) {
+            return undefined;
+        }
+
+        return this.workspaceFileInAstProvider?.(this.sourceUri, target.value);
+    }
+
+    private resolveFileInImportedMembers(declaration: VariableDeclaration): { ast: Program; members: VariableDeclaration[] } | undefined {
+        const importedAst = this.resolveFileInImportedAst(declaration);
+        if (!importedAst) {
+            return undefined;
+        }
+
+        const members = [...importedAst.declarations.values()];
+        return { ast: importedAst, members };
+    }
 
     private memberDeclarationsFingerprint(members: VariableDeclaration[]): string {
         // Stable content fingerprint to detect membership changes even when count is unchanged.
@@ -114,13 +159,30 @@ export class SourceContext
     }
 
     private ensureQueryCachesCurrent(): void {
-        if (this.queryCacheGeneration === this.parseGeneration) {
+        const workspaceGlobalsVersion = this.workspaceGlobalVersionProvider ? this.workspaceGlobalVersionProvider() : -1;
+        if (
+            this.queryCacheGeneration === this.parseGeneration
+            && this.queryCacheWorkspaceGlobalsVersion === workspaceGlobalsVersion
+        ) {
             return;
         }
         this.declarationAtPositionCache.clear();
         this.completionsAtPositionCache.clear();
         this.memberCompletionsAtPositionCache.clear();
         this.queryCacheGeneration = this.parseGeneration;
+        this.queryCacheWorkspaceGlobalsVersion = workspaceGlobalsVersion;
+    }
+
+    public configureWorkspaceGlobalLookup(
+        resolver: (name: string, requesterUri: string) => VariableDeclaration | undefined,
+        versionProvider: () => number,
+        astProvider?: (decl: VariableDeclaration) => Program | undefined,
+        fileInAstProvider?: (sourceUri: string, fileInTarget: string) => Program | undefined,
+    ): void {
+        this.workspaceGlobalResolver = resolver;
+        this.workspaceGlobalVersionProvider = versionProvider;
+        this.workspaceDeclarationAstProvider = astProvider;
+        this.workspaceFileInAstProvider = fileInAstProvider;
     }
 
     public constructor(uri: string, /*settings*/)
@@ -327,7 +389,28 @@ export class SourceContext
             return this.declarationAtPositionCache.get(cacheKey);
         }
 
-        const declaration = ASTQuery.findDeclarationAtPosition(ast, row, column);
+        let declaration = ASTQuery.findDeclarationAtPosition(ast, row, column);
+        if (!declaration) {
+            const member = ASTQuery.findMemberExpressionAtPosition(ast, row, column);
+            const objectRef = member?.object;
+            if (member?.property && objectRef instanceof VariableReference && objectRef.name) {
+                const objectDeclaration = this.resolveDeclarationFromReference(objectRef, ast)
+                    ?? this.workspaceGlobalResolver?.(objectRef.name, this.sourceUri);
+                if (objectDeclaration) {
+                    const objectAst = this.workspaceDeclarationAstProvider?.(objectDeclaration) ?? ast;
+                    const importedMembers = this.resolveFileInImportedMembers(objectDeclaration);
+                    const members = importedMembers?.members
+                        ?? ASTQuery.getMemberCompletions(importedMembers?.ast ?? objectAst, objectDeclaration);
+                    declaration = members.find(candidate => candidate.name === member.property);
+                }
+            }
+        }
+        if (!declaration && this.workspaceGlobalResolver) {
+            const ref = ASTQuery.findReferenceAtPosition(ast, row, column);
+            if (ref?.name) {
+                declaration = this.workspaceGlobalResolver(ref.name, this.sourceUri);
+            }
+        }
         this.declarationAtPositionCache.set(cacheKey, declaration);
         return declaration;
     }
@@ -425,10 +508,7 @@ export class SourceContext
         const currentLine = lines[row - 1];
         const beforeCursor = currentLine.substring(0, column);
         const cacheKey = `${row}:${column}:${beforeCursor}`;
-        if (this.memberCompletionsAtPositionCache.has(cacheKey)) {
-            const cached = this.memberCompletionsAtPositionCache.get(cacheKey);
-            return cached?.members ? { ast, members: cached.members } : undefined;
-        }
+        const existing = this.memberCompletionsAtPositionCache.get(cacheKey);
 
         // Look for member access pattern: something.identifier<cursor>
         // Match: any word character sequence, followed by dot, followed by identifier characters
@@ -441,24 +521,44 @@ export class SourceContext
         const objectName = memberAccessMatch[1];
         const memberPrefix = memberAccessMatch[2]; // partial member being typed
 
-        // Find the declaration for the object (left side of dot)
-        // Use a position that should be in the object identifier
+        // Resolve the object declaration:
+        // 1. Position-based (fastest, works for already-parsed lines).
+        // 2. Name-based fallback (handles stale-AST when cursor is on a newly-typed line
+        //    not yet present in the last parse snapshot).
+        // 3. Workspace global resolver (cross-file globals).
         const objectLine = row;
         const objectColumn = column - memberPrefix.length - 1 - objectName.length;
-        
-        const objectDeclaration = ASTQuery.findDeclarationAtPosition(ast, objectLine, objectColumn);
+        let objectDeclaration: VariableDeclaration | undefined =
+            ASTQuery.findDeclarationAtPosition(ast, objectLine, objectColumn)
+            ?? ASTQuery.findDeclarationByName(ast, objectName);
+
+        let resolvedAst: Program = ast;
+        let members: VariableDeclaration[] | undefined;
+
+        if (!objectDeclaration && this.workspaceGlobalResolver) {
+            objectDeclaration = this.workspaceGlobalResolver(objectName, this.sourceUri);
+            if (objectDeclaration && this.workspaceDeclarationAstProvider) {
+                resolvedAst = this.workspaceDeclarationAstProvider(objectDeclaration) ?? ast;
+            }
+        }
+
         if (!objectDeclaration) {
             this.memberCompletionsAtPositionCache.set(cacheKey, { members: undefined, fingerprint: '' });
             return undefined;
         }
 
-        // Get member completions from the resolved struct/definition.
-        const members = ASTQuery.getMemberCompletions(ast, objectDeclaration);
+        const importedMembers = this.resolveFileInImportedMembers(objectDeclaration);
+        if (importedMembers) {
+            resolvedAst = importedMembers.ast;
+            members = importedMembers.members;
+        }
+
+        // Get member completions using the AST that owns the declaration (may be a different file).
+        members ??= ASTQuery.getMemberCompletions(resolvedAst, objectDeclaration);
         const fingerprint = this.memberDeclarationsFingerprint(members);
 
-        const existing = this.memberCompletionsAtPositionCache.get(cacheKey);
         if (existing && existing.fingerprint === fingerprint) {
-            return existing.members ? { ast, members: existing.members } : undefined;
+            return existing.members ? { ast: resolvedAst, members: existing.members } : undefined;
         }
 
         if (members.length === 0) {
@@ -467,7 +567,7 @@ export class SourceContext
         }
 
         this.memberCompletionsAtPositionCache.set(cacheKey, { members, fingerprint });
-        return { ast, members };
+        return { ast: resolvedAst, members };
     }
 
     //---------------------------------------------------------------

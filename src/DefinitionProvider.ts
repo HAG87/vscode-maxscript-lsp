@@ -65,19 +65,29 @@ export class mxsDefinitionProvider implements DefinitionProvider
                     position.line + 1,
                     position.character,
                 );
-                const ast = context?.getResolvedAST();
-                if (ast && declaration?.name) {
-                    const semanticNode = ASTQuery.findSemanticNodeForDeclaration(ast, declaration);
-                    const targetPosition = semanticNode.position ?? declaration.position;
-                    if (targetPosition) {
-                        // Navigate to the name token, not the entire declaration span
-                        const nameRange = this.astNameRange(document, targetPosition, declaration.name)
-                            ?? this.astPositionToRange(targetPosition);
-                        if (traceRouting) {
-                            console.log('[language-maxscript][DefinitionProvider] route=AST');
+                if (declaration?.name) {
+                    // Determine the file that actually owns this declaration.
+                    // Workspace globals live in a different file; local decls fall back to the current file.
+                    const declarationUri = this.backend.getDeclarationSourceUri(declaration) ?? context!.sourceUri;
+                    const isRemote = declarationUri !== context!.sourceUri;
+                    const targetContext = isRemote ? this.backend.getExistingContext(declarationUri) : context;
+                    const targetAst = targetContext?.getResolvedAST();
+                    if (targetAst) {
+                        const semanticNode = ASTQuery.findSemanticNodeForDeclaration(targetAst, declaration);
+                        const targetPosition = semanticNode.position ?? declaration.position;
+                        if (targetPosition) {
+                            // For cross-file declarations we cannot search the other file's TextDocument here,
+                            // so fall back to the raw position range; for same-file we can still pinpoint the name token.
+                            const nameRange = isRemote
+                                ? this.astPositionToRange(targetPosition)
+                                : (this.astNameRange(document, targetPosition, declaration.name)
+                                    ?? this.astPositionToRange(targetPosition));
+                            if (traceRouting) {
+                                console.log(`[language-maxscript][DefinitionProvider] route=${isRemote ? 'AST-xfile' : 'AST'}`);
+                            }
+                            resolve(new Location(Uri.parse(declarationUri), nameRange));
+                            return;
                         }
-                        resolve(new Location(Uri.parse(context.sourceUri), nameRange));
-                        return;
                     }
                 }
                 if (traceRouting) {

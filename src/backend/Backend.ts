@@ -1,10 +1,16 @@
+/*
+* Contact layer between providers and backend business logic
+*/
 import * as fs from 'fs';
-import { Uri } from 'vscode';
+import { dirname, isAbsolute, resolve as pathResolve } from 'path';
+import { Uri, workspace } from 'vscode';
 
 import {
-  ICodeFormatSettings, ILexicalRange, IMinifySettings, IPrettifySettings,
-  ISemanticToken, ISymbolInfo,
+    DiagnosticType, ICodeFormatSettings, IDiagnosticEntry, ILexicalRange, IMinifySettings, IPrettifySettings,
+    ISemanticToken, ISymbolInfo,
 } from '../types.js';
+import { ASTQuery } from './ast/ASTQuery.js';
+import { Program, ScopeNode, VariableDeclaration, VariableReference } from './ast/ASTNodes.js';
 import { IformatterResult } from './formatting/simpleCodeFormatter.js';
 import { SourceContext } from './SourceContext.js';
 
@@ -123,6 +129,12 @@ export class mxsBackend
 {
     // Hold the contexts for all loaded documents
     private sourceContexts: Map<string, IContextEntry> = new Map<string, IContextEntry>();
+    private workspaceGlobalsByUri: Map<string, VariableDeclaration[]> = new Map<string, VariableDeclaration[]>();
+    private workspaceGlobalsByName: Map<string, VariableDeclaration[]> = new Map<string, VariableDeclaration[]>();
+    private workspaceGlobalDeclSource: Map<VariableDeclaration, string> = new Map<VariableDeclaration, string>();
+    private dirtyWorkspaceGlobalUris: Set<string> = new Set<string>();
+    private runtimeDependencyGraph: Map<string, Set<string>> = new Map<string, Set<string>>();
+    private workspaceGlobalsVersion: number = 0;
 
     public constructor() { }
 
@@ -146,8 +158,423 @@ export class mxsBackend
         return this.sourceContexts;
     }
 
+    private normalizeContextUri(uri: string): string
+    {
+        try {
+            const parsed = Uri.parse(uri);
+            if (parsed.scheme === 'file') {
+                return Uri.file(parsed.fsPath).toString();
+            }
+            return uri;
+        } catch {
+            return uri;
+        }
+    }
+
+    private normalizeGlobalName(name: string): string
+    {
+        return name.toLowerCase();
+    }
+
+    private collectGlobalDeclarations(ast: Program): VariableDeclaration[]
+    {
+        const globals: VariableDeclaration[] = [];
+        const seen = new Set<VariableDeclaration>();
+
+        for (const node of ast.walk()) {
+            if (!(node instanceof ScopeNode)) {
+                continue;
+            }
+            for (const decl of node.declarations.values()) {
+                if (!decl.name) {
+                    continue;
+                }
+                if (decl.scope !== 'global' && decl.scope !== 'persistent') {
+                    continue;
+                }
+                if (seen.has(decl)) {
+                    continue;
+                }
+                seen.add(decl);
+                globals.push(decl);
+            }
+        }
+
+        return globals;
+    }
+
+    private removeWorkspaceGlobalsForUri(uri: string): void
+    {
+        const previous = this.workspaceGlobalsByUri.get(uri);
+        if (!previous) {
+            return;
+        }
+
+        for (const decl of previous) {
+            if (!decl.name) {
+                continue;
+            }
+            const key = this.normalizeGlobalName(decl.name);
+            const bucket = this.workspaceGlobalsByName.get(key);
+            if (!bucket) {
+                continue;
+            }
+
+            const filtered = bucket.filter(candidate => candidate !== decl);
+            if (filtered.length === 0) {
+                this.workspaceGlobalsByName.delete(key);
+            } else {
+                this.workspaceGlobalsByName.set(key, filtered);
+            }
+
+            this.workspaceGlobalDeclSource.delete(decl);
+        }
+
+        this.workspaceGlobalsByUri.delete(uri);
+    }
+
+    private indexWorkspaceGlobalsForUri(uri: string): void
+    {
+        const entry = this.sourceContexts.get(uri);
+        if (!entry) {
+            this.removeWorkspaceGlobalsForUri(uri);
+            return;
+        }
+
+        const ast = entry.context.getResolvedAST();
+        this.removeWorkspaceGlobalsForUri(uri);
+        if (!ast) {
+            return;
+        }
+
+        const globals = this.collectGlobalDeclarations(ast);
+        this.workspaceGlobalsByUri.set(uri, globals);
+
+        for (const decl of globals) {
+            if (!decl.name) {
+                continue;
+            }
+            const key = this.normalizeGlobalName(decl.name);
+            const bucket = this.workspaceGlobalsByName.get(key) ?? [];
+            bucket.push(decl);
+            this.workspaceGlobalsByName.set(key, bucket);
+            this.workspaceGlobalDeclSource.set(decl, uri);
+        }
+    }
+
+    public setRuntimeDependencyTargets(sourceUri: string, dependencies: Iterable<string>): void
+    {
+        this.runtimeDependencyGraph.set(sourceUri, new Set(dependencies));
+    }
+
+    public removeRuntimeDependencyNode(uri: string): void
+    {
+        this.runtimeDependencyGraph.delete(uri);
+        for (const deps of this.runtimeDependencyGraph.values()) {
+            deps.delete(uri);
+        }
+    }
+
+    private shortestDependencyDistance(fromUri: string, targetUri: string): number | undefined
+    {
+        if (fromUri === targetUri) {
+            return 0;
+        }
+
+        const visited = new Set<string>([fromUri]);
+        const queue: Array<{ uri: string; distance: number }> = [{ uri: fromUri, distance: 0 }];
+
+        while (queue.length > 0) {
+            const current = queue.shift();
+            if (!current) {
+                continue;
+            }
+
+            const edges = this.runtimeDependencyGraph.get(current.uri);
+            if (!edges) {
+                continue;
+            }
+
+            for (const next of edges) {
+                if (visited.has(next)) {
+                    continue;
+                }
+                const nextDistance = current.distance + 1;
+                if (next === targetUri) {
+                    return nextDistance;
+                }
+
+                visited.add(next);
+                queue.push({ uri: next, distance: nextDistance });
+            }
+        }
+
+        return undefined;
+    }
+
+    private markWorkspaceGlobalsDirty(uri: string): void
+    {
+        this.dirtyWorkspaceGlobalUris.add(uri);
+        this.workspaceGlobalsVersion++;
+    }
+
+    private ensureWorkspaceGlobalsIndexCurrent(): void
+    {
+        if (this.dirtyWorkspaceGlobalUris.size === 0) {
+            return;
+        }
+
+        const dirtyUris = Array.from(this.dirtyWorkspaceGlobalUris);
+        this.dirtyWorkspaceGlobalUris.clear();
+        for (const uri of dirtyUris) {
+            this.indexWorkspaceGlobalsForUri(uri);
+        }
+    }
+
+    private rankGlobalCandidates(
+        candidates: VariableDeclaration[],
+        requesterUri: string,
+    ): Array<{ candidate: VariableDeclaration; distance: number; sameFile: boolean; index: number }>
+    {
+        return candidates
+            .map((candidate, index) => {
+                const sourceUri = this.workspaceGlobalDeclSource.get(candidate);
+                const distance = sourceUri ? this.shortestDependencyDistance(requesterUri, sourceUri) : undefined;
+                const sameFile = sourceUri === requesterUri;
+                return {
+                    candidate,
+                    index,
+                    distance: distance ?? Number.MAX_SAFE_INTEGER,
+                    sameFile,
+                };
+            })
+            .sort((a, b) => {
+                if (a.sameFile !== b.sameFile) {
+                    return a.sameFile ? -1 : 1;
+                }
+                if (a.distance !== b.distance) {
+                    return a.distance - b.distance;
+                }
+                return a.index - b.index;
+            });
+    }
+
+    public resolveWorkspaceGlobalDeclaration(
+        name: string,
+        requesterUri: string,
+    ): VariableDeclaration | undefined
+    {
+        this.ensureWorkspaceGlobalsIndexCurrent();
+
+        const key = this.normalizeGlobalName(name);
+        const candidates = this.workspaceGlobalsByName.get(key);
+        if (!candidates || candidates.length === 0) {
+            return undefined;
+        }
+
+        if (candidates.length === 1) {
+            return candidates[0];
+        }
+
+        const ranked = this.rankGlobalCandidates(candidates, requesterUri);
+
+        return ranked[0]?.candidate;
+    }
+
+    public getWorkspaceGlobalAmbiguityDiagnostics(requesterUri: string): IDiagnosticEntry[]
+    {
+        this.ensureWorkspaceGlobalsIndexCurrent();
+
+        const entry = this.sourceContexts.get(requesterUri);
+        const ast = entry?.context.getResolvedAST();
+        if (!ast) {
+            return [];
+        }
+
+        const diagnostics: IDiagnosticEntry[] = [];
+        const emittedKeys = new Set<string>();
+
+        for (const node of ASTQuery.walkAllNodes(ast)) {
+            if (!(node instanceof VariableReference)) {
+                continue;
+            }
+
+            const name = node.name;
+            if (!name) {
+                continue;
+            }
+
+            const candidates = this.workspaceGlobalsByName.get(this.normalizeGlobalName(name));
+            if (!candidates || candidates.length < 2) {
+                continue;
+            }
+
+            const ranked = this.rankGlobalCandidates(candidates, requesterUri);
+            const best = ranked[0];
+            const second = ranked[1];
+            if (!best || !second) {
+                continue;
+            }
+
+            // Only warn when ranking cannot distinguish the top candidates.
+            if (best.sameFile !== second.sameFile || best.distance !== second.distance) {
+                continue;
+            }
+
+            const pos = node.position;
+            if (!pos) {
+                continue;
+            }
+
+            const key = `${name}:${pos.start.line}:${pos.start.column}`;
+            if (emittedKeys.has(key)) {
+                continue;
+            }
+            emittedKeys.add(key);
+
+            diagnostics.push({
+                type: DiagnosticType.Warning,
+                message: `Ambiguous workspace global '${name}': multiple equally-ranked declarations found.`,
+                range: {
+                    start: { row: pos.start.line, column: pos.start.column },
+                    end: { row: pos.end.line, column: pos.end.column },
+                },
+            });
+        }
+
+        return diagnostics;
+    }
+
+    public getWorkspaceGlobalsVersion(): number
+    {
+        return this.workspaceGlobalsVersion;
+    }
+
+    /** Returns the URI of the workspace file that owns the given global declaration, or undefined if not tracked. */
+    public getDeclarationSourceUri(declaration: VariableDeclaration): string | undefined
+    {
+        return this.workspaceGlobalDeclSource.get(declaration);
+    }
+
+    /** Returns the SourceContext for a URI if it is already loaded, without creating a new one. */
+    public getExistingContext(uri: string): SourceContext | undefined
+    {
+        return this.sourceContexts.get(uri)?.context;
+    }
+
+    private getLoadedContextUriByFsPath(fsPath: string): string | undefined
+    {
+        const isWindows = process.platform === 'win32';
+        const expected = isWindows ? fsPath.toLowerCase() : fsPath;
+
+        for (const key of this.sourceContexts.keys()) {
+            let keyPath: string;
+            try {
+                keyPath = Uri.parse(key).fsPath;
+            } catch {
+                continue;
+            }
+
+            const normalized = isWindows ? keyPath.toLowerCase() : keyPath;
+            if (normalized === expected) {
+                return key;
+            }
+        }
+
+        return undefined;
+    }
+
+    private findLoadedContextKey(uri: string): string | undefined
+    {
+        const normalized = this.normalizeContextUri(uri);
+        if (this.sourceContexts.has(normalized)) {
+            return normalized;
+        }
+
+        try {
+            const fsPath = Uri.parse(normalized).fsPath;
+            return this.getLoadedContextUriByFsPath(fsPath);
+        } catch {
+            return undefined;
+        }
+    }
+
+    private getLiveDocumentTextByFsPath(fsPath: string): string | undefined
+    {
+        const isWindows = process.platform === 'win32';
+        const expected = isWindows ? fsPath.toLowerCase() : fsPath;
+
+        for (const document of workspace.textDocuments) {
+            const candidate = isWindows
+                ? document.uri.fsPath.toLowerCase()
+                : document.uri.fsPath;
+            if (candidate === expected) {
+                return document.getText();
+            }
+        }
+
+        return undefined;
+    }
+
+    public getResolvedFileInAst(sourceUri: string, fileInTarget: string): Program | undefined
+    {
+        const target = fileInTarget.trim();
+        if (!target || target.startsWith('$')) {
+            return undefined;
+        }
+
+        const sourceFsPath = Uri.parse(sourceUri).fsPath;
+        const sourceDir = dirname(sourceFsPath);
+        const resolvedPath = isAbsolute(target)
+            ? target
+            : pathResolve(sourceDir, target);
+
+        if (!fs.existsSync(resolvedPath)) {
+            return undefined;
+        }
+
+        const lower = resolvedPath.toLowerCase();
+        if (!lower.endsWith('.ms') && !lower.endsWith('.mcr')) {
+            return undefined;
+        }
+
+        const canonicalTargetUri = this.normalizeContextUri(Uri.file(resolvedPath).toString());
+        const targetUri = this.findLoadedContextKey(canonicalTargetUri) ?? canonicalTargetUri;
+        const targetContext = this.getContext(targetUri);
+
+        // Always refresh from the newest available source snapshot.
+        // Prefer live editor buffer when file is open; otherwise use on-disk text.
+        const latestSource = this.getLiveDocumentTextByFsPath(resolvedPath)
+            ?? this.getDocumentText(targetUri);
+        targetContext.setText(latestSource);
+
+        // Keep fileIn-driven member resolution in sync even before the normal delayed reparse runs.
+        targetContext.parse();
+        this.markWorkspaceGlobalsDirty(this.findLoadedContextKey(targetUri) ?? this.normalizeContextUri(targetUri));
+        return targetContext.getResolvedAST();
+    }
+
     //------------------------------------------------------------------
     // Context Lifecycle Management
+        /**
+         * Returns all workspace global declarations from files other than requesterUri.
+         * Used by the completion provider to offer cross-file globals in non-member context.
+         */
+        public getWorkspaceGlobalCompletions(requesterUri: string): VariableDeclaration[]
+        {
+            this.ensureWorkspaceGlobalsIndexCurrent();
+            const result: VariableDeclaration[] = [];
+            for (const [uri, decls] of this.workspaceGlobalsByUri) {
+                if (uri === requesterUri) {
+                    continue;
+                }
+                result.push(...decls);
+            }
+            return result;
+        }
+
+        //------------------------------------------------------------------
+        // Context Lifecycle Management (continued)
     //------------------------------------------------------------------
 
     /**
@@ -159,7 +586,8 @@ export class mxsBackend
      */
     public getContext(uri: string, source?: string): SourceContext
     {
-        return this.loadDocument(uri, source);
+        const targetUri = this.findLoadedContextKey(uri) ?? this.normalizeContextUri(uri);
+        return this.loadDocument(targetUri, source);
     }
     
     /**
@@ -168,7 +596,8 @@ export class mxsBackend
      */
     public preloadContext(uri: string, source?: string): SourceContext
     {
-        return this.preloadDocument(uri, source);;
+        const targetUri = this.findLoadedContextKey(uri) ?? this.normalizeContextUri(uri);
+        return this.preloadDocument(targetUri, source);;
     }
     
     /**
@@ -177,7 +606,8 @@ export class mxsBackend
      */
     public releaseContext(uri: string)
     {
-        this.unloadDocument(uri)
+        const key = this.findLoadedContextKey(uri) ?? this.normalizeContextUri(uri);
+        this.unloadDocument(key)
     }
     
     /**
@@ -187,9 +617,12 @@ export class mxsBackend
      */
     public reparse(uri: Uri): void
     {
-        const ctxEntry = this.sourceContexts.get(uri.toString());
+        const normalizedUri = this.normalizeContextUri(uri.toString());
+        const key = this.findLoadedContextKey(normalizedUri) ?? normalizedUri;
+        const ctxEntry = this.sourceContexts.get(key);
         if (ctxEntry) {
             ctxEntry.context.parse();
+            this.markWorkspaceGlobalsDirty(key);
         }
     }
 
@@ -212,9 +645,11 @@ export class mxsBackend
      */
     public setText(uri: string, source?: string): void
     {
-        const ctxEntry = this.sourceContexts.get(uri.toString());
+        const normalizedUri = this.normalizeContextUri(uri);
+        const key = this.findLoadedContextKey(normalizedUri) ?? normalizedUri;
+        const ctxEntry = this.sourceContexts.get(key);
         if (ctxEntry) {
-            ctxEntry.context.setText(source ?? this.getDocumentText(uri));
+            ctxEntry.context.setText(source ?? this.getDocumentText(key));
         }
     }
 
@@ -235,6 +670,15 @@ export class mxsBackend
         if (!ctxEntry) {
             // new context
             const ctx = new SourceContext(uri);
+            ctx.configureWorkspaceGlobalLookup(
+                (name, requesterUri) => this.resolveWorkspaceGlobalDeclaration(name, requesterUri),
+                () => this.getWorkspaceGlobalsVersion(),
+                (decl) => {
+                    const declUri = this.workspaceGlobalDeclSource.get(decl);
+                    return declUri ? this.sourceContexts.get(declUri)?.context.getResolvedAST() : undefined;
+                },
+                (sourceDocumentUri, fileInTarget) => this.getResolvedFileInAst(sourceDocumentUri, fileInTarget),
+            );
             // set ctx text            
             ctx.setText(source ?? this.getDocumentText(uri));
             ctxEntry = {
@@ -246,6 +690,7 @@ export class mxsBackend
             this.sourceContexts.set(uri, ctxEntry);            
             // do an initial parse run
             ctxEntry.context.parse();
+            this.markWorkspaceGlobalsDirty(uri);
         }
         /*
         if (!ctxEntry.context.compareText(source ?? this.getDocumentText(uri)))
@@ -264,6 +709,15 @@ export class mxsBackend
         if (!ctxEntry) {
             // new context
             const ctx = new SourceContext(uri);
+            ctx.configureWorkspaceGlobalLookup(
+                (name, requesterUri) => this.resolveWorkspaceGlobalDeclaration(name, requesterUri),
+                () => this.getWorkspaceGlobalsVersion(),
+                (decl) => {
+                    const declUri = this.workspaceGlobalDeclSource.get(decl);
+                    return declUri ? this.sourceContexts.get(declUri)?.context.getResolvedAST() : undefined;
+                },
+                (sourceDocumentUri, fileInTarget) => this.getResolvedFileInAst(sourceDocumentUri, fileInTarget),
+            );
             ctxEntry = {
                 context: ctx,
                 refCount: 0,
@@ -273,6 +727,7 @@ export class mxsBackend
             ctx.setText(source ?? this.getDocumentText(uri));
             // add to SourceContexts
             this.sourceContexts.set(uri, ctxEntry);            
+            this.markWorkspaceGlobalsDirty(uri);
         }
         // count this as a referency
         // ctxEntry!.refCount++;
@@ -296,6 +751,8 @@ export class mxsBackend
             ctxEntry.refCount--;
             if (ctxEntry.refCount === 0) {
                 this.sourceContexts.delete(uri);
+                this.removeWorkspaceGlobalsForUri(uri);
+                this.workspaceGlobalsVersion++;
                 // release also all dependencies
                 for (const dep of ctxEntry.dependencies) {
                     this.unloadDocument(dep, ctxEntry);

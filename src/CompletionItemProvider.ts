@@ -211,6 +211,20 @@ export class mxsCompletionProvider implements CompletionItemProvider
                 }
             }
 
+            // Add workspace global declarations from other files.
+            if (useAst) {
+                const workspaceGlobals = this.backend.getWorkspaceGlobalCompletions(document.uri.toString());
+                for (const decl of workspaceGlobals) {
+                    if (!decl.name || seenNames.has(decl.name.toLowerCase())) {
+                        continue;
+                    }
+                    seenNames.add(decl.name.toLowerCase());
+                    const item = new CompletionItem(decl.name, CompletionItemKind.Variable);
+                    item.sortText = `1_${decl.name}`;
+                    completionList.push(item);
+                }
+            }
+
             sourceContext?.getCodeCompletionCandidates(position.line + 1, position.character)
                 .then((candidates) =>
                 {
