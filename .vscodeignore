@@ -14,3 +14,8 @@ eslint.config.js
 *.md
 !README.md
 !CHANGELOG.md
+dev-notes/**
+parser/grammars/**
+**/*.bak
+tokenColorCustomizations-example.jsonc
+images/**
