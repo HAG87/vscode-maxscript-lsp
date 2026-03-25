@@ -5,9 +5,9 @@ import {
 } from 'vscode';
 
 import { mxsBackend } from './backend/Backend.js';
-import { semTokenModifiers, semTokenTypes } from './types.js';
+import { semTokenModifiers, semTokenTypes, type SemTokenType } from './types.js';
 
-export const mxsSemtoTokensLegend = new SemanticTokensLegend(semTokenTypes, semTokenModifiers);
+export const mxsSemtoTokensLegend = new SemanticTokensLegend([...semTokenTypes], [...semTokenModifiers]);
 
 /**
  * Always takes a full document as input.
@@ -45,6 +45,7 @@ export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider
         }
 
         const tokensBuilder = new SemanticTokensBuilder(mxsSemtoTokensLegend);
+
         for (const semToken of tokens) {
             if (token.isCancellationRequested) {
                 return undefined;
@@ -52,13 +53,15 @@ export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider
             // console.log(`[SemanticTokensProvider] Adding token: ${JSON.stringify(semToken)}`);
             tokensBuilder.push(
                 new Range(
-                    semToken.line - 1,
+                    semToken.startLine - 1,
                     semToken.startCharacter,
-                    semToken.line - 1,
+                    semToken.startLine - 1,
                     semToken.startCharacter + semToken.length,
+                    // (semToken.endLine || semToken.startLine) - 1,
+                    // semToken.endCharacter || semToken.startCharacter + semToken.length,
                 ),
-                semToken.tokenType as string,
-                semToken.tokenModifiers as string[],
+                semToken.tokenType || ('generic' as SemTokenType),
+                semToken.tokenModifiers,
             );
         }
 
@@ -112,7 +115,7 @@ export class mxsRangeSemanticTokensProvider implements DocumentRangeSemanticToke
                 return undefined;
             }
 
-            const tokenLine = semToken.line - 1;
+            const tokenLine = semToken.startLine - 1;
             const tokenStart = semToken.startCharacter;
             const tokenEnd = semToken.startCharacter + semToken.length;
 

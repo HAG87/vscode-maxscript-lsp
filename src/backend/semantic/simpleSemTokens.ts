@@ -4,11 +4,6 @@ import { mxsLexer } from '../../parser/mxsLexer.js';
 import { ISemanticToken } from '../../types.js';
 import { maxAPI, maxAPILookup } from '../schemas/mxsAPI.js';
 
-// Pre-allocated modifier arrays to avoid repeated allocations
-const MODIFIERS_DEFAULT_LIBRARY = ['defaultLibrary'];
-const MODIFIERS_DEFAULT_LIBRARY_STATIC = ['defaultLibrary', 'static'];
-const MODIFIERS_DEFAULT_LIBRARY_READONLY = ['defaultLibrary', 'readonly'];
-
 /**
  * Fallback class to provide semantic tokens when the parser is not available
  */
@@ -58,7 +53,7 @@ export class mxsSimpleSemTokensProvider
             const info = maxAPILookup.get(txt);
             if (info) {
                 this.tokenStack.push({
-                    line,
+                    startLine: line,
                     startCharacter: column,
                     length,
                     tokenType: info.tokenType as any,

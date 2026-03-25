@@ -1,16 +1,15 @@
 import { workspace } from 'vscode';
-import { ISemanticToken } from "../../types";
+import { ISemanticToken, type SemTokenModifier, type SemTokenType } from "../../types";
 import { CallExpression, DefinitionBlock, FunctionDefinition, MemberExpression, Program, StructDefinition, StructMemberField, VariableReference } from "../ast/ASTNodes";
 import { ASTQuery } from "../ast/ASTQuery";
-import { IIdentifierCandidate } from './semanticTokenListener';
 
     function astTokenLocationForName(
         nodePosition: { start: { line: number; column: number }; end: { line: number; column: number } },
         name: string,
-        tokenCandidates: Map<string, IIdentifierCandidate[]>
-    ): { line: number; startCharacter: number; length: number } | undefined {
-        const inSpan = (candidate: IIdentifierCandidate): boolean => {
-            const line = candidate.line;
+        tokenCandidates: Map<string, ISemanticToken[]>
+    ): ISemanticToken | undefined {
+        const inSpan = (candidate: ISemanticToken): boolean => {
+            const line = candidate.startLine;
             const column = candidate.startCharacter;
 
             if (line < nodePosition.start.line || line > nodePosition.end.line) {
@@ -26,30 +25,25 @@ import { IIdentifierCandidate } from './semanticTokenListener';
             return true;
         };
 
-        const targetName = name.toLowerCase();
-        const candidates = tokenCandidates.get(targetName) ?? [];
+        const candidates = tokenCandidates.get(name.toLowerCase()) ?? [];
 
         for (const candidate of candidates) {
             if (!inSpan(candidate)) {
                 continue;
             }
 
-            return {
-                line: candidate.line,
-                startCharacter: candidate.startCharacter,
-                length: candidate.length,
-            };
+            return candidate;
         }
 
         // Fallback keeps behavior predictable even if token lookup misses edge cases.
         return {
-            line: nodePosition.start.line,
+            startLine: nodePosition.start.line,
             startCharacter: Math.max(0, nodePosition.start.column),
             length: name.length,
         };
     }
     
-export default function appendAstSemanticTokens(ast: Program, semTokensCollection: ISemanticToken[], tokenCandidates: Map<string, IIdentifierCandidate[]>): void
+export default function appendAstSemanticTokens(ast: Program, semTokensCollection: ISemanticToken[], tokenCandidates: Map<string, ISemanticToken[]>): void
     {
         if (!ast) {
             return;
@@ -60,39 +54,38 @@ export default function appendAstSemanticTokens(ast: Program, semTokensCollectio
         const beforeCount = semTokensCollection.length;
 
         const existing = new Set<string>(
-            semTokensCollection.map((t) => `${t.line}:${t.startCharacter}:${t.length}:${String(t.tokenType)}`),
+            semTokensCollection.map((t) => `${t.startLine}:${t.startCharacter}:${t.length}:${String(t.tokenType)}`),
         );
 
         const pushNamedToken = (
             name: string | undefined,
             nodePosition: { start: { line: number; column: number }; end: { line: number; column: number } } | undefined,
-            tokenType: string,
-            tokenModifiers: string[] = [],
+            tokenType: SemTokenType,
+            tokenModifiers: SemTokenModifier[] = [],
         ) => {
             if (!name || !nodePosition) {
                 return;
             }
-            const loc = astTokenLocationForName(nodePosition, name, tokenCandidates);
-            if (!loc || loc.length <= 0) {
+            const locatedToken = astTokenLocationForName(nodePosition, name, tokenCandidates);
+            if (!locatedToken || locatedToken.length <= 0) {
                 return;
             }
 
-            const key = `${loc.line}:${loc.startCharacter}:${loc.length}:${tokenType}`;
+            const key = `${locatedToken.startLine}:${locatedToken.startCharacter}:${locatedToken.length}:${tokenType}`;
+
             if (existing.has(key)) {
                 return;
             }
             existing.add(key);
 
-            semTokensCollection.push({
-                line: loc.line,
-                startCharacter: loc.startCharacter,
-                length: loc.length,
-                tokenType,
-                tokenModifiers,
-            });
+            locatedToken.tokenType = tokenType;
+            locatedToken.tokenModifiers = tokenModifiers;
+
+            semTokensCollection.push(locatedToken);
         };
 
-        for (const node of ASTQuery.walkAllNodes(ast)) {
+        for (const node of ASTQuery.walkAllNodes(ast))
+        {
             if (node instanceof FunctionDefinition) {
                 const isStructMethod = !!(node.parent instanceof StructMemberField
                     || node.parent instanceof StructDefinition
@@ -162,7 +155,7 @@ export default function appendAstSemanticTokens(ast: Program, semTokensCollectio
         // SemanticTokensBuilder.push(range, ...) requires document order (line asc, then char asc).
         // Listener tokens and AST tokens are collected independently so the combined array
         // may be unsorted; fix that here before the provider reads it.
-        semTokensCollection.sort((a, b) => a.line !== b.line ? a.line - b.line : a.startCharacter - b.startCharacter);
+        semTokensCollection.sort((a, b) => a.startLine !== b.startLine ? a.startLine - b.startLine : a.startCharacter - b.startCharacter);
 
         if (traceRouting) {
             const afterCount = semTokensCollection.length;

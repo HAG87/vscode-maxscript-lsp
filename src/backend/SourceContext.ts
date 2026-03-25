@@ -11,9 +11,9 @@ import { workspace } from 'vscode';
 import { mxsLexer } from '../parser/mxsLexer.js';
 import { mxsParser, ProgramContext } from '../parser/mxsParser.js';
 import {
-  DiagnosticType, ICodeFormatSettings, IDefinition, IDiagnosticEntry,
+  DiagnosticType, ICodeFormatSettings, IDiagnosticEntry,
   ILexicalRange, IMinifySettings, IPrettifySettings, ISemanticToken,
-  ISymbolInfo, SymbolKind,
+  ISymbolInfo,
 } from '../types.js';
 import { TreeQuery } from './TreeQuery.js';
 import { IformatterResult, mxsSimpleFormatter } from './formatting/simpleCodeFormatter.js';
@@ -25,7 +25,7 @@ import {
   codeBlock, mxsParserVisitorFormatter,
 } from './formatting/mxsParserVisitorFormatter.js';
 import { mxsParserVisitorMinifier } from './formatting/mxsParserVisitorMinifier.js';
-import { IIdentifierCandidate, semanticTokenListener } from './semantic/semanticTokenListener.js';
+import { semanticTokenListener } from './semantic/semanticTokenListener.js';
 import { CodeCompletionProvider } from './symbols/codeCompletionProvider.js';
 import { symbolTableListener } from './symbolTableListener.js';
 import { ASTBuilder } from './ast/ASTBuilder.js';
@@ -77,7 +77,7 @@ export class SourceContext
     // semantic tokens
     public semanticTokens: ISemanticToken[] = [];
     // Lower-cased identifier text -> candidate token positions from parse-tree listener
-    private identifierCandidates: Map<string, IIdentifierCandidate[]> = new Map();
+    private identifierCandidates: Map<string, ISemanticToken[]> = new Map();
     // TODO: Contexts referencing us.
     private references: SourceContext[] = [];
     //-------------------------------------------------

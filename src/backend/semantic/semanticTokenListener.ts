@@ -7,12 +7,6 @@ import { mxsParserListener } from '../../parser/mxsParserListener.js';
 import { ISemanticToken } from '../../types.js';
 import { maxAPILookup } from '../schemas/mxsAPI.js';
 
-export interface IIdentifierCandidate {
-    line: number;
-    startCharacter: number;
-    length: number;
-}
-
 // Pre-allocated modifier arrays to avoid repeated allocations
 /*
 const MODIFIERS_DEFAULT_LIBRARY = ['defaultLibrary'];
@@ -26,18 +20,18 @@ export class semanticTokenListener extends mxsParserListener
     private collect: boolean = true
     public constructor(
         private tokenStack: ISemanticToken[],
-        private identifierCandidates?: Map<string, IIdentifierCandidate[]>,
+        private identifierCandidates?: Map<string, ISemanticToken[]>,
     ) {
         // clear the token list
         tokenStack.length = 0;
         super();
     }
     // filter out identifiers that are part of declarations, as opposed to references
-    public override enterFnArgs = (ctx: FnArgsContext): void => { this.collect = false; }
-    public override exitFnArgs = (ctx: FnArgsContext): void => { this.collect = true; }
+    public override enterFnArgs = (_ctx: FnArgsContext): void => { this.collect = false; }
+    public override exitFnArgs = (_ctx: FnArgsContext): void => { this.collect = true; }
 
-    public override enterFnParams = (ctx: FnParamsContext): void => { this.collect = false; }
-    public override exitFnParams = (ctx: FnParamsContext): void => { this.collect = true; }
+    public override enterFnParams = (_ctx: FnParamsContext): void => { this.collect = false; }
+    public override exitFnParams = (_ctx: FnParamsContext): void => { this.collect = true; }
 
     public override enterParamName = (_ctx: ParamNameContext): void => { this.collect = false; }
     public override exitParamName = (_ctx: ParamNameContext): void => { this.collect = true; }
@@ -51,18 +45,15 @@ export class semanticTokenListener extends mxsParserListener
         if (!start) { return; }
 
         const txt = ctx.getText().toLowerCase();
-        const line = start.line;
-        const column = start.column;
-        const length = txt.length;
 
         // Single lookup using the prebuilt map to minimize per-identifier work
         const info = maxAPILookup.get(txt);
         if (info) {
             this.tokenStack.push({
-                line,
-                startCharacter: column,
-                length,
-                tokenType: info.tokenType as any,
+                startLine: start.line,
+                startCharacter: start.column,
+                length: txt.length,
+                tokenType: info.tokenType,
                 tokenModifiers: info.tokenModifiers,
             });
             return;
@@ -71,10 +62,10 @@ export class semanticTokenListener extends mxsParserListener
         // Only non-API identifiers are collected as AST placement candidates.
         if (this.identifierCandidates) {
             const bucket = this.identifierCandidates.get(txt);
-            const candidate: IIdentifierCandidate = {
-                line,
-                startCharacter: column,
-                length,
+            const candidate: ISemanticToken = {
+                startLine: start.line,
+                startCharacter: start.column,
+                length: txt.length,
             };
             if (bucket) {
                 bucket.push(candidate);

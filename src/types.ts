@@ -96,11 +96,12 @@ export const semTokenTypes =
         'parameter',
         'property',
         'accessor',
+        'generic',
         // 'enumMember',
         // 'string',
         // 'number',
         // 'member',
-    ];
+    ] as const;
 
 export const semTokenModifiers =
     [
@@ -112,15 +113,20 @@ export const semTokenModifiers =
         // 'documentation',
         // 'abstract',
         // 'deprecated',
-    ];
+    ] as const;
+
+export type SemTokenType = typeof semTokenTypes[number];
+export type SemTokenModifier = typeof semTokenModifiers[number];
 
 export interface ISemanticToken
 {
-	line: number;
+	startLine: number;
 	startCharacter: number;
+    endLine?: number;
+    endCharacter?: number;
 	length: number;
-	tokenType: number | string;
-	tokenModifiers: number | string[];
+    tokenType?: SemTokenType;
+    tokenModifiers?: SemTokenModifier[];
 }
 
 /**
