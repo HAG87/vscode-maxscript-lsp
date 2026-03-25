@@ -11,15 +11,7 @@ import {
     StringLiteral,
     UndefinedLiteral,
 } from '@backend/ast/ASTNodes.js';
-
-export type SignatureCallStyle = 'paren' | 'space';
-
-export interface SignatureHelpModel {
-    signatureLabel: string;
-    parameters: string[];
-    activeParameter: number;
-    style: SignatureCallStyle;
-}
+import { SignatureCallStyle, SignatureHelpModel } from '@backend/types';
 
 export class SignatureHelpService {
     public getSignatureHelpModel(

@@ -57,31 +57,6 @@ export interface IMinifySettings
     removeUnnecessaryScopes: boolean,
 }
 
-export interface IMaxScriptSettings
-{
-    language?: {
-        SemanticTokens: boolean,
-        GoToSymbol: boolean,
-        GoToDefinition: boolean,
-        GoToReferences: boolean,
-        Diagnostics: boolean,
-    },
-    parser?: {
-        /** Debounce delay in milliseconds before reparsing after text changes (default: 300ms) */
-        reparseDelay: number,
-    },
-    completions: {
-        dataBaseCompletion: boolean,
-        codeCompletion: boolean
-    };
-    // parser: {
-    // 	multiThreading: boolean,
-    // }
-    formatter: ICodeFormatSettings;
-    prettifier: Partial<IPrettifySettings>;
-    minifier: Partial<IMinifySettings>;
-}
-
 export const semTokenTypes =
     [
 		'method',
@@ -217,4 +192,23 @@ export interface IDiagnosticEntry
 	type: DiagnosticType;
 	message: string;
 	range: ILexicalRange;
+}
+
+export type CompletionKindHint = 'function' | 'class' | 'module' | 'typeParameter' | 'field' | 'event' | 'variable';
+
+export interface CompletionSuggestion {
+    label: string;
+    kindHint?: CompletionKindHint;
+    symbolKind?: SymbolKind;
+    detail?: string;
+    sortText?: string;
+}
+
+export type SignatureCallStyle = 'paren' | 'space';
+
+export interface SignatureHelpModel {
+    signatureLabel: string;
+    parameters: string[];
+    activeParameter: number;
+    style: SignatureCallStyle;
 }

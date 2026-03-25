@@ -7,8 +7,9 @@
 */
 
 import {
-  ICodeFormatSettings, IMaxScriptSettings, IMinifySettings, IPrettifySettings,
+  ICodeFormatSettings, IMinifySettings, IPrettifySettings,
 } from '@backend/types.js';
+import {IMaxScriptSettings} from './types.js';
 
 export const minifySettings: ICodeFormatSettings & IMinifySettings & IPrettifySettings = {
     whitespaceChar: ' ',

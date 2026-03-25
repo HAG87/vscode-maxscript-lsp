@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
-import { SymbolKind } from '@backend/types.js';
+import { SymbolKind, CompletionKindHint } from '@backend/types.js';
+import { CompletionItemKind, DocumentHighlightKind } from 'vscode';
 
 const symbolCodeTypeMap = new Map<SymbolKind, vscode.SymbolKind>([
 	[SymbolKind.Accessor,    vscode.SymbolKind.Key],
@@ -11,7 +12,7 @@ const symbolCodeTypeMap = new Map<SymbolKind, vscode.SymbolKind>([
 	[SymbolKind.Call,        vscode.SymbolKind.Method],
 	[SymbolKind.Constant,    vscode.SymbolKind.Constant],
 	[SymbolKind.Control,     vscode.SymbolKind.Field],
-	[SymbolKind.RcMenuControl,     vscode.SymbolKind.Field],
+	[SymbolKind.RcMenuControl, vscode.SymbolKind.Field],
 	[SymbolKind.Declaration, vscode.SymbolKind.Variable],
 	[SymbolKind.Event,       vscode.SymbolKind.Event],
 	[SymbolKind.Field,       vscode.SymbolKind.Field],
@@ -41,7 +42,7 @@ const symbolDescriptionMap = new Map<SymbolKind, string>([
 	[SymbolKind.Accessor,    'Accessor'],
 	[SymbolKind.Argument,    'Function argument'],
 	[SymbolKind.Array,       'Array'],
-	[SymbolKind.RcMenuControl,     'Control'],
+	[SymbolKind.RcMenuControl, 'Control'],
 	[SymbolKind.Attributes,  'Attributes def'],
 	[SymbolKind.BitArray,    'BitArray'],
 	[SymbolKind.Boolean,     'Boolean'],
@@ -74,38 +75,73 @@ const symbolDescriptionMap = new Map<SymbolKind, string>([
 	[SymbolKind.Variable,    'Variable'],
 ]);
 
-const symbolCompletionTypeMap = new Map<SymbolKind, vscode.CompletionItemKind>([
-	[SymbolKind.Plugin,      vscode.CompletionItemKind.Class],
-	[SymbolKind.MacroScript, vscode.CompletionItemKind.Class],
-	[SymbolKind.Tool,        vscode.CompletionItemKind.Class],
-	[SymbolKind.Utility,     vscode.CompletionItemKind.Class],
-	[SymbolKind.Rollout,     vscode.CompletionItemKind.Class],
-	[SymbolKind.RcMenu,      vscode.CompletionItemKind.Class],
-	[SymbolKind.Parameters,  vscode.CompletionItemKind.Class],
-	[SymbolKind.Control,     vscode.CompletionItemKind.Field],
-	[SymbolKind.RcMenuControl,     vscode.CompletionItemKind.Field],
-	[SymbolKind.Attributes,  vscode.CompletionItemKind.Field],
-	[SymbolKind.Event,       vscode.CompletionItemKind.Event],
-	[SymbolKind.Struct,      vscode.CompletionItemKind.Struct],
-	[SymbolKind.Function,    vscode.CompletionItemKind.Function],
-	[SymbolKind.Declaration, vscode.CompletionItemKind.Variable],
+const symbolCompletionTypeMap = new Map<SymbolKind, CompletionItemKind>([
+	[SymbolKind.Plugin,      CompletionItemKind.Class],
+	[SymbolKind.MacroScript, CompletionItemKind.Class],
+	[SymbolKind.Tool,        CompletionItemKind.Class],
+	[SymbolKind.Utility,     CompletionItemKind.Class],
+	[SymbolKind.Rollout,     CompletionItemKind.Class],
+	[SymbolKind.RcMenu,      CompletionItemKind.Class],
+	[SymbolKind.Parameters,  CompletionItemKind.Class],
+	[SymbolKind.Control,     CompletionItemKind.Field],
+	[SymbolKind.RcMenuControl, CompletionItemKind.Field],
+	[SymbolKind.Attributes,  CompletionItemKind.Field],
+	[SymbolKind.Event,       CompletionItemKind.Event],
+	[SymbolKind.Struct,      CompletionItemKind.Struct],
+	[SymbolKind.Function,    CompletionItemKind.Function],
+	[SymbolKind.Declaration, CompletionItemKind.Variable],
 	//...
-	[SymbolKind.Call,        vscode.CompletionItemKind.Method],
-	[SymbolKind.Property,    vscode.CompletionItemKind.Reference],
-	[SymbolKind.Accessor,    vscode.CompletionItemKind.Reference],
-	[SymbolKind.Identifier,  vscode.CompletionItemKind.Variable],
-	[SymbolKind.Operator,    vscode.CompletionItemKind.Operator],
-	[SymbolKind.Keyword,     vscode.CompletionItemKind.Keyword],
-	[SymbolKind.Array,       vscode.CompletionItemKind.Value],
-	[SymbolKind.BitArray,    vscode.CompletionItemKind.Value],
-	[SymbolKind.Object,      vscode.CompletionItemKind.Value],
-	[SymbolKind.Constant,    vscode.CompletionItemKind.Constant],
-	[SymbolKind.String,      vscode.CompletionItemKind.Value],
-	[SymbolKind.Number,      vscode.CompletionItemKind.Value],
-	[SymbolKind.Boolean,     vscode.CompletionItemKind.Value],
-	[SymbolKind.Null,        vscode.CompletionItemKind.Value],
+	[SymbolKind.Call,        CompletionItemKind.Method],
+	[SymbolKind.Property,    CompletionItemKind.Reference],
+	[SymbolKind.Accessor,    CompletionItemKind.Reference],
+	[SymbolKind.Identifier,  CompletionItemKind.Variable],
+	[SymbolKind.Operator,    CompletionItemKind.Operator],
+	[SymbolKind.Keyword,     CompletionItemKind.Keyword],
+	[SymbolKind.Array,       CompletionItemKind.Value],
+	[SymbolKind.BitArray,    CompletionItemKind.Value],
+	[SymbolKind.Object,      CompletionItemKind.Value],
+	[SymbolKind.Constant,    CompletionItemKind.Constant],
+	[SymbolKind.String,      CompletionItemKind.Value],
+	[SymbolKind.Number,      CompletionItemKind.Value],
+	[SymbolKind.Boolean,     CompletionItemKind.Value],
+	[SymbolKind.Null,        CompletionItemKind.Value],
 
 ]);
+
+const completionHintKindMap = new Map<CompletionKindHint, CompletionItemKind>([
+	['function', CompletionItemKind.Function],
+	['class', CompletionItemKind.Class],
+	['module', CompletionItemKind.Module],
+	['typeParameter', CompletionItemKind.TypeParameter],
+	['field', CompletionItemKind.Field],
+	['event', CompletionItemKind.Event],
+	['variable', CompletionItemKind.Variable],	
+]);
+
+const symbolHighlightKindMap = new Map<SymbolKind, DocumentHighlightKind>([
+	[SymbolKind.Declaration, DocumentHighlightKind.Write],
+	[SymbolKind.Function,    DocumentHighlightKind.Write],
+	[SymbolKind.Struct,      DocumentHighlightKind.Write],
+	[SymbolKind.Plugin,      DocumentHighlightKind.Write],
+	[SymbolKind.MacroScript, DocumentHighlightKind.Write],
+	[SymbolKind.Tool,        DocumentHighlightKind.Write],
+	[SymbolKind.Utility,     DocumentHighlightKind.Write],
+	[SymbolKind.Rollout,     DocumentHighlightKind.Write],
+	[SymbolKind.RcMenu,      DocumentHighlightKind.Write],
+	[SymbolKind.Attributes,  DocumentHighlightKind.Write],
+	[SymbolKind.Event,       DocumentHighlightKind.Write],
+	[SymbolKind.Call,        DocumentHighlightKind.Read],
+	[SymbolKind.Identifier,  DocumentHighlightKind.Read],
+	// everything else is Text	
+]);
+
+/**
+ * Maps a symbol kind to the most appropriate DocumentHighlightKind.
+ * Definitions/declarations are marked as Write, call-sites as Read, everything else as Text.
+ */
+export const translateHighlightKind = (kind: SymbolKind): vscode.DocumentHighlightKind => {
+	return symbolHighlightKindMap.get(kind) || vscode.DocumentHighlightKind.Text;
+}
 /**
  * Converts the native symbol kind to a vscode symbol kind.
  *
@@ -125,6 +161,10 @@ export const translateSymbolKind = (kind: SymbolKind): vscode.SymbolKind => {
  */
 export const translateCompletionKind = (kind: SymbolKind): vscode.CompletionItemKind => {
     return symbolCompletionTypeMap.get(kind) || vscode.CompletionItemKind.Text;
+};
+
+export const translateCompletionKindFromHint = (kindHint: CompletionKindHint | undefined): vscode.CompletionItemKind => {
+	return completionHintKindMap.get(kindHint || 'variable') || vscode.CompletionItemKind.Text;
 };
 /**
  * Provides a textual expression for a native symbol kind.

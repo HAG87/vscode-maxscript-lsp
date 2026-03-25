@@ -13,7 +13,7 @@ import {
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
-import { SignatureHelpModel } from '@backend/signature/SignatureHelpService.js';
+import { SignatureHelpModel } from '@backend/types.js';
 
 export class mxsSignatureHelpProvider implements SignatureHelpProvider {
     public constructor(private backend: mxsBackend) { }

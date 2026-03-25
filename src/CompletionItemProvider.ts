@@ -5,7 +5,6 @@ import {
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
-import { CompletionKindHint } from '@backend/completion/CompletionService.js';
 import {
   maxCompletions, mxsLanguageCompletions,
 } from '@backend/schemas/mxsCompletions-base.js';
@@ -16,34 +15,15 @@ import {
 import { mxStructsMembers } from '@backend/schemas/mxsCompletions-structs.js';
 import {
   symbolDescriptionFromEnum, translateCompletionKind,
+  translateCompletionKindFromHint,
 } from './SymbolTranslator.js';
-import { IMaxScriptSettings } from '@backend/types.js';
+import { IMaxScriptSettings } from './types.js';
 
 export class mxsCompletionProvider implements CompletionItemProvider
 {
     private wordPattern: RegExp = /\b(\p{L}[\p{L}0-9]*)\b(?:[ \t\r\n]*[.]?)$/u;
 
     public constructor(private backend: mxsBackend, private options: IMaxScriptSettings) { }
-
-    private completionKindForHint(kindHint: CompletionKindHint | undefined): CompletionItemKind {
-        switch (kindHint) {
-            case 'function':
-                return CompletionItemKind.Function;
-            case 'class':
-                return CompletionItemKind.Class;
-            case 'module':
-                return CompletionItemKind.Module;
-            case 'typeParameter':
-                return CompletionItemKind.TypeParameter;
-            case 'field':
-                return CompletionItemKind.Field;
-            case 'event':
-                return CompletionItemKind.Event;
-            case 'variable':
-            default:
-                return CompletionItemKind.Variable;
-        }
-    }
 
     /**
      * Returns API members for a named object if it is a known API class/struct/interface.
@@ -146,7 +126,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
                         for (const suggestion of suggestions) {
                             const item = new CompletionItem(
                                 suggestion.label,
-                                this.completionKindForHint(suggestion.kindHint),
+                                translateCompletionKindFromHint(suggestion.kindHint),
                             );
                             item.sortText = suggestion.sortText;
                             items.push(item);
@@ -187,7 +167,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
                             suggestion.label,
                             suggestion.symbolKind !== undefined
                                 ? translateCompletionKind(suggestion.symbolKind)
-                                : this.completionKindForHint(suggestion.kindHint),
+                                : translateCompletionKindFromHint(suggestion.kindHint),
                         );
                         item.sortText = suggestion.sortText;
                         if (suggestion.symbolKind !== undefined) {

@@ -5,35 +5,8 @@ import {
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
-import { SymbolKind } from '@backend/types.js';
 import { Utilities } from './utils.js';
-
-/**
- * Maps a symbol kind to the most appropriate DocumentHighlightKind.
- * Definitions/declarations are marked as Write, call-sites as Read, everything else as Text.
- */
-function highlightKindFromSymbolKind(kind: SymbolKind): DocumentHighlightKind
-{
-    switch (kind) {
-        case SymbolKind.Declaration:
-        case SymbolKind.Function:
-        case SymbolKind.Struct:
-        case SymbolKind.Plugin:
-        case SymbolKind.MacroScript:
-        case SymbolKind.Tool:
-        case SymbolKind.Utility:
-        case SymbolKind.Rollout:
-        case SymbolKind.RcMenu:
-        case SymbolKind.Attributes:
-        case SymbolKind.Event:
-            return DocumentHighlightKind.Write;
-        case SymbolKind.Call:
-        case SymbolKind.Identifier:
-            return DocumentHighlightKind.Read;
-        default:
-            return DocumentHighlightKind.Text;
-    }
-}
+import { translateHighlightKind } from './SymbolTranslator.js';
 
 export class mxsDocumentHighlightProvider implements DocumentHighlightProvider
 {
@@ -100,7 +73,7 @@ export class mxsDocumentHighlightProvider implements DocumentHighlightProvider
                             continue;
                         }
                         seen.add(key);
-                        result.push(new DocumentHighlight(range, highlightKindFromSymbolKind(occurrence.kind)));
+                        result.push(new DocumentHighlight(range, translateHighlightKind(occurrence.kind)));
                     }
 
                     if (result.length > 0) {

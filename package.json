@@ -248,12 +248,12 @@
           "maxScript.providers.ast.definitionProvider": {
             "type": "boolean",
             "default": true,
-            "description": "Use AST-based go-to-definition provider before legacy fallback."
+            "description": "Use AST-based go-to-definition provider."
           },
           "maxScript.providers.ast.referenceProvider": {
             "type": "boolean",
             "default": true,
-            "description": "Use AST-based find-references provider before legacy fallback."
+            "description": "Use AST-based find-references provider."
           },
           "maxScript.providers.ast.hoverProvider": {
             "type": "boolean",

@@ -1,5 +1,5 @@
 import type { IAstContext } from '@backend/IAstContext.js';
-import { SymbolKind } from '@backend/types.js';
+import { CompletionSuggestion, CompletionKindHint } from '@backend/types.js';
 import { ASTQuery } from '@backend/ast/ASTQuery.js';
 import {
     DefinitionBlock,
@@ -15,15 +15,7 @@ import {
 } from '@backend/ast/ASTNodes.js';
 import { Node } from '@strumenta/tylasu';
 
-export type CompletionKindHint = 'function' | 'class' | 'module' | 'typeParameter' | 'field' | 'event' | 'variable';
 
-export interface CompletionSuggestion {
-    label: string;
-    kindHint?: CompletionKindHint;
-    symbolKind?: SymbolKind;
-    detail?: string;
-    sortText?: string;
-}
 
 export class CompletionService {
     public constructor() { }

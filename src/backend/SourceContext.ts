@@ -12,7 +12,7 @@ import { mxsParser, ProgramContext } from '../parser/mxsParser.js';
 import {
   DiagnosticType, ICodeFormatSettings, IDiagnosticEntry,
   ILexicalRange, IMinifySettings, IPrettifySettings, ISemanticToken,
-  ISymbolInfo,
+  ISymbolInfo, SignatureHelpModel, CompletionSuggestion
 } from './types.js';
 import { TreeQuery } from './TreeQuery.js';
 import { IformatterResult, mxsSimpleFormatter } from './formatting/simpleCodeFormatter.js';
@@ -38,9 +38,9 @@ import { ASTQuery } from './ast/ASTQuery.js';
 import appendAstSemanticTokens from './semantic/astSemanticTokens.js';
 import { IAstContext } from './IAstContext.js';
 import { AstQueryService } from './query/AstQueryService.js';
-import { SignatureHelpModel, SignatureHelpService } from './signature/SignatureHelpService.js';
+import { SignatureHelpService } from './signature/SignatureHelpService.js';
 import { RenameEditModel, RenamePrepareModel, RenameService } from './rename/RenameService.js';
-import { CompletionService, CompletionSuggestion } from './completion/CompletionService.js';
+import { CompletionService } from './completion/CompletionService.js';
 import {
     DefinitionTargetModel,
     NavigationHighlightModel,
