@@ -762,152 +762,9 @@ export class mxsBackend
     }
 
     //------------------------------------------------------------------
-    // Wrapper Methods (Consider Deprecating)
-    //------------------------------------------------------------------
-    // These methods forward calls to SourceContext instances.
-    // REFACTORING NOTE: Consider replacing these with direct context access:
-    //   Instead of: backend.symbolInfoAtPosition(uri, line, char)
-    //   Use: backend.contexts.get(uri)?.context.symbolAtPosition(line, char)
-    //
-    // Keeping these temporarily for backward compatibility, but they add
-    // unnecessary indirection. Future versions should use direct access.
+    // TODO: references
     //------------------------------------------------------------------
     
-    // Symbol Information
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.symbolAtPosition(line, character)
-     */
-    public symbolInfoAtPosition(
-        uri: string,
-        line: number,
-        character: number): ISymbolInfo | undefined
-    {
-        return this.getContext(uri).symbolAtPosition(line, character);
-    }
-
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.symbolDefinition(line, character)
-     */
-    public symbolInfoDefinition(
-        uri: string,
-        line: number,
-        character: number): ISymbolInfo | undefined
-    {
-        return this.getContext(uri).symbolDefinition(line, character);
-    }
-
-    /**
-     * Returns a list of top level symbols from a file (and optionally its dependencies).
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.listTopLevelSymbols(!fullList)
-     *
-     * @param fileName The grammar file name.
-     * @param full If true, includes symbols from all dependencies as well.
-     * @returns A list of symbol info entries.
-     */
-    public listTopLevelSymbols(uri: string, fullList: boolean): ISymbolInfo[]
-    {
-        return this.getContext(uri).listTopLevelSymbols(!fullList);
-    }
-
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.symbolTable.getSymbolOccurrences(symbolName, false)
-     */
-    public getSymbolOccurrences(uri: string, symbolName: string): ISymbolInfo[]
-    {
-        const result = this.getContext(uri).symbolTable.getSymbolOccurrences(symbolName, false);
-        // Sort result by kind. This way rule definitions appear before rule references and are re-parsed first.
-        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => lhs.kind - rhs.kind);
-    }
-
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.symbolTable.getScopedSymbolOccurrences(symbol)
-     */
-    public symbolInfoAtPositionCtxOccurrences(
-        uri: string,
-        line: number,
-        character: number): ISymbolInfo[] | undefined
-    {
-        const context = this.getContext(uri);
-        const symbol = context.symbolTable.getSymbolAtPosition(line, character);
-
-        if (!symbol) { return undefined; }
-
-        const result = context.symbolTable.getScopedSymbolOccurrences(symbol)
-
-        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => lhs.kind - rhs.kind);
-    }
-
-    // Code Completion
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.getCodeCompletionCandidates(...)
-     */
-    public async getCodeCompletionCandidates(
-        uri: string,
-        line: number,
-        character: number): Promise<ISymbolInfo[]>
-    {
-        return this.getContext(uri).getCodeCompletionCandidates(line, character);
-    }
-
-    // Diagnostics
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.getDiagnostics
-     */
-    public getDiagnostics(uri: string)
-    {
-        return this.getContext(uri).getDiagnostics;
-    }
-
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.hasErrors
-     */
-    public hasErrors(uri: string): boolean
-    {
-        return this.getContext(uri).hasErrors;
-    }
-
-    // Semantic Tokens
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.getSemanticTokens
-     */
-    public getDocumentSemanticTokens(uri: string): ISemanticToken[]
-    {
-        return this.getContext(uri).getSemanticTokens;
-    }
-
-    // Formatting
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.formatCode(range, options)
-     */
-    public formatCode(uri: string, range: ILexicalRange, options?: ICodeFormatSettings): IformatterResult
-    public formatCode(uri: string, range: { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult
-    public formatCode(uri: string, range: ILexicalRange | { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult
-    {
-        if ('stop' in range) {
-            return this.getContext(uri).formatCode(range, options);
-        }
-        return this.getContext(uri).formatCode(range, options);
-    }
-
-    // Minify
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.minifyCode(options, enhanced)
-     */
-    public minifyCode(uri: string, options: ICodeFormatSettings & IMinifySettings & IPrettifySettings, enhanced: boolean = false): string | null
-    {
-        return this.getContext(uri).minifyCode(options, enhanced)
-    }
-
-    // Prettify
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.prettifyCode(options)
-     */
-    public prettifyCode(uri: string, options: ICodeFormatSettings & IMinifySettings & IPrettifySettings): string | null
-    {
-        return this.getContext(uri).prettifyCode(options)
-    }
-
-    // TODO: references
     /**
      * Count how many times a symbol has been referenced. The given file must contain the definition of this symbol.
      * @deprecated Consider using: backend.contexts.get(uri)?.context.getReferenceCount(symbol)
@@ -941,7 +798,9 @@ export class mxsBackend
     private pushDependencyFiles(entry: IContextEntry, contexts: Set<SourceContext>) {
         // Using a set for the context list here, to automatically exclude duplicates.
         for (const dep of entry.dependencies) {
+            
             const depEntry = this.sourceContexts.get(dep);
+
             if (depEntry && !contexts.has(depEntry.context)) {
                 contexts.add(depEntry.context);
                 this.pushDependencyFiles(depEntry, contexts);

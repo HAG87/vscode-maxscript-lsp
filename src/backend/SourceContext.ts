@@ -97,9 +97,11 @@ export class SourceContext
     private parseGeneration: number = 0;
     private queryCacheGeneration: number = -1;
     private queryCacheWorkspaceGlobalsVersion: number = -1;
+
     private declarationAtPositionCache: Map<string, VariableDeclaration | undefined> = new Map();
     private completionsAtPositionCache: Map<string, VariableDeclaration[] | undefined> = new Map();
     private memberCompletionsAtPositionCache: Map<string, { members: VariableDeclaration[] | undefined; fingerprint: string }> = new Map();
+
     private workspaceGlobalResolver?: (name: string, requesterUri: string) => VariableDeclaration | undefined;
     private workspaceGlobalVersionProvider?: () => number;
     private workspaceDeclarationAstProvider?: (decl: VariableDeclaration) => Program | undefined;
@@ -185,18 +187,9 @@ export class SourceContext
         this.workspaceFileInAstProvider = fileInAstProvider;
     }
 
-    public constructor(uri: string, /*settings*/)
+    public constructor(uri: string)
     {
         this.sourceUri = uri;
-
-        // initialize symbol table
-        this.symbolTable = new ContextSymbolTable(
-            this.sourceUri,
-            { allowDuplicateSymbols: true },
-            this);
-
-        // initialize static global symbol table
-        //...
 
         // initialize lexer instance with empty string
         this.lexer = new mxsLexer(CharStream.fromString(''));
@@ -207,11 +200,20 @@ export class SourceContext
         // TODO: this.tokenStream = new multiChannelTokenStream(this.lexer);
         this.tokenStream = new CommonTokenStream(this.lexer);
 
-        // initialize parer instance
+        // initialize parser instance
         this.parser = new mxsParser(this.tokenStream);
         this.parser.buildParseTrees = true;
         this.parser.removeErrorListeners();
         this.parser.addErrorListener(this.errorListener);
+
+                // initialize symbol table
+        this.symbolTable = new ContextSymbolTable(
+            this.sourceUri,
+            { allowDuplicateSymbols: true },
+            this);
+
+        // initialize static global symbol table
+        //...
     }
 
     //----------------------------------------------------------------parser
@@ -222,11 +224,14 @@ export class SourceContext
         // Clear previous parse results
         this.tree = undefined;
         this.ast = undefined;
+
         this.semanticTokens.length = 0;
         this.diagnostics.length = 0;
+
         // Mark derived models as dirty instead of rebuilding immediately (lazy loading)
         this.symbolTableDirty = true;
         this.astModelDirty = true;
+
         // TODO: add Global symbols here
         //this.symbolTable.addDependencies(SourceContext.globalSymbols);
         
@@ -277,6 +282,7 @@ export class SourceContext
 
     /**
      * Ensure symbol table is populated. Called lazily before operations that need symbols.
+     * @deprecated This is part of the old symbol table pipeline and should be removed in favor of direct AST queries.
      * This defers expensive tree walking until actually needed.
      */
     private ensureSymbolTable(): void {
@@ -411,6 +417,7 @@ export class SourceContext
                 declaration = this.workspaceGlobalResolver(ref.name, this.sourceUri);
             }
         }
+
         this.declarationAtPositionCache.set(cacheKey, declaration);
         return declaration;
     }
@@ -743,23 +750,6 @@ export class SourceContext
         return result;
         // */
         // return await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
-    }
-
-    /**
-     * @deprecated
-     */
-    public getSymbolInfo(symbol: string | BaseSymbol): ISymbolInfo | undefined
-    {
-        this.ensureSymbolTable();
-        return this.symbolTable.getSymbolInfo(symbol);
-    }
-    /**
-     * @deprecated
-     */
-    public resolveSymbol(symbolName: string): BaseSymbol | undefined
-    {
-        this.ensureSymbolTable();
-        return this.symbolTable.resolveSync(symbolName, false);
     }
 
     //------------------------------------------------- code completion
