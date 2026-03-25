@@ -1,7 +1,7 @@
 import { CommonTokenStream, Token } from 'antlr4ng';
 
 import { mxsLexer } from '../../parser/mxsLexer.js';
-import { ISemanticToken } from '../../types.js';
+import { ISemanticToken } from '../types.js';
 import { maxAPI, maxAPILookup } from '../schemas/mxsAPI.js';
 
 /**

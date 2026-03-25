@@ -7,10 +7,10 @@ import {
   Uri, workspace, WorkspaceSymbolProvider,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
-import { WorkspaceSymbolIndex } from './backend/WorkspaceSymbolIndex.js';
-import { translateSymbolKind } from './Symbol.js';
-import { ISymbolInfo } from './types.js';
+import { mxsBackend } from '@backend/Backend.js';
+import { WorkspaceSymbolIndex } from '@backend/WorkspaceSymbolIndex.js';
+import { translateSymbolKind } from './SymbolTranslator.js';
+import { ISymbolInfo } from '@backend/types.js';
 import { Utilities } from './utils.js';
 
 export class mxsWorkspaceSymbolProvider implements WorkspaceSymbolProvider

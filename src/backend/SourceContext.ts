@@ -1,12 +1,11 @@
 import {
-  BaseSymbol, ScopedSymbol, SymbolTable,
+  BaseSymbol,
 } from 'antlr4-c3';
 import {
-  BailErrorStrategy, CharStream, CommonTokenStream, DefaultErrorStrategy,
-  ParseCancellationException, ParserRuleContext, ParseTree, ParseTreeWalker,
-  PredictionMode, TerminalNode, Token,
+  BailErrorStrategy, CharStream, CommonTokenStream, 
+  ParseCancellationException, ParseTree, ParseTreeWalker,
+  PredictionMode, TerminalNode,
 } from 'antlr4ng';
-import { workspace } from 'vscode';
 
 import { mxsLexer } from '../parser/mxsLexer.js';
 import { mxsParser, ProgramContext } from '../parser/mxsParser.js';
@@ -14,7 +13,7 @@ import {
   DiagnosticType, ICodeFormatSettings, IDiagnosticEntry,
   ILexicalRange, IMinifySettings, IPrettifySettings, ISemanticToken,
   ISymbolInfo,
-} from '../types.js';
+} from './types.js';
 import { TreeQuery } from './TreeQuery.js';
 import { IformatterResult, mxsSimpleFormatter } from './formatting/simpleCodeFormatter.js';
 import { ContextErrorListener } from './diagnostics/ContextErrorListener.js';
@@ -31,16 +30,9 @@ import { symbolTableListener } from './symbolTableListener.js';
 import { ASTBuilder } from './ast/ASTBuilder.js';
 import {
     CallExpression,
-    DefinitionBlock,
-    FunctionArgument,
-    FunctionDefinition,
-    FunctionParameter,
-    MemberExpression,
     Program,
     ScopeNode,
     StringLiteral,
-    StructDefinition,
-    StructMemberField,
     VariableDeclaration,
     VariableReference,
 } from './ast/ASTNodes.js';
@@ -310,7 +302,9 @@ export class SourceContext
      * Ensure AST and semantic tokens are populated.
      * This path is independent from the deprecated symbol table pipeline.
      */
-    private ensureAstModel(): void {
+    private ensureAstModel(): void
+    {
+        // return if AST is already built and up-to-date
         if (!this.astModelDirty || !this.tree) {
             return;
         }
@@ -688,22 +682,7 @@ export class SourceContext
         if (ruleScope) {
             context = context!.parent;
         }
-        /*
-        if (ruleScope) {
-            let run = context;
-            while (run
-                && !(run instanceof ExprSeqContext)
-                && !(run instanceof FnDefinitionContext)
-                && !(run instanceof StructDefinitionContext)
-                //...
-            ) {
-                run = run.parent;
-            }
-            if (run) {
-                context = run;
-            }
-        }
-        // */
+
         if (context) {
             const symbol = this.symbolTable.symbolWithContextSync(context);
             if (symbol) {
@@ -780,13 +759,9 @@ export class SourceContext
     }
 
     //-------------------------------------------------diagnostics
-    /*  public getDiagnostics(): IDiagnosticEntry[]
-    {
-        this.runSemanticAnalysisIfNeeded();
-        return this.diagnostics;
-    } */
     public get getDiagnostics(): IDiagnosticEntry[]
     {
+        // this.runSemanticAnalysisIfNeeded();
         return this.diagnostics;
     }
 
@@ -807,6 +782,7 @@ export class SourceContext
         return this.semanticTokens;
     }
     // -------------------------------------------------format code
+    //#region format code
     // TODO: formatter that uses the parse tree and a visitor
     public formatCode(range: ILexicalRange, options?: ICodeFormatSettings): IformatterResult;
     public formatCode(range: { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult;
@@ -859,23 +835,9 @@ export class SourceContext
         }
         return result
     }
+    //#endregion
     //-------------------------------------------------references
 
-    // TODO: semantic analysis
-    // TODO: references
-    // TODO: dependencies
-    private runSemanticAnalysisIfNeeded()
-    {
-        /*
-        if (!this.semanticAnalysisDone && this.tree) {
-            this.semanticAnalysisDone = true;
-            //this.diagnostics.length = 0; Don't, we would lose our syntax errors from last parse run.
-
-            const semanticListener = new SemanticListener(this.diagnostics, this.symbolTable);
-            ParseTreeWalker.DEFAULT.walk(semanticListener, this.tree);
-        }
-        */
-    }
     /**
      * Add this context to the list of referencing contexts in the given context.
      *
@@ -913,23 +875,5 @@ export class SourceContext
             context.references.splice(index, 1);
         }
         this.symbolTable.removeDependency(context.symbolTable);
-    }
-    /**
-     * Get the reference count for the given symbol across this context and all referencing contexts.
-     * THIS IS PART OF THE WORK IN PROGRESS FOR THE WORKSPACE SYMBOL PROVIDER
-     * @param symbol The symbol to get the reference count for.
-     * @return The reference count.
-     */
-    public getReferenceCount(symbol: string): number
-    {
-        this.runSemanticAnalysisIfNeeded();
-
-        let result = this.symbolTable.getReferenceCount(symbol);
-
-        for (const reference of this.references) {
-            result += reference.getReferenceCount(symbol);
-        }
-
-        return result;
     }
 }

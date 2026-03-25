@@ -3,7 +3,7 @@ import { CommonTokenStream, ParseTree, ParserRuleContext, Token } from 'antlr4ng
 
 import { mxsLexer } from '../../parser/mxsLexer.js';
 import { mxsParser } from '../../parser/mxsParser.js';
-import { ISymbolInfo, SymbolKind } from '../../types.js';
+import { ISymbolInfo, SymbolKind } from '../types.js';
 import { TreeQuery } from '../TreeQuery.js';
 import {
     FnDefinitionSymbol, fnArgsSymbol, fnParamsSymbol, IdentifierSymbol,

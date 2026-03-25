@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { SymbolKind } from './types.js';
+import { SymbolKind } from '@backend/types.js';
 
 const symbolCodeTypeMap = new Map<SymbolKind, vscode.SymbolKind>([
 	[SymbolKind.Accessor,    vscode.SymbolKind.Key],

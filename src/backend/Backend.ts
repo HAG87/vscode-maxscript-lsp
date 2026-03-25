@@ -8,7 +8,7 @@ import { Uri, workspace } from 'vscode';
 import {
     DiagnosticType, ICodeFormatSettings, IDiagnosticEntry, ILexicalRange, IMinifySettings, IPrettifySettings,
     ISemanticToken, ISymbolInfo,
-} from '../types.js';
+} from './types.js';
 import { ASTQuery } from './ast/ASTQuery.js';
 import { Program, ScopeNode, VariableDeclaration, VariableReference } from './ast/ASTNodes.js';
 import { IformatterResult } from './formatting/simpleCodeFormatter.js';
@@ -761,50 +761,4 @@ export class mxsBackend
         }
     }
 
-    //------------------------------------------------------------------
-    // TODO: references
-    //------------------------------------------------------------------
-    
-    /**
-     * Count how many times a symbol has been referenced. The given file must contain the definition of this symbol.
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.getReferenceCount(symbol)
-     *
-     * @param uri The grammar file name.
-     * @param symbol The symbol for which to determine the reference count.
-     * @returns The reference count.
-     */
-    public countReferences(uri: string, symbol: string)
-    {
-        return this.getContext(uri).getReferenceCount(symbol);
-    }
-
-    
-    public getDependencies(uri: string): string[] {
-        const entry = this.sourceContexts.get(uri);
-        if (!entry) {
-            return [];
-        }
-        const dependencies: Set<SourceContext> = new Set();
-        this.pushDependencyFiles(entry, dependencies);
-
-        const result: string[] = [];
-        for (const dep of dependencies) {
-            result.push(dep.sourceUri);
-        }
-
-        return result;
-    }
-
-    private pushDependencyFiles(entry: IContextEntry, contexts: Set<SourceContext>) {
-        // Using a set for the context list here, to automatically exclude duplicates.
-        for (const dep of entry.dependencies) {
-            
-            const depEntry = this.sourceContexts.get(dep);
-
-            if (depEntry && !contexts.has(depEntry.context)) {
-                contexts.add(depEntry.context);
-                this.pushDependencyFiles(depEntry, contexts);
-            }
-        }
-    }
 }

@@ -25,7 +25,7 @@ import {
 import { mxsParserVisitor } from '../../parser/mxsParserVisitor.js';
 import {
   ICodeFormatSettings, IMinifySettings, IPrettifySettings,
-} from '../../types.js';
+} from '../types.js';
 
 type R = codeToken | codeBlock
 

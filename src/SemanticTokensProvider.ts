@@ -4,8 +4,8 @@ import {
     SemanticTokens, SemanticTokensBuilder, SemanticTokensLegend, TextDocument,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
-import { semTokenModifiers, semTokenTypes, type SemTokenType } from './types.js';
+import { mxsBackend } from '@backend/Backend.js';
+import { semTokenModifiers, semTokenTypes, type SemTokenType } from '@backend/types.js';
 
 export const mxsSemtoTokensLegend = new SemanticTokensLegend([...semTokenTypes], [...semTokenModifiers]);
 

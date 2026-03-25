@@ -4,8 +4,8 @@ import {
 } from 'vscode';
 
 import type { Position as AstPosition } from '@strumenta/tylasu';
-import { mxsBackend } from './backend/Backend.js';
-import { ASTQuery } from './backend/ast/ASTQuery.js';
+import { mxsBackend } from '@backend/Backend.js';
+import { ASTQuery } from '@backend/ast/ASTQuery.js';
 import { Utilities } from './utils.js';
 
 export class mxsRenameProvider implements RenameProvider

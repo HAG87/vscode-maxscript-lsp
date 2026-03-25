@@ -3,9 +3,9 @@ import {
   Range, SymbolInformation, TextDocument, workspace,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
-import { symbolDescriptionFromEnum, translateSymbolKind } from './Symbol.js';
-import { ISymbolInfo } from './types.js';
+import { mxsBackend } from '@backend/Backend.js';
+import { symbolDescriptionFromEnum, translateSymbolKind } from './SymbolTranslator.js';
+import { ISymbolInfo } from '@backend/types.js';
 import { Utilities } from './utils.js';
 
 export class mxsSymbolProvider implements DocumentSymbolProvider

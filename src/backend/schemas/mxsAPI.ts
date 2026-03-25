@@ -1,4 +1,4 @@
-import type { SemTokenModifier, SemTokenType } from '../../types.js';
+import type { SemTokenModifier, SemTokenType } from '../types.js';
 
 const maxConstant: Set<string> = new Set([
 	'assetuser',

@@ -9,9 +9,9 @@ import {
   Uri, workspace,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
+import { mxsBackend } from '@backend/Backend.js';
 import type { Position as AstPosition } from '@strumenta/tylasu';
-import { ASTQuery } from './backend/ast/ASTQuery.js';
+import { ASTQuery } from '@backend/ast/ASTQuery.js';
 import { Utilities } from './utils.js';
 
 export class mxsDefinitionProvider implements DefinitionProvider

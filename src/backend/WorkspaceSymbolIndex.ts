@@ -1,5 +1,5 @@
 import { mxsSimpleSymbolProvider } from './symbols/simpleSymbolProvider.js';
-import { ISymbolInfo } from '../types.js';
+import { ISymbolInfo } from './types.js';
 import { mxsBackend } from './Backend.js';
 
 /**

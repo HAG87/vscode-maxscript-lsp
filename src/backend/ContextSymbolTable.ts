@@ -5,7 +5,7 @@ import {
 import { ParserRuleContext, ParseTree, TerminalNode } from 'antlr4ng';
 
 import { mxsParser } from '../parser/mxsParser.js';
-import { IDefinition, ISymbolInfo, SymbolKind } from '../types.js';
+import { IDefinition, ISymbolInfo, SymbolKind } from './types.js';
 import { TreeQuery } from './TreeQuery.js';
 import { SymbolUtils } from './symbols/symbolUtils.js';
 import { SourceContext } from './SourceContext.js';

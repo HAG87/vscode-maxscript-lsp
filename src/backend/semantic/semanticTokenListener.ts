@@ -4,7 +4,7 @@ import {
     IdentifierContext, ParamNameContext,
 } from '../../parser/mxsParser.js';
 import { mxsParserListener } from '../../parser/mxsParserListener.js';
-import { ISemanticToken } from '../../types.js';
+import { ISemanticToken } from '../types.js';
 import { maxAPILookup } from '../schemas/mxsAPI.js';
 
 // Pre-allocated modifier arrays to avoid repeated allocations

@@ -9,7 +9,7 @@ import {
   window, workspace,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
+import { mxsBackend } from '@backend/Backend.js';
 import { mxsCodeLensProvider } from './CodeLensProvider.js';
 import { mxsCompletionProvider } from './CompletionItemProvider.js';
 import { mxsDefinitionProvider } from './DefinitionProvider.js';

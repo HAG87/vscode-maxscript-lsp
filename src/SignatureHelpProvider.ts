@@ -12,8 +12,8 @@ import {
     workspace,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
-import { ASTQuery } from './backend/ast/ASTQuery.js';
+import { mxsBackend } from '@backend/Backend.js';
+import { ASTQuery } from '@backend/ast/ASTQuery.js';
 import {
     ArrayLiteral,
     BooleanLiteral,
@@ -24,7 +24,7 @@ import {
     PathLiteral,
     StringLiteral,
     UndefinedLiteral,
-} from './backend/ast/ASTNodes.js';
+} from '@backend/ast/ASTNodes.js';
 
 export class mxsSignatureHelpProvider implements SignatureHelpProvider {
     public constructor(private backend: mxsBackend) { }

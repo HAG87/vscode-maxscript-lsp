@@ -4,26 +4,26 @@ import {
   Range, TextDocument, workspace,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
-import { ASTQuery } from './backend/ast/ASTQuery.js';
+import { mxsBackend } from '@backend/Backend.js';
+import { ASTQuery } from '@backend/ast/ASTQuery.js';
 import {
     DefinitionBlock, FunctionArgument, FunctionDefinition, FunctionParameter,
     ParameterDefinition, RcMenuItem, RolloutControl, StructDefinition, StructMemberField,
     VariableDeclaration,
-} from './backend/ast/ASTNodes.js';
+} from '@backend/ast/ASTNodes.js';
 import { Node } from '@strumenta/tylasu';
 import {
   maxCompletions, mxsLanguageCompletions,
-} from './backend/schemas/mxsCompletions-base.js';
-import { mxClassMembers } from './backend/schemas/mxsCompletions-clases.js';
+} from '@backend/schemas/mxsCompletions-base.js';
+import { mxClassMembers } from '@backend/schemas/mxsCompletions-clases.js';
 import {
   mxInterfaceMembers,
-} from './backend/schemas/mxsCompletions-interfaces.js';
-import { mxStructsMembers } from './backend/schemas/mxsCompletions-structs.js';
+} from '@backend/schemas/mxsCompletions-interfaces.js';
+import { mxStructsMembers } from '@backend/schemas/mxsCompletions-structs.js';
 import {
   symbolDescriptionFromEnum, translateCompletionKind,
-} from './Symbol.js';
-import { IMaxScriptSettings } from './types.js';
+} from './SymbolTranslator.js';
+import { IMaxScriptSettings } from '@backend/types.js';
 
 /** Maps an AST semantic node to the most appropriate CompletionItemKind. */
 function completionKindForSemanticNode(node: Node): CompletionItemKind {

@@ -5,7 +5,7 @@
 import { ParserRuleContext, ParseTree, TerminalNode } from 'antlr4ng';
 
 import { mxsParser } from '../parser/mxsParser.js';
-import { ILexicalRange } from '../types.js';
+import { ILexicalRange } from './types.js';
 
 export class TreeQuery
 {

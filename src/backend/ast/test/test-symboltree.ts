@@ -9,7 +9,7 @@ import { mxsParser } from '../../../parser/mxsParser.js';
 import { ASTBuilder } from '../ASTBuilder.js';
 import { SymbolResolver } from '../SymbolResolver.js';
 import { SymbolTreeBuilder } from '../SymbolTreeBuilder.js';
-import { SymbolKind } from '../../../types.js';
+import { SymbolKind } from '../../types.js';
 import process from 'process';
 
 const code = `

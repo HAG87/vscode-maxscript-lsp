@@ -1,5 +1,5 @@
 import { workspace } from 'vscode';
-import { ISemanticToken, type SemTokenModifier, type SemTokenType } from "../../types";
+import { ISemanticToken, type SemTokenModifier, type SemTokenType } from "../types";
 import { CallExpression, DefinitionBlock, FunctionDefinition, MemberExpression, Program, StructDefinition, StructMemberField, VariableReference } from "../ast/ASTNodes";
 import { ASTQuery } from "../ast/ASTQuery";
 

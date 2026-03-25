@@ -3,8 +3,8 @@ import {
     Position, ProviderResult, Range, TextDocument, workspace,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
-import { ASTQuery } from './backend/ast/ASTQuery.js';
+import { mxsBackend } from '@backend/Backend.js';
+import { ASTQuery } from '@backend/ast/ASTQuery.js';
 import {
     DefinitionBlock,
     FunctionArgument,
@@ -16,12 +16,12 @@ import {
     StructDefinition,
     StructMemberField,
     VariableDeclaration,
-} from './backend/ast/ASTNodes.js';
+} from '@backend/ast/ASTNodes.js';
 import {
   mxsLanguageCompletions,
-} from './backend/schemas/mxsCompletions-base.js';
-import { symbolDescriptionFromEnum } from './Symbol.js';
-import { SymbolKind } from './types.js';
+} from '@backend/schemas/mxsCompletions-base.js';
+import { symbolDescriptionFromEnum } from './SymbolTranslator.js';
+import { SymbolKind } from '@backend/types.js';
 
 export class mxsHoverProvider implements HoverProvider
 {
