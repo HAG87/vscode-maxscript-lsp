@@ -4,13 +4,10 @@ import {
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
-import { RenameService } from '@backend/rename/RenameService.js';
 import { Utilities } from './utils.js';
 
 export class mxsRenameProvider implements RenameProvider
 {
-    private readonly renameService = new RenameService();
-
     public constructor(private backend: mxsBackend) { }
 
     public prepareRename(
@@ -27,8 +24,7 @@ export class mxsRenameProvider implements RenameProvider
             const sourceContext = this.backend.getContext(document.uri.toString());
 
             if (useAst) {
-                const renameTarget = this.renameService.prepareAstRename(
-                    sourceContext,
+                const renameTarget = sourceContext.prepareAstRename(
                     position.line + 1,
                     position.character,
                     document.getText(),
@@ -87,8 +83,7 @@ export class mxsRenameProvider implements RenameProvider
             const sourceContext = this.backend.getContext(document.uri.toString());
 
             if (useAst) {
-                const astEdits = this.renameService.buildAstRenameEdits(
-                    sourceContext,
+                const astEdits = sourceContext.buildAstRenameEdits(
                     position.line + 1,
                     position.character,
                     newName,

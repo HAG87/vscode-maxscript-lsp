@@ -1,4 +1,4 @@
-import { SourceContext } from '@backend/SourceContext.js';
+import type { IAstContext } from '@backend/IAstContext.js';
 import { ASTQuery } from '@backend/ast/ASTQuery.js';
 import {
     ArrayLiteral,
@@ -23,7 +23,7 @@ export interface SignatureHelpModel {
 
 export class SignatureHelpService {
     public getSignatureHelpModel(
-        sourceContext: SourceContext,
+        sourceContext: IAstContext,
         row1Based: number,
         lineBeforeCursor: string,
     ): SignatureHelpModel | undefined {
@@ -60,7 +60,7 @@ export class SignatureHelpService {
     }
 
     private resolveFunctionDefinitionAtCallee(
-        sourceContext: SourceContext,
+        sourceContext: IAstContext,
         row1Based: number,
         calleeStartColumn0Based: number,
     ): FunctionDefinition | undefined {

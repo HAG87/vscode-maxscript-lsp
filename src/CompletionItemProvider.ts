@@ -5,13 +5,7 @@ import {
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
-import { ASTQuery } from '@backend/ast/ASTQuery.js';
-import {
-    DefinitionBlock, FunctionArgument, FunctionDefinition, FunctionParameter,
-    ParameterDefinition, RcMenuItem, RolloutControl, StructDefinition, StructMemberField,
-    VariableDeclaration,
-} from '@backend/ast/ASTNodes.js';
-import { Node } from '@strumenta/tylasu';
+import { CompletionKindHint } from '@backend/completion/CompletionService.js';
 import {
   maxCompletions, mxsLanguageCompletions,
 } from '@backend/schemas/mxsCompletions-base.js';
@@ -25,39 +19,31 @@ import {
 } from './SymbolTranslator.js';
 import { IMaxScriptSettings } from '@backend/types.js';
 
-/** Maps an AST semantic node to the most appropriate CompletionItemKind. */
-function completionKindForSemanticNode(node: Node): CompletionItemKind {
-    if (node instanceof FunctionDefinition) {
-        return CompletionItemKind.Function;
-    }
-    if (node instanceof StructDefinition) {
-        return CompletionItemKind.Class;
-    }
-    if (node instanceof DefinitionBlock) {
-        return CompletionItemKind.Module;
-    }
-    if (node instanceof FunctionArgument || node instanceof FunctionParameter || node instanceof ParameterDefinition) {
-        return CompletionItemKind.TypeParameter;
-    }
-    if (node instanceof StructMemberField) {
-        return CompletionItemKind.Field;
-    }
-    if (node instanceof RolloutControl || node instanceof RcMenuItem) {
-        return CompletionItemKind.Event;
-    }
-    if (node instanceof VariableDeclaration) {
-        return node.scope === 'global' || node.scope === 'persistent'
-            ? CompletionItemKind.Variable
-            : CompletionItemKind.Variable;
-    }
-    return CompletionItemKind.Variable;
-}
-
 export class mxsCompletionProvider implements CompletionItemProvider
 {
     private wordPattern: RegExp = /\b(\p{L}[\p{L}0-9]*)\b(?:[ \t\r\n]*[.]?)$/u;
 
     public constructor(private backend: mxsBackend, private options: IMaxScriptSettings) { }
+
+    private completionKindForHint(kindHint: CompletionKindHint | undefined): CompletionItemKind {
+        switch (kindHint) {
+            case 'function':
+                return CompletionItemKind.Function;
+            case 'class':
+                return CompletionItemKind.Class;
+            case 'module':
+                return CompletionItemKind.Module;
+            case 'typeParameter':
+                return CompletionItemKind.TypeParameter;
+            case 'field':
+                return CompletionItemKind.Field;
+            case 'event':
+                return CompletionItemKind.Event;
+            case 'variable':
+            default:
+                return CompletionItemKind.Variable;
+        }
+    }
 
     /**
      * Returns API members for a named object if it is a known API class/struct/interface.
@@ -150,20 +136,19 @@ export class mxsCompletionProvider implements CompletionItemProvider
 
                 // Path B: user-defined struct/definition resolved by AST.
                 if (useAst) {
-                    const memberResult = sourceContext?.astMemberCompletionsAtPosition(
+                    const suggestions = sourceContext.getAstMemberCompletionSuggestions(
                         position.line + 1,
                         position.character,
                         document.getText(),
                     );
-                    if (memberResult && memberResult.members.length > 0) {
+                    if (suggestions.length > 0) {
                         const items: CompletionItem[] = [];
-                        for (const member of memberResult.members) {
-                            if (!member.name) {
-                                continue;
-                            }
-                            const semanticNode = ASTQuery.findSemanticNodeForDeclaration(memberResult.ast, member);
-                            const item = new CompletionItem(member.name, completionKindForSemanticNode(semanticNode));
-                            item.sortText = `0_${member.name}`;
+                        for (const suggestion of suggestions) {
+                            const item = new CompletionItem(
+                                suggestion.label,
+                                this.completionKindForHint(suggestion.kindHint),
+                            );
+                            item.sortText = suggestion.sortText;
                             items.push(item);
                         }
                         if (items.length > 0) {
@@ -190,50 +175,25 @@ export class mxsCompletionProvider implements CompletionItemProvider
 
             // Non-member context: AST scope declarations + antlr-c3 + API prefix matching.
             const completionList: CompletionItem[] = [];
-            const seenNames = new Set<string>();
-
-            if (useAst) {
-                const astResult = sourceContext?.astCompletionsAtPosition(
-                    position.line + 1,
-                    position.character,
-                );
-                if (astResult) {
-                    for (const decl of astResult.declarations) {
-                        if (!decl.name) {
-                            continue;
-                        }
-                        seenNames.add(decl.name.toLowerCase());
-                        const semanticNode = ASTQuery.findSemanticNodeForDeclaration(astResult.ast, decl);
-                        const item = new CompletionItem(decl.name, completionKindForSemanticNode(semanticNode));
-                        item.sortText = `0_${decl.name}`;
-                        completionList.push(item);
-                    }
-                }
-            }
-
-            // Add workspace global declarations from other files.
-            if (useAst) {
-                const workspaceGlobals = this.backend.getWorkspaceGlobalCompletions(document.uri.toString());
-                for (const decl of workspaceGlobals) {
-                    if (!decl.name || seenNames.has(decl.name.toLowerCase())) {
-                        continue;
-                    }
-                    seenNames.add(decl.name.toLowerCase());
-                    const item = new CompletionItem(decl.name, CompletionItemKind.Variable);
-                    item.sortText = `1_${decl.name}`;
-                    completionList.push(item);
-                }
-            }
-
-            sourceContext?.getCodeCompletionCandidates(position.line + 1, position.character)
-                .then((candidates) =>
+            sourceContext.getNonMemberCompletionSuggestions(
+                document.uri.toString(),
+                position.line + 1,
+                position.character,
+                useAst,
+            ).then((suggestions) =>
                 {
-                    for (const info of candidates) {
-                        if (!seenNames.has(info.name.toLowerCase())) {
-                            const item = new CompletionItem(info.name, translateCompletionKind(info.kind));
-                            item.detail = info.description || symbolDescriptionFromEnum(info.kind);
-                            completionList.push(item);
+                    for (const suggestion of suggestions) {
+                        const item = new CompletionItem(
+                            suggestion.label,
+                            suggestion.symbolKind !== undefined
+                                ? translateCompletionKind(suggestion.symbolKind)
+                                : this.completionKindForHint(suggestion.kindHint),
+                        );
+                        item.sortText = suggestion.sortText;
+                        if (suggestion.symbolKind !== undefined) {
+                            item.detail = suggestion.detail || symbolDescriptionFromEnum(suggestion.symbolKind);
                         }
+                        completionList.push(item);
                     }
                     if (this.options.completions.dataBaseCompletion) {
                         completionList.push(...this.completionsFromAPI(document, position, context));

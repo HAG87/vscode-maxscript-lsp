@@ -678,6 +678,9 @@ export class mxsBackend
                     return declUri ? this.sourceContexts.get(declUri)?.context.getResolvedAST() : undefined;
                 },
                 (sourceDocumentUri, fileInTarget) => this.getResolvedFileInAst(sourceDocumentUri, fileInTarget),
+                (requesterUri) => this.getWorkspaceGlobalCompletions(requesterUri),
+                (decl) => this.getDeclarationSourceUri(decl),
+                (workspaceUri) => this.getExistingContext(workspaceUri)?.getResolvedAST(),
             );
             // set ctx text            
             ctx.setText(source ?? this.getDocumentText(uri));
@@ -717,6 +720,9 @@ export class mxsBackend
                     return declUri ? this.sourceContexts.get(declUri)?.context.getResolvedAST() : undefined;
                 },
                 (sourceDocumentUri, fileInTarget) => this.getResolvedFileInAst(sourceDocumentUri, fileInTarget),
+                (requesterUri) => this.getWorkspaceGlobalCompletions(requesterUri),
+                (decl) => this.getDeclarationSourceUri(decl),
+                (workspaceUri) => this.getExistingContext(workspaceUri)?.getResolvedAST(),
             );
             ctxEntry = {
                 context: ctx,

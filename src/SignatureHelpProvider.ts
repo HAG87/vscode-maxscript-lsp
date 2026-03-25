@@ -13,11 +13,9 @@ import {
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
-import { SignatureHelpModel, SignatureHelpService } from '@backend/signature/SignatureHelpService.js';
+import { SignatureHelpModel } from '@backend/signature/SignatureHelpService.js';
 
 export class mxsSignatureHelpProvider implements SignatureHelpProvider {
-    private readonly signatureHelpService = new SignatureHelpService();
-
     public constructor(private backend: mxsBackend) { }
 
     private buildSignatureHelp(model: SignatureHelpModel): SignatureHelp {
@@ -52,8 +50,7 @@ export class mxsSignatureHelpProvider implements SignatureHelpProvider {
             const lineBeforeCursor = document.getText(new Range(position.line, 0, position.line, position.character));
             const row = position.line + 1;
             const sourceContext = this.backend.getContext(document.uri.toString());
-            const model = this.signatureHelpService.getSignatureHelpModel(
-                sourceContext,
+            const model = sourceContext.getSignatureHelpModel(
                 row,
                 lineBeforeCursor,
             );

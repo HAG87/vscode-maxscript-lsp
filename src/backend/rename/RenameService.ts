@@ -1,5 +1,5 @@
 import type { Position as AstPosition } from '@strumenta/tylasu';
-import { SourceContext } from '@backend/SourceContext.js';
+import type { IAstContext } from '@backend/IAstContext.js';
 import { ILexicalRange } from '@backend/types.js';
 import { ASTQuery } from '@backend/ast/ASTQuery.js';
 
@@ -71,7 +71,7 @@ export class RenameService {
     }
 
     public prepareAstRename(
-        sourceContext: SourceContext,
+        sourceContext: IAstContext,
         row1Based: number,
         column0Based: number,
         sourceText: string,
@@ -101,7 +101,7 @@ export class RenameService {
     }
 
     public buildAstRenameEdits(
-        sourceContext: SourceContext,
+        sourceContext: IAstContext,
         row1Based: number,
         column0Based: number,
         newName: string,

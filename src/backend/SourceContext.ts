@@ -29,20 +29,33 @@ import { CodeCompletionProvider } from './symbols/codeCompletionProvider.js';
 import { symbolTableListener } from './symbolTableListener.js';
 import { ASTBuilder } from './ast/ASTBuilder.js';
 import {
-    CallExpression,
     Program,
-    ScopeNode,
-    StringLiteral,
     VariableDeclaration,
-    VariableReference,
 } from './ast/ASTNodes.js';
 import { SymbolResolver } from './ast/SymbolResolver.js';
 import { SymbolTreeBuilder } from './ast/SymbolTreeBuilder';
 import { ASTQuery } from './ast/ASTQuery.js';
 import appendAstSemanticTokens from './semantic/astSemanticTokens.js';
+import { IAstContext } from './IAstContext.js';
+import { AstQueryService } from './query/AstQueryService.js';
+import { SignatureHelpModel, SignatureHelpService } from './signature/SignatureHelpService.js';
+import { RenameEditModel, RenamePrepareModel, RenameService } from './rename/RenameService.js';
+import { CompletionService, CompletionSuggestion } from './completion/CompletionService.js';
+import {
+    DefinitionTargetModel,
+    NavigationHighlightModel,
+    NavigationReferenceModel,
+    NavigationService,
+} from './navigation/NavigationService.js';
+import { HoverModel, HoverService } from './hover/HoverService.js';
+import {
+    CodeLensAnchorModel,
+    CodeLensResolveModel,
+    CodeLensService,
+} from './codelens/CodeLensService.js';
 
 // One context for each valid document
-export class SourceContext
+export class SourceContext implements IAstContext
 {
     // context source uri pointing at the document
     public sourceUri: string;
@@ -85,103 +98,52 @@ export class SourceContext
     // Flag to track if AST + semantic tokens need population (lazy loading)
     private astModelDirty: boolean = false;
 
-    // Incremented after each successful parse to invalidate position-query caches.
-    private parseGeneration: number = 0;
-    private queryCacheGeneration: number = -1;
-    private queryCacheWorkspaceGlobalsVersion: number = -1;
-
-    private declarationAtPositionCache: Map<string, VariableDeclaration | undefined> = new Map();
-    private completionsAtPositionCache: Map<string, VariableDeclaration[] | undefined> = new Map();
-    private memberCompletionsAtPositionCache: Map<string, { members: VariableDeclaration[] | undefined; fingerprint: string }> = new Map();
-
     private workspaceGlobalResolver?: (name: string, requesterUri: string) => VariableDeclaration | undefined;
     private workspaceGlobalVersionProvider?: () => number;
     private workspaceDeclarationAstProvider?: (decl: VariableDeclaration) => Program | undefined;
     private workspaceFileInAstProvider?: (sourceUri: string, fileInTarget: string) => Program | undefined;
+    private workspaceGlobalCompletionsProvider?: (requesterUri: string) => VariableDeclaration[];
+    private declarationSourceUriProvider?: (decl: VariableDeclaration) => string | undefined;
+    private workspaceAstByUriProvider?: (uri: string) => Program | undefined;
 
-    private resolveDeclarationFromReference(reference: VariableReference, ast: Program): VariableDeclaration | undefined {
-        if (!reference.name) {
-            return reference.declaration?.referred ?? undefined;
-        }
-        return reference.declaration?.referred
-            ?? ASTQuery.findDeclarationByName(ast, reference.name)
-            ?? undefined;
-    }
+    private readonly astQueryService: AstQueryService;
+    private readonly signatureHelpService: SignatureHelpService;
+    private readonly renameService: RenameService;
+    private readonly completionService: CompletionService;
+    private readonly navigationService: NavigationService;
+    private readonly hoverService: HoverService;
+    private readonly codeLensService: CodeLensService;
 
-    private resolveFileInImportedAst(declaration: VariableDeclaration): Program | undefined {
-        const initializer = declaration.initializer;
-        if (!(initializer instanceof CallExpression)) {
-            return undefined;
-        }
-        if (!(initializer.callee instanceof VariableReference) || !initializer.callee.name) {
-            return undefined;
-        }
-        if (initializer.callee.name.toLowerCase() !== 'filein') {
-            return undefined;
-        }
-
-        const target = initializer.arguments[0];
-        if (!(target instanceof StringLiteral)) {
-            return undefined;
-        }
-
-        return this.workspaceFileInAstProvider?.(this.sourceUri, target.value);
-    }
-
-    private resolveFileInImportedMembers(declaration: VariableDeclaration): { ast: Program; members: VariableDeclaration[] } | undefined {
-        const importedAst = this.resolveFileInImportedAst(declaration);
-        if (!importedAst) {
-            return undefined;
-        }
-
-        const members = [...importedAst.declarations.values()];
-        return { ast: importedAst, members };
-    }
-
-    private memberDeclarationsFingerprint(members: VariableDeclaration[]): string {
-        // Stable content fingerprint to detect membership changes even when count is unchanged.
-        return members
-            .map((member) => {
-                const pos = member.position;
-                const posKey = pos
-                    ? `${pos.start.line}:${pos.start.column}:${pos.end.line}:${pos.end.column}`
-                    : 'nopos';
-                return `${member.name ?? ''}|${member.scope}|${posKey}`;
-            })
-            .sort()
-            .join('||');
-    }
-
-    private ensureQueryCachesCurrent(): void {
-        const workspaceGlobalsVersion = this.workspaceGlobalVersionProvider ? this.workspaceGlobalVersionProvider() : -1;
-        if (
-            this.queryCacheGeneration === this.parseGeneration
-            && this.queryCacheWorkspaceGlobalsVersion === workspaceGlobalsVersion
-        ) {
-            return;
-        }
-        this.declarationAtPositionCache.clear();
-        this.completionsAtPositionCache.clear();
-        this.memberCompletionsAtPositionCache.clear();
-        this.queryCacheGeneration = this.parseGeneration;
-        this.queryCacheWorkspaceGlobalsVersion = workspaceGlobalsVersion;
-    }
 
     public configureWorkspaceGlobalLookup(
         resolver: (name: string, requesterUri: string) => VariableDeclaration | undefined,
         versionProvider: () => number,
         astProvider?: (decl: VariableDeclaration) => Program | undefined,
         fileInAstProvider?: (sourceUri: string, fileInTarget: string) => Program | undefined,
+        completionsProvider?: (requesterUri: string) => VariableDeclaration[],
+        declarationUriProvider?: (decl: VariableDeclaration) => string | undefined,
+        workspaceAstByUriProvider?: (uri: string) => Program | undefined,
     ): void {
         this.workspaceGlobalResolver = resolver;
         this.workspaceGlobalVersionProvider = versionProvider;
         this.workspaceDeclarationAstProvider = astProvider;
         this.workspaceFileInAstProvider = fileInAstProvider;
+        this.workspaceGlobalCompletionsProvider = completionsProvider;
+        this.declarationSourceUriProvider = declarationUriProvider;
+        this.workspaceAstByUriProvider = workspaceAstByUriProvider;
+        this.astQueryService.configure(resolver, versionProvider, astProvider, fileInAstProvider);
     }
 
     public constructor(uri: string)
     {
         this.sourceUri = uri;
+        this.astQueryService = new AstQueryService();
+        this.signatureHelpService = new SignatureHelpService();
+        this.renameService = new RenameService();
+        this.completionService = new CompletionService();
+        this.navigationService = new NavigationService();
+        this.hoverService = new HoverService();
+        this.codeLensService = new CodeLensService();
 
         // initialize lexer instance with empty string
         this.lexer = new mxsLexer(CharStream.fromString(''));
@@ -206,6 +168,115 @@ export class SourceContext
 
         // initialize static global symbol table
         //...
+    }
+
+    public getSignatureHelpModel(
+        row1Based: number,
+        lineBeforeCursor: string,
+    ): SignatureHelpModel | undefined {
+        return this.signatureHelpService.getSignatureHelpModel(this, row1Based, lineBeforeCursor);
+    }
+
+    public prepareAstRename(
+        row1Based: number,
+        column0Based: number,
+        sourceText: string,
+    ): RenamePrepareModel | undefined {
+        return this.renameService.prepareAstRename(this, row1Based, column0Based, sourceText);
+    }
+
+    public buildAstRenameEdits(
+        row1Based: number,
+        column0Based: number,
+        newName: string,
+        sourceText: string,
+    ): RenameEditModel[] | undefined {
+        return this.renameService.buildAstRenameEdits(this, row1Based, column0Based, newName, sourceText);
+    }
+
+    public getAstMemberCompletionSuggestions(
+        row1Based: number,
+        column0Based: number,
+        sourceText: string,
+    ): CompletionSuggestion[] {
+        return this.completionService.getAstMemberSuggestions(this, row1Based, column0Based, sourceText);
+    }
+
+    public async getNonMemberCompletionSuggestions(
+        requesterUri: string,
+        row1Based: number,
+        column0Based: number,
+        useAst: boolean,
+    ): Promise<CompletionSuggestion[]> {
+        return this.completionService.getNonMemberSuggestions(
+            this,
+            requesterUri,
+            row1Based,
+            column0Based,
+            useAst,
+        );
+    }
+
+    public getWorkspaceGlobalCompletions(requesterUri: string): VariableDeclaration[] {
+        return this.workspaceGlobalCompletionsProvider?.(requesterUri) ?? [];
+    }
+
+    public getDeclarationSourceUri(declaration: VariableDeclaration): string | undefined {
+        return this.declarationSourceUriProvider?.(declaration);
+    }
+
+    public getWorkspaceAstForUri(uri: string): Program | undefined {
+        return this.workspaceAstByUriProvider?.(uri);
+    }
+
+    public getAstDefinitionTarget(
+        row1Based: number,
+        column0Based: number,
+        sourceText: string,
+    ): DefinitionTargetModel | undefined {
+        return this.navigationService.getDefinitionTarget(this, row1Based, column0Based, sourceText);
+    }
+
+    public getAstReferenceLocations(
+        row1Based: number,
+        column0Based: number,
+        includeDeclaration: boolean,
+    ): NavigationReferenceModel[] | undefined {
+        return this.navigationService.getReferences(this, row1Based, column0Based, includeDeclaration);
+    }
+
+    public getAstDocumentHighlights(
+        row1Based: number,
+        column0Based: number,
+        sourceText: string,
+    ): NavigationHighlightModel[] | undefined {
+        return this.navigationService.getDocumentHighlights(this, row1Based, column0Based, sourceText);
+    }
+
+    public getAstHoverModel(
+        row1Based: number,
+        column0Based: number,
+        sourceText: string,
+    ): HoverModel | undefined {
+        return this.hoverService.getAstHoverModel(this, row1Based, column0Based, sourceText);
+    }
+
+    public getLegacyHoverModel(
+        row1Based: number,
+        column0Based: number,
+    ): HoverModel | undefined {
+        return this.hoverService.getLegacyHoverModel(this, row1Based, column0Based);
+    }
+
+    public getAstCodeLensAnchors(): CodeLensAnchorModel[] {
+        return this.codeLensService.getCodeLensAnchors(this);
+    }
+
+    public resolveAstCodeLens(
+        declarationLine: number,
+        declarationCharacter: number,
+    ): CodeLensResolveModel | undefined {
+        return this.codeLensService.resolveCodeLens(this, declarationLine, declarationCharacter);
     }
 
     //----------------------------------------------------------------parser
@@ -267,9 +338,8 @@ export class SourceContext
         // Symbol table and semantic tokens are now populated lazily when needed
         // This improves parse performance by 20-40% for syntax validation only
 
-        // A successful parse defines a new snapshot generation for AST/tree queries.
-        this.parseGeneration++;
-        this.queryCacheGeneration = -1;
+        // Invalidate position-query caches now that a new parse snapshot exists.
+        this.astQueryService.invalidate();
     }
 
     /**
@@ -376,44 +446,13 @@ export class SourceContext
      * @param row 1-based line number
      * @param column 0-based column number
      */
-    public astDeclarationAtPosition(row: number, column: number)
+    public astDeclarationAtPosition(row: number, column: number): VariableDeclaration | undefined
     {
         const ast = this.getResolvedAST();
         if (!ast) {
             return undefined;
         }
-        this.ensureQueryCachesCurrent();
-
-        const cacheKey = `${row}:${column}`;
-        if (this.declarationAtPositionCache.has(cacheKey)) {
-            return this.declarationAtPositionCache.get(cacheKey);
-        }
-
-        let declaration = ASTQuery.findDeclarationAtPosition(ast, row, column);
-        if (!declaration) {
-            const member = ASTQuery.findMemberExpressionAtPosition(ast, row, column);
-            const objectRef = member?.object;
-            if (member?.property && objectRef instanceof VariableReference && objectRef.name) {
-                const objectDeclaration = this.resolveDeclarationFromReference(objectRef, ast)
-                    ?? this.workspaceGlobalResolver?.(objectRef.name, this.sourceUri);
-                if (objectDeclaration) {
-                    const objectAst = this.workspaceDeclarationAstProvider?.(objectDeclaration) ?? ast;
-                    const importedMembers = this.resolveFileInImportedMembers(objectDeclaration);
-                    const members = importedMembers?.members
-                        ?? ASTQuery.getMemberCompletions(importedMembers?.ast ?? objectAst, objectDeclaration);
-                    declaration = members.find(candidate => candidate.name === member.property);
-                }
-            }
-        }
-        if (!declaration && this.workspaceGlobalResolver) {
-            const ref = ASTQuery.findReferenceAtPosition(ast, row, column);
-            if (ref?.name) {
-                declaration = this.workspaceGlobalResolver(ref.name, this.sourceUri);
-            }
-        }
-
-        this.declarationAtPositionCache.set(cacheKey, declaration);
-        return declaration;
+        return this.astQueryService.astDeclarationAtPosition(ast, this.sourceUri, row, column);
     }
 
     /**
@@ -430,6 +469,7 @@ export class SourceContext
         return ASTQuery.findReferencesForDeclaration(declaration);
     }
 
+
     /**
      * Returns the resolved AST and the visible VariableDeclarations at a cursor position,
      * ordered from innermost scope outward (nearest-first, shadowing respected).
@@ -445,40 +485,15 @@ export class SourceContext
         if (!ast) {
             return undefined;
         }
-
-        this.ensureQueryCachesCurrent();
-        const cacheKey = `${row}:${column}`;
-        if (this.completionsAtPositionCache.has(cacheKey)) {
-            const cached = this.completionsAtPositionCache.get(cacheKey);
-            return cached ? { ast, declarations: cached } : undefined;
-        }
-
-        const node = ASTQuery.findNodeAtPosition(ast, row, column);
-        if (!node) {
-            this.completionsAtPositionCache.set(cacheKey, undefined);
-            return undefined;
-        }
-        const scope = (node instanceof ScopeNode)
-            ? node
-            : ASTQuery.getEnclosingScope(node);
-        if (!scope) {
-            this.completionsAtPositionCache.set(cacheKey, undefined);
-            return undefined;
-        }
-        const declarations = ASTQuery.getVisibleDeclarationsAtPosition(scope, row, column);
-        this.completionsAtPositionCache.set(cacheKey, declarations);
-        return { ast, declarations };
+        return this.astQueryService.astCompletionsAtPosition(ast, row, column);
     }
 
     /**
      * Returns member completions if the cursor is after a dot (member access).
      * For example: `foo.b|` returns members of the struct/definition that foo resolves to.
-     * 
-     * Detects member access by looking at source text before cursor (pattern: identifier.identifier|)
-     * 
      * @param row 1-based line number
      * @param column 0-based column number
-     * @param source Optional source text (uses lexer if not provided)
+     * @param source Optional source text (uses last-lexed text if not provided)
      */
     public astMemberCompletionsAtPosition(
         row: number,
@@ -489,86 +504,11 @@ export class SourceContext
         if (!ast) {
             return undefined;
         }
-
-        // Get the source text to analyze
         const text = source ?? this.lexer.text;
         if (!text) {
             return undefined;
         }
-
-        // Include current line prefix in cache key to avoid stale member-access reads
-        // when callers provide transient source snapshots.
-        this.ensureQueryCachesCurrent();
-
-        // Convert source to array of lines for position-based access
-        const lines = text.split(/\r?\n/);
-        if (row < 1 || row > lines.length) {
-            return undefined;
-        }
-
-        const currentLine = lines[row - 1];
-        const beforeCursor = currentLine.substring(0, column);
-        const cacheKey = `${row}:${column}:${beforeCursor}`;
-        const existing = this.memberCompletionsAtPositionCache.get(cacheKey);
-
-        // Look for member access pattern: something.identifier<cursor>
-        // Match: any word character sequence, followed by dot, followed by identifier characters
-        const memberAccessMatch = beforeCursor.match(/(\w+)\.(\w*)$/);
-        if (!memberAccessMatch) {
-            this.memberCompletionsAtPositionCache.set(cacheKey, { members: undefined, fingerprint: '' });
-            return undefined;
-        }
-
-        const objectName = memberAccessMatch[1];
-        const memberPrefix = memberAccessMatch[2]; // partial member being typed
-
-        // Resolve the object declaration:
-        // 1. Position-based (fastest, works for already-parsed lines).
-        // 2. Name-based fallback (handles stale-AST when cursor is on a newly-typed line
-        //    not yet present in the last parse snapshot).
-        // 3. Workspace global resolver (cross-file globals).
-        const objectLine = row;
-        const objectColumn = column - memberPrefix.length - 1 - objectName.length;
-        let objectDeclaration: VariableDeclaration | undefined =
-            ASTQuery.findDeclarationAtPosition(ast, objectLine, objectColumn)
-            ?? ASTQuery.findDeclarationByName(ast, objectName);
-
-        let resolvedAst: Program = ast;
-        let members: VariableDeclaration[] | undefined;
-
-        if (!objectDeclaration && this.workspaceGlobalResolver) {
-            objectDeclaration = this.workspaceGlobalResolver(objectName, this.sourceUri);
-            if (objectDeclaration && this.workspaceDeclarationAstProvider) {
-                resolvedAst = this.workspaceDeclarationAstProvider(objectDeclaration) ?? ast;
-            }
-        }
-
-        if (!objectDeclaration) {
-            this.memberCompletionsAtPositionCache.set(cacheKey, { members: undefined, fingerprint: '' });
-            return undefined;
-        }
-
-        const importedMembers = this.resolveFileInImportedMembers(objectDeclaration);
-        if (importedMembers) {
-            resolvedAst = importedMembers.ast;
-            members = importedMembers.members;
-        }
-
-        // Get member completions using the AST that owns the declaration (may be a different file).
-        members ??= ASTQuery.getMemberCompletions(resolvedAst, objectDeclaration);
-        const fingerprint = this.memberDeclarationsFingerprint(members);
-
-        if (existing && existing.fingerprint === fingerprint) {
-            return existing.members ? { ast: resolvedAst, members: existing.members } : undefined;
-        }
-
-        if (members.length === 0) {
-            this.memberCompletionsAtPositionCache.set(cacheKey, { members: undefined, fingerprint });
-            return undefined;
-        }
-
-        this.memberCompletionsAtPositionCache.set(cacheKey, { members, fingerprint });
-        return { ast: resolvedAst, members };
+        return this.astQueryService.astMemberCompletionsAtPosition(ast, this.sourceUri, row, column, text);
     }
 
     //---------------------------------------------------------------

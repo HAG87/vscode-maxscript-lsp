@@ -4,24 +4,12 @@ import {
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
-import { ASTQuery } from '@backend/ast/ASTQuery.js';
-import {
-    DefinitionBlock,
-    FunctionArgument,
-    FunctionDefinition,
-    FunctionParameter,
-    ParameterDefinition,
-    RcMenuItem,
-    RolloutControl,
-    StructDefinition,
-    StructMemberField,
-    VariableDeclaration,
-} from '@backend/ast/ASTNodes.js';
 import {
   mxsLanguageCompletions,
 } from '@backend/schemas/mxsCompletions-base.js';
 import { symbolDescriptionFromEnum } from './SymbolTranslator.js';
 import { SymbolKind } from '@backend/types.js';
+import { Utilities } from './utils.js';
 
 export class mxsHoverProvider implements HoverProvider
 {
@@ -49,84 +37,22 @@ export class mxsHoverProvider implements HoverProvider
         ]);
     }
 
-    private symbolKindForAstNode(node: unknown): SymbolKind {
-        if (node instanceof FunctionDefinition) {
-            return SymbolKind.Function;
-        }
-        if (node instanceof StructDefinition) {
-            return SymbolKind.Struct;
-        }
-        if (node instanceof DefinitionBlock) {
-            switch (node.kind) {
-                case 'macroscript': return SymbolKind.MacroScript;
-                case 'utility': return SymbolKind.Utility;
-                case 'rollout': return SymbolKind.Rollout;
-                case 'tool': return SymbolKind.Tool;
-                case 'rcmenu': return SymbolKind.RcMenu;
-                case 'plugin': return SymbolKind.Plugin;
-                case 'parameters': return SymbolKind.Parameters;
-                case 'attributes': return SymbolKind.Attributes;
-                default: return SymbolKind.Object;
-            }
-        }
-        if (node instanceof FunctionArgument || node instanceof FunctionParameter || node instanceof ParameterDefinition) {
-            return SymbolKind.Parameter;
-        }
-        if (node instanceof RolloutControl) {
-            return SymbolKind.Control;
-        }
-        if (node instanceof RcMenuItem) {
-            return SymbolKind.RcMenuControl;
-        }
-        if (node instanceof StructMemberField) {
-            return SymbolKind.Field;
-        }
-        if (node instanceof VariableDeclaration) {
-            switch (node.scope) {
-                case 'global':
-                case 'persistent':
-                    return SymbolKind.GlobalVar;
-                case 'local':
-                    return SymbolKind.LocalVar;
-                default:
-                    return SymbolKind.Variable;
-            }
-        }
-
-        return SymbolKind.Variable;
-    }
-
     private astHover(document: TextDocument, position: Position): Hover | undefined {
         const sourceContext = this.backend.getContext(document.uri.toString());
-        const ast = sourceContext?.getResolvedAST();
-        if (!ast) {
+        const hoverModel = sourceContext.getAstHoverModel(
+            position.line + 1,
+            position.character,
+            document.getText(),
+        );
+        if (!hoverModel) {
             return undefined;
         }
 
-        const declaration = sourceContext?.astDeclarationAtPosition(position.line + 1, position.character);
-        if (!declaration) {
-            return undefined;
-        }
-
-        const semanticNode = ASTQuery.findSemanticNodeForDeclaration(ast, declaration);
-        const semanticPosition = semanticNode.position ?? declaration.position;
-        const symbolKind = this.symbolKindForAstNode(semanticNode);
-        const markdown = new MarkdownString(`**${symbolDescriptionFromEnum(symbolKind)}**\n`);
-
-        if (semanticPosition) {
-            const rangeData = ASTQuery.positionToRange(semanticPosition);
-            const range = new Range(
-                rangeData.start.line,
-                rangeData.start.character,
-                rangeData.end.line,
-                rangeData.end.character,
-            );
-            markdown.appendCodeblock(document.getText(range), 'maxscript');
-            return new Hover([markdown], range);
-        }
-
-        markdown.appendCodeblock(declaration.name ?? '', 'maxscript');
-        return new Hover([markdown]);
+        const markdown = new MarkdownString(`**${symbolDescriptionFromEnum(hoverModel.symbolKind as SymbolKind)}**\n`);
+        markdown.appendCodeblock(hoverModel.codeSnippet, 'maxscript');
+        return hoverModel.range
+            ? new Hover([markdown], Utilities.lexicalRangeToRange(hoverModel.range))
+            : new Hover([markdown]);
     }
 
     private legacyHover(document: TextDocument, position: Position): Hover | undefined {
@@ -140,16 +66,16 @@ export class mxsHoverProvider implements HoverProvider
             return undefined;
         }
 
-        const definition = ctx.symbolDefinition(
+        const hoverModel = ctx.getLegacyHoverModel(
             position.line + 1,
             position.character);
 
-        if (!definition?.definition) {
+        if (!hoverModel) {
             return undefined;
         }
 
-        const markedStr: MarkdownString = new MarkdownString(`**${symbolDescriptionFromEnum(definition.kind)}**\n`);
-        markedStr.appendCodeblock(definition.definition.text, 'maxscript');
+        const markedStr: MarkdownString = new MarkdownString(`**${symbolDescriptionFromEnum(hoverModel.symbolKind as SymbolKind)}**\n`);
+        markedStr.appendCodeblock(hoverModel.codeSnippet, 'maxscript');
         return new Hover([markedStr]);
     }
 
