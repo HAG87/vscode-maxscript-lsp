@@ -3,106 +3,15 @@ import {
     TextDocument, WorkspaceEdit, workspace,
 } from 'vscode';
 
-import type { Position as AstPosition } from '@strumenta/tylasu';
 import { mxsBackend } from '@backend/Backend.js';
-import { ASTQuery } from '@backend/ast/ASTQuery.js';
+import { RenameService } from '@backend/rename/RenameService.js';
 import { Utilities } from './utils.js';
 
 export class mxsRenameProvider implements RenameProvider
 {
+    private readonly renameService = new RenameService();
+
     public constructor(private backend: mxsBackend) { }
-
-    private astPositionToRange(position: AstPosition): Range {
-        return new Range(
-            position.start.line - 1,
-            position.start.column,
-            position.end.line - 1,
-            position.end.column,
-        );
-    }
-
-    private astNameRange(document: TextDocument, position: AstPosition, name: string): Range | undefined {
-        const enclosingRange = this.astPositionToRange(position);
-        const snippet = document.getText(enclosingRange);
-        const offset = snippet.indexOf(name);
-
-        if (offset < 0) {
-            return undefined;
-        }
-
-        const prefix = snippet.slice(0, offset);
-        const lines = prefix.split(/\r?\n/);
-        const lineOffset = lines.length - 1;
-        const startLine = enclosingRange.start.line + lineOffset;
-        const startCharacter = lineOffset === 0
-            ? enclosingRange.start.character + lines[0].length
-            : lines[lineOffset].length;
-
-        return new Range(
-            startLine,
-            startCharacter,
-            startLine,
-            startCharacter + name.length,
-        );
-    }
-
-    private astPrepareRename(document: TextDocument, position: Position): Range | { range: Range; placeholder: string } | undefined {
-        const sourceContext = this.backend.getContext(document.uri.toString());
-        const ast = sourceContext?.getResolvedAST();
-        const declaration = sourceContext?.astDeclarationAtPosition(position.line + 1, position.character);
-
-        if (!ast || !declaration?.name) {
-            return undefined;
-        }
-
-        const semanticNode = ASTQuery.findSemanticNodeForDeclaration(ast, declaration);
-        const targetPosition = semanticNode.position ?? declaration.position;
-        if (!targetPosition) {
-            return undefined;
-        }
-
-        const range = this.astNameRange(document, targetPosition, declaration.name);
-        if (!range) {
-            return undefined;
-        }
-
-        return {
-            range,
-            placeholder: declaration.name,
-        };
-    }
-
-    private astRenameEdits(document: TextDocument, position: Position, newName: string): WorkspaceEdit | undefined {
-        const sourceContext = this.backend.getContext(document.uri.toString());
-        const ast = sourceContext?.getResolvedAST();
-        const declaration = sourceContext?.astDeclarationAtPosition(position.line + 1, position.character);
-
-        if (!ast || !declaration?.name) {
-            return undefined;
-        }
-
-        const workspaceEdit = new WorkspaceEdit();
-        const semanticNode = ASTQuery.findSemanticNodeForDeclaration(ast, declaration);
-        const declarationPosition = semanticNode.position ?? declaration.position;
-        if (declarationPosition) {
-            const declarationRange = this.astNameRange(document, declarationPosition, declaration.name);
-            if (declarationRange) {
-                workspaceEdit.replace(document.uri, declarationRange, newName);
-            }
-        }
-
-        for (const reference of declaration.references) {
-            if (!reference.position || !reference.name) {
-                continue;
-            }
-
-            const referenceRange = this.astNameRange(document, reference.position, reference.name)
-                ?? this.astPositionToRange(reference.position);
-            workspaceEdit.replace(document.uri, referenceRange, newName);
-        }
-
-        return workspaceEdit.size > 0 ? workspaceEdit : undefined;
-    }
 
     public prepareRename(
         document: TextDocument,
@@ -115,14 +24,23 @@ export class mxsRenameProvider implements RenameProvider
             const useAst = config.get<boolean>('providers.ast.renameProvider', true);
             const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
             const traceRouting = config.get<boolean>('providers.traceRouting', false);
+            const sourceContext = this.backend.getContext(document.uri.toString());
 
             if (useAst) {
-                const renameTarget = this.astPrepareRename(document, position);
+                const renameTarget = this.renameService.prepareAstRename(
+                    sourceContext,
+                    position.line + 1,
+                    position.character,
+                    document.getText(),
+                );
                 if (renameTarget) {
                     if (traceRouting) {
                         console.log('[language-maxscript][RenameProvider] route=AST prepare');
                     }
-                    resolve(renameTarget);
+                    resolve({
+                        range: Utilities.lexicalRangeToRange(renameTarget.range),
+                        placeholder: renameTarget.placeholder,
+                    });
                     return;
                 }
                 if (traceRouting) {
@@ -135,8 +53,7 @@ export class mxsRenameProvider implements RenameProvider
                 return;
             }
 
-            const ctx = this.backend.getContext(document.uri.toString());
-            const symbol = ctx.symbolAtPosition(position.line + 1, position.character);
+            const symbol = sourceContext.symbolAtPosition(position.line + 1, position.character);
 
             if (!symbol || !symbol.definition) {
                 // Reject positions that are not on a renameable symbol.
@@ -167,10 +84,21 @@ export class mxsRenameProvider implements RenameProvider
             const useAst = config.get<boolean>('providers.ast.renameProvider', true);
             const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
             const traceRouting = config.get<boolean>('providers.traceRouting', false);
+            const sourceContext = this.backend.getContext(document.uri.toString());
 
             if (useAst) {
-                const workspaceEdit = this.astRenameEdits(document, position, newName);
-                if (workspaceEdit) {
+                const astEdits = this.renameService.buildAstRenameEdits(
+                    sourceContext,
+                    position.line + 1,
+                    position.character,
+                    newName,
+                    document.getText(),
+                );
+                if (astEdits) {
+                    const workspaceEdit = new WorkspaceEdit();
+                    for (const edit of astEdits) {
+                        workspaceEdit.replace(document.uri, Utilities.lexicalRangeToRange(edit.range), edit.newText);
+                    }
                     if (traceRouting) {
                         console.log('[language-maxscript][RenameProvider] route=AST edits');
                     }
@@ -188,7 +116,7 @@ export class mxsRenameProvider implements RenameProvider
             }
 
             const occurrences =
-                this.backend.getContext(document.uri.toString()).symbolInfoAtPositionCtxOccurrences(
+                sourceContext.symbolInfoAtPositionCtxOccurrences(
                     position.line + 1,
                     position.character);
 
