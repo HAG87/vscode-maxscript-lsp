@@ -39,11 +39,12 @@ export class mxsReferenceProvider implements ReferenceProvider
             const traceRouting = config.get<boolean>('providers.traceRouting', false);
 
             if (useAst) {
+                const sourceLineText = document.lineAt(position.line).text;
                 const astReferences = sourceContext.getAstReferenceLocations(
                     position.line + 1,
                     position.character,
                     context.includeDeclaration,
-                    document.getText(),
+                    sourceLineText,
                 );
 
                 if (astReferences) {

@@ -32,23 +32,17 @@ export interface NavigationHighlightModel {
 export class NavigationService {
     private readonly memberReferenceIndex = new WeakMap<Program, Map<unknown, MemberExpression[]>>();
 
-    private extractWordAtPosition(sourceText: string, row1Based: number, column0Based: number): string | undefined {
-        const lines = sourceText.split(/\r?\n/);
-        const line = lines[row1Based - 1];
-        if (!line) {
-            return undefined;
-        }
-
-        const column = Math.max(0, Math.min(column0Based, line.length));
+    private extractWordFromLine(lineText: string, column0Based: number): string | undefined {
+        const column = Math.max(0, Math.min(column0Based, lineText.length));
         const isWordChar = (ch: string): boolean => /[A-Za-z0-9_]/.test(ch);
 
         let start = column;
-        while (start > 0 && isWordChar(line[start - 1])) {
+        while (start > 0 && isWordChar(lineText[start - 1])) {
             start--;
         }
 
         let end = column;
-        while (end < line.length && isWordChar(line[end])) {
+        while (end < lineText.length && isWordChar(lineText[end])) {
             end++;
         }
 
@@ -56,7 +50,17 @@ export class NavigationService {
             return undefined;
         }
 
-        return line.slice(start, end);
+        return lineText.slice(start, end);
+    }
+
+    private extractWordAtPosition(sourceText: string, row1Based: number, column0Based: number): string | undefined {
+        const lines = sourceText.split(/\r?\n/);
+        const line = lines[row1Based - 1];
+        if (!line) {
+            return undefined;
+        }
+
+        return this.extractWordFromLine(line, column0Based);
     }
 
     private declarationMightHaveMemberUsages(ast: Program, declaration: VariableDeclaration): boolean {
@@ -283,15 +287,15 @@ export class NavigationService {
         row1Based: number,
         column0Based: number,
         includeDeclaration: boolean,
-        sourceText?: string,
+        sourceLineText?: string,
     ): NavigationReferenceModel[] | undefined {
         const ast = sourceContext.getResolvedAST();
         const declaration = sourceContext.astDeclarationAtPosition(row1Based, column0Based)
             ?? (() => {
-                if (!ast || !sourceText) {
+                if (!ast || !sourceLineText) {
                     return undefined;
                 }
-                const word = this.extractWordAtPosition(sourceText, row1Based, column0Based);
+                const word = this.extractWordFromLine(sourceLineText, column0Based);
                 return word ? ASTQuery.findDeclarationByName(ast, word) : undefined;
             })();
         if (!ast || !declaration) {
