@@ -17,91 +17,76 @@ export class mxsDocumentHighlightProvider implements DocumentHighlightProvider
         position: Position,
         token: CancellationToken): ProviderResult<DocumentHighlight[]>
     {
-        return new Promise((resolve) =>
-        {
-            if (token.isCancellationRequested) {
-                resolve(undefined);
-                return;
-            }
+        if (token.isCancellationRequested) {
+            return undefined;
+        }
 
-            const cancelSubscription = token.onCancellationRequested(() => {
-                cancelSubscription.dispose();
-                resolve(undefined);
-            });
+        const sourceContext = this.backend.getContext(document.uri.toString());
+        const config = workspace.getConfiguration('maxScript');
+        const useAst = config.get<boolean>('providers.ast.documentHighlightProvider', true);
+        const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
+        const traceRouting = config.get<boolean>('providers.traceRouting', false);
 
-            const sourceContext = this.backend.getContext(document.uri.toString());
-            const config = workspace.getConfiguration('maxScript');
-            const useAst = config.get<boolean>('providers.ast.documentHighlightProvider', true);
-            const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
-            const traceRouting = config.get<boolean>('providers.traceRouting', false);
+        if (useAst) {
+            const astHighlights = sourceContext.getAstDocumentHighlights(
+                position.line + 1,
+                position.character,
+                document.getText(),
+            );
 
-            if (useAst) {
-                const astHighlights = sourceContext.getAstDocumentHighlights(
-                    position.line + 1,
-                    position.character,
-                    document.getText(),
-                );
+            if (astHighlights) {
+                const result = astHighlights.map((highlight) =>
+                    new DocumentHighlight(
+                        Utilities.lexicalRangeToRange(highlight.range),
+                        highlight.kind === 'write' ? DocumentHighlightKind.Write : DocumentHighlightKind.Read,
+                    ));
 
-                if (astHighlights) {
-                    const result = astHighlights.map((highlight) =>
-                        new DocumentHighlight(
-                            Utilities.lexicalRangeToRange(highlight.range),
-                            highlight.kind === 'write' ? DocumentHighlightKind.Write : DocumentHighlightKind.Read,
-                        ));
-
-                    if (result.length > 0) {
-                        if (traceRouting) {
-                            console.log(`[language-maxscript][DocumentHighlightProvider] route=AST highlights=${result.length}`);
-                        }
-                        cancelSubscription.dispose();
-                        resolve(result);
-                        return;
+                if (result.length > 0) {
+                    if (traceRouting) {
+                        console.log(`[language-maxscript][DocumentHighlightProvider] route=AST highlights=${result.length}`);
                     }
-                }
-                if (traceRouting) {
-                    console.log('[language-maxscript][DocumentHighlightProvider] route=AST-miss');
+                    return result;
                 }
             }
+            if (traceRouting) {
+                console.log('[language-maxscript][DocumentHighlightProvider] route=AST-miss');
+            }
+        }
 
-            if (fallbackToLegacy) {
-                const occurrences = sourceContext.symbolInfoAtPositionCtxOccurrences(
-                    position.line + 1,
-                    position.character,
-                );
+        if (fallbackToLegacy) {
+            const occurrences = sourceContext.symbolInfoAtPositionCtxOccurrences(
+                position.line + 1,
+                position.character,
+            );
 
-                if (occurrences) {
-                    const docUriStr = document.uri.toString();
-                    const seen = new Set<string>();
-                    const result: DocumentHighlight[] = [];
+            if (occurrences) {
+                const docUriStr = document.uri.toString();
+                const seen = new Set<string>();
+                const result: DocumentHighlight[] = [];
 
-                    for (const occurrence of occurrences) {
-                        if (!occurrence.definition || occurrence.source !== docUriStr) {
-                            continue;
-                        }
-                        const range = Utilities.symbolNameRange(occurrence);
-                        const key = `${range.start.line}:${range.start.character}`;
-                        if (seen.has(key)) {
-                            continue;
-                        }
-                        seen.add(key);
-                        result.push(new DocumentHighlight(range, translateHighlightKind(occurrence.kind)));
+                for (const occurrence of occurrences) {
+                    if (!occurrence.definition || occurrence.source !== docUriStr) {
+                        continue;
                     }
-
-                    if (result.length > 0) {
-                        if (traceRouting) {
-                            console.log('[language-maxscript][DocumentHighlightProvider] route=Legacy');
-                        }
-                        cancelSubscription.dispose();
-                        resolve(result);
-                        return;
+                    const range = Utilities.symbolNameRange(occurrence);
+                    const key = `${range.start.line}:${range.start.character}`;
+                    if (seen.has(key)) {
+                        continue;
                     }
+                    seen.add(key);
+                    result.push(new DocumentHighlight(range, translateHighlightKind(occurrence.kind)));
+                }
+
+                if (result.length > 0) {
+                    if (traceRouting) {
+                        console.log('[language-maxscript][DocumentHighlightProvider] route=Legacy');
+                    }
+                    return result;
                 }
             }
+        }
 
-            // Last resort: word under cursor
-            const wordRange = document.getWordRangeAtPosition(position);
-            cancelSubscription.dispose();
-            resolve(wordRange ? [new DocumentHighlight(wordRange, DocumentHighlightKind.Text)] : undefined);
-        });
+        const wordRange = document.getWordRangeAtPosition(position);
+        return wordRange ? [new DocumentHighlight(wordRange, DocumentHighlightKind.Text)] : undefined;
     }
 }

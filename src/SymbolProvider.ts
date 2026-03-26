@@ -46,88 +46,73 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
     provideDocumentSymbols(document: TextDocument, token: CancellationToken):
         ProviderResult<SymbolInformation[] | DocumentSymbol[]>
     {
-        return new Promise((resolve) =>
-        {
-            if (token.isCancellationRequested) {
-                resolve([]);
-                return;
+        if (token.isCancellationRequested) {
+            return [];
+        }
+
+        const config = workspace.getConfiguration('maxScript');
+        const useAst = config.get<boolean>('providers.ast.symbolProvider', true);
+        const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
+        const traceRouting = config.get<boolean>('providers.traceRouting', false);
+        const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+        const providerStart = tracePerformance ? this.nowMs() : 0;
+
+        const sourceContext = this.backend.getContext(document.uri.toString());
+
+        if (traceRouting && !sourceContext) {
+            console.log(`[language-maxscript][SymbolProvider] sourceContext=undefined for ${document.uri.toString()}`);
+        }
+
+        let symbols: ISymbolInfo[] = [];
+
+        if (useAst) {
+            const astQueryStart = tracePerformance ? this.nowMs() : 0;
+            symbols = sourceContext?.buildSymbolTree(traceRouting) ?? [];
+            if (traceRouting) {
+                console.log(`[language-maxscript][SymbolProvider] route=AST symbols=${symbols.length}`);
             }
-
-            const cancelSubscription = token.onCancellationRequested(() => {
-                cancelSubscription.dispose();
-                resolve([]);
-            });
-
-            const config = workspace.getConfiguration('maxScript');
-            const useAst = config.get<boolean>('providers.ast.symbolProvider', true);
-            const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
-            const traceRouting = config.get<boolean>('providers.traceRouting', false);
-            const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
-            const providerStart = tracePerformance ? this.nowMs() : 0;
-
-            const sourceContext = this.backend.getContext(document.uri.toString());
-
-            if (traceRouting && !sourceContext) {
-                console.log(`[language-maxscript][SymbolProvider] sourceContext=undefined for ${document.uri.toString()}`);
-            }
-
-            let symbols: ISymbolInfo[] = [];
-
-            if (useAst) {
-                const astQueryStart = tracePerformance ? this.nowMs() : 0;
-                symbols = sourceContext?.buildSymbolTree(traceRouting) ?? [];
-                if (traceRouting) {
-                    console.log(`[language-maxscript][SymbolProvider] route=AST symbols=${symbols.length}`);
-                }
-                if (tracePerformance) {
-                    console.log(`[language-maxscript][Performance] symbolProvider.astQuery uri=${document.uri.toString()} duration=${(this.nowMs() - astQueryStart).toFixed(2)}ms symbols=${symbols.length}`);
-                }
-            }
-
-            if ((!symbols || symbols.length === 0) && fallbackToLegacy) {
-                const legacyQueryStart = tracePerformance ? this.nowMs() : 0;
-                symbols = sourceContext?.listTopLevelSymbols(false) ?? [];
-                if (traceRouting) {
-                    console.log(`[language-maxscript][SymbolProvider] route=Legacy symbols=${symbols.length}`);
-                }
-                if (tracePerformance) {
-                    console.log(`[language-maxscript][Performance] symbolProvider.legacyQuery uri=${document.uri.toString()} duration=${(this.nowMs() - legacyQueryStart).toFixed(2)}ms symbols=${symbols.length}`);
-                }
-            }
-
-            if (!symbols || symbols.length === 0) {
-                if (tracePerformance) {
-                    console.log(`[language-maxscript][Performance] symbolProvider.total uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms symbols=0`);
-                }
-                cancelSubscription.dispose();
-                resolve([]);
-                return;
-            }
-
-            const symbolsList: DocumentSymbol[] = [];
-            const materializeStart = tracePerformance ? this.nowMs() : 0;
-
-            for (const symbol of symbols) {
-                if (token.isCancellationRequested) {
-                    cancelSubscription.dispose();
-                    resolve([]);
-                    return;
-                }
-
-                if (!symbol.definition || !symbol.name) {
-                    continue;
-                }
-                // Use symbolInfoToDocumentSymbol for all symbols (handles both with and without children)
-                symbolsList.push(this.symbolInfoToDocumentSymbol(symbol));
-            }
-
             if (tracePerformance) {
-                console.log(`[language-maxscript][Performance] symbolProvider.materialize uri=${document.uri.toString()} duration=${(this.nowMs() - materializeStart).toFixed(2)}ms documentSymbols=${symbolsList.length}`);
-                console.log(`[language-maxscript][Performance] symbolProvider.total uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms documentSymbols=${symbolsList.length}`);
+                console.log(`[language-maxscript][Performance] symbolProvider.astQuery uri=${document.uri.toString()} duration=${(this.nowMs() - astQueryStart).toFixed(2)}ms symbols=${symbols.length}`);
+            }
+        }
+
+        if ((!symbols || symbols.length === 0) && fallbackToLegacy) {
+            const legacyQueryStart = tracePerformance ? this.nowMs() : 0;
+            symbols = sourceContext?.listTopLevelSymbols(false) ?? [];
+            if (traceRouting) {
+                console.log(`[language-maxscript][SymbolProvider] route=Legacy symbols=${symbols.length}`);
+            }
+            if (tracePerformance) {
+                console.log(`[language-maxscript][Performance] symbolProvider.legacyQuery uri=${document.uri.toString()} duration=${(this.nowMs() - legacyQueryStart).toFixed(2)}ms symbols=${symbols.length}`);
+            }
+        }
+
+        if (!symbols || symbols.length === 0) {
+            if (tracePerformance) {
+                console.log(`[language-maxscript][Performance] symbolProvider.total uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms symbols=0`);
+            }
+            return [];
+        }
+
+        const symbolsList: DocumentSymbol[] = [];
+        const materializeStart = tracePerformance ? this.nowMs() : 0;
+
+        for (const symbol of symbols) {
+            if (token.isCancellationRequested) {
+                return [];
             }
 
-            cancelSubscription.dispose();
-            resolve(symbolsList);
-        });
+            if (!symbol.definition || !symbol.name) {
+                continue;
+            }
+            symbolsList.push(this.symbolInfoToDocumentSymbol(symbol));
+        }
+
+        if (tracePerformance) {
+            console.log(`[language-maxscript][Performance] symbolProvider.materialize uri=${document.uri.toString()} duration=${(this.nowMs() - materializeStart).toFixed(2)}ms documentSymbols=${symbolsList.length}`);
+            console.log(`[language-maxscript][Performance] symbolProvider.total uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms documentSymbols=${symbolsList.length}`);
+        }
+
+        return symbolsList;
     }
 }

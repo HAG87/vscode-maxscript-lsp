@@ -15,26 +15,21 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
     provideDocumentRangeFormattingEdits(document: TextDocument, range: Range,
         _options: FormattingOptions, token: CancellationToken): ProviderResult<TextEdit[]>
     {
-        // /*
-        return new Promise<TextEdit[]>((resolve) =>
-        {
-            if (token.isCancellationRequested) {
-                resolve([]);
-                return;
-            }
+        if (token.isCancellationRequested) {
+            return [];
+        }
 
-            const { code, start, stop } =
-                this.backend.getContext(document.uri.toString()).formatCode(
-                    Utilities.rangeToLexicalRange(range),
-                    this.options
-                );
-            const resultRange = range.with(
-                document.positionAt(start),
-                document.positionAt(stop + 1)
+        const { code, start, stop } =
+            this.backend.getContext(document.uri.toString()).formatCode(
+                Utilities.rangeToLexicalRange(range),
+                this.options
             );
-            resolve([TextEdit.replace(resultRange, code)]);
-        });
-        // */
+        const resultRange = range.with(
+            document.positionAt(start),
+            document.positionAt(stop + 1)
+        );
+        return [TextEdit.replace(resultRange, code)];
+
         /*
         const { code, start, stop } =
             this.backend.formatCode(
@@ -53,36 +48,32 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
     provideDocumentRangesFormattingEdits?(document: TextDocument, ranges: Range[],
         _options: FormattingOptions, token: CancellationToken): ProviderResult<TextEdit[]>
     {
-        return new Promise<TextEdit[]>((resolve) =>
+        if (token.isCancellationRequested) {
+            return [];
+        }
+
+        const results: TextEdit[] = [];
+        ranges.forEach(range =>
         {
             if (token.isCancellationRequested) {
-                resolve([]);
                 return;
             }
 
-            const results: TextEdit[] = [];
-            ranges.forEach(range =>
-            {
-                if (token.isCancellationRequested) {
-                    return;
-                }
-
-                const { code, start, stop } =
-                    this.backend.getContext(document.uri.toString()).formatCode(
-                        {
-                            start: document.offsetAt(range.start),
-                            stop: document.offsetAt(range.end) - 1
-                        },
-                        this.options
-                    );
-                const resultRange = range.with(
-                    document.positionAt(start),
-                    document.positionAt(stop + 1)
+            const { code, start, stop } =
+                this.backend.getContext(document.uri.toString()).formatCode(
+                    {
+                        start: document.offsetAt(range.start),
+                        stop: document.offsetAt(range.end) - 1
+                    },
+                    this.options
                 );
-                results.push(TextEdit.replace(resultRange, code));
-            });
-            resolve(results);
+            const resultRange = range.with(
+                document.positionAt(start),
+                document.positionAt(stop + 1)
+            );
+            results.push(TextEdit.replace(resultRange, code));
         });
+        return results;
 
         /*
         let formatRange: Range = ranges[0];
@@ -128,27 +119,23 @@ export class mxsFormattingProvider implements DocumentFormattingEditProvider
     provideDocumentFormattingEdits(document: TextDocument,
         _options: FormattingOptions, token: CancellationToken): ProviderResult<TextEdit[]>
     {
-        return new Promise<TextEdit[]>((resolve) =>
-        {
-            if (token.isCancellationRequested) {
-                resolve([]);
-                return;
-            }
+        if (token.isCancellationRequested) {
+            return [];
+        }
 
-            const range = new Range(
-                document.positionAt(0),
-                document.positionAt(document.getText().length)
+        const range = new Range(
+            document.positionAt(0),
+            document.positionAt(document.getText().length)
+        );
+        const { code, start, stop } =
+            this.backend.getContext(document.uri.toString()).formatCode(
+                Utilities.rangeToLexicalRange(range),
+                this.options
             );
-            const { code, start, stop } =
-                this.backend.getContext(document.uri.toString()).formatCode(
-                    Utilities.rangeToLexicalRange(range),
-                    this.options
-                );
-            const resultRange = range.with(
-                document.positionAt(start),
-                document.positionAt(stop + 1)
-            );
-            resolve([TextEdit.replace(resultRange, code)]);
-        });
+        const resultRange = range.with(
+            document.positionAt(start),
+            document.positionAt(stop + 1)
+        );
+        return [TextEdit.replace(resultRange, code)];
     }
 }

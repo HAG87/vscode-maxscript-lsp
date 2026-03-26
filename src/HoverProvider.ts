@@ -81,63 +81,47 @@ export class mxsHoverProvider implements HoverProvider
 
     provideHover(document: TextDocument, position: Position, token: CancellationToken): ProviderResult<Hover>
     {
-        return new Promise((resolve) =>
-        {
-            if (token.isCancellationRequested) {
-                resolve(undefined);
-                return;
-            }
+        if (token.isCancellationRequested) {
+            return undefined;
+        }
 
-            const cancelSubscription = token.onCancellationRequested(() => {
-                cancelSubscription.dispose();
-                resolve(undefined);
-            });
+        const config = workspace.getConfiguration('maxScript');
+        const useAst = config.get<boolean>('providers.ast.hoverProvider', true);
+        const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
+        const traceRouting = config.get<boolean>('providers.traceRouting', false);
 
-            const config = workspace.getConfiguration('maxScript');
-            const useAst = config.get<boolean>('providers.ast.hoverProvider', true);
-            const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
-            const traceRouting = config.get<boolean>('providers.traceRouting', false);
-
-            const apiHover = this.apiHover(document, position);
-            if (apiHover) {
-                if (traceRouting) {
-                    console.log('[language-maxscript][HoverProvider] route=API');
-                }
-                cancelSubscription.dispose();
-                resolve(apiHover);
-                return;
-            }
-
-            if (useAst) {
-                const hover = this.astHover(document, position);
-                if (hover) {
-                    if (traceRouting) {
-                        console.log('[language-maxscript][HoverProvider] route=AST');
-                    }
-                    cancelSubscription.dispose();
-                    resolve(hover);
-                    return;
-                }
-            }
-
-            if (fallbackToLegacy) {
-                const hover = this.legacyHover(document, position);
-                if (hover) {
-                    if (traceRouting) {
-                        console.log('[language-maxscript][HoverProvider] route=Legacy');
-                    }
-                    cancelSubscription.dispose();
-                    resolve(hover);
-                    return;
-                }
-            }
-
+        const apiHover = this.apiHover(document, position);
+        if (apiHover) {
             if (traceRouting) {
-                console.log('[language-maxscript][HoverProvider] route=None');
+                console.log('[language-maxscript][HoverProvider] route=API');
             }
+            return apiHover;
+        }
 
-            cancelSubscription.dispose();
-            resolve(undefined);
-        });
+        if (useAst) {
+            const hover = this.astHover(document, position);
+            if (hover) {
+                if (traceRouting) {
+                    console.log('[language-maxscript][HoverProvider] route=AST');
+                }
+                return hover;
+            }
+        }
+
+        if (fallbackToLegacy) {
+            const hover = this.legacyHover(document, position);
+            if (hover) {
+                if (traceRouting) {
+                    console.log('[language-maxscript][HoverProvider] route=Legacy');
+                }
+                return hover;
+            }
+        }
+
+        if (traceRouting) {
+            console.log('[language-maxscript][HoverProvider] route=None');
+        }
+
+        return undefined;
     }
 }

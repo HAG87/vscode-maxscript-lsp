@@ -21,57 +21,45 @@ export class mxsReferenceProvider implements ReferenceProvider
         context: ReferenceContext,
         token: CancellationToken): ProviderResult<Location[]>
     {
-        return new Promise((resolve) =>
-        {
-            if (token.isCancellationRequested) {
-                resolve(undefined);
-                return;
-            }
+        if (token.isCancellationRequested) {
+            return undefined;
+        }
 
-            const cancelSubscription = token.onCancellationRequested(() => {
-                cancelSubscription.dispose();
-                resolve(undefined);
-            });
+        const sourceContext = this.backend.getContext(document.uri.toString());
+        const config = workspace.getConfiguration('maxScript');
+        const useAst = config.get<boolean>('providers.ast.referenceProvider', true);
+        const traceRouting = config.get<boolean>('providers.traceRouting', false);
 
-            const sourceContext = this.backend.getContext(document.uri.toString());
-            const config = workspace.getConfiguration('maxScript');
-            const useAst = config.get<boolean>('providers.ast.referenceProvider', true);
-            const traceRouting = config.get<boolean>('providers.traceRouting', false);
+        if (useAst) {
+            const sourceLineText = document.lineAt(position.line).text;
+            const astReferences = sourceContext.getAstReferenceLocations(
+                position.line + 1,
+                position.character,
+                context.includeDeclaration,
+                sourceLineText,
+            );
 
-            if (useAst) {
-                const sourceLineText = document.lineAt(position.line).text;
-                const astReferences = sourceContext.getAstReferenceLocations(
-                    position.line + 1,
-                    position.character,
-                    context.includeDeclaration,
-                    sourceLineText,
-                );
-
-                if (astReferences) {
-                    const result = astReferences.map((reference) =>
-                        new Location(
-                            Uri.parse(reference.uri),
-                            Utilities.lexicalRangeToRange(reference.range),
-                        ));
-
-                    if (traceRouting) {
-                        console.log(`[language-maxscript][ReferenceProvider] route=AST refs=${result.length}`);
-                    }
-                    cancelSubscription.dispose();
-                    resolve(result);
-                    return;
-                }
+            if (astReferences) {
+                const result = astReferences.map((reference) =>
+                    new Location(
+                        Uri.parse(reference.uri),
+                        Utilities.lexicalRangeToRange(reference.range),
+                    ));
 
                 if (traceRouting) {
-                    console.log('[language-maxscript][ReferenceProvider] route=AST-miss');
+                    console.log(`[language-maxscript][ReferenceProvider] route=AST refs=${result.length}`);
                 }
+                return result;
             }
 
             if (traceRouting) {
-                console.log('[language-maxscript][ReferenceProvider] route=None');
+                console.log('[language-maxscript][ReferenceProvider] route=AST-miss');
             }
-            cancelSubscription.dispose();
-            resolve(undefined);
-        });
+        }
+
+        if (traceRouting) {
+            console.log('[language-maxscript][ReferenceProvider] route=None');
+        }
+        return undefined;
     }
 }

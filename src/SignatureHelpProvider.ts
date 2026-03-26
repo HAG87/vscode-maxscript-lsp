@@ -35,51 +35,38 @@ export class mxsSignatureHelpProvider implements SignatureHelpProvider {
         token: CancellationToken,
         _context: SignatureHelpContext,
     ): ProviderResult<SignatureHelp> {
-        return new Promise((resolve) => {
-            if (token.isCancellationRequested) {
-                resolve(undefined);
-                return;
-            }
+        if (token.isCancellationRequested) {
+            return undefined;
+        }
 
-            const cancelSubscription = token.onCancellationRequested(() => {
-                cancelSubscription.dispose();
-                resolve(undefined);
-            });
-
-            const config = workspace.getConfiguration('maxScript');
-            const useAst = config.get<boolean>('providers.ast.completionProvider', true);
-            const traceRouting = config.get<boolean>('providers.traceRouting', false);
-            if (!useAst) {
-                if (traceRouting) {
-                    console.log('[language-maxscript][SignatureHelpProvider] route=None (AST disabled)');
-                }
-                cancelSubscription.dispose();
-                resolve(undefined);
-                return;
-            }
-
-            const lineBeforeCursor = document.getText(new Range(position.line, 0, position.line, position.character));
-            const row = position.line + 1;
-            const sourceContext = this.backend.getContext(document.uri.toString());
-            const model = sourceContext.getSignatureHelpModel(
-                row,
-                lineBeforeCursor,
-            );
-
-            if (model) {
-                if (traceRouting) {
-                    console.log(`[language-maxscript][SignatureHelpProvider] route=AST style=${model.style}`);
-                }
-                cancelSubscription.dispose();
-                resolve(this.buildSignatureHelp(model));
-                return;
-            }
-
+        const config = workspace.getConfiguration('maxScript');
+        const useAst = config.get<boolean>('providers.ast.completionProvider', true);
+        const traceRouting = config.get<boolean>('providers.traceRouting', false);
+        if (!useAst) {
             if (traceRouting) {
-                console.log('[language-maxscript][SignatureHelpProvider] route=None (no call context match)');
+                console.log('[language-maxscript][SignatureHelpProvider] route=None (AST disabled)');
             }
-            cancelSubscription.dispose();
-            resolve(undefined);
-        });
+            return undefined;
+        }
+
+        const lineBeforeCursor = document.getText(new Range(position.line, 0, position.line, position.character));
+        const row = position.line + 1;
+        const sourceContext = this.backend.getContext(document.uri.toString());
+        const model = sourceContext.getSignatureHelpModel(
+            row,
+            lineBeforeCursor,
+        );
+
+        if (model) {
+            if (traceRouting) {
+                console.log(`[language-maxscript][SignatureHelpProvider] route=AST style=${model.style}`);
+            }
+            return this.buildSignatureHelp(model);
+        }
+
+        if (traceRouting) {
+            console.log('[language-maxscript][SignatureHelpProvider] route=None (no call context match)');
+        }
+        return undefined;
     }
 }
