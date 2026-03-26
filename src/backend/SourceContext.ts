@@ -6,6 +6,7 @@ import {
   ParseCancellationException, ParseTree, ParseTreeWalker,
   PredictionMode, TerminalNode,
 } from 'antlr4ng';
+import { workspace } from 'vscode';
 
 import { mxsLexer } from '../parser/mxsLexer.js';
 import { mxsParser, ProgramContext } from '../parser/mxsParser.js';
@@ -113,6 +114,122 @@ export class SourceContext implements IAstContext
     private readonly navigationService: NavigationService;
     private readonly hoverService: HoverService;
     private readonly codeLensService: CodeLensService;
+    private parseInvocationCount: number = 0;
+    private sllFallbackCount: number = 0;
+    private sourceCharCount: number = 0;
+    private sourceLineCount: number = 0;
+    private static readonly LARGE_FILE_CHAR_THRESHOLD = 100000;
+    private static readonly LARGE_FILE_LINE_THRESHOLD = 3000;
+
+    private nowMs(): number {
+        return typeof performance !== 'undefined' ? performance.now() : Date.now();
+    }
+
+    private isPerformanceTraceEnabled(): boolean {
+        return workspace.getConfiguration('maxScript').get<boolean>('providers.tracePerformance', false);
+    }
+
+    private logPerformanceTrace(message: string): void {
+        if (this.isPerformanceTraceEnabled()) {
+            console.log(`[language-maxscript][Performance] ${message}`);
+        }
+    }
+
+    private logParserDecisionProfile(): void {
+        const parseInfo = this.parser.getParseInfo();
+        if (!parseInfo) {
+            this.logPerformanceTrace(`parse.profile uri=${this.sourceUri} unavailable`);
+            return;
+        }
+
+        const decisionInfo = parseInfo.getDecisionInfo();
+        const parserAny = this.parser as unknown as {
+            ruleNames?: string[];
+            atn?: { decisionToState?: Array<{ ruleIndex?: number }> };
+        };
+        const ruleNames = parserAny.ruleNames ?? [];
+        const decisionToState = parserAny.atn?.decisionToState ?? [];
+
+        const active = decisionInfo
+            .filter((d) => d.invocations > 0)
+            .map((d) => {
+                const state = decisionToState[d.decision];
+                const ruleIndex = state?.ruleIndex ?? -1;
+                const ruleName = ruleIndex >= 0 && ruleIndex < ruleNames.length
+                    ? ruleNames[ruleIndex]
+                    : `rule#${ruleIndex}`;
+                return { d, ruleName };
+            });
+
+        const topByTime = [...active]
+            .sort((lhs, rhs) => rhs.d.timeInPrediction - lhs.d.timeInPrediction)
+            .slice(0, 8);
+
+        const topByFallback = [...active]
+            .filter((item) => item.d.llFallback > 0)
+            .sort((lhs, rhs) => rhs.d.llFallback - lhs.d.llFallback)
+            .slice(0, 8);
+
+        this.logPerformanceTrace(
+            `parse.profile.summary uri=${this.sourceUri} activeDecisions=${active.length} totalPredictNs=${parseInfo.getTotalTimeInPrediction()} totalSLLLook=${parseInfo.getTotalSLLLookaheadOps()} totalLLLook=${parseInfo.getTotalLLLookaheadOps()} llDecisions=${parseInfo.getLLDecisions().length}`,
+        );
+
+        for (const { d, ruleName } of topByTime) {
+            this.logPerformanceTrace(
+                `parse.profile.time uri=${this.sourceUri} decision=${d.decision} rule=${ruleName} timeNs=${d.timeInPrediction} invocations=${d.invocations} llFallback=${d.llFallback} sllLook=${d.sllTotalLook} llLook=${d.llTotalLook} sllMax=${d.sllMaxLook} llMax=${d.llMaxLook}`,
+            );
+        }
+
+        for (const { d, ruleName } of topByFallback) {
+            this.logPerformanceTrace(
+                `parse.profile.fallback uri=${this.sourceUri} decision=${d.decision} rule=${ruleName} llFallback=${d.llFallback} invocations=${d.invocations} sllLook=${d.sllTotalLook} llLook=${d.llTotalLook}`,
+            );
+        }
+    }
+
+    private getSourceMetrics(): { chars: number; lines: number } {
+        return {
+            chars: this.sourceCharCount,
+            lines: this.sourceLineCount,
+        };
+    }
+
+    private getTokenMetrics(): { total: number; onChannel: number } {
+        this.tokenStream.fill();
+        const tokens = this.tokenStream.getTokens();
+        let onChannel = 0;
+        for (const token of tokens) {
+            if (token.channel === 0) {
+                onChannel++;
+            }
+        }
+        return {
+            total: tokens.length,
+            onChannel,
+        };
+    }
+
+    private describeTokenForTrace(token: { text?: string | null; line?: number; column?: number; type?: number } | undefined): string {
+        if (!token) {
+            return 'unknown';
+        }
+        const rawText = token.text ?? '<no-text>';
+        const compactText = rawText.replace(/\s+/g, ' ').slice(0, 40);
+        return `line=${token.line ?? -1} col=${token.column ?? -1} type=${token.type ?? -1} text=${JSON.stringify(compactText)}`;
+    }
+
+    private getSllFailureDetails(error: unknown): string {
+        const cancellation = error as {
+            cause?: { offendingToken?: { text?: string | null; line?: number; column?: number; type?: number }; startToken?: { text?: string | null; line?: number; column?: number; type?: number }; message?: string };
+            message?: string;
+        };
+        const cause = cancellation?.cause;
+        const token = cause?.offendingToken ?? cause?.startToken;
+        const parserToken = this.parser.getCurrentToken();
+        const tokenDescription = this.describeTokenForTrace(token ?? parserToken);
+        const message = cause?.message ?? cancellation?.message ?? 'ParseCancellationException';
+        return `${message}; token=${tokenDescription}`;
+    }
 
 
     public configureWorkspaceGlobalLookup(
@@ -284,7 +401,27 @@ export class SourceContext implements IAstContext
     // get getTokenStream() { return this.tokenStream; }
     public parse(): void
     {
+        const config = workspace.getConfiguration('maxScript');
+        const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+        const traceParserDecisions = config.get<boolean>('providers.traceParserDecisions', false);
+        const parseStart = tracePerformance ? this.nowMs() : 0;
+        const sllStart = tracePerformance ? this.nowMs() : 0;
+        const sourceMetrics = this.getSourceMetrics();
+        const historicalFallbackRate = this.parseInvocationCount > 0
+            ? (this.sllFallbackCount / this.parseInvocationCount)
+            : 0;
+        const isVeryLargeFile = sourceMetrics.chars >= SourceContext.LARGE_FILE_CHAR_THRESHOLD
+            || sourceMetrics.lines >= SourceContext.LARGE_FILE_LINE_THRESHOLD;
+        const useLlDirect = isVeryLargeFile && (
+            historicalFallbackRate >= 0.8
+            || this.parseInvocationCount === 0
+        );
+        let sllDuration = 0;
+        let llDuration = 0;
+        let usedLlFallback = false;
+
         // Clear previous parse results
+        this.parseInvocationCount++;
         this.tree = undefined;
         this.ast = undefined;
 
@@ -305,34 +442,62 @@ export class SourceContext implements IAstContext
         this.lexer.reset();
         this.tokenStream.setTokenSource(this.lexer);
         this.parser.reset();
-        
-        // Remove error listener during SLL pass - we don't want diagnostics from speculative parsing
-        this.parser.removeErrorListeners();
-        this.parser.errorHandler = new BailErrorStrategy(); // Bail on first error
-        this.parser.interpreter.predictionMode = PredictionMode.SLL;
-        
-        try {
+        this.parser.setProfile(traceParserDecisions);
+
+        if (useLlDirect) {
+            this.parser.removeErrorListeners();
+            this.parser.addErrorListener(this.errorListener);
+            this.parser.errorHandler = new CustomErrorStrategy();
+            this.parser.interpreter.predictionMode = PredictionMode.LL;
+            const llStart = tracePerformance ? this.nowMs() : 0;
             this.tree = this.parser.program();
-        } catch (e) {
-            if (e instanceof ParseCancellationException) {
-                // STAGE 2: SLL failed, retry with LL mode (slower but handles all cases)
-                // Reset everything for second attempt
-                this.lexer.reset();
-                this.tokenStream.setTokenSource(this.lexer);
-                this.parser.reset();
-                
-                // Re-add error listener for LL pass - now we want real diagnostics
-                this.parser.addErrorListener(this.errorListener);
-                
-                // Use custom error handling strategy for better recovery
-                this.parser.errorHandler = new CustomErrorStrategy();
-                this.parser.interpreter.predictionMode = PredictionMode.LL;
-                
-                // Parse again - this time we'll get proper error messages with better recovery
+            if (tracePerformance) {
+                llDuration = this.nowMs() - llStart;
+            }
+        } else {
+            // Remove error listener during SLL pass - we don't want diagnostics from speculative parsing
+            this.parser.removeErrorListeners();
+            this.parser.errorHandler = new BailErrorStrategy(); // Bail on first error
+            this.parser.interpreter.predictionMode = PredictionMode.SLL;
+
+            try {
                 this.tree = this.parser.program();
-            } else {
-                // Some other error, re-throw
-                throw e;
+                if (tracePerformance) {
+                    sllDuration = this.nowMs() - sllStart;
+                }
+            } catch (e) {
+                if (tracePerformance) {
+                    sllDuration = this.nowMs() - sllStart;
+                }
+                if (e instanceof ParseCancellationException) {
+                    usedLlFallback = true;
+                    this.sllFallbackCount++;
+                    if (tracePerformance) {
+                        this.logPerformanceTrace(`parse.sllFallback uri=${this.sourceUri} ${this.getSllFailureDetails(e)}`);
+                    }
+                    // STAGE 2: SLL failed, retry with LL mode (slower but handles all cases)
+                    // Reset everything for second attempt
+                    this.lexer.reset();
+                    this.tokenStream.setTokenSource(this.lexer);
+                    this.parser.reset();
+
+                    // Re-add error listener for LL pass - now we want real diagnostics
+                    this.parser.addErrorListener(this.errorListener);
+
+                    // Use custom error handling strategy for better recovery
+                    this.parser.errorHandler = new CustomErrorStrategy();
+                    this.parser.interpreter.predictionMode = PredictionMode.LL;
+
+                    // Parse again - this time we'll get proper error messages with better recovery
+                    const llStart = tracePerformance ? this.nowMs() : 0;
+                    this.tree = this.parser.program();
+                    if (tracePerformance) {
+                        llDuration = this.nowMs() - llStart;
+                    }
+                } else {
+                    // Some other error, re-throw
+                    throw e;
+                }
             }
         }
         // Symbol table and semantic tokens are now populated lazily when needed
@@ -340,6 +505,27 @@ export class SourceContext implements IAstContext
 
         // Invalidate position-query caches now that a new parse snapshot exists.
         this.astQueryService.invalidate();
+
+        if (tracePerformance) {
+            const totalDuration = this.nowMs() - parseStart;
+            const tokenMetrics = this.getTokenMetrics();
+            const fallbackRate = this.parseInvocationCount > 0
+                ? ((this.sllFallbackCount / this.parseInvocationCount) * 100)
+                : 0;
+            this.logPerformanceTrace(
+                `parse uri=${this.sourceUri} total=${totalDuration.toFixed(2)}ms sll=${sllDuration.toFixed(2)}ms ll=${llDuration.toFixed(2)}ms fallback=${usedLlFallback} diagnostics=${this.diagnostics.length}`,
+            );
+            this.logPerformanceTrace(
+                `parse.strategy uri=${this.sourceUri} mode=${useLlDirect ? 'LL-direct' : (usedLlFallback ? 'SLL->LL' : 'SLL-only')} historicalFallbackRate=${(historicalFallbackRate * 100).toFixed(1)}%`,
+            );
+            this.logPerformanceTrace(
+                `parse.benchmark uri=${this.sourceUri} chars=${sourceMetrics.chars} lines=${sourceMetrics.lines} tokens=${tokenMetrics.total} onChannelTokens=${tokenMetrics.onChannel} parses=${this.parseInvocationCount} sllFallbacks=${this.sllFallbackCount} fallbackRate=${fallbackRate.toFixed(1)}% diagnostics=${this.diagnostics.length}`,
+            );
+        }
+
+        if (traceParserDecisions) {
+            this.logParserDecisionProfile();
+        }
     }
 
     /**
@@ -379,34 +565,66 @@ export class SourceContext implements IAstContext
             return;
         }
 
+        const tracePerformance = this.isPerformanceTraceEnabled();
+        const totalStart = tracePerformance ? this.nowMs() : 0;
+        let semanticWalkDuration = 0;
+        let astBuildDuration = 0;
+        let resolveDuration = 0;
+        let appendSemanticDuration = 0;
+
         this.semanticTokens.length = 0;
         this.identifierCandidates.clear();
 
         // Keep existing parse-tree API tokenization (MaxAPI defaults).
+        const semanticWalkStart = tracePerformance ? this.nowMs() : 0;
         const semanticListener = new semanticTokenListener(this.semanticTokens, this.identifierCandidates);
         ParseTreeWalker.DEFAULT.walk(semanticListener, this.tree);
+        if (tracePerformance) {
+            semanticWalkDuration = this.nowMs() - semanticWalkStart;
+        }
 
         // Build AST and resolve references, then append user-code semantic tokens.
         try {
+            const astBuildStart = tracePerformance ? this.nowMs() : 0;
             const builder = new ASTBuilder();
             this.ast = builder.visitProgram(this.tree);
+            if (tracePerformance) {
+                astBuildDuration = this.nowMs() - astBuildStart;
+            }
 
             // 3. Resolve all symbol references
+            const resolveStart = tracePerformance ? this.nowMs() : 0;
             const resolver = new SymbolResolver(this.ast); // Takes existing AST
             resolver.resolve(); // MUTATES the AST (no return value)
+            if (tracePerformance) {
+                resolveDuration = this.nowMs() - resolveStart;
+            }
             
             // 4. Append semantic tokens for user-defined identifiers based on resolved AST
+            const appendSemanticStart = tracePerformance ? this.nowMs() : 0;
             appendAstSemanticTokens(this.ast, this.semanticTokens, this.identifierCandidates);
+            if (tracePerformance) {
+                appendSemanticDuration = this.nowMs() - appendSemanticStart;
+            }
             
         } catch (err) {
             console.error('[language-maxscript][SourceContext] AST build/resolve failed:', err);
             this.ast = undefined;
         }
         this.astModelDirty = false;
+
+        if (tracePerformance) {
+            const totalDuration = this.nowMs() - totalStart;
+            this.logPerformanceTrace(
+                `astModel uri=${this.sourceUri} total=${totalDuration.toFixed(2)}ms semanticWalk=${semanticWalkDuration.toFixed(2)}ms astBuild=${astBuildDuration.toFixed(2)}ms resolve=${resolveDuration.toFixed(2)}ms appendSemantic=${appendSemanticDuration.toFixed(2)}ms`,
+            );
+        }
     }
     //---------------------------------------------------------------
     // 3. Build hierarchical symbol tree for VS Code
     public buildSymbolTree(trace = false): ISymbolInfo[] {
+        const tracePerformance = this.isPerformanceTraceEnabled();
+        const totalStart = tracePerformance ? this.nowMs() : 0;
         if (!this.tree) {
             if (trace) console.log('[language-maxscript][SourceContext] buildSymbolTree: no parse tree');
             return [];
@@ -425,8 +643,16 @@ export class SourceContext implements IAstContext
             console.log(`[language-maxscript][SourceContext] buildSymbolTree: ast ok, stmts=${this.ast.statements.length}, decls=${this.ast.declarations.size}`);
         }
 
+        const symbolTreeStart = tracePerformance ? this.nowMs() : 0;
         const result = SymbolTreeBuilder.buildSymbolTree(this.ast, this.sourceUri);
         if (trace) console.log(`[language-maxscript][SourceContext] buildSymbolTree: result=${result.length}`);
+        if (tracePerformance) {
+            const symbolTreeDuration = this.nowMs() - symbolTreeStart;
+            const totalDuration = this.nowMs() - totalStart;
+            this.logPerformanceTrace(
+                `symbolTree uri=${this.sourceUri} total=${totalDuration.toFixed(2)}ms query=${symbolTreeDuration.toFixed(2)}ms symbols=${result.length} astWasDirty=${wasDirty}`,
+            );
+        }
         return result;
     }
 
@@ -520,6 +746,8 @@ export class SourceContext implements IAstContext
      */
     public setText(source: string): void
     {
+        this.sourceCharCount = source.length;
+        this.sourceLineCount = source.length === 0 ? 0 : source.split(/\r?\n/).length;
         const charStream = CharStream.fromString(source);
         if (charStream != this.lexer.inputStream) {
             this.lexer.inputStream = charStream

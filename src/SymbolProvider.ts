@@ -12,6 +12,10 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
 {
     public constructor(private backend: mxsBackend) { }
 
+    private nowMs(): number {
+        return typeof performance !== 'undefined' ? performance.now() : Date.now();
+    }
+
     /**
      * Convert ISymbolInfo to VS Code DocumentSymbol
      */
@@ -48,6 +52,8 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
             const useAst = config.get<boolean>('providers.ast.symbolProvider', true);
             const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
             const traceRouting = config.get<boolean>('providers.traceRouting', false);
+            const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+            const providerStart = tracePerformance ? this.nowMs() : 0;
 
             const sourceContext = this.backend.getContext(document.uri.toString());
 
@@ -58,25 +64,37 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
             let symbols: ISymbolInfo[] = [];
 
             if (useAst) {
+                const astQueryStart = tracePerformance ? this.nowMs() : 0;
                 symbols = sourceContext?.buildSymbolTree(traceRouting) ?? [];
                 if (traceRouting) {
                     console.log(`[language-maxscript][SymbolProvider] route=AST symbols=${symbols.length}`);
                 }
+                if (tracePerformance) {
+                    console.log(`[language-maxscript][Performance] symbolProvider.astQuery uri=${document.uri.toString()} duration=${(this.nowMs() - astQueryStart).toFixed(2)}ms symbols=${symbols.length}`);
+                }
             }
 
             if ((!symbols || symbols.length === 0) && fallbackToLegacy) {
+                const legacyQueryStart = tracePerformance ? this.nowMs() : 0;
                 symbols = sourceContext?.listTopLevelSymbols(false) ?? [];
                 if (traceRouting) {
                     console.log(`[language-maxscript][SymbolProvider] route=Legacy symbols=${symbols.length}`);
                 }
+                if (tracePerformance) {
+                    console.log(`[language-maxscript][Performance] symbolProvider.legacyQuery uri=${document.uri.toString()} duration=${(this.nowMs() - legacyQueryStart).toFixed(2)}ms symbols=${symbols.length}`);
+                }
             }
 
             if (!symbols || symbols.length === 0) {
+                if (tracePerformance) {
+                    console.log(`[language-maxscript][Performance] symbolProvider.total uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms symbols=0`);
+                }
                 resolve([]);
                 return;
             }
 
             const symbolsList: DocumentSymbol[] = [];
+            const materializeStart = tracePerformance ? this.nowMs() : 0;
 
             for (const symbol of symbols) {
                 if (!symbol.definition || !symbol.name) {
@@ -84,6 +102,11 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
                 }
                 // Use symbolInfoToDocumentSymbol for all symbols (handles both with and without children)
                 symbolsList.push(this.symbolInfoToDocumentSymbol(symbol));
+            }
+
+            if (tracePerformance) {
+                console.log(`[language-maxscript][Performance] symbolProvider.materialize uri=${document.uri.toString()} duration=${(this.nowMs() - materializeStart).toFixed(2)}ms documentSymbols=${symbolsList.length}`);
+                console.log(`[language-maxscript][Performance] symbolProvider.total uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms documentSymbols=${symbolsList.length}`);
             }
 
             resolve(symbolsList);

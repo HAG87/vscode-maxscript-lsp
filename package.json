@@ -274,6 +274,16 @@
             "type": "boolean",
             "default": false,
             "description": "Log provider routing decisions (AST/Legacy) to Extension Host output."
+          },
+          "maxScript.providers.tracePerformance": {
+            "type": "boolean",
+            "default": false,
+            "description": "Log parse, AST build, and provider query timings to Extension Host output."
+          },
+          "maxScript.providers.traceParserDecisions": {
+            "type": "boolean",
+            "default": false,
+            "description": "Log ANTLR parse decision profiling details (expensive and fallback-heavy decisions)."
           }
         }
       },
