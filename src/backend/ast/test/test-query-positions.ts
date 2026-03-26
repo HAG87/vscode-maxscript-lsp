@@ -532,6 +532,47 @@ for (const probe of scopeLeakProbes) {
     if (!ok) { errors++; }
 }
 
+// --- by-reference out parameter regression -----------------------------------
+const byRefOutCode = `fn cloner obj tm: type:#instance =
+        (
+            if isValidNode obj then (
+                maxOps.CloneNodes obj cloneType:type newNodes:&newNodes
+                if (tm != unsupplied) AND (isKindOf tm Matrix3) then (
+                    newNodes[1].transform = tm
+                )
+                newNodes[1]
+            )
+        )`;
+
+const byRefInput = CharStream.fromString(byRefOutCode);
+const byRefLexer = new mxsLexer(byRefInput);
+const byRefTokens = new CommonTokenStream(byRefLexer);
+const byRefParser = new mxsParser(byRefTokens);
+const byRefAst = new ASTBuilder().visitProgram(byRefParser.program());
+new SymbolResolver(byRefAst).resolve();
+
+console.log();
+console.log('=== by-reference out parameter probes ===');
+
+const byRefAssignmentUse = ASTQuery.findDeclarationAtPosition(byRefAst, 6, 20);
+const byRefTailUse = ASTQuery.findDeclarationAtPosition(byRefAst, 8, 16);
+
+const byRefAssignmentResolved = byRefAssignmentUse?.name === 'newNodes';
+console.log(`  newNodes in assignment target resolves => ${byRefAssignmentResolved ? '✓' : `❌ got ${byRefAssignmentUse?.name ?? 'undefined'}`}`);
+if (!byRefAssignmentResolved) { errors++; }
+
+const byRefTailResolved = byRefTailUse?.name === 'newNodes';
+console.log(`  newNodes in final expression resolves => ${byRefTailResolved ? '✓' : `❌ got ${byRefTailUse?.name ?? 'undefined'}`}`);
+if (!byRefTailResolved) { errors++; }
+
+const byRefSameDeclaration = !!byRefAssignmentUse && byRefAssignmentUse === byRefTailUse;
+console.log(`  both uses bind same declaration => ${byRefSameDeclaration ? '✓' : '❌'}`);
+if (!byRefSameDeclaration) { errors++; }
+
+const byRefDeclOnByRefLine = byRefTailUse?.position?.start.line === 4;
+console.log(`  declaration originates from by-ref argument line => ${byRefDeclOnByRefLine ? '✓' : `❌ line ${byRefTailUse?.position?.start.line ?? 'undefined'}`}`);
+if (!byRefDeclOnByRefLine) { errors++; }
+
 console.log();
 if (errors > 0) {
     console.log(`❌ ${errors} total probe(s) failed`);

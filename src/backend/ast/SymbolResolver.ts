@@ -60,6 +60,7 @@ import {
     ParameterDefinition,
     Program,
     RcMenuItem,
+    ReferenceExpression,
     ReturnStatement,
     RolloutControl,
     ScopeNode,
@@ -230,6 +231,21 @@ export class SymbolResolver {
         if (node.target) {
             this.visit(node.target);
         }
+    }
+
+    private visitReferenceExpression(node: ReferenceExpression): void {
+        // MaxScript by-reference arguments can implicitly introduce a binding
+        // (e.g. fnCall outParam:&newNodes followed by newNodes[1]).
+        if (node.operand instanceof VariableReference && node.operand.name) {
+            const existing = this.currentScope.resolve(node.operand.name);
+            if (!existing) {
+                const scope: 'local' | 'global' = this.currentScope instanceof Program ? 'global' : 'local';
+                const declaration = new VariableDeclaration(node.operand.name, scope, node.operand.position ?? node.position);
+                this.currentScope.addDeclaration(declaration);
+            }
+        }
+
+        this.visit(node.operand);
     }
 
     /**
@@ -410,6 +426,8 @@ export class SymbolResolver {
             this.visitBlockExpression(node);
         } else if (node instanceof AssignmentExpression) {
             this.visitAssignmentExpression(node);
+        } else if (node instanceof ReferenceExpression) {
+            this.visitReferenceExpression(node);
         } else if (node instanceof IfStatement) {
             this.visitIfStatement(node);
         } else if (node instanceof WhileStatement) {
