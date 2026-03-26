@@ -18,6 +18,10 @@ import { SignatureHelpModel } from '@backend/types.js';
 export class mxsSignatureHelpProvider implements SignatureHelpProvider {
     public constructor(private backend: mxsBackend) { }
 
+    private nowMs(): number {
+        return typeof performance !== 'undefined' ? performance.now() : Date.now();
+    }
+
     private buildSignatureHelp(model: SignatureHelpModel): SignatureHelp {
         const signature = new SignatureInformation(model.signatureLabel);
         signature.parameters = model.parameters.map((p) => new ParameterInformation(p));
@@ -42,10 +46,19 @@ export class mxsSignatureHelpProvider implements SignatureHelpProvider {
         const config = workspace.getConfiguration('maxScript');
         const useAst = config.get<boolean>('providers.ast.completionProvider', true);
         const traceRouting = config.get<boolean>('providers.traceRouting', false);
+        const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+        const providerStart = tracePerformance ? this.nowMs() : 0;
+        const logPerformance = (route: string): void => {
+            if (!tracePerformance) {
+                return;
+            }
+            console.log(`[language-maxscript][Performance] signatureProvider uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route}`);
+        };
         if (!useAst) {
             if (traceRouting) {
-                console.log('[language-maxscript][SignatureHelpProvider] route=None (AST disabled)');
+                console.log('[language-maxscript][SignatureHelpProvider] route=None reason=ast-disabled');
             }
+            logPerformance('None');
             return undefined;
         }
 
@@ -61,12 +74,14 @@ export class mxsSignatureHelpProvider implements SignatureHelpProvider {
             if (traceRouting) {
                 console.log(`[language-maxscript][SignatureHelpProvider] route=AST style=${model.style}`);
             }
+            logPerformance('AST');
             return this.buildSignatureHelp(model);
         }
 
         if (traceRouting) {
-            console.log('[language-maxscript][SignatureHelpProvider] route=None (no call context match)');
+            console.log('[language-maxscript][SignatureHelpProvider] route=None reason=no-call-context');
         }
+        logPerformance('None');
         return undefined;
     }
 }

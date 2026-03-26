@@ -56,6 +56,13 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
         const traceRouting = config.get<boolean>('providers.traceRouting', false);
         const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
         const providerStart = tracePerformance ? this.nowMs() : 0;
+        let route = 'None';
+        const logPerformance = (count: number): void => {
+            if (!tracePerformance) {
+                return;
+            }
+            console.log(`[language-maxscript][Performance] symbolProvider uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route} symbols=${count}`);
+        };
 
         const sourceContext = this.backend.getContext(document.uri.toString());
 
@@ -71,6 +78,9 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
             if (traceRouting) {
                 console.log(`[language-maxscript][SymbolProvider] route=AST symbols=${symbols.length}`);
             }
+            if (symbols.length > 0) {
+                route = 'AST';
+            }
             if (tracePerformance) {
                 console.log(`[language-maxscript][Performance] symbolProvider.astQuery uri=${document.uri.toString()} duration=${(this.nowMs() - astQueryStart).toFixed(2)}ms symbols=${symbols.length}`);
             }
@@ -82,15 +92,16 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
             if (traceRouting) {
                 console.log(`[language-maxscript][SymbolProvider] route=Legacy symbols=${symbols.length}`);
             }
+            if (symbols.length > 0) {
+                route = 'Legacy';
+            }
             if (tracePerformance) {
                 console.log(`[language-maxscript][Performance] symbolProvider.legacyQuery uri=${document.uri.toString()} duration=${(this.nowMs() - legacyQueryStart).toFixed(2)}ms symbols=${symbols.length}`);
             }
         }
 
         if (!symbols || symbols.length === 0) {
-            if (tracePerformance) {
-                console.log(`[language-maxscript][Performance] symbolProvider.total uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms symbols=0`);
-            }
+            logPerformance(0);
             return [];
         }
 
@@ -110,8 +121,9 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
 
         if (tracePerformance) {
             console.log(`[language-maxscript][Performance] symbolProvider.materialize uri=${document.uri.toString()} duration=${(this.nowMs() - materializeStart).toFixed(2)}ms documentSymbols=${symbolsList.length}`);
-            console.log(`[language-maxscript][Performance] symbolProvider.total uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms documentSymbols=${symbolsList.length}`);
         }
+
+        logPerformance(symbolsList.length);
 
         return symbolsList;
     }

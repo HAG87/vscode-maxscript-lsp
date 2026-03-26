@@ -78,8 +78,19 @@ export class mxsCodeLensProvider implements CodeLensProvider
             return codeLens;
         }
 
+        const parsedUris = new Map<string, Uri>();
         const locations = resolved.locations.map((location) =>
-            new Location(Uri.parse(location.uri), Utilities.lexicalRangeToRange(location.range)));
+            new Location(
+                parsedUris.get(location.uri)
+                ?? (() => {
+                    const parsed = location.uri === lens.uri.toString()
+                        ? lens.uri
+                        : Uri.parse(location.uri);
+                    parsedUris.set(location.uri, parsed);
+                    return parsed;
+                })(),
+                Utilities.lexicalRangeToRange(location.range),
+            ));
 
         const declarationPosition = new Position(
             Math.max(0, resolved.declarationLine - 1),

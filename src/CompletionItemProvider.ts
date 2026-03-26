@@ -25,6 +25,10 @@ export class mxsCompletionProvider implements CompletionItemProvider
 
     public constructor(private backend: mxsBackend, private options: IMaxScriptSettings) { }
 
+    private nowMs(): number {
+        return typeof performance !== 'undefined' ? performance.now() : Date.now();
+    }
+
     /**
      * Returns API members for a named object if it is a known API class/struct/interface.
      * Returns undefined when the name is not in the API schema.
@@ -104,6 +108,16 @@ export class mxsCompletionProvider implements CompletionItemProvider
             const sourceContext = this.backend.getContext(document.uri.toString());
             const config = workspace.getConfiguration('maxScript');
             const useAst = config.get<boolean>('providers.ast.completionProvider', true);
+            const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+            const providerStart = tracePerformance ? this.nowMs() : 0;
+            const logPerformance = (route: 'AST' | 'API' | 'None', items: number, mode?: 'member' | 'non-member', reason?: string): void => {
+                if (!tracePerformance) {
+                    return;
+                }
+                const modePart = mode ? ` mode=${mode}` : '';
+                const reasonPart = reason ? ` reason=${reason}` : '';
+                console.log(`[language-maxscript][Performance] completionProvider uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route} items=${items}${modePart}${reasonPart}`);
+            };
 
             // Detect member-access context (identifier.partial) via source text,
             // regardless of trigger kind. When in this context, scope variables must
@@ -120,6 +134,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
                     const apiMembers = this.apiMembersForObject(objectName);
                     if (apiMembers && apiMembers.length > 0) {
                         cancelSubscription.dispose();
+                        logPerformance('API', apiMembers.length, 'member');
                         resolve(new CompletionList(apiMembers, false));
                         return;
                     }
@@ -144,6 +159,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
                         }
                         if (items.length > 0) {
                             cancelSubscription.dispose();
+                            logPerformance('AST', items.length, 'member');
                             resolve(new CompletionList(items, false));
                             return;
                         }
@@ -152,6 +168,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
 
                 // Object not resolved — return empty rather than polluting with scope vars.
                 cancelSubscription.dispose();
+                logPerformance('None', 0, 'member', 'no-object-resolution');
                 resolve(new CompletionList([], false));
                 return;
             }
@@ -198,10 +215,12 @@ export class mxsCompletionProvider implements CompletionItemProvider
                         completionList.push(...this.completionsFromAPI(document, position, context));
                     }
                     cancelSubscription.dispose();
+                    logPerformance(useAst ? 'AST' : 'None', completionList.length, 'non-member');
                     resolve(new CompletionList(completionList, false));
                 }).catch((reason) =>
                 {
                     cancelSubscription.dispose();
+                    logPerformance('None', 0, undefined, 'error');
                     reject(reason);
                 });
         });

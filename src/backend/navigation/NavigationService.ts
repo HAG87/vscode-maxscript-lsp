@@ -34,9 +34,12 @@ export class NavigationService {
     private readonly definitionTargetCache = new WeakMap<Program, Map<string, DefinitionTargetModel>>();
     private static readonly definitionTargetCacheLimit = 64;
 
-    public prewarmIndexes(ast: Program): void {
+    public prewarmIndexes(ast: Program, options?: { includeMemberReferenceIndex?: boolean }): void {
+        const includeMemberReferenceIndex = options?.includeMemberReferenceIndex ?? true;
         ASTQuery.prewarmPositionIndex(ast);
-        this.getMemberReferenceIndex(ast);
+        if (includeMemberReferenceIndex) {
+            this.getMemberReferenceIndex(ast);
+        }
     }
 
     private getDefinitionTargetCache(ast: Program): Map<string, DefinitionTargetModel> {
@@ -98,14 +101,13 @@ export class NavigationService {
         return lineText.slice(start, end);
     }
 
-    private extractWordAtPosition(sourceText: string, row1Based: number, column0Based: number): string | undefined {
-        const lines = sourceText.split(/\r?\n/);
-        const line = lines[row1Based - 1];
-        if (!line) {
-            return undefined;
-        }
-
-        return this.extractWordFromLine(line, column0Based);
+    private extractWordAtPosition(
+        row1Based: number,
+        column0Based: number,
+        getLineText: (row1Based: number) => string | undefined,
+    ): string | undefined {
+        const line = getLineText(row1Based);
+        return line ? this.extractWordFromLine(line, column0Based) : undefined;
     }
 
     private declarationMightHaveMemberUsages(ast: Program, declaration: VariableDeclaration): boolean {
@@ -165,23 +167,30 @@ export class NavigationService {
         };
     }
 
-    private astNameRange(sourceText: string, position: AstPosition, name: string): ILexicalRange | undefined {
-        const lines = sourceText.split(/\r?\n/);
-        const startLineIndex = position.start.line - 1;
-        const endLineIndex = position.end.line - 1;
+    private astNameRange(
+        position: AstPosition,
+        name: string,
+        getLineText: (row1Based: number) => string | undefined,
+    ): ILexicalRange | undefined {
+        const startLine = position.start.line;
+        const endLine = position.end.line;
 
-        if (startLineIndex < 0 || endLineIndex >= lines.length || endLineIndex < startLineIndex) {
+        if (startLine < 1 || endLine < startLine) {
             return undefined;
         }
 
         const snippetLines: string[] = [];
-        for (let i = startLineIndex; i <= endLineIndex; i++) {
-            const line = lines[i] ?? '';
-            if (i === startLineIndex && i === endLineIndex) {
+        for (let lineNumber = startLine; lineNumber <= endLine; lineNumber++) {
+            const line = getLineText(lineNumber);
+            if (line === undefined) {
+                return undefined;
+            }
+
+            if (lineNumber === startLine && lineNumber === endLine) {
                 snippetLines.push(line.slice(position.start.column, position.end.column));
-            } else if (i === startLineIndex) {
+            } else if (lineNumber === startLine) {
                 snippetLines.push(line.slice(position.start.column));
-            } else if (i === endLineIndex) {
+            } else if (lineNumber === endLine) {
                 snippetLines.push(line.slice(0, position.end.column));
             } else {
                 snippetLines.push(line);
@@ -209,35 +218,38 @@ export class NavigationService {
     }
 
     private astNameRangeWithCancellation(
-        sourceText: string,
         position: AstPosition,
         name: string,
+        getLineText: (row1Based: number) => string | undefined,
         isCancelled?: () => boolean,
     ): ILexicalRange | undefined {
         if (isCancelled?.()) {
             return undefined;
         }
 
-        const lines = sourceText.split(/\r?\n/);
-        const startLineIndex = position.start.line - 1;
-        const endLineIndex = position.end.line - 1;
+        const startLine = position.start.line;
+        const endLine = position.end.line;
 
-        if (startLineIndex < 0 || endLineIndex >= lines.length || endLineIndex < startLineIndex) {
+        if (startLine < 1 || endLine < startLine) {
             return undefined;
         }
 
         const snippetLines: string[] = [];
-        for (let i = startLineIndex; i <= endLineIndex; i++) {
+        for (let lineNumber = startLine; lineNumber <= endLine; lineNumber++) {
             if (isCancelled?.()) {
                 return undefined;
             }
 
-            const line = lines[i] ?? '';
-            if (i === startLineIndex && i === endLineIndex) {
+            const line = getLineText(lineNumber);
+            if (line === undefined) {
+                return undefined;
+            }
+
+            if (lineNumber === startLine && lineNumber === endLine) {
                 snippetLines.push(line.slice(position.start.column, position.end.column));
-            } else if (i === startLineIndex) {
+            } else if (lineNumber === startLine) {
                 snippetLines.push(line.slice(position.start.column));
-            } else if (i === endLineIndex) {
+            } else if (lineNumber === endLine) {
                 snippetLines.push(line.slice(0, position.end.column));
             } else {
                 snippetLines.push(line);
@@ -272,7 +284,8 @@ export class NavigationService {
         sourceContext: IAstContext,
         row1Based: number,
         column0Based: number,
-        sourceText: string,
+        currentLineText: string,
+        getLineText: (row1Based: number) => string | undefined,
         isCancelled?: () => boolean,
     ): DefinitionTargetModel | undefined {
         if (isCancelled?.()) {
@@ -292,7 +305,8 @@ export class NavigationService {
 
         const declaration = sourceContext.astDeclarationAtPosition(row1Based, column0Based)
             ?? (() => {
-                const word = this.extractWordAtPosition(sourceText, row1Based, column0Based);
+                const word = this.extractWordFromLine(currentLineText, column0Based)
+                    ?? this.extractWordAtPosition(row1Based, column0Based, getLineText);
                 return word ? ASTQuery.findDeclarationByName(ast, word) : undefined;
             })();
         if (!declaration?.name) {
@@ -325,7 +339,7 @@ export class NavigationService {
 
         const range = isRemote
             ? this.astPositionToLexicalRange(targetPosition)
-            : (this.astNameRangeWithCancellation(sourceText, targetPosition, declaration.name, isCancelled)
+            : (this.astNameRangeWithCancellation(targetPosition, declaration.name, getLineText, isCancelled)
                 ?? this.astPositionToLexicalRange(targetPosition));
 
         const target = {
@@ -395,7 +409,7 @@ export class NavigationService {
         sourceContext: IAstContext,
         row1Based: number,
         column0Based: number,
-        sourceText: string,
+        getLineText: (row1Based: number) => string | undefined,
     ): NavigationHighlightModel[] | undefined {
         const ast = sourceContext.getResolvedAST();
         const declaration = sourceContext.astDeclarationAtPosition(row1Based, column0Based);
@@ -407,7 +421,11 @@ export class NavigationService {
         if (declaration.position && declaration.name) {
             const semanticNode = ASTQuery.findSemanticNodeForDeclaration(ast, declaration);
             const targetPosition = semanticNode.position ?? declaration.position;
-            const nameRange = this.astNameRange(sourceText, targetPosition, declaration.name);
+            const nameRange = this.astNameRange(
+                targetPosition,
+                declaration.name,
+                getLineText,
+            );
             if (nameRange) {
                 result.push({ range: nameRange, kind: 'write' });
             }

@@ -15,6 +15,10 @@ export class mxsHoverProvider implements HoverProvider
 {
     public constructor(private backend: mxsBackend) { }
 
+    private nowMs(): number {
+        return typeof performance !== 'undefined' ? performance.now() : Date.now();
+    }
+
     private static readonly identifierPattern = /[#@&$]?[A-Za-z_][A-Za-z0-9_]*/;
 
     private apiHover(document: TextDocument, position: Position): Hover | undefined {
@@ -89,12 +93,21 @@ export class mxsHoverProvider implements HoverProvider
         const useAst = config.get<boolean>('providers.ast.hoverProvider', true);
         const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
         const traceRouting = config.get<boolean>('providers.traceRouting', false);
+        const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+        const providerStart = tracePerformance ? this.nowMs() : 0;
+        const logPerformance = (route: string): void => {
+            if (!tracePerformance) {
+                return;
+            }
+            console.log(`[language-maxscript][Performance] hoverProvider uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route}`);
+        };
 
         const apiHover = this.apiHover(document, position);
         if (apiHover) {
             if (traceRouting) {
                 console.log('[language-maxscript][HoverProvider] route=API');
             }
+            logPerformance('API');
             return apiHover;
         }
 
@@ -104,6 +117,7 @@ export class mxsHoverProvider implements HoverProvider
                 if (traceRouting) {
                     console.log('[language-maxscript][HoverProvider] route=AST');
                 }
+                logPerformance('AST');
                 return hover;
             }
         }
@@ -114,14 +128,16 @@ export class mxsHoverProvider implements HoverProvider
                 if (traceRouting) {
                     console.log('[language-maxscript][HoverProvider] route=Legacy');
                 }
+                logPerformance('Legacy');
                 return hover;
             }
         }
 
         if (traceRouting) {
-            console.log('[language-maxscript][HoverProvider] route=None');
+            console.log('[language-maxscript][HoverProvider] route=None reason=no-match');
         }
 
+        logPerformance('None');
         return undefined;
     }
 }

@@ -349,10 +349,11 @@ export class SourceContext implements IAstContext
     public getAstDefinitionTarget(
         row1Based: number,
         column0Based: number,
-        sourceText: string,
+        currentLineText: string,
+        getLineText: (row1Based: number) => string | undefined,
         isCancelled?: () => boolean,
     ): DefinitionTargetModel | undefined {
-        return this.navigationService.getDefinitionTarget(this, row1Based, column0Based, sourceText, isCancelled);
+        return this.navigationService.getDefinitionTarget(this, row1Based, column0Based, currentLineText, getLineText, isCancelled);
     }
 
     public getAstReferenceLocations(
@@ -367,9 +368,9 @@ export class SourceContext implements IAstContext
     public getAstDocumentHighlights(
         row1Based: number,
         column0Based: number,
-        sourceText: string,
+        getLineText: (row1Based: number) => string | undefined,
     ): NavigationHighlightModel[] | undefined {
-        return this.navigationService.getDocumentHighlights(this, row1Based, column0Based, sourceText);
+        return this.navigationService.getDocumentHighlights(this, row1Based, column0Based, getLineText);
     }
 
     public getAstHoverModel(
@@ -604,7 +605,11 @@ export class SourceContext implements IAstContext
             }
 
             const prewarmStart = tracePerformance ? this.nowMs() : 0;
-            this.navigationService.prewarmIndexes(this.ast);
+            const isVeryLargeFile = this.sourceCharCount >= SourceContext.LARGE_FILE_CHAR_THRESHOLD
+                || this.sourceLineCount >= SourceContext.LARGE_FILE_LINE_THRESHOLD;
+            this.navigationService.prewarmIndexes(this.ast, {
+                includeMemberReferenceIndex: !isVeryLargeFile,
+            });
             if (tracePerformance) {
                 prewarmDuration = this.nowMs() - prewarmStart;
             }
