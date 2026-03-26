@@ -35,8 +35,12 @@ export class mxsCodeLensProvider implements CodeLensProvider
         this._onDidChangeCodeLenses.fire();
     }
 
-    provideCodeLenses(document: TextDocument, _token: CancellationToken): ProviderResult<CodeLens[]>
+    provideCodeLenses(document: TextDocument, token: CancellationToken): ProviderResult<CodeLens[]>
     {
+        if (token.isCancellationRequested) {
+            return [];
+        }
+
         const uri = document.uri;
         const context = this.backend.getContext(uri.toString());
         const anchors = context.getAstCodeLensAnchors();
@@ -46,6 +50,10 @@ export class mxsCodeLensProvider implements CodeLensProvider
 
         const lenses: CodeLens[] = [];
         for (const anchor of anchors) {
+            if (token.isCancellationRequested) {
+                return [];
+            }
+
             lenses.push(new AstDeclarationCodeLens(
                 Utilities.lexicalRangeToRange(anchor.range),
                 uri,
@@ -57,8 +65,12 @@ export class mxsCodeLensProvider implements CodeLensProvider
         return lenses;
     }
 
-    resolveCodeLens(codeLens: CodeLens, _token: CancellationToken): ProviderResult<CodeLens>
+    resolveCodeLens(codeLens: CodeLens, token: CancellationToken): ProviderResult<CodeLens>
     {
+        if (token.isCancellationRequested) {
+            return codeLens;
+        }
+
         const lens = codeLens as AstDeclarationCodeLens;
         const context = this.backend.getContext(lens.uri.toString());
         const resolved = context.resolveAstCodeLens(lens.declarationLine, lens.declarationCharacter);

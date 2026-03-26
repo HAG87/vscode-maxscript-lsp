@@ -77,14 +77,83 @@ export class NavigationService {
         };
     }
 
+    private astNameRangeWithCancellation(
+        sourceText: string,
+        position: AstPosition,
+        name: string,
+        isCancelled?: () => boolean,
+    ): ILexicalRange | undefined {
+        if (isCancelled?.()) {
+            return undefined;
+        }
+
+        const lines = sourceText.split(/\r?\n/);
+        const startLineIndex = position.start.line - 1;
+        const endLineIndex = position.end.line - 1;
+
+        if (startLineIndex < 0 || endLineIndex >= lines.length || endLineIndex < startLineIndex) {
+            return undefined;
+        }
+
+        const snippetLines: string[] = [];
+        for (let i = startLineIndex; i <= endLineIndex; i++) {
+            if (isCancelled?.()) {
+                return undefined;
+            }
+
+            const line = lines[i] ?? '';
+            if (i === startLineIndex && i === endLineIndex) {
+                snippetLines.push(line.slice(position.start.column, position.end.column));
+            } else if (i === startLineIndex) {
+                snippetLines.push(line.slice(position.start.column));
+            } else if (i === endLineIndex) {
+                snippetLines.push(line.slice(0, position.end.column));
+            } else {
+                snippetLines.push(line);
+            }
+        }
+
+        if (isCancelled?.()) {
+            return undefined;
+        }
+
+        const snippet = snippetLines.join('\n');
+        const offset = snippet.indexOf(name);
+        if (offset < 0) {
+            return undefined;
+        }
+
+        const prefix = snippet.slice(0, offset);
+        const prefixLines = prefix.split(/\n/);
+        const lineOffset = prefixLines.length - 1;
+        const startRow = position.start.line + lineOffset;
+        const startColumn = lineOffset === 0
+            ? position.start.column + prefixLines[0].length
+            : prefixLines[lineOffset].length;
+
+        return {
+            start: { row: startRow, column: startColumn },
+            end: { row: startRow, column: startColumn + name.length },
+        };
+    }
+
     public getDefinitionTarget(
         sourceContext: IAstContext,
         row1Based: number,
         column0Based: number,
         sourceText: string,
+        isCancelled?: () => boolean,
     ): DefinitionTargetModel | undefined {
+        if (isCancelled?.()) {
+            return undefined;
+        }
+
         const declaration = sourceContext.astDeclarationAtPosition(row1Based, column0Based);
         if (!declaration?.name) {
+            return undefined;
+        }
+
+        if (isCancelled?.()) {
             return undefined;
         }
 
@@ -104,9 +173,13 @@ export class NavigationService {
             return undefined;
         }
 
+        if (isCancelled?.()) {
+            return undefined;
+        }
+
         const range = isRemote
             ? this.astPositionToLexicalRange(targetPosition)
-            : (this.astNameRange(sourceText, targetPosition, declaration.name)
+            : (this.astNameRangeWithCancellation(sourceText, targetPosition, declaration.name, isCancelled)
                 ?? this.astPositionToLexicalRange(targetPosition));
 
         return {

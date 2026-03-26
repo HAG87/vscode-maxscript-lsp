@@ -79,10 +79,20 @@ export class mxsHoverProvider implements HoverProvider
         return new Hover([markedStr]);
     }
 
-    provideHover(document: TextDocument, position: Position, _token: CancellationToken): ProviderResult<Hover>
+    provideHover(document: TextDocument, position: Position, token: CancellationToken): ProviderResult<Hover>
     {
         return new Promise((resolve) =>
         {
+            if (token.isCancellationRequested) {
+                resolve(undefined);
+                return;
+            }
+
+            const cancelSubscription = token.onCancellationRequested(() => {
+                cancelSubscription.dispose();
+                resolve(undefined);
+            });
+
             const config = workspace.getConfiguration('maxScript');
             const useAst = config.get<boolean>('providers.ast.hoverProvider', true);
             const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
@@ -93,6 +103,7 @@ export class mxsHoverProvider implements HoverProvider
                 if (traceRouting) {
                     console.log('[language-maxscript][HoverProvider] route=API');
                 }
+                cancelSubscription.dispose();
                 resolve(apiHover);
                 return;
             }
@@ -103,6 +114,7 @@ export class mxsHoverProvider implements HoverProvider
                     if (traceRouting) {
                         console.log('[language-maxscript][HoverProvider] route=AST');
                     }
+                    cancelSubscription.dispose();
                     resolve(hover);
                     return;
                 }
@@ -114,6 +126,7 @@ export class mxsHoverProvider implements HoverProvider
                     if (traceRouting) {
                         console.log('[language-maxscript][HoverProvider] route=Legacy');
                     }
+                    cancelSubscription.dispose();
                     resolve(hover);
                     return;
                 }
@@ -123,6 +136,7 @@ export class mxsHoverProvider implements HoverProvider
                 console.log('[language-maxscript][HoverProvider] route=None');
             }
 
+            cancelSubscription.dispose();
             resolve(undefined);
         });
     }

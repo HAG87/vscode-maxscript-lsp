@@ -350,8 +350,9 @@ export class SourceContext implements IAstContext
         row1Based: number,
         column0Based: number,
         sourceText: string,
+        isCancelled?: () => boolean,
     ): DefinitionTargetModel | undefined {
-        return this.navigationService.getDefinitionTarget(this, row1Based, column0Based, sourceText);
+        return this.navigationService.getDefinitionTarget(this, row1Based, column0Based, sourceText, isCancelled);
     }
 
     public getAstReferenceLocations(

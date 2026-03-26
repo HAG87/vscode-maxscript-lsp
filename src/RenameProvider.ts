@@ -13,10 +13,20 @@ export class mxsRenameProvider implements RenameProvider
     public prepareRename(
         document: TextDocument,
         position: Position,
-        _token: CancellationToken): ProviderResult<Range | { range: Range; placeholder: string }>
+        token: CancellationToken): ProviderResult<Range | { range: Range; placeholder: string }>
     {
         return new Promise((resolve, reject) =>
         {
+            if (token.isCancellationRequested) {
+                resolve(undefined);
+                return;
+            }
+
+            const cancelSubscription = token.onCancellationRequested(() => {
+                cancelSubscription.dispose();
+                resolve(undefined);
+            });
+
             const config = workspace.getConfiguration('maxScript');
             const useAst = config.get<boolean>('providers.ast.renameProvider', true);
             const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
@@ -33,6 +43,7 @@ export class mxsRenameProvider implements RenameProvider
                     if (traceRouting) {
                         console.log('[language-maxscript][RenameProvider] route=AST prepare');
                     }
+                    cancelSubscription.dispose();
                     resolve({
                         range: Utilities.lexicalRangeToRange(renameTarget.range),
                         placeholder: renameTarget.placeholder,
@@ -45,6 +56,7 @@ export class mxsRenameProvider implements RenameProvider
             }
 
             if (!fallbackToLegacy) {
+                cancelSubscription.dispose();
                 reject(new Error('No renameable symbol at this position.'));
                 return;
             }
@@ -53,6 +65,7 @@ export class mxsRenameProvider implements RenameProvider
 
             if (!symbol || !symbol.definition) {
                 // Reject positions that are not on a renameable symbol.
+                cancelSubscription.dispose();
                 reject(new Error('No renameable symbol at this position.'));
                 return;
             }
@@ -61,6 +74,7 @@ export class mxsRenameProvider implements RenameProvider
                 console.log('[language-maxscript][RenameProvider] route=Legacy prepare');
             }
 
+            cancelSubscription.dispose();
             resolve({
                 range: Utilities.symbolNameRange(symbol),
                 placeholder: symbol.name,
@@ -72,10 +86,20 @@ export class mxsRenameProvider implements RenameProvider
         document: TextDocument,
         position: Position,
         newName: string,
-        _token: CancellationToken): ProviderResult<WorkspaceEdit>
+        token: CancellationToken): ProviderResult<WorkspaceEdit>
     {
         return new Promise((resolve) =>
         {
+            if (token.isCancellationRequested) {
+                resolve(undefined);
+                return;
+            }
+
+            const cancelSubscription = token.onCancellationRequested(() => {
+                cancelSubscription.dispose();
+                resolve(undefined);
+            });
+
             const config = workspace.getConfiguration('maxScript');
             const useAst = config.get<boolean>('providers.ast.renameProvider', true);
             const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
@@ -97,6 +121,7 @@ export class mxsRenameProvider implements RenameProvider
                     if (traceRouting) {
                         console.log('[language-maxscript][RenameProvider] route=AST edits');
                     }
+                    cancelSubscription.dispose();
                     resolve(workspaceEdit);
                     return;
                 }
@@ -106,6 +131,7 @@ export class mxsRenameProvider implements RenameProvider
             }
 
             if (!fallbackToLegacy) {
+                cancelSubscription.dispose();
                 resolve(undefined);
                 return;
             }
@@ -124,8 +150,10 @@ export class mxsRenameProvider implements RenameProvider
                 if (traceRouting) {
                     console.log('[language-maxscript][RenameProvider] route=Legacy edits');
                 }
+                cancelSubscription.dispose();
                 resolve(workspaceEdit);
             } else {
+                cancelSubscription.dispose();
                 resolve(undefined);
             }
         });

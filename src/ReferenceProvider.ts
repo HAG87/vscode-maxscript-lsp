@@ -19,10 +19,20 @@ export class mxsReferenceProvider implements ReferenceProvider
         document: TextDocument,
         position: Position,
         context: ReferenceContext,
-        _token: CancellationToken): ProviderResult<Location[]>
+        token: CancellationToken): ProviderResult<Location[]>
     {
         return new Promise((resolve) =>
         {
+            if (token.isCancellationRequested) {
+                resolve(undefined);
+                return;
+            }
+
+            const cancelSubscription = token.onCancellationRequested(() => {
+                cancelSubscription.dispose();
+                resolve(undefined);
+            });
+
             const sourceContext = this.backend.getContext(document.uri.toString());
             const config = workspace.getConfiguration('maxScript');
             const useAst = config.get<boolean>('providers.ast.referenceProvider', true);
@@ -45,6 +55,7 @@ export class mxsReferenceProvider implements ReferenceProvider
                     if (traceRouting) {
                         console.log(`[language-maxscript][ReferenceProvider] route=AST refs=${result.length}`);
                     }
+                    cancelSubscription.dispose();
                     resolve(result);
                     return;
                 }
@@ -57,6 +68,7 @@ export class mxsReferenceProvider implements ReferenceProvider
             if (traceRouting) {
                 console.log('[language-maxscript][ReferenceProvider] route=None');
             }
+            cancelSubscription.dispose();
             resolve(undefined);
         });
     }

@@ -15,10 +15,20 @@ export class mxsDocumentHighlightProvider implements DocumentHighlightProvider
     provideDocumentHighlights(
         document: TextDocument,
         position: Position,
-        _token: CancellationToken): ProviderResult<DocumentHighlight[]>
+        token: CancellationToken): ProviderResult<DocumentHighlight[]>
     {
         return new Promise((resolve) =>
         {
+            if (token.isCancellationRequested) {
+                resolve(undefined);
+                return;
+            }
+
+            const cancelSubscription = token.onCancellationRequested(() => {
+                cancelSubscription.dispose();
+                resolve(undefined);
+            });
+
             const sourceContext = this.backend.getContext(document.uri.toString());
             const config = workspace.getConfiguration('maxScript');
             const useAst = config.get<boolean>('providers.ast.documentHighlightProvider', true);
@@ -43,6 +53,7 @@ export class mxsDocumentHighlightProvider implements DocumentHighlightProvider
                         if (traceRouting) {
                             console.log(`[language-maxscript][DocumentHighlightProvider] route=AST highlights=${result.length}`);
                         }
+                        cancelSubscription.dispose();
                         resolve(result);
                         return;
                     }
@@ -80,6 +91,7 @@ export class mxsDocumentHighlightProvider implements DocumentHighlightProvider
                         if (traceRouting) {
                             console.log('[language-maxscript][DocumentHighlightProvider] route=Legacy');
                         }
+                        cancelSubscription.dispose();
                         resolve(result);
                         return;
                     }
@@ -88,6 +100,7 @@ export class mxsDocumentHighlightProvider implements DocumentHighlightProvider
 
             // Last resort: word under cursor
             const wordRange = document.getWordRangeAtPosition(position);
+            cancelSubscription.dispose();
             resolve(wordRange ? [new DocumentHighlight(wordRange, DocumentHighlightKind.Text)] : undefined);
         });
     }

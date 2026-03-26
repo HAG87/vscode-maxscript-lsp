@@ -86,11 +86,21 @@ export class mxsCompletionProvider implements CompletionItemProvider
     }
 
     provideCompletionItems(
-        document: TextDocument, position: Position, _token: CancellationToken, context: CompletionContext
+        document: TextDocument, position: Position, token: CancellationToken, context: CompletionContext
     ): ProviderResult<CompletionItem[] | CompletionList<CompletionItem>>
     {
         return new Promise((resolve, reject) =>
         {
+            if (token.isCancellationRequested) {
+                resolve(undefined);
+                return;
+            }
+
+            const cancelSubscription = token.onCancellationRequested(() => {
+                cancelSubscription.dispose();
+                resolve(undefined);
+            });
+
             const sourceContext = this.backend.getContext(document.uri.toString());
             const config = workspace.getConfiguration('maxScript');
             const useAst = config.get<boolean>('providers.ast.completionProvider', true);
@@ -109,6 +119,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
                 if (this.options.completions.dataBaseCompletion) {
                     const apiMembers = this.apiMembersForObject(objectName);
                     if (apiMembers && apiMembers.length > 0) {
+                        cancelSubscription.dispose();
                         resolve(new CompletionList(apiMembers, false));
                         return;
                     }
@@ -132,6 +143,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
                             items.push(item);
                         }
                         if (items.length > 0) {
+                            cancelSubscription.dispose();
                             resolve(new CompletionList(items, false));
                             return;
                         }
@@ -139,6 +151,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
                 }
 
                 // Object not resolved — return empty rather than polluting with scope vars.
+                cancelSubscription.dispose();
                 resolve(new CompletionList([], false));
                 return;
             }
@@ -162,6 +175,12 @@ export class mxsCompletionProvider implements CompletionItemProvider
                 useAst,
             ).then((suggestions) =>
                 {
+                    if (token.isCancellationRequested) {
+                        cancelSubscription.dispose();
+                        resolve(undefined);
+                        return;
+                    }
+
                     for (const suggestion of suggestions) {
                         const item = new CompletionItem(
                             suggestion.label,
@@ -178,9 +197,11 @@ export class mxsCompletionProvider implements CompletionItemProvider
                     if (this.options.completions.dataBaseCompletion) {
                         completionList.push(...this.completionsFromAPI(document, position, context));
                     }
+                    cancelSubscription.dispose();
                     resolve(new CompletionList(completionList, false));
                 }).catch((reason) =>
                 {
+                    cancelSubscription.dispose();
                     reject(reason);
                 });
         });

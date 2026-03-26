@@ -94,8 +94,14 @@ export class mxsWorkspaceSymbolProvider implements WorkspaceSymbolProvider
     {
         return new Promise<SymbolInformation[]>((resolve) =>
         {
-            token.onCancellationRequested(() =>
+            if (token.isCancellationRequested) {
+                resolve([]);
+                return;
+            }
+
+            const cancelSubscription = token.onCancellationRequested(() =>
             {
+                cancelSubscription.dispose();
                 resolve([]);
                 return;
             });
@@ -117,10 +123,20 @@ export class mxsWorkspaceSymbolProvider implements WorkspaceSymbolProvider
                 // First call — seed the index with all workspace files.
                 this.collectDocuments().then((uris) =>
                 {
+                    if (token.isCancellationRequested) {
+                        cancelSubscription.dispose();
+                        resolve([]);
+                        return;
+                    }
                     this.index.seedUris(uris);
+                    cancelSubscription.dispose();
                     resolve(serve());
-                }, () => resolve([]));
+                }, () => {
+                    cancelSubscription.dispose();
+                    resolve([]);
+                });
             } else {
+                cancelSubscription.dispose();
                 resolve(serve());
             }
         });

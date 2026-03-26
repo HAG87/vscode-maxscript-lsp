@@ -13,11 +13,16 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
     public constructor(private backend: mxsBackend, private options: ICodeFormatSettings) { }
 
     provideDocumentRangeFormattingEdits(document: TextDocument, range: Range,
-        _options: FormattingOptions, _token: CancellationToken): ProviderResult<TextEdit[]>
+        _options: FormattingOptions, token: CancellationToken): ProviderResult<TextEdit[]>
     {
         // /*
         return new Promise<TextEdit[]>((resolve) =>
         {
+            if (token.isCancellationRequested) {
+                resolve([]);
+                return;
+            }
+
             const { code, start, stop } =
                 this.backend.getContext(document.uri.toString()).formatCode(
                     Utilities.rangeToLexicalRange(range),
@@ -46,13 +51,22 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
     }
     //FIXME: unreilable method
     provideDocumentRangesFormattingEdits?(document: TextDocument, ranges: Range[],
-        _options: FormattingOptions, _token: CancellationToken): ProviderResult<TextEdit[]>
+        _options: FormattingOptions, token: CancellationToken): ProviderResult<TextEdit[]>
     {
         return new Promise<TextEdit[]>((resolve) =>
         {
+            if (token.isCancellationRequested) {
+                resolve([]);
+                return;
+            }
+
             const results: TextEdit[] = [];
             ranges.forEach(range =>
             {
+                if (token.isCancellationRequested) {
+                    return;
+                }
+
                 const { code, start, stop } =
                     this.backend.getContext(document.uri.toString()).formatCode(
                         {
@@ -112,10 +126,15 @@ export class mxsFormattingProvider implements DocumentFormattingEditProvider
     }
 
     provideDocumentFormattingEdits(document: TextDocument,
-        _options: FormattingOptions, _token: CancellationToken): ProviderResult<TextEdit[]>
+        _options: FormattingOptions, token: CancellationToken): ProviderResult<TextEdit[]>
     {
         return new Promise<TextEdit[]>((resolve) =>
         {
+            if (token.isCancellationRequested) {
+                resolve([]);
+                return;
+            }
+
             const range = new Range(
                 document.positionAt(0),
                 document.positionAt(document.getText().length)

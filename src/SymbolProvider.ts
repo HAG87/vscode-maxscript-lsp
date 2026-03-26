@@ -43,11 +43,21 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
         return documentSymbol;
     }
 
-    provideDocumentSymbols(document: TextDocument, _token: CancellationToken):
+    provideDocumentSymbols(document: TextDocument, token: CancellationToken):
         ProviderResult<SymbolInformation[] | DocumentSymbol[]>
     {
         return new Promise((resolve) =>
         {
+            if (token.isCancellationRequested) {
+                resolve([]);
+                return;
+            }
+
+            const cancelSubscription = token.onCancellationRequested(() => {
+                cancelSubscription.dispose();
+                resolve([]);
+            });
+
             const config = workspace.getConfiguration('maxScript');
             const useAst = config.get<boolean>('providers.ast.symbolProvider', true);
             const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
@@ -89,6 +99,7 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
                 if (tracePerformance) {
                     console.log(`[language-maxscript][Performance] symbolProvider.total uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms symbols=0`);
                 }
+                cancelSubscription.dispose();
                 resolve([]);
                 return;
             }
@@ -97,6 +108,12 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
             const materializeStart = tracePerformance ? this.nowMs() : 0;
 
             for (const symbol of symbols) {
+                if (token.isCancellationRequested) {
+                    cancelSubscription.dispose();
+                    resolve([]);
+                    return;
+                }
+
                 if (!symbol.definition || !symbol.name) {
                     continue;
                 }
@@ -109,6 +126,7 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
                 console.log(`[language-maxscript][Performance] symbolProvider.total uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms documentSymbols=${symbolsList.length}`);
             }
 
+            cancelSubscription.dispose();
             resolve(symbolsList);
         });
     }

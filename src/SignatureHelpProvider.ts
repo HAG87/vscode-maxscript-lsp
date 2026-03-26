@@ -32,10 +32,20 @@ export class mxsSignatureHelpProvider implements SignatureHelpProvider {
     provideSignatureHelp(
         document: TextDocument,
         position: Position,
-        _token: CancellationToken,
+        token: CancellationToken,
         _context: SignatureHelpContext,
     ): ProviderResult<SignatureHelp> {
         return new Promise((resolve) => {
+            if (token.isCancellationRequested) {
+                resolve(undefined);
+                return;
+            }
+
+            const cancelSubscription = token.onCancellationRequested(() => {
+                cancelSubscription.dispose();
+                resolve(undefined);
+            });
+
             const config = workspace.getConfiguration('maxScript');
             const useAst = config.get<boolean>('providers.ast.completionProvider', true);
             const traceRouting = config.get<boolean>('providers.traceRouting', false);
@@ -43,6 +53,7 @@ export class mxsSignatureHelpProvider implements SignatureHelpProvider {
                 if (traceRouting) {
                     console.log('[language-maxscript][SignatureHelpProvider] route=None (AST disabled)');
                 }
+                cancelSubscription.dispose();
                 resolve(undefined);
                 return;
             }
@@ -59,6 +70,7 @@ export class mxsSignatureHelpProvider implements SignatureHelpProvider {
                 if (traceRouting) {
                     console.log(`[language-maxscript][SignatureHelpProvider] route=AST style=${model.style}`);
                 }
+                cancelSubscription.dispose();
                 resolve(this.buildSignatureHelp(model));
                 return;
             }
@@ -66,6 +78,7 @@ export class mxsSignatureHelpProvider implements SignatureHelpProvider {
             if (traceRouting) {
                 console.log('[language-maxscript][SignatureHelpProvider] route=None (no call context match)');
             }
+            cancelSubscription.dispose();
             resolve(undefined);
         });
     }
