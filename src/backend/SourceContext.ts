@@ -572,6 +572,7 @@ export class SourceContext implements IAstContext
         let semanticWalkDuration = 0;
         let astBuildDuration = 0;
         let resolveDuration = 0;
+        let prewarmDuration = 0;
         let appendSemanticDuration = 0;
 
         this.semanticTokens.length = 0;
@@ -601,6 +602,12 @@ export class SourceContext implements IAstContext
             if (tracePerformance) {
                 resolveDuration = this.nowMs() - resolveStart;
             }
+
+            const prewarmStart = tracePerformance ? this.nowMs() : 0;
+            this.navigationService.prewarmIndexes(this.ast);
+            if (tracePerformance) {
+                prewarmDuration = this.nowMs() - prewarmStart;
+            }
             
             // 4. Append semantic tokens for user-defined identifiers based on resolved AST
             const appendSemanticStart = tracePerformance ? this.nowMs() : 0;
@@ -618,7 +625,7 @@ export class SourceContext implements IAstContext
         if (tracePerformance) {
             const totalDuration = this.nowMs() - totalStart;
             this.logPerformanceTrace(
-                `astModel uri=${this.sourceUri} total=${totalDuration.toFixed(2)}ms semanticWalk=${semanticWalkDuration.toFixed(2)}ms astBuild=${astBuildDuration.toFixed(2)}ms resolve=${resolveDuration.toFixed(2)}ms appendSemantic=${appendSemanticDuration.toFixed(2)}ms`,
+                `astModel uri=${this.sourceUri} total=${totalDuration.toFixed(2)}ms semanticWalk=${semanticWalkDuration.toFixed(2)}ms astBuild=${astBuildDuration.toFixed(2)}ms resolve=${resolveDuration.toFixed(2)}ms prewarm=${prewarmDuration.toFixed(2)}ms appendSemantic=${appendSemanticDuration.toFixed(2)}ms`,
             );
         }
     }

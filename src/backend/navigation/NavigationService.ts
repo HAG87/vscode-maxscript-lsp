@@ -31,6 +31,51 @@ export interface NavigationHighlightModel {
 
 export class NavigationService {
     private readonly memberReferenceIndex = new WeakMap<Program, Map<unknown, MemberExpression[]>>();
+    private readonly definitionTargetCache = new WeakMap<Program, Map<string, DefinitionTargetModel>>();
+    private static readonly definitionTargetCacheLimit = 64;
+
+    public prewarmIndexes(ast: Program): void {
+        ASTQuery.prewarmPositionIndex(ast);
+        this.getMemberReferenceIndex(ast);
+    }
+
+    private getDefinitionTargetCache(ast: Program): Map<string, DefinitionTargetModel> {
+        const existing = this.definitionTargetCache.get(ast);
+        if (existing) {
+            return existing;
+        }
+
+        const cache = new Map<string, DefinitionTargetModel>();
+        this.definitionTargetCache.set(ast, cache);
+        return cache;
+    }
+
+    private getCachedDefinitionTarget(ast: Program, cacheKey: string): DefinitionTargetModel | undefined {
+        const cache = this.getDefinitionTargetCache(ast);
+        const cached = cache.get(cacheKey);
+        if (!cached) {
+            return undefined;
+        }
+
+        cache.delete(cacheKey);
+        cache.set(cacheKey, cached);
+        return cached;
+    }
+
+    private setCachedDefinitionTarget(ast: Program, cacheKey: string, target: DefinitionTargetModel): void {
+        const cache = this.getDefinitionTargetCache(ast);
+        if (cache.has(cacheKey)) {
+            cache.delete(cacheKey);
+        }
+        cache.set(cacheKey, target);
+
+        if (cache.size > NavigationService.definitionTargetCacheLimit) {
+            const oldestKey = cache.keys().next().value;
+            if (oldestKey !== undefined) {
+                cache.delete(oldestKey);
+            }
+        }
+    }
 
     private extractWordFromLine(lineText: string, column0Based: number): string | undefined {
         const column = Math.max(0, Math.min(column0Based, lineText.length));
@@ -235,11 +280,18 @@ export class NavigationService {
         }
 
         const ast = sourceContext.getResolvedAST();
+        if (!ast) {
+            return undefined;
+        }
+
+        const cacheKey = `${row1Based}:${column0Based}`;
+        const cached = this.getCachedDefinitionTarget(ast, cacheKey);
+        if (cached) {
+            return cached;
+        }
+
         const declaration = sourceContext.astDeclarationAtPosition(row1Based, column0Based)
             ?? (() => {
-                if (!ast) {
-                    return undefined;
-                }
                 const word = this.extractWordAtPosition(sourceText, row1Based, column0Based);
                 return word ? ASTQuery.findDeclarationByName(ast, word) : undefined;
             })();
@@ -276,10 +328,13 @@ export class NavigationService {
             : (this.astNameRangeWithCancellation(sourceText, targetPosition, declaration.name, isCancelled)
                 ?? this.astPositionToLexicalRange(targetPosition));
 
-        return {
+        const target = {
             targetUri: declarationUri,
             range,
         };
+
+        this.setCachedDefinitionTarget(ast, cacheKey, target);
+        return target;
     }
 
     public getReferences(

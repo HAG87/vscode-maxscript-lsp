@@ -720,12 +720,64 @@ export class ASTQuery {
         yield* root.walk();
     }
 
+    /** Forces construction of the per-AST position index ahead of the first query. */
+    static prewarmPositionIndex(root: Program): void {
+        this.getNodeIndex(root);
+    }
+
     private static *walkNodes(root: Program): Iterable<Node> {
         yield* root.walk();
     }
 
+    // -------------------------------------------------------------------------
+    // Position index — built once per AST instance, reclaimed when the Program
+    // is GC-collected after a re-parse.
+    //
+    // Single-line nodes are bucketed by their start line so position queries
+    // only visit the (typically small) set of nodes on that line.
+    // Multi-line nodes are kept in a separate array; containsPosition is still
+    // checked linearly but the array is much smaller than the full walk.
+    // -------------------------------------------------------------------------
+
+    private static readonly nodeIndex = new WeakMap<Program, AstNodeIndex>();
+
+    private static getNodeIndex(root: Program): AstNodeIndex {
+        const existing = this.nodeIndex.get(root);
+        if (existing) {
+            return existing;
+        }
+
+        const byLine = new Map<number, Node[]>();
+        const multiLine: Node[] = [];
+
+        for (const node of this.walkNodes(root)) {
+            const pos = node.position;
+            if (!pos) {
+                continue;
+            }
+            if (pos.start.line === pos.end.line) {
+                let bucket = byLine.get(pos.start.line);
+                if (!bucket) {
+                    bucket = [];
+                    byLine.set(pos.start.line, bucket);
+                }
+                bucket.push(node);
+            } else {
+                multiLine.push(node);
+            }
+        }
+
+        const index: AstNodeIndex = { byLine, multiLine };
+        this.nodeIndex.set(root, index);
+        return index;
+    }
+
     /**
      * Returns the smallest-span AST node at (line, column) that satisfies predicate.
+     *
+     * Uses the position index to avoid walking the full tree:
+     *  - O(k) for single-line nodes on that line  (k is typically <30)
+     *  - O(m) for multi-line nodes that span the query line  (m << n)
      */
     private static findInnermost<T extends Node>(
         root: Program,
@@ -733,11 +785,31 @@ export class ASTQuery {
         column: number,
         predicate: (n: Node) => n is T,
     ): T | undefined {
+        const { byLine, multiLine } = this.getNodeIndex(root);
+
         let best: T | undefined;
         let bestScore = Number.MAX_SAFE_INTEGER;
 
-        for (const node of this.walkNodes(root)) {
-            if (!predicate(node) || !this.containsPosition(line, column, node)) continue;
+        // Single-line nodes starting on the queried line.
+        const sameLine = byLine.get(line);
+        if (sameLine) {
+            for (const node of sameLine) {
+                if (!predicate(node) || !this.containsPosition(line, column, node)) {
+                    continue;
+                }
+                const score = this.spanScore(node);
+                if (score <= bestScore) {
+                    best = node;
+                    bestScore = score;
+                }
+            }
+        }
+
+        // Multi-line nodes — fewer, but must still check span.
+        for (const node of multiLine) {
+            if (!predicate(node) || !this.containsPosition(line, column, node)) {
+                continue;
+            }
             const score = this.spanScore(node);
             if (score <= bestScore) {
                 best = node;
@@ -747,4 +819,15 @@ export class ASTQuery {
 
         return best;
     }
+}
+
+// ---------------------------------------------------------------------------
+// Internal types — not exported
+// ---------------------------------------------------------------------------
+
+interface AstNodeIndex {
+    /** Single-line nodes bucketed by their start line (1-based). */
+    byLine: Map<number, Node[]>;
+    /** Nodes whose start line differs from their end line. */
+    multiLine: Node[];
 }
