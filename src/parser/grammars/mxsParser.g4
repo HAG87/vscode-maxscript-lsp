@@ -117,7 +117,7 @@ utilityDefinition
         ( rolloutMembers (lbk? rolloutMembers)* )?
     rp
 	;
-utilityClause: Utility NL* utility_name = identifier NL* operand (NL* param)*
+utilityClause: Utility NL* utility_name = identifier NL* factor (NL* param)*
 	;
 //-------------------------------------- ROLLOUT_DEF
 rolloutDefinition
@@ -127,7 +127,7 @@ rolloutDefinition
     rp
 	;
 
-rolloutClause: Rollout NL* rollout_name = identifier NL* operand (NL* param)*
+rolloutClause: Rollout NL* rollout_name = identifier NL* factor (NL* param)*
 	;
 rolloutMembers
 	: declarationStatement
@@ -149,7 +149,7 @@ rolloutGroupDefinition
 groupClause: Group NL* group_name = STRING?
 	;
 
-rolloutControl: rolloutControlType NL* controlName = identifier (NL* operand)? (NL* param)*
+rolloutControl: rolloutControlType NL* controlName = identifier (NL* factor)? (NL* param)*
 	;
 
 rolloutControlType
@@ -221,7 +221,7 @@ rcMembers
 	;
 
 rcmenuControl
-	: MenuItem (NL* operand)+ (NL* param)*
+	: MenuItem (NL* factor)+ (NL* param)*
 	| Separator NL* identifier (NL* param)*
 	;
 
@@ -253,7 +253,7 @@ whenStatement: whenClause NL* DO NL* expr
 	;
 
 whenClause
-	: WHEN NL* (reference NL*)? (reference | path | exprSeq | array) NL* identifier  NL*  (NL* param)* (NL* operand)?
+	: WHEN NL* (reference NL*)? (reference | path | exprSeq | array) NL* identifier  NL*  (NL* param)* (NL* factor)?
 	;
 
 //-------------------------------------- CONTEXT_EXPR
@@ -271,7 +271,7 @@ ctxCascading: ctxClause (comma ctxClause)* NL* expr
  */
 ctxSet
 	: SET (
-		(ANIMATE | TIME | LEVEL | IN) NL* operand
+		(ANIMATE | TIME | LEVEL | IN) NL* factor
 		| ctxCoordsys
 		| ctxAbout
 		| ctxUndo
@@ -296,8 +296,8 @@ ctxSet
 	[ with ] macroRecorderEmitterEnabled <boolean>
  */
 ctxClause
-	: AT NL* (LEVEL | TIME) NL* operand
-	| IN NL* (ctxCoordsys | operand)
+	: AT NL* (LEVEL | TIME) NL* factor
+	| IN NL* (ctxCoordsys | factor)
 	| WITH NL* (ctxUndo | ctxSwitches)
 	| ctxAbout
 	| ctxCoordsys
@@ -305,11 +305,11 @@ ctxClause
 	| ctxSwitches
 	;
 
-ctxAbout: ABOUT NL* (COORDSYS | operand)
+ctxAbout: ABOUT NL* (COORDSYS | factor)
 	;
-ctxCoordsys: COORDSYS NL* (LOCAL | operand)
+ctxCoordsys: COORDSYS NL* (LOCAL | factor)
 	;
-ctxUndo: UNDO NL* (STRING | param | reference)? NL* operand
+ctxUndo: UNDO NL* (STRING | param | reference)? NL* factor
 	;
 ctxSwitches
 	: ( ANIMATE
@@ -319,7 +319,7 @@ ctxSwitches
 	| MXScallstackCaptureEnabled
 	| PrintAllElements
 	| QUIET
-	| REDRAW ) NL* operand
+	| REDRAW ) NL* factor
 	;
 
 //-------------------------------------- PARAMETER DEF
@@ -552,57 +552,38 @@ simpleExpression
 // - &obj.prop is parsed as &(obj.prop), not (&obj).prop
 // - *arr[0] is parsed as *(arr[0]), not (*arr)[0]
 exprOperand
-	: functionCall
-	| deRef
-	| operand
-	;
-
-operand
-	: accessor    // Postfix: property/index access (obj.prop[0])
-	| factor      // Primary: literals, identifiers, paths, etc.
+	: deRef
+	| postfixExpr
 	;
 
 classname: ID | kwReserved | exprSeq
 	;
 
-//---------------------------------------- FUNCTION CALL Positional Arguments Keyword Arguments
-/*
- A <function_call> has a lower precedence than an <operand>,
- but it has a higher precedence than
- all the math,
- comparison, and logical operations.
- This means you have to be careful 
- about
- correctly parenthesizing function arguments
- 
- Strategy to reduce backtracking:
- 1. fnCaller now excludes deRef (handled separately in exprOperand)
- 2. Parser tries functionCall first, which requires call syntax
- 3. If no call syntax present, falls back to plain operand
- 4. This still requires backtracking but is necessary for MaxScript's syntax
- 
- The ambiguity between "foo bar" (call) and "foo bar" (two identifiers)
- is resolved by operator precedence - function calls bind tighter than
- most operators, so arguments are consumed greedily up to an operator.
- */
+//---------------------------------------- POSTFIX EXPRESSION (access/index/call chain)
+// Unifies operand + call parsing to reduce top-level ambiguity in exprOperand.
+// Example chains handled here:
+//   foo.bar[1]()
+//   caller(arg1)(arg2)
+//   obj.prop x:1
+postfixExpr
+	: accesibleFactor (postfixOp)*
+	| basicFactor
+	;
 
+postfixOp
+	: accessor
+	| functionCall
+	;
+
+//---------------------------------------- FUNCTION CALL SUFFIX
+// FunctionCall is now a postfix operation, not a separate top-level expression.
 functionCall
-	: fnCaller (
-		parenPair                                    // foo()
-		| (args += operandArg)+ (params += param)*   // foo arg1 arg2 x:val
-		| (params += param)+                          // foo x:val y:val
-	)
+	: parenPair                                    // foo()
+	| (args += operandArg)+ (params += param)*     // foo arg1 arg2 x:val
+	| (params += param)+                            // foo x:val y:val
 	;
 
 parenPair: {this.closedParens()}? LPAREN RPAREN
-	;
-
-fnCaller
-	: accessor
-	| reference
-	| path
-	| exprSeq
-	| QUESTION
 	;
 
 //---------------------------------------- PARAMETER
@@ -613,19 +594,14 @@ paramName: {this.colonBeNext()}? (identifier | kwOverride) COLON
 	;
 
 operandArg
-	: UNARY_MINUS operand
-	| operand
+	: UNARY_MINUS factor
+	| factor
 	;
 
 // ------------------------------------------------------------------------ ACCESSORS
-/*
-accessor // with left recursion to handle chaining: foo.bar[1].baz
-    : accessor (index | property)
-    | factor (index | property)
-	;
- */
 accessor
-    : factor (index | property)+
+    : index
+	| property
 	;
 
 // Property accessor
@@ -639,21 +615,28 @@ index: lb expr rb
 
 //---------------------------------------- FACTORS
 factor
-	: reference
-	| bool
+	: basicFactor
+	| accesibleFactor
+	;
+
+accesibleFactor
+	: (reference
 	| STRING
 	| RESOURCE
 	| path
-	| name
-	| NUMBER
-	| TIMEVAL
 	| QUESTION
 	| array
 	| bitArray
 	| vector
-	| exprSeq //EXPRESSION SEQUENCE
+	| exprSeq) accessor*
 	;
 
+basicFactor
+	: bool
+	| name
+	| NUMBER
+	| TIMEVAL
+	;
 //---------------------------------------- EXPR_SEQ <exprSeq> ::= ( <expr> { ( ; | <eol>) <expr> }
 exprSeq:
 	lp
@@ -688,7 +671,7 @@ arrayList: expr ( comma expr)*
 	;
 
 // Dereference operator: *identifier, *path, *accessor
-deRef: {this.noWSBeNext()}? PROD (accessor | reference | path)
+deRef: {this.noWSBeNext()}? PROD (reference | path) accessor*
 	;
 // Reference operator: &identifier, &path, &accessor
 // by_ref: {this.noWSBeNext()}? AMP (accessor | reference | path);

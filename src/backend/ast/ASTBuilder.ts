@@ -94,7 +94,10 @@ import {
     ExprOperandContext,
     ExprSeqContext,
     FactorContext,
-    FnCallerContext,
+    AccesibleFactorContext,
+    BasicFactorContext,
+    PostfixExprContext,
+    PostfixOpContext,
     FnDefinitionContext,
     FnReturnStatementContext,
     FunctionCallContext,
@@ -105,7 +108,6 @@ import {
     LoopExitStatementContext,
     MacroscriptDefinitionContext,
     mxsParser,
-    OperandContext,
     OperandArgContext,
     ForLoopStatementContext,
     ParamContext,
@@ -426,7 +428,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
             .map(param => this.visit(param) as Expression | null)
             .filter((param): param is Expression => param instanceof Expression);
 
-        const handler = clause.operand();
+        const handler = clause.factor();
         if (handler) {
             node.handler = this.visit(handler) as Expression;
         }
@@ -449,7 +451,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     visitUtilityDefinition = (ctx: UtilityDefinitionContext): DefinitionBlock => {
         const clause = ctx.utilityClause();
         const parameters = [
-            this.visit(clause.operand()) as Expression,
+            this.visit(clause.factor()) as Expression,
             ...this.collectExpressions(clause.param()),
         ];
         return this.buildDefinitionBlock(
@@ -464,7 +466,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     visitRolloutDefinition = (ctx: RolloutDefinitionContext): DefinitionBlock => {
         const clause = ctx.rolloutClause();
         const parameters = [
-            this.visit(clause.operand()) as Expression,
+            this.visit(clause.factor()) as Expression,
             ...this.collectExpressions(clause.param()),
         ];
         return this.buildDefinitionBlock(
@@ -491,7 +493,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         const position = this.getPosition(ctx);
         const name = ctx._controlName?.getText() || 'anonymous';
         const controlType = ctx.rolloutControlType().getText();
-        const caption = ctx.operand() ? this.visit(ctx.operand()!) as Expression : undefined;
+        const caption = ctx.factor() ? this.visit(ctx.factor()!) as Expression : undefined;
         const parameters = this.collectExpressions(ctx.param());
 
         const control = new RolloutControl(name, controlType, caption, parameters, position);
@@ -537,9 +539,9 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         const position = this.getPosition(ctx);
         const itemType: 'menuitem' | 'separator' = ctx.MenuItem() ? 'menuitem' : 'separator';
         const name = ctx.identifier()?.getText()
-            ?? ctx.operand()?.[0]?.getText()
+            ?? ctx.factor()?.[0]?.getText()
             ?? itemType;
-        const operands = ctx.operand().map(operand => this.visit(operand) as Expression);
+        const operands = ctx.factor().map(operand => this.visit(operand) as Expression);
         const parameters = this.collectExpressions(ctx.param());
 
         const item = new RcMenuItem(name, itemType, operands, parameters, position);
@@ -952,70 +954,80 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     // LITERAL/TERMINAL NODE VISITORS
     // ============================================================================
     
-    // Factor: terminal nodes (literals, references, arrays, etc.) CHECK: IS THIS CORRECT? 
+    // Factor now delegates to basicFactor / accesibleFactor.
     visitFactor = (ctx: FactorContext): Expression => {
+        if (ctx.basicFactor()) {
+            return this.visit(ctx.basicFactor()!) as Expression;
+        }
+        if (ctx.accesibleFactor()) {
+            return this.visit(ctx.accesibleFactor()!) as Expression;
+        }
+        return new UndefinedLiteral(this.getPosition(ctx));
+    }
+
+    visitBasicFactor = (ctx: BasicFactorContext): Expression => {
         const position = this.getPosition(ctx);
-        
-        // Check each possible factor type
+
         if (ctx.NUMBER()) {
             const text = ctx.NUMBER()!.getText();
-            const value = parseFloat(text);
-            return new NumberLiteral(value, text, position);
+            return new NumberLiteral(parseFloat(text), text, position);
         }
-        
-        if (ctx.STRING()) {
-            const text = ctx.STRING()!.getText();
-            // Remove quotes and handle verbatim strings
-            const isVerbatim = text.startsWith('@"');
-            const value = isVerbatim 
-                ? text.substring(2, text.length - 1) // @"..."
-                : text.substring(1, text.length - 1).replace(/\\"/g, '"'); // "..."
-            return new StringLiteral(value, isVerbatim, position);
+
+        if (ctx.TIMEVAL()) {
+            return new NameLiteral(ctx.TIMEVAL()!.getText(), position);
         }
-        
+
         if (ctx.bool()) {
-            const boolCtx = ctx.bool();
-            if (boolCtx) return this.visit(boolCtx);
+            return this.visit(ctx.bool()!) as Expression;
         }
-        
+
         if (ctx.name()) {
-            // Name literal: #someName
             const text = ctx.name()!.getText();
             const value = text.startsWith('#') ? text.substring(1) : text;
             return new NameLiteral(value, position);
         }
-        
-        if (ctx.reference()) {
-            const refCtx = ctx.reference();
-            if (refCtx) return this.visit(refCtx);
-        }
 
-        if (ctx.path()) {
-            const pathCtx = ctx.path();
-            if (pathCtx) return this.visit(pathCtx);
-        }
-        
-        if (ctx.exprSeq()) {
-            const exprSeqCtx = ctx.exprSeq();
-            if (exprSeqCtx) return this.visit(exprSeqCtx);
-        }
-        
-        if (ctx.array()) {
-            return this.visit(ctx.array()!);
-        }
-        
-        if (ctx.QUESTION()) {
-            // Undefined literal
-            return new UndefinedLiteral(position);
-        }
-        
-        // TODO: Handle other factor types (TIMEVAL, path, point3, etc.)
-        
-        // Default: return undefined literal for unhandled cases
         return new UndefinedLiteral(position);
     }
-    
-    // Boolean literal CHECK: IS THIS CORRECT? 
+
+    visitAccesibleFactor = (ctx: AccesibleFactorContext): Expression => {
+        const position = this.getPosition(ctx);
+        let result: Expression;
+
+        if (ctx.reference()) {
+            result = this.visit(ctx.reference()!) as Expression;
+        } else if (ctx.STRING()) {
+            const text = ctx.STRING()!.getText();
+            const isVerbatim = text.startsWith('@"');
+            const value = isVerbatim
+                ? text.substring(2, text.length - 1)
+                : text.substring(1, text.length - 1).replace(/\\"/g, '"');
+            result = new StringLiteral(value, isVerbatim, position);
+        } else if (ctx.RESOURCE()) {
+            result = new NameLiteral(ctx.RESOURCE()!.getText(), position);
+        } else if (ctx.path()) {
+            result = this.visit(ctx.path()!) as Expression;
+        } else if (ctx.QUESTION()) {
+            result = new UndefinedLiteral(position);
+        } else if (ctx.array()) {
+            result = this.visit(ctx.array()!) as Expression;
+        } else if (ctx.bitArray()) {
+            result = this.visit(ctx.bitArray()!) as Expression;
+        } else if (ctx.vector()) {
+            result = this.visit(ctx.vector()!) as Expression;
+        } else if (ctx.exprSeq()) {
+            result = this.visit(ctx.exprSeq()!) as Expression;
+        } else {
+            result = new UndefinedLiteral(position);
+        }
+
+        for (const accessorCtx of ctx.accessor()) {
+            result = this.applyAccessor(result, accessorCtx);
+        }
+
+        return result;
+    }
+
     visitBool = (ctx: BoolContext): BooleanLiteral => {
         const position = this.getPosition(ctx);
         const text = ctx.getText().toLowerCase();
@@ -1046,7 +1058,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
 
     visitOperandArg = (ctx: OperandArgContext): Expression => {
         const position = this.getPosition(ctx);
-        const operand = this.visit(ctx.operand()) as Expression;
+        const operand = this.visit(ctx.factor()) as Expression;
 
         if (ctx.UNARY_MINUS()) {
             return new UnaryExpression('-', operand, position);
@@ -1055,35 +1067,12 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         return operand;
     }
 
-    visitFnCaller = (ctx: FnCallerContext): Expression => {
-        if (ctx.accessor()) {
-            return this.visit(ctx.accessor()!) as Expression;
-        }
-
-        if (ctx.reference()) {
-            return this.visit(ctx.reference()!) as Expression;
-        }
-
-        if (ctx.path()) {
-            return this.visit(ctx.path()!) as Expression;
-        }
-
-        if (ctx.exprSeq()) {
-            return this.visit(ctx.exprSeq()!) as Expression;
-        }
-
-        return new UndefinedLiteral(this.getPosition(ctx));
-    }
-
+    // FunctionCall is now a postfix suffix (no caller in this context).
     visitFunctionCall = (ctx: FunctionCallContext): Expression => {
-        const position = this.getPosition(ctx);
-        const callee = this.visit(ctx.fnCaller()) as Expression;
         const args: Expression[] = [];
-
         for (const argCtx of ctx.operandArg()) {
             args.push(this.visit(argCtx) as Expression);
         }
-
         for (const paramCtx of ctx.param()) {
             const paramValue = this.visit(paramCtx) as Expression | null;
             if (paramValue) {
@@ -1091,58 +1080,8 @@ export class ASTBuilder extends mxsParserVisitor<any> {
             }
         }
 
-        // The grammar can surface bracket indexing like `arr[idx]` through the
-        // function-call path when the whole expression is standalone. Normalize
-        // that shape back into an IndexExpression so symbol resolution can reach
-        // the index operand inside assignments and other standalone uses.
-        const fullText = ctx.getText();
-        const callerText = ctx.fnCaller().getText();
-        const operandArgs = ctx.operandArg();
-        const singleOperandText = operandArgs[0]?.getText();
-        if (
-            !ctx.parenPair()
-            && ctx.param().length === 0
-            && operandArgs.length === 1
-            && args.length === 1
-            && typeof singleOperandText === 'string'
-            && singleOperandText.startsWith('[')
-            && singleOperandText.endsWith(']')
-            && fullText === `${callerText}${singleOperandText}`
-        ) {
-            let indexOperand = args[0];
-
-            // In this ambiguity branch, operandArg text can be "[expr]" and visiting
-            // operandArg may yield UndefinedLiteral. Recover by visiting the inner expr.
-            if (indexOperand instanceof UndefinedLiteral) {
-                const exprChild = (operandArgs[0].children || []).find(
-                    (child): child is ExprContext => child instanceof ExprContext,
-                );
-                if (exprChild) {
-                    indexOperand = this.visit(exprChild) as Expression;
-                } else {
-                    const innerText = singleOperandText.slice(1, -1).trim();
-                    // Fast-path for common arr[identifier] cases.
-                    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(innerText)) {
-                        const argPos = this.getPosition(operandArgs[0]);
-                        const innerStartCol = (argPos?.start.column ?? 0) + 1;
-                        const innerEndCol = innerStartCol + innerText.length;
-                        const innerPos = argPos
-                            ? new Position(
-                                new Point(argPos.start.line, innerStartCol),
-                                new Point(argPos.start.line, innerEndCol),
-                            )
-                            : undefined;
-                        const ref = new VariableReference(innerText, innerPos);
-                        this.allReferences.push(ref);
-                        indexOperand = ref;
-                    }
-                }
-            }
-
-            return new IndexExpression(callee, indexOperand, position);
-        }
-
-        return new CallExpression(callee, args, position);
+        // Caller is applied in visitPostfixExpr. Return a placeholder when visited directly.
+        return new CallExpression(new UndefinedLiteral(this.getPosition(ctx)), args, this.getPosition(ctx));
     }
     
     // Simple expression: handles operators and builds expression tree
@@ -1226,118 +1165,96 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         return new UndefinedLiteral(position);
     }
     
-    // Expression operand: by_ref | de_ref | functionCall | operand
+    // Expression operand: deRef | postfixExpr
     visitExprOperand = (ctx: ExprOperandContext): Expression => {
-        // Check for by_ref (reference operator: &obj, &obj.prop, &$path)
-        /*
-        const byRef = ctx.by_ref();
-        if (byRef) {
-            return this.visit(byRef) as Expression;
-        }
-        */
-        // Check for de_ref (dereference operator: *ref, *ref.prop, *$path)
         const deRef = ctx.deRef();
         if (deRef) {
             return this.visit(deRef) as Expression;
         }
-        
-        // Check for function call
-        const functionCall = ctx.functionCall();
-        if (functionCall) {
-            return this.visit(functionCall) as Expression;
-        }
-        
-        // Check for operand
-        const operand = ctx.operand();
-        if (operand) {
-            return this.visit(operand) as Expression;
-        }
-        
-        return new UndefinedLiteral();
-    }
-    
-    // Reference operator: &obj, &obj.prop, &$path
-    /*
-    visitBy_ref = (ctx: By_refContext): Expression => {
-        const position = this.getPosition(ctx);
-        
-        // The grammar is: by_ref: {noWSBeNext}? AMP (accessor | reference | path)
-        // Visit the child (accessor, reference, or path)
-        const operand = this.visitChildren(ctx) as Expression;
-        
-        return new ReferenceExpression(operand, position);
-    }
-    */
-    // Dereference operator: *ref, *ref.prop, *$path
-    visitDeRef = (ctx: DeRefContext): Expression => {
-        const position = this.getPosition(ctx);
-        
-        // The grammar is: de_ref: {noWSBeNext}? PROD (accessor | reference | path)
-        // Visit the child (accessor, reference, or path)
-        const operand = this.visitChildren(ctx) as Expression;
-        
-        return new DereferenceExpression(operand, position);
-    }
-    
-    // Operand: accessor | factor
-    visitOperand = (ctx: OperandContext): Expression => {
-        // Check for accessor (property/index access)
-        const accessor = ctx.accessor();
-        if (accessor) {
-            return this.visit(accessor) as Expression;
-        }
-        
-        // Check for factor (literals, references, etc.)
-        const factor = ctx.factor();
-        if (factor) {
-            return this.visit(factor) as Expression;
-        }
-        
-        return new UndefinedLiteral();
-    }
-    
-    // Accessor: factor (index | property)+
-    // Reconstructs nested MemberExpression/IndexExpression chain from flat array
-    // Example: obj.prop[0].nested becomes:
-    //   MemberExpression(IndexExpression(MemberExpression(obj, 'prop'), 0), 'nested')
-    visitAccessor = (ctx: AccessorContext): Expression => {
-        // Start with the base factor
-        let result: Expression = this.visit(ctx.factor());
 
-        // If base is a reference expression, apply property/index chain inside the reference
-        // so '&obj.prop' becomes '&(obj.prop)' instead of '(&obj).prop'.
-        let referenced: ReferenceExpression | undefined;
-        if (result instanceof ReferenceExpression) {
-            referenced = result;
-            result = referenced.operand;
+        const postfixExpr = ctx.postfixExpr();
+        if (postfixExpr) {
+            return this.visit(postfixExpr) as Expression;
         }
-        
-        // Get all accessors (properties and indices) in order
-        const children = ctx.children || [];
-        
-        // Iterate through children after factor (skip first child which is factor)
-        for (let i = 1; i < children.length; i++) {
-            const child = children[i];
-            
-            if (child instanceof PropertyContext) {
-                // Property access: obj.prop
-                const propName = child.identifier()?.getText() || child.kwOverride()?.getText() || '';
-                const position = this.getPosition(child);
-                result = new MemberExpression(result, propName, position);
-            } else if (child instanceof IndexContext) {
-                // Index access: obj[expr]
-                const indexExpr = this.visit(child.expr());
-                const position = this.getPosition(child);
-                result = new IndexExpression(result, indexExpr, position);
+
+        return new UndefinedLiteral();
+    }
+
+    visitPostfixExpr = (ctx: PostfixExprContext): Expression => {
+        let result: Expression;
+
+        if (ctx.basicFactor()) {
+            result = this.visit(ctx.basicFactor()!) as Expression;
+        } else if (ctx.accesibleFactor()) {
+            result = this.visit(ctx.accesibleFactor()!) as Expression;
+        } else {
+            return new UndefinedLiteral(this.getPosition(ctx));
+        }
+
+        for (const op of ctx.postfixOp()) {
+            if (op.accessor()) {
+                result = this.applyAccessor(result, op.accessor()!);
+                continue;
             }
-        }
-        
-        if (referenced) {
-            referenced.operand = result;
-            return referenced;
+
+            const call = op.functionCall();
+            if (call) {
+                const args: Expression[] = [];
+                for (const argCtx of call.operandArg()) {
+                    args.push(this.visit(argCtx) as Expression);
+                }
+                for (const paramCtx of call.param()) {
+                    const paramValue = this.visit(paramCtx) as Expression | null;
+                    if (paramValue) {
+                        args.push(paramValue);
+                    }
+                }
+                result = new CallExpression(result, args, this.getPosition(call));
+            }
         }
 
         return result;
+    }
+
+    visitPostfixOp = (ctx: PostfixOpContext): Expression => {
+        if (ctx.functionCall()) {
+            return this.visit(ctx.functionCall()!) as Expression;
+        }
+        if (ctx.accessor()) {
+            return this.visit(ctx.accessor()!) as Expression;
+        }
+        return new UndefinedLiteral(this.getPosition(ctx));
+    }
+
+    // Dereference operator: *ref, *ref.prop, *$path
+    visitDeRef = (ctx: DeRefContext): Expression => {
+        const position = this.getPosition(ctx);
+
+        let result: Expression;
+        if (ctx.reference()) {
+            result = this.visit(ctx.reference()!) as Expression;
+        } else if (ctx.path()) {
+            result = this.visit(ctx.path()!) as Expression;
+        } else {
+            result = new UndefinedLiteral(position);
+        }
+
+        for (const accessorCtx of ctx.accessor()) {
+            result = this.applyAccessor(result, accessorCtx);
+        }
+
+        return new DereferenceExpression(result, position);
+    }
+
+    // Accessor is now a single postfix operation: property or index
+    visitAccessor = (ctx: AccessorContext): Expression => {
+        if (ctx.property()) {
+            return this.visit(ctx.property()!) as Expression;
+        }
+        if (ctx.index()) {
+            return this.visit(ctx.index()!) as Expression;
+        }
+        return new UndefinedLiteral(this.getPosition(ctx));
     }
     
     // Property: .identifier
@@ -1355,6 +1272,21 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         // This shouldn't be called directly, but visit the expression if it is
         return this.visit(ctx.expr());
     }
+
+    private applyAccessor(base: Expression, accessorCtx: AccessorContext): Expression {
+        if (accessorCtx.property()) {
+            const propertyCtx = accessorCtx.property()!;
+            const propName = propertyCtx.identifier()?.getText() || propertyCtx.kwOverride()?.getText() || '';
+            return new MemberExpression(base, propName, this.getPosition(propertyCtx));
+        }
+
+        if (accessorCtx.index()) {
+            const indexCtx = accessorCtx.index()!;
+            return new IndexExpression(base, this.visit(indexCtx.expr()) as Expression, this.getPosition(indexCtx));
+        }
+
+        return base;
+    }
     
     // Default: return null for unsupported nodes in POC
     protected defaultResult(): null {
@@ -1366,14 +1298,14 @@ export class ASTBuilder extends mxsParserVisitor<any> {
 
         if (ctx.AT()) {
             const label = ctx.LEVEL() ? 'level' : 'time';
-            return new ContextClause('at', label, this.visit(ctx.operand()!) as Expression, position);
+            return new ContextClause('at', label, this.visit(ctx.factor()!) as Expression, position);
         }
 
         if (ctx.IN()) {
             if (ctx.ctxCoordsys()) {
                 return this.buildNestedContextClause('in', ctx.ctxCoordsys()!, position);
             }
-            return new ContextClause('in', undefined, this.visit(ctx.operand()!) as Expression, position);
+            return new ContextClause('in', undefined, this.visit(ctx.factor()!) as Expression, position);
         }
 
         if (ctx.WITH()) {
@@ -1382,7 +1314,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
             }
             if (ctx.ctxSwitches()) {
                 const switchName = ctx.ctxSwitches()!.getChild(0)?.getText().toLowerCase();
-                return new ContextClause('with', switchName, this.visit(ctx.ctxSwitches()!.operand()) as Expression, position);
+                return new ContextClause('with', switchName, this.visit(ctx.ctxSwitches()!.factor()) as Expression, position);
             }
         }
 
@@ -1400,7 +1332,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
 
         if (ctx.ctxSwitches()) {
             const switchName = ctx.ctxSwitches()!.getChild(0)?.getText().toLowerCase();
-            return new ContextClause('switch', switchName, this.visit(ctx.ctxSwitches()!.operand()) as Expression, position);
+            return new ContextClause('switch', switchName, this.visit(ctx.ctxSwitches()!.factor()) as Expression, position);
         }
 
         return new ContextClause('unknown', undefined, undefined, position);
@@ -1410,16 +1342,16 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         const position = this.getPosition(ctx);
 
         if (ctx.ANIMATE()) {
-            return new ContextClause('set', 'animate', this.visit(ctx.operand()!) as Expression, position);
+            return new ContextClause('set', 'animate', this.visit(ctx.factor()!) as Expression, position);
         }
         if (ctx.TIME()) {
-            return new ContextClause('set', 'time', this.visit(ctx.operand()!) as Expression, position);
+            return new ContextClause('set', 'time', this.visit(ctx.factor()!) as Expression, position);
         }
         if (ctx.LEVEL()) {
-            return new ContextClause('set', 'level', this.visit(ctx.operand()!) as Expression, position);
+            return new ContextClause('set', 'level', this.visit(ctx.factor()!) as Expression, position);
         }
         if (ctx.IN()) {
-            return new ContextClause('set', 'in', this.visit(ctx.operand()!) as Expression, position);
+            return new ContextClause('set', 'in', this.visit(ctx.factor()!) as Expression, position);
         }
         if (ctx.ctxCoordsys()) {
             return this.buildNestedContextClause('set', ctx.ctxCoordsys()!, position);
@@ -1449,13 +1381,13 @@ export class ASTBuilder extends mxsParserVisitor<any> {
 
     private buildAboutClause(ctx: any, position?: Position): ContextClause {
         const label = ctx.COORDSYS() ? 'coordsys' : undefined;
-        const value = ctx.operand() ? this.visit(ctx.operand()) as Expression : undefined;
+        const value = ctx.factor() ? this.visit(ctx.factor()) as Expression : undefined;
         return new ContextClause('about', label, value, position);
     }
 
     private buildCoordsysClause(ctx: any, position?: Position): ContextClause {
         const label = ctx.LOCAL() ? 'local' : undefined;
-        const value = ctx.operand() ? this.visit(ctx.operand()) as Expression : undefined;
+        const value = ctx.factor() ? this.visit(ctx.factor()) as Expression : undefined;
         return new ContextClause('coordsys', label, value, position);
     }
 
@@ -1469,7 +1401,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
             label = ctx.reference().getText();
         }
 
-        return new ContextClause(kind, label, this.visit(ctx.operand()) as Expression, position);
+        return new ContextClause(kind, label, this.visit(ctx.factor()) as Expression, position);
     }
 
     private unwrapVariableReference(expr: Expression | null | undefined): VariableReference | undefined {
