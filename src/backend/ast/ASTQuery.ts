@@ -527,6 +527,10 @@ export class ASTQuery {
         }
 
         const initializer = declaration.initializer;
+        if (initializer instanceof StructDefinition) {
+            return initializer;
+        }
+
         if (initializer instanceof CallExpression) {
             return this.findStructScopeForCallExpression(ast, initializer);
         }

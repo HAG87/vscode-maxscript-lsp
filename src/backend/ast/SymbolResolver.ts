@@ -220,8 +220,9 @@ export class SymbolResolver {
         reference: VariableReference,
         assignmentNode: AssignmentExpression,
     ): void {
-        // Determine scope: uppercase → global, otherwise → local
-        const scope: 'local' | 'global' = (name === name.toUpperCase() && name.length > 1) ? 'global' : 'local';
+        // Determine scope by lexical context instead of identifier casing.
+        // Top-level assignments become globals; nested assignments stay local.
+        const scope: 'local' | 'global' = this.currentScope instanceof Program ? 'global' : 'local';
         
         const declaration = new VariableDeclaration(name, scope, reference.position ?? assignmentNode.position);
         declaration.initializer = assignmentNode.value ?? undefined;

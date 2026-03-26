@@ -1,13 +1,22 @@
 import { workspace } from 'vscode';
 import { ISemanticToken, type SemTokenModifier, type SemTokenType } from "../types";
-import { CallExpression, DefinitionBlock, FunctionDefinition, MemberExpression, Program, StructDefinition, StructMemberField, VariableReference } from "../ast/ASTNodes";
+import { CallExpression, DefinitionBlock, FunctionDefinition, MemberExpression, Program, StructDefinition, StructMemberField, VariableDeclaration, VariableReference } from "../ast/ASTNodes";
 import { ASTQuery } from "../ast/ASTQuery";
+
+type SemanticDeclarationNode = FunctionDefinition | StructDefinition | DefinitionBlock | VariableDeclaration;
 
     function astTokenLocationForName(
         nodePosition: { start: { line: number; column: number }; end: { line: number; column: number } },
         name: string,
-        tokenCandidates: Map<string, ISemanticToken[]>
+        tokenCandidates: Map<string, ISemanticToken[]>,
+        tokenLocationCache: Map<string, ISemanticToken | undefined>,
     ): ISemanticToken | undefined {
+        const cacheKey = `${name.toLowerCase()}:${nodePosition.start.line}:${nodePosition.start.column}:${nodePosition.end.line}:${nodePosition.end.column}`;
+        const cached = tokenLocationCache.get(cacheKey);
+        if (cached !== undefined) {
+            return cached;
+        }
+
         const inSpan = (candidate: ISemanticToken): boolean => {
             const line = candidate.startLine;
             const column = candidate.startCharacter;
@@ -32,15 +41,53 @@ import { ASTQuery } from "../ast/ASTQuery";
                 continue;
             }
 
+            tokenLocationCache.set(cacheKey, candidate);
             return candidate;
         }
 
         // Fallback keeps behavior predictable even if token lookup misses edge cases.
-        return {
+        const fallback = {
             startLine: nodePosition.start.line,
             startCharacter: Math.max(0, nodePosition.start.column),
             length: name.length,
         };
+        tokenLocationCache.set(cacheKey, fallback);
+        return fallback;
+    }
+
+    function buildSemanticDeclarationIndex(ast: Program): {
+        semanticNodeByDeclaration: Map<VariableDeclaration, SemanticDeclarationNode>;
+        functionDeclarations: Array<{ node: FunctionDefinition; declaration: VariableDeclaration }>;
+    } {
+        const semanticNodeByDeclaration = new Map<VariableDeclaration, SemanticDeclarationNode>();
+        const functionDeclarations: Array<{ node: FunctionDefinition; declaration: VariableDeclaration }> = [];
+
+        for (const node of ASTQuery.walkAllNodes(ast)) {
+            if (node instanceof VariableDeclaration) {
+                semanticNodeByDeclaration.set(node, node);
+            }
+
+            if (!(node instanceof FunctionDefinition || node instanceof StructDefinition || node instanceof DefinitionBlock)) {
+                continue;
+            }
+
+            if (!node.name) {
+                continue;
+            }
+
+            const declaration = node.parentScope?.declarations.get(node.name);
+            if (!declaration) {
+                continue;
+            }
+
+            semanticNodeByDeclaration.set(declaration, node);
+
+            if (node instanceof FunctionDefinition) {
+                functionDeclarations.push({ node, declaration });
+            }
+        }
+
+        return { semanticNodeByDeclaration, functionDeclarations };
     }
     
 export default function appendAstSemanticTokens(ast: Program, semTokensCollection: ISemanticToken[], tokenCandidates: Map<string, ISemanticToken[]>): void
@@ -52,6 +99,11 @@ export default function appendAstSemanticTokens(ast: Program, semTokensCollectio
         const traceRouting = workspace.getConfiguration('maxScript').get<boolean>('providers.traceRouting', false);
 
         const beforeCount = semTokensCollection.length;
+        const tokenLocationCache = new Map<string, ISemanticToken | undefined>();
+        const {
+            semanticNodeByDeclaration,
+            functionDeclarations,
+        } = buildSemanticDeclarationIndex(ast);
 
         const existing = new Set<string>(
             semTokensCollection.map((t) => `${t.startLine}:${t.startCharacter}:${t.length}:${String(t.tokenType)}`),
@@ -66,7 +118,7 @@ export default function appendAstSemanticTokens(ast: Program, semTokensCollectio
             if (!name || !nodePosition) {
                 return;
             }
-            const locatedToken = astTokenLocationForName(nodePosition, name, tokenCandidates);
+            const locatedToken = astTokenLocationForName(nodePosition, name, tokenCandidates, tokenLocationCache);
             if (!locatedToken || locatedToken.length <= 0) {
                 return;
             }
@@ -112,7 +164,7 @@ export default function appendAstSemanticTokens(ast: Program, semTokensCollectio
             if (node instanceof VariableReference) {
                 const resolvedDeclaration = node.declaration?.referred;
                 if (resolvedDeclaration) {
-                    const semanticNode = ASTQuery.findSemanticNodeForDeclaration(ast, resolvedDeclaration);
+                    const semanticNode = semanticNodeByDeclaration.get(resolvedDeclaration) ?? resolvedDeclaration;
                     if (semanticNode instanceof FunctionDefinition) {
                         const isCallLike = node.parent instanceof CallExpression || node.parent instanceof MemberExpression;
                         pushNamedToken(node.name, node.position, isCallLike ? 'method' : 'function');
@@ -128,16 +180,7 @@ export default function appendAstSemanticTokens(ast: Program, semTokensCollectio
         // Reinforce function tokens from resolved declaration/reference graph.
         // This ensures call sites like `foo 1` are typed from semantic binding,
         // even when parse-shape differs from expected call-expression forms.
-        for (const node of ASTQuery.walkAllNodes(ast)) {
-            if (!(node instanceof FunctionDefinition) || !node.name) {
-                continue;
-            }
-
-            const declaration = node.parentScope?.declarations.get(node.name);
-            if (!declaration) {
-                continue;
-            }
-
+        for (const { node, declaration } of functionDeclarations) {
             const isStructMethod = !!(node.parent instanceof StructMemberField
                 || node.parent instanceof StructDefinition
                 || node.parent?.parent instanceof StructDefinition);
