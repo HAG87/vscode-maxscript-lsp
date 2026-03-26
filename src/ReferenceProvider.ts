@@ -43,6 +43,7 @@ export class mxsReferenceProvider implements ReferenceProvider
                     position.line + 1,
                     position.character,
                     context.includeDeclaration,
+                    document.getText(),
                 );
 
                 if (astReferences) {

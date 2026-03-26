@@ -359,8 +359,9 @@ export class SourceContext implements IAstContext
         row1Based: number,
         column0Based: number,
         includeDeclaration: boolean,
+        sourceText?: string,
     ): NavigationReferenceModel[] | undefined {
-        return this.navigationService.getReferences(this, row1Based, column0Based, includeDeclaration);
+        return this.navigationService.getReferences(this, row1Based, column0Based, includeDeclaration, sourceText);
     }
 
     public getAstDocumentHighlights(

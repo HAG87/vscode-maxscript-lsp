@@ -153,6 +153,17 @@ export class ASTQuery {
     }
 
     /**
+     * Resolves a member-access node (e.g. foo.bar) to the declaration of the member (bar).
+     * This is exposed for navigation/indexing layers that need to precompute member-reference maps.
+     */
+    static resolveMemberExpressionDeclaration(
+        ast: Program,
+        memberExpression: MemberExpression,
+    ): VariableDeclaration | undefined {
+        return this.findDeclarationForMemberExpression(ast, memberExpression);
+    }
+
+    /**
      * Returns the richest AST node corresponding to a bound declaration.
      * This is useful when a reference resolves to a scope declaration entry
      * but the user-facing hover/outline should describe the actual construct

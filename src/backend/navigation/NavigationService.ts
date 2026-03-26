@@ -1,7 +1,16 @@
 import type { Position as AstPosition } from '@strumenta/tylasu';
+import type { Node as AstNode } from '@strumenta/tylasu';
 import type { IAstContext } from '@backend/IAstContext.js';
 import type { ILexicalRange } from '@backend/types.js';
 import { ASTQuery } from '@backend/ast/ASTQuery.js';
+import {
+    FunctionDefinition,
+    MemberExpression,
+    Program,
+    StructDefinition,
+    StructMemberField,
+    VariableDeclaration,
+} from '@backend/ast/ASTNodes.js';
 
 export interface DefinitionTargetModel {
     targetUri: string;
@@ -21,6 +30,79 @@ export interface NavigationHighlightModel {
 }
 
 export class NavigationService {
+    private readonly memberReferenceIndex = new WeakMap<Program, Map<unknown, MemberExpression[]>>();
+
+    private extractWordAtPosition(sourceText: string, row1Based: number, column0Based: number): string | undefined {
+        const lines = sourceText.split(/\r?\n/);
+        const line = lines[row1Based - 1];
+        if (!line) {
+            return undefined;
+        }
+
+        const column = Math.max(0, Math.min(column0Based, line.length));
+        const isWordChar = (ch: string): boolean => /[A-Za-z0-9_]/.test(ch);
+
+        let start = column;
+        while (start > 0 && isWordChar(line[start - 1])) {
+            start--;
+        }
+
+        let end = column;
+        while (end < line.length && isWordChar(line[end])) {
+            end++;
+        }
+
+        if (end <= start) {
+            return undefined;
+        }
+
+        return line.slice(start, end);
+    }
+
+    private declarationMightHaveMemberUsages(ast: Program, declaration: VariableDeclaration): boolean {
+        const semantic = ASTQuery.findSemanticNodeForDeclaration(ast, declaration);
+        if (semantic instanceof StructMemberField) {
+            return true;
+        }
+        if (semantic instanceof FunctionDefinition) {
+            let current: AstNode | undefined = semantic.parent ?? undefined;
+            while (current) {
+                if (current instanceof StructDefinition) {
+                    return true;
+                }
+                current = current.parent ?? undefined;
+            }
+        }
+        return false;
+    }
+
+    private getMemberReferenceIndex(ast: Program): Map<unknown, MemberExpression[]> {
+        const existing = this.memberReferenceIndex.get(ast);
+        if (existing) {
+            return existing;
+        }
+
+        const index = new Map<unknown, MemberExpression[]>();
+        for (const node of ASTQuery.walkAllNodes(ast)) {
+            if (!(node instanceof MemberExpression)) {
+                continue;
+            }
+            const declaration = ASTQuery.resolveMemberExpressionDeclaration(ast, node);
+            if (!declaration) {
+                continue;
+            }
+            const bucket = index.get(declaration);
+            if (bucket) {
+                bucket.push(node);
+            } else {
+                index.set(declaration, [node]);
+            }
+        }
+
+        this.memberReferenceIndex.set(ast, index);
+        return index;
+    }
+
     private astPositionToLexicalRange(position: AstPosition): ILexicalRange {
         return {
             start: {
@@ -148,7 +230,15 @@ export class NavigationService {
             return undefined;
         }
 
-        const declaration = sourceContext.astDeclarationAtPosition(row1Based, column0Based);
+        const ast = sourceContext.getResolvedAST();
+        const declaration = sourceContext.astDeclarationAtPosition(row1Based, column0Based)
+            ?? (() => {
+                if (!ast) {
+                    return undefined;
+                }
+                const word = this.extractWordAtPosition(sourceText, row1Based, column0Based);
+                return word ? ASTQuery.findDeclarationByName(ast, word) : undefined;
+            })();
         if (!declaration?.name) {
             return undefined;
         }
@@ -193,9 +283,17 @@ export class NavigationService {
         row1Based: number,
         column0Based: number,
         includeDeclaration: boolean,
+        sourceText?: string,
     ): NavigationReferenceModel[] | undefined {
         const ast = sourceContext.getResolvedAST();
-        const declaration = sourceContext.astDeclarationAtPosition(row1Based, column0Based);
+        const declaration = sourceContext.astDeclarationAtPosition(row1Based, column0Based)
+            ?? (() => {
+                if (!ast || !sourceText) {
+                    return undefined;
+                }
+                const word = this.extractWordAtPosition(sourceText, row1Based, column0Based);
+                return word ? ASTQuery.findDeclarationByName(ast, word) : undefined;
+            })();
         if (!ast || !declaration) {
             return undefined;
         }
@@ -218,14 +316,17 @@ export class NavigationService {
             });
         }
 
-        for (const memberReference of ASTQuery.findMemberReferencesForDeclaration(ast, declaration)) {
-            if (!memberReference.position) {
-                continue;
+        if (this.declarationMightHaveMemberUsages(ast, declaration)) {
+            const memberReferences = this.getMemberReferenceIndex(ast).get(declaration) ?? [];
+            for (const memberReference of memberReferences) {
+                if (!memberReference.position) {
+                    continue;
+                }
+                result.push({
+                    uri: sourceContext.sourceUri,
+                    range: this.astPositionToLexicalRange(memberReference.position),
+                });
             }
-            result.push({
-                uri: sourceContext.sourceUri,
-                range: this.astPositionToLexicalRange(memberReference.position),
-            });
         }
 
         return result;
