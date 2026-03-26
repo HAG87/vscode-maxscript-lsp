@@ -49,7 +49,7 @@ export class CodeLensService {
         if (!name || !node.parentScope) {
             return undefined;
         }
-        const scoped = node.parentScope.declarations.get(name);
+        const scoped = node.parentScope.resolveLocal(name);
         if (scoped) {
             return scoped;
         }

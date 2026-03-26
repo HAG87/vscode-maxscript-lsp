@@ -378,7 +378,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
             const node = new ContextStatement('cascading', position);
             const cascading = ctx.ctxCascading()!;
             node.clauses = cascading.ctxClause().map(clause => this.buildContextClause(clause));
-            node.body = this.visit(cascading.expr()) as Expression;
+            node.body = this.visitBodyInScopedBlock(cascading.expr()) as Expression;
             return node;
         }
 
@@ -415,7 +415,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
 
         const eventText = clause.identifier().getText().toLowerCase();
         const event: 'change' | 'deleted' = eventText === 'deleted' ? 'deleted' : 'change';
-        const body = this.visit(ctx.expr()) as Expression;
+        const body = this.visitBodyInScopedBlock(ctx.expr()) as Expression;
         const node = new WhenStatement(targets, event, body, position);
 
         if (targetType) {
@@ -598,7 +598,8 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         const position = this.getPosition(ctx);
         const references = ctx._ev_args?._refs ?? [];
         const action: 'do' | 'return' = ctx._ev_action?.text?.toLowerCase() === 'return' ? 'return' : 'do';
-        const body = (ctx._ev_body ? this.visit(ctx._ev_body) : this.visit(ctx.expr())) as Expression;
+        const bodyCtx = (ctx._ev_body ?? ctx.expr()) as ParserRuleContext;
+        const body = this.visitBodyInScopedBlock(bodyCtx) as Expression;
 
         const eventTypeRef = references.length >= 2 ? references[1] : references[0];
         const eventType = this.unwrapVariableReference(this.visit(eventTypeRef) as Expression)
@@ -794,15 +795,17 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         const node = new IfStatement(condition, position);
 
         if (ctx.THEN()) {
-            const thenBody = (ctx._thenBody ? this.visit(ctx._thenBody) : this.visit(ctx.expr(0)!)) as Expression;
+            const thenCtx = ctx._thenBody ?? ctx.expr(0)!;
+            const thenBody = this.visitBodyInScopedBlock(thenCtx) as Expression;
             node.thenBody = thenBody;
 
             const elseExpr = ctx._elseBody;
             if (elseExpr) {
-                node.elseBody = this.visit(elseExpr) as Expression;
+                node.elseBody = this.visitBodyInScopedBlock(elseExpr) as Expression;
             }
         } else if (ctx.DO()) {
-            const doBody = (ctx._doBody ? this.visit(ctx._doBody) : this.visit(ctx.expr(0)!)) as Expression;
+            const doCtx = ctx._doBody ?? ctx.expr(0)!;
+            const doBody = this.visitBodyInScopedBlock(doCtx) as Expression;
             node.doBody = doBody;
         }
 
@@ -813,14 +816,16 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     visitWhileLoopStatement = (ctx: WhileLoopStatementContext): WhileStatement => {
         const position = this.getPosition(ctx);
         const condition = (ctx._condition ? this.visit(ctx._condition) : this.visit(ctx.expr(0)!)) as Expression;
-        const body = (ctx._body ? this.visit(ctx._body) : this.visit(ctx.expr(1)!)) as Expression;
+        const bodyCtx = ctx._body ?? ctx.expr(1)!;
+        const body = this.visitBodyInScopedBlock(bodyCtx) as Expression;
         return new WhileStatement(condition, body, position);
     }
 
     // Do loop: do body while cond
     visitDoLoopStatement = (ctx: DoLoopStatementContext): DoWhileStatement => {
         const position = this.getPosition(ctx);
-        const body = (ctx._body ? this.visit(ctx._body) : this.visit(ctx.expr(0)!)) as Expression;
+        const bodyCtx = ctx._body ?? ctx.expr(0)!;
+        const body = this.visitBodyInScopedBlock(bodyCtx) as Expression;
         const condition = (ctx._condition ? this.visit(ctx._condition) : this.visit(ctx.expr(1)!)) as Expression;
         return new DoWhileStatement(body, condition, position);
     }
@@ -839,7 +844,8 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         const action: 'do' | 'collect' = ctx.COLLECT() ? 'collect' : 'do';
         const sequenceCtx = ctx.forSequence();
         const sequence = this.visit(sequenceCtx.expr()) as Expression;
-        const body = (ctx._body ? this.visit(ctx._body) : this.visit(ctx.expr())) as Expression;
+        const bodyCtx = ctx._body ?? ctx.expr();
+        const body = this.visitBodyInScopedBlock(bodyCtx) as Expression;
 
         const node = new ForStatement(loopVar, operator, sequence, action, body, position);
 
@@ -883,8 +889,10 @@ export class ASTBuilder extends mxsParserVisitor<any> {
     // Try/catch statement: try expr catch expr
     visitTryStatement = (ctx: TryStatementContext): TryStatement => {
         const position = this.getPosition(ctx);
-        const tryBody = (ctx._tryBody ? this.visit(ctx._tryBody) : this.visit(ctx.expr(0)!)) as Expression;
-        const catchBody = (ctx._catchBody ? this.visit(ctx._catchBody) : this.visit(ctx.expr(1)!)) as Expression;
+        const tryCtx = ctx._tryBody ?? ctx.expr(0)!;
+        const catchCtx = ctx._catchBody ?? ctx.expr(1)!;
+        const tryBody = this.visitBodyInScopedBlock(tryCtx) as Expression;
+        const catchBody = this.visitBodyInScopedBlock(catchCtx) as Expression;
         return new TryStatement(tryBody, catchBody, position);
     }
 
@@ -901,7 +909,7 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         for (const itemCtx of ctx.caseItem()) {
             const itemPosition = this.getPosition(itemCtx);
             const value = this.visit(itemCtx.factor()) as Expression;
-            const body = this.visit(itemCtx.expr()) as Expression;
+            const body = this.visitBodyInScopedBlock(itemCtx.expr()) as Expression;
             node.items.push(new CaseItem(value, body, itemPosition));
         }
 
@@ -1484,6 +1492,40 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         return contexts
             .map(context => this.visit(context) as Expression | null)
             .filter((expr): expr is Expression => expr instanceof Expression);
+    }
+
+    /**
+     * Visit a control-flow body in an explicit synthetic block scope when needed.
+     * This ensures non-parenthesized bodies (e.g. `if ... do local x = 1`) do not
+     * leak declarations into the parent scope.
+     */
+    private visitBodyInScopedBlock(bodyCtx: ParserRuleContext): Expression {
+        // If the body is already an exprSeq, it creates its own scope via visitExprSeq.
+        // Avoid pre-visiting other body shapes here to prevent declarations from landing
+        // in the parent scope before we push the synthetic scoped block.
+        const maybeExprSeq = (bodyCtx as unknown as { exprSeq?: () => unknown }).exprSeq;
+        if (typeof maybeExprSeq === 'function' && maybeExprSeq.call(bodyCtx)) {
+            const existingScoped = this.visit(bodyCtx);
+            return existingScoped as Expression;
+        }
+
+        const scopedBody = new BlockExpression(this.getPosition(bodyCtx));
+        scopedBody.parentScope = this.getCurrentScope();
+
+        this.pushScope(scopedBody);
+        const scopedNode = this.visit(bodyCtx);
+        if (Array.isArray(scopedNode)) {
+            for (const child of scopedNode) {
+                if (child instanceof Node) {
+                    scopedBody.expressions.push(child);
+                }
+            }
+        } else if (scopedNode instanceof Node) {
+            scopedBody.expressions.push(scopedNode);
+        }
+        this.popScope();
+
+        return scopedBody as unknown as Expression;
     }
 
     private parseQuotedText(text?: string): string | undefined {

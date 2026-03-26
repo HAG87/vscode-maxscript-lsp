@@ -396,7 +396,7 @@ export class ASTQuery {
         if (!structScope) {
             return undefined;
         }
-        return structScope.declarations.get(memberExpression.property);
+        return structScope.resolveLocal(memberExpression.property);
     }
 
     private static findStructScopeForExpression(
@@ -499,7 +499,7 @@ export class ASTQuery {
                 continue;
             }
 
-            const structDeclaration = inferredStruct.parentScope?.declarations.get(inferredStruct.name);
+            const structDeclaration = inferredStruct.parentScope?.resolveLocal(inferredStruct.name);
             if (!structDeclaration) {
                 continue;
             }
@@ -614,7 +614,7 @@ export class ASTQuery {
             // not anywhere inside the body that happens to be enclosed by this node.
             const defPos = declarationNode.position;
             if (defPos && defPos.start.line === line && defPos.start.column <= column) {
-                return (declarationNode as FunctionDefinition | StructDefinition | DefinitionBlock).parentScope?.declarations.get(declarationName);
+                return (declarationNode as FunctionDefinition | StructDefinition | DefinitionBlock).parentScope?.resolveLocal(declarationName);
             }
             return undefined;
         }
@@ -643,7 +643,7 @@ export class ASTQuery {
         for (const node of ast.walk()) {
             if (!(node instanceof ScopeNode)) continue;
             if (!this.containsPosition(line, column, node)) continue;
-            const decl = node.declarations.get(name);
+            const decl = node.resolveLocal(name);
             if (!decl) continue;
             const score = this.spanScore(node);
             if (score < bestScore) {
@@ -652,7 +652,7 @@ export class ASTQuery {
             }
         }
 
-        return bestScope?.declarations.get(name);
+        return bestScope?.resolveLocal(name);
     }
 
     private static isDeclarationLikeNode(node: Node): boolean {
@@ -689,13 +689,12 @@ export class ASTQuery {
      * Used as a position-independent fallback for stale-AST situations.
      */
     static findDeclarationByName(ast: Program, name: string): VariableDeclaration | undefined {
-        const lowerName = name.toLowerCase();
         let best: VariableDeclaration | undefined;
         for (const node of ast.walk()) {
             if (!(node instanceof ScopeNode)) {
                 continue;
             }
-            const decl = node.declarations.get(lowerName);
+            const decl = node.resolveLocal(name);
             if (!decl) {
                 continue;
             }

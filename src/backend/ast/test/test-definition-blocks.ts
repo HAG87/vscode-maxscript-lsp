@@ -116,6 +116,17 @@ try {
     const hasSubmenuControl = submenu?.clauses.some(clause => clause instanceof RcMenuItem && clause.name === 'runItem');
     const hasParameterDefinition = pluginParams?.clauses.some(clause => clause instanceof ParameterDefinition && clause.name === 'width');
     const hasAttributesParams = attributes?.clauses.some(clause => clause instanceof DefinitionBlock && clause.kind === 'parameters' && clause.name === 'attrs');
+    const hasScopedDefinitionLocals = Boolean(
+        macroscript?.resolveLocal('mx')
+        && byKind.get('utility')?.resolveLocal('ux')
+        && rollout?.resolveLocal('rx')
+        && byKind.get('tool')?.resolveLocal('tx')
+        && menu?.resolveLocal('rcx')
+        && plugin?.resolveLocal('px')
+        && attributes?.resolveLocal('ax'),
+    );
+    const topLevelDefinitionLocalsLeakFree = ['mx', 'ux', 'rx', 'tx', 'rcx', 'px', 'ax']
+        .every(name => !ast.resolveLocal(name));
 
     const symbols = SymbolTreeBuilder.buildSymbolTree(ast, 'test://definition-blocks.ms');
     const symbolKinds = new Map(symbols.map(symbol => [symbol.name, symbol.kind]));
@@ -158,6 +169,8 @@ try {
     console.log(`  - RC submenu control clause: ${hasSubmenuControl}`);
     console.log(`  - Parameter definition clause: ${hasParameterDefinition}`);
     console.log(`  - Attributes params block: ${hasAttributesParams}`);
+    console.log(`  - Definition locals scoped in body: ${hasScopedDefinitionLocals}`);
+    console.log(`  - Definition locals leak-free at program scope: ${topLevelDefinitionLocalsLeakFree}`);
     console.log(`  - Top-level symbol kinds: ${hasTopLevelSymbols}`);
     console.log(`  - Rollout event symbol: ${hasRolloutEventSymbol}`);
     console.log(`  - Plugin nested tool symbol: ${hasNestedToolSymbol}`);
@@ -184,6 +197,8 @@ try {
         && hasSubmenuControl
         && hasParameterDefinition
         && hasAttributesParams
+        && hasScopedDefinitionLocals
+        && topLevelDefinitionLocalsLeakFree
         && hasTopLevelSymbols
         && hasRolloutEventSymbol
         && hasNestedToolSymbol

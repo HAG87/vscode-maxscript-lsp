@@ -75,7 +75,7 @@ type SemanticDeclarationNode = FunctionDefinition | StructDefinition | Definitio
                 continue;
             }
 
-            const declaration = node.parentScope?.declarations.get(node.name);
+            const declaration = node.parentScope?.resolveLocal(node.name);
             if (!declaration) {
                 continue;
             }

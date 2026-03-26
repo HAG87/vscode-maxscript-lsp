@@ -85,8 +85,27 @@ export class SymbolResolver {
      * Now uses a single tree walk that respects scope boundaries
      */
     resolve(): void {
+        this.resetResolutionState();
         // Single pass: walk AST respecting scope boundaries
         this.visitProgram(this.program);
+    }
+
+    /**
+     * Make resolve() idempotent by clearing prior resolution links.
+     * This avoids reference duplication when resolve() runs more than once
+     * on the same AST instance.
+     */
+    private resetResolutionState(): void {
+        for (const node of this.program.walk()) {
+            if (node instanceof VariableDeclaration) {
+                node.references = [];
+                continue;
+            }
+
+            if (node instanceof VariableReference && node.declaration) {
+                node.declaration.referred = undefined;
+            }
+        }
     }
     
     private visitProgram(node: Program): void {
@@ -196,8 +215,10 @@ export class SymbolResolver {
         if (node.target && node.target instanceof VariableReference) {
             const targetName = node.target.name;
             if (targetName) {
-                // Check if this name is already declared in current scope
-                const existing = this.currentScope.declarations.get(targetName);
+                // Check lexical scope chain, not just current block scope.
+                // Otherwise nested assignments can incorrectly create implicit locals
+                // that shadow valid outer declarations (e.g. function-local vars).
+                const existing = this.currentScope.resolve(targetName);
                 if (!existing) {
                     // Create implicit declaration from this assignment
                     this.createImplicitDeclaration(targetName, node.target, node);
@@ -227,8 +248,8 @@ export class SymbolResolver {
         const declaration = new VariableDeclaration(name, scope, reference.position ?? assignmentNode.position);
         declaration.initializer = assignmentNode.value ?? undefined;
         
-        // Add to current scope's declarations map
-        this.currentScope.declarations.set(name, declaration);
+        // Add to current scope via scope API (keeps lookup behavior consistent).
+        this.currentScope.addDeclaration(declaration);
         
         // Set up the reference's declaration link
         if (reference.declaration) {
@@ -254,15 +275,46 @@ export class SymbolResolver {
     }
 
     private visitForStatement(node: ForStatement): void {
-        this.visit(node.variable);
-        if (node.indexVariable) this.visit(node.indexVariable);
-        if (node.filteredIndexVariable) this.visit(node.filteredIndexVariable);
+        // MaxScript loop variables are scoped to the for expression body/predicate.
+        const previousScope = this.currentScope;
+        const loopScope = new BlockExpression(node.position);
+        loopScope.parentScope = previousScope;
+        this.currentScope = loopScope;
+
+        const declareLoopReference = (reference?: VariableReference) => {
+            if (!reference?.name) {
+                return;
+            }
+
+            if (!loopScope.resolveLocal(reference.name)) {
+                loopScope.addDeclaration(new VariableDeclaration(reference.name, 'local', reference.position));
+            }
+
+            this.visit(reference);
+        };
+
+        declareLoopReference(node.variable);
+        declareLoopReference(node.indexVariable);
+        declareLoopReference(node.filteredIndexVariable);
+
         this.visit(node.sequence);
         if (node.toValue) this.visit(node.toValue);
         if (node.byValue) this.visit(node.byValue);
         if (node.whereCondition) this.visit(node.whereCondition);
         if (node.whileCondition) this.visit(node.whileCondition);
-        this.visit(node.body);
+
+        // Ensure loop variables remain visible inside an AST body block that was
+        // originally parented to outer scope during AST construction.
+        if (node.body instanceof BlockExpression) {
+            const previousParent = node.body.parentScope;
+            node.body.parentScope = loopScope;
+            this.visit(node.body);
+            node.body.parentScope = previousParent;
+        } else {
+            this.visit(node.body);
+        }
+
+        this.currentScope = previousScope;
     }
 
     private visitTryStatement(node: TryStatement): void {
@@ -334,6 +386,15 @@ export class SymbolResolver {
      */
     private visit(node: any): void {
         if (!node) return;
+
+        // Some builder paths can return node arrays (e.g. declaration lists).
+        // Resolve each entry and return early.
+        if (Array.isArray(node)) {
+            for (const entry of node) {
+                this.visit(entry);
+            }
+            return;
+        }
         
         if (node instanceof Program) {
             this.visitProgram(node);
@@ -376,8 +437,11 @@ export class SymbolResolver {
         } else {
             // Catch-all for expression nodes (BinaryExpression, CallExpression, etc)
             // Walk immediate children to find any nested VariableReferences
-            for (const child of node.children) {
-                this.visit(child);
+            const children = (node as { children?: unknown }).children;
+            if (Array.isArray(children)) {
+                for (const child of children) {
+                    this.visit(child);
+                }
             }
         }
     }

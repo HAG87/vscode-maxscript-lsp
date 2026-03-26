@@ -97,11 +97,30 @@ export abstract class ScopeNode extends Node {
     parentScope?: ScopeNode;
     
     /**
+     * Resolve a symbol only in the current scope (case-insensitive).
+     */
+    resolveLocal(name: string): VariableDeclaration | undefined {
+        const exact = this.declarations.get(name);
+        if (exact) {
+            return exact;
+        }
+
+        const target = name.toLowerCase();
+        for (const [declName, declaration] of this.declarations) {
+            if (declName.toLowerCase() === target) {
+                return declaration;
+            }
+        }
+
+        return undefined;
+    }
+
+    /**
      * Resolve a symbol in this scope or parent scopes
      * O(1) lookup in each scope level
      */
     resolve(name: string): VariableDeclaration | undefined {
-        const local = this.declarations.get(name);
+        const local = this.resolveLocal(name);
         if (local) return local;
         
         return this.parentScope?.resolve(name);

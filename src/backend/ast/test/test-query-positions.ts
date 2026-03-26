@@ -352,6 +352,186 @@ if (stDecl) {
     errors++;
 }
 
+// --- nested assignment shadowing regression ---------------------------------
+const shadowingCode = `fn pivotToSnapPoint mode:#world = (
+    local res = undefined
+    if snapMode.active then (
+        res = snapMode.worldHitpoint
+    )
+    res
+)`;
+
+const shadowInputStream = CharStream.fromString(shadowingCode);
+const shadowLexer = new mxsLexer(shadowInputStream);
+const shadowTokenStream = new CommonTokenStream(shadowLexer);
+const shadowParser = new mxsParser(shadowTokenStream);
+const shadowAst = new ASTBuilder().visitProgram(shadowParser.program());
+new SymbolResolver(shadowAst).resolve();
+
+console.log();
+console.log('=== nested assignment shadowing probes ===');
+
+const resDeclaration = ASTQuery.findDeclarationAtPosition(shadowAst, 2, 10);
+const resInNestedAssignment = ASTQuery.findDeclarationAtPosition(shadowAst, 4, 8);
+const resAtTailReference = ASTQuery.findDeclarationAtPosition(shadowAst, 6, 4);
+
+const declarationResolved = !!resDeclaration && resDeclaration.name === 'res';
+console.log('  declaration site (line 2, col 10)');
+console.log(`       => ${declarationResolved ? `✓ ${resDeclaration!.name}` : '❌ unresolved'}`);
+if (!declarationResolved) { errors++; }
+
+const nestedAssignResolved = !!resInNestedAssignment && resInNestedAssignment.name === 'res';
+console.log('  nested assignment target (line 4, col 8)');
+console.log(`       => ${nestedAssignResolved ? `✓ ${resInNestedAssignment!.name}` : '❌ unresolved'}`);
+if (!nestedAssignResolved) { errors++; }
+
+const tailRefResolved = !!resAtTailReference && resAtTailReference.name === 'res';
+console.log('  tail reference (line 6, col 4)');
+console.log(`       => ${tailRefResolved ? `✓ ${resAtTailReference!.name}` : '❌ unresolved'}`);
+if (!tailRefResolved) { errors++; }
+
+const sameDeclarationObject = !!resDeclaration
+    && resInNestedAssignment === resDeclaration
+    && resAtTailReference === resDeclaration;
+console.log('  declaration identity (all usages bind to same declaration object)');
+console.log(`       => ${sameDeclarationObject ? '✓ same declaration' : '❌ inconsistent binding'}`);
+if (!sameDeclarationObject) { errors++; }
+
+// --- case-insensitive resolution regression ----------------------------------
+const caseInsensitiveCode = `fn t = (
+    local res = 1
+    RES = res + 1
+    ReS
+)`;
+
+const caseInputStream = CharStream.fromString(caseInsensitiveCode);
+const caseLexer = new mxsLexer(caseInputStream);
+const caseTokenStream = new CommonTokenStream(caseLexer);
+const caseParser = new mxsParser(caseTokenStream);
+const caseAst = new ASTBuilder().visitProgram(caseParser.program());
+new SymbolResolver(caseAst).resolve();
+
+console.log();
+console.log('=== case-insensitive scope probes ===');
+
+const ciDecl = ASTQuery.findDeclarationAtPosition(caseAst, 2, 10);
+const ciAssign = ASTQuery.findDeclarationAtPosition(caseAst, 3, 4);
+const ciTail = ASTQuery.findDeclarationAtPosition(caseAst, 4, 4);
+
+const ciResolved = !!ciDecl && !!ciAssign && !!ciTail;
+console.log(`  declarations resolved => ${ciResolved ? '✓' : '❌'}`);
+if (!ciResolved) { errors++; }
+
+const ciIdentity = !!ciDecl && ciAssign === ciDecl && ciTail === ciDecl;
+console.log(`  mixed-case binds same declaration => ${ciIdentity ? '✓' : '❌'}`);
+if (!ciIdentity) { errors++; }
+
+// --- for-loop variable scope regression --------------------------------------
+const forScopeCode = `a = 5
+for i=1 to 10 do a += i
+i`;
+
+const forScopeInput = CharStream.fromString(forScopeCode);
+const forScopeLexer = new mxsLexer(forScopeInput);
+const forScopeTokens = new CommonTokenStream(forScopeLexer);
+const forScopeParser = new mxsParser(forScopeTokens);
+const forScopeAst = new ASTBuilder().visitProgram(forScopeParser.program());
+new SymbolResolver(forScopeAst).resolve();
+
+console.log();
+console.log('=== for-loop scope probes ===');
+
+const forBodyI = ASTQuery.findDeclarationAtPosition(forScopeAst, 2, 22);
+const afterLoopI = ASTQuery.findDeclarationAtPosition(forScopeAst, 3, 0);
+
+const forBodyResolved = !!forBodyI && forBodyI.name?.toLowerCase() === 'i';
+console.log(`  i resolves inside loop body => ${forBodyResolved ? '✓' : '❌'}`);
+if (!forBodyResolved) { errors++; }
+
+const afterLoopUnresolved = !afterLoopI;
+console.log(`  i not visible after loop => ${afterLoopUnresolved ? '✓' : '❌'}`);
+if (!afterLoopUnresolved) { errors++; }
+
+// --- resolver idempotency regression -----------------------------------------
+const idempotentCode = `local x = 1
+y = x + x`;
+const idemInput = CharStream.fromString(idempotentCode);
+const idemLexer = new mxsLexer(idemInput);
+const idemTokens = new CommonTokenStream(idemLexer);
+const idemParser = new mxsParser(idemTokens);
+const idemAst = new ASTBuilder().visitProgram(idemParser.program());
+const idemResolver = new SymbolResolver(idemAst);
+idemResolver.resolve();
+const idemDecl = ASTQuery.findDeclarationAtPosition(idemAst, 1, 6);
+const refsAfterFirst = idemDecl?.references.length ?? -1;
+idemResolver.resolve();
+const refsAfterSecond = idemDecl?.references.length ?? -1;
+
+const idempotent = refsAfterFirst >= 0 && refsAfterFirst === refsAfterSecond;
+console.log();
+console.log('=== resolver idempotency probe ===');
+console.log(`  references stable across repeated resolve => ${idempotent ? '✓' : `❌ (${refsAfterFirst} -> ${refsAfterSecond})`}`);
+if (!idempotent) { errors++; }
+
+// --- non-parenthesized control-flow body scoping regression ------------------
+console.log();
+console.log('=== control-flow body scope leak probes ===');
+
+type ScopeLeakProbe = {
+    label: string;
+    code: string;
+    probeLine: number;
+    probeCol: number;
+};
+
+const scopeLeakProbes: ScopeLeakProbe[] = [
+    {
+        label: 'if/do body local should not leak',
+        code: `if true do local x = 1\nx`,
+        probeLine: 2,
+        probeCol: 0,
+    },
+    {
+        label: 'while/do body local should not leak',
+        code: `while true do local x = 1\nx`,
+        probeLine: 2,
+        probeCol: 0,
+    },
+    {
+        label: 'do/while body local should not leak',
+        code: `do local x = 1 while false\nx`,
+        probeLine: 2,
+        probeCol: 0,
+    },
+    {
+        label: 'try/catch locals should not leak',
+        code: `try local x = 1 catch local y = 2\nx\ny`,
+        probeLine: 2,
+        probeCol: 0,
+    },
+    {
+        label: 'case arm local should not leak',
+        code: `case 1 of (\n    1: local x = 1\n)\nx`,
+        probeLine: 4,
+        probeCol: 0,
+    },
+];
+
+for (const probe of scopeLeakProbes) {
+    const input = CharStream.fromString(probe.code);
+    const lexer = new mxsLexer(input);
+    const tokens = new CommonTokenStream(lexer);
+    const parser = new mxsParser(tokens);
+    const ast = new ASTBuilder().visitProgram(parser.program());
+    new SymbolResolver(ast).resolve();
+
+    const leaked = ASTQuery.findDeclarationAtPosition(ast, probe.probeLine, probe.probeCol);
+    const ok = !leaked;
+    console.log(`  ${probe.label}`);
+    console.log(`       => ${ok ? '✓ no leak' : `❌ leaked ${leaked?.name ?? '<unknown>'}`}`);
+    if (!ok) { errors++; }
+}
+
 console.log();
 if (errors > 0) {
     console.log(`❌ ${errors} total probe(s) failed`);
