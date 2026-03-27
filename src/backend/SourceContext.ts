@@ -851,13 +851,65 @@ export class SourceContext implements IAstContext
         this.tokenStream.setTokenSource(this.lexer);
         this.tokenStream.fill();
 
+        const sourceSize = this.tokenStream.getTokens()[0]?.inputStream?.size ?? 0;
+        const sourceText = sourceSize > 0
+            ? this.tokenStream.getTokens()[0].inputStream!.toString()
+            : '';
+        const sourceLines = sourceText.split(/\r?\n/);
+        const sourceEndRow = sourceLines.length;
+        const sourceEndColumn = sourceLines[sourceLines.length - 1]?.length ?? 0;
+        const sourceEndOffset = Math.max(0, sourceText.length - 1);
+
+        const canUseVisitorFormatter = (r: ILexicalRange | { start: number, stop: number }): boolean => {
+            if (!this.tree || !options) {
+                return false;
+            }
+
+            // Visitor formatter does not provide stable offset mapping for char-offset ranges
+            // (from Range Formatting Provider / Format Selection).
+            // Only use it for lexical ranges (from Format Document command).
+            if ('stop' in r) {
+                // This is a char-offset range from Format Selection - never use visitor formatter
+                return false;
+            }
+
+            // This is a lexical range from Format Document - use visitor formatter only for full-doc
+            return (
+                r.start.row <= 1 &&
+                r.start.column === 0 &&
+                r.end.row === sourceEndRow &&
+                r.end.column === sourceEndColumn
+            );
+        };
+
+        if (canUseVisitorFormatter(range)) {
+            const visitorOptions = {
+                ...options,
+                condenseWhitespace: false,
+                removeUnnecessaryScopes: false,
+                expressionsToBlock: true,
+            } as ICodeFormatSettings & IMinifySettings & IPrettifySettings;
+
+            const visitor = new mxsParserVisitorFormatter(visitorOptions);
+            const formatted = visitor.visit(this.tree as ParseTree);
+            if (!Array.isArray(formatted) && formatted instanceof codeBlock) {
+                return {
+                    code: formatted.toString(visitorOptions),
+                    start: 0,
+                    stop: sourceEndOffset,
+                };
+            }
+        }
+
         // initialize the formatter
         const formatter = new mxsSimpleFormatter(this.tokenStream, options);
         
         // format code
         if ('stop' in range) {
+            // Character-offset ranges: use formatRange (designed for substring bounds).
             return formatter.formatRange(range.start, range.stop);
         } else {
+            // Parse-tree ranges: convert to token indices via TreeQuery.
             const contextToFormat = TreeQuery.parseTreeContainingRange(<ParseTree>this.tree, range);
             return formatter.formatTokenRange(
                 contextToFormat.start?.tokenIndex,

@@ -17,7 +17,7 @@ import { mxsDefinitionProvider } from './DefinitionProvider.js';
 import { mxsDocumentHighlightProvider } from './DocumentHighlightProvider.js';
 import { diagnosticAdapter } from './Diagnostics.js';
 import { mxsFoldingRangeProvider } from './FoldingRangeProvider.js';
-import { mxsRangeFormattingProvider } from './FormattingProvider.js';
+import { mxsFormattingProvider, mxsRangeFormattingProvider } from './FormattingProvider.js';
 import { mxsHoverProvider } from './HoverProvider.js';
 import { mxsLinkedEditingRangeProvider } from './LinkedEditingRangeProvider.js';
 import { mxsReferenceProvider } from './ReferenceProvider.js';
@@ -390,22 +390,18 @@ export class ExtensionHost
     private registerProviders(ctx: ExtensionContext): void
     {
         ctx.subscriptions.push(
-            // PASS
             languages.registerDocumentSymbolProvider(
                 ExtensionHost.langSelector,
                 new mxsSymbolProvider(this.backend)
             ),
-            // PASS
             languages.registerReferenceProvider(
                 ExtensionHost.langSelector,
                 new mxsReferenceProvider(this.backend)
             ),
-            // PASS
             languages.registerDefinitionProvider(
                 ExtensionHost.langSelector,
                 new mxsDefinitionProvider(this.backend)
             ),            
-            // PASS
             languages.registerRenameProvider(
                 ExtensionHost.langSelector,
                 new mxsRenameProvider(this.backend)
@@ -434,7 +430,6 @@ export class ExtensionHost
                 new mxsRangeSemanticTokensProvider(this.backend),
                 mxsSemtoTokensLegend
             ),
-            // PASS
             languages.registerHoverProvider(
                 ExtensionHost.langSelector,
                 new mxsHoverProvider(this.backend)
@@ -456,6 +451,7 @@ export class ExtensionHost
                 ExtensionHost.langSelector,
                 this.codeLensProvider = new mxsCodeLensProvider(this.backend)
             ),
+            // /*
             languages.registerDocumentRangeFormattingEditProvider(
                 ExtensionHost.langSelector,
                 new mxsRangeFormattingProvider(
@@ -463,17 +459,13 @@ export class ExtensionHost
                     defaultSettings.formatter
                 )
             ),
-            /*
-             languages.registerDocumentFormattingEditProvider(
-                 ExtensionHost.langSelector,
-                 new mxsFormattingProvider(this.backend)
-             ),
-            */
-            /*
-            languages.registerWorkspaceSymbolProvider(
-                this.workspaceSymbolProvider
-            )
             // */
+            languages.registerDocumentFormattingEditProvider(
+                ExtensionHost.langSelector,
+                new mxsFormattingProvider(
+                    this.backend,
+                    prettifySettings)
+            ),
             languages.registerWorkspaceSymbolProvider(
                 this.workspaceSymbolProvider
             )
@@ -621,7 +613,7 @@ export class ExtensionHost
         )
     }
     // commands support
-    private minifyDocument(uri: Uri, shouldUnload: boolean = false, enhanced: boolean = false): string | null
+    private minifyDocument(uri: Uri, shouldUnload: boolean = false, enhanced: boolean = true): string | null
     {
         // minify
         const minResult = this.backend.getContext(uri.toString())?.minifyCode(minifySettings, enhanced)
@@ -636,7 +628,7 @@ export class ExtensionHost
     {
         return new Promise<void>((resolve, reject) =>
         {
-            const minResult = this.minifyDocument(uri, shouldUnload, false)
+            const minResult = this.minifyDocument(uri, shouldUnload, true)
             // result ok
             if (minResult) {
                 //save file
