@@ -1,6 +1,7 @@
-import { ExtensionContext, window } from 'vscode';
+import { ExtensionContext, tasks, window } from 'vscode';
 
 import { ExtensionHost } from './ExtensionHost.js';
+import { MaxScriptTaskProvider } from './tasks/MaxScriptTaskProvider.js';
 
 // let extensionHost: ExtensionHost;
 export const activate = (context: ExtensionContext): void => {
@@ -8,6 +9,12 @@ export const activate = (context: ExtensionContext): void => {
     try {
         // extensionHost = new ExtensionHost(context);
         new ExtensionHost(context);
+        context.subscriptions.push(
+            tasks.registerTaskProvider(
+                MaxScriptTaskProvider.taskType,
+                new MaxScriptTaskProvider(),
+            ),
+        );
         console.log('[language-maxscript] ExtensionHost initialized');
     } catch (error) {
         console.error('[language-maxscript] Activation failed:', error);

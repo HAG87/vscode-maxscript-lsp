@@ -22,6 +22,9 @@
   "engines": {
     "vscode": "^1.91.0"
   },
+  "activationEvents": [
+    "onTaskType:maxscript"
+  ],
   "main": "./out/extension.cjs",
   "contributes": {
     "languages": [
@@ -132,6 +135,35 @@
         "category": "MaxScript"
       }
     ],
+    "taskDefinitions": [
+      {
+        "type": "maxscript",
+        "required": [
+          "task"
+        ],
+        "properties": {
+          "task": {
+            "type": "string",
+            "enum": [
+              "minify",
+              "prettify"
+            ],
+            "description": "MaxScript custom task type."
+          },
+          "patterns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Glob patterns relative to the workspace folder."
+          },
+          "continueOnError": {
+            "type": "boolean",
+            "description": "When true, process remaining files after a minify failure."
+          }
+        }
+      }
+    ],
     "menus": {
       "editor/title": [
         {
@@ -148,6 +180,11 @@
           "command": "mxs.minify.file",
           "when": "resourceExtname == .ms || resourceExtname == .mcr",
           "group": "1_modification@1"
+        },
+        {
+          "command": "mxs.minify.files",
+          "when": "resourceExtname == .ms || resourceExtname == .mcr",
+          "group": "1_modification@2"
         },
         {
           "command": "mxs.prettify.file",
