@@ -392,23 +392,23 @@ export class ExtensionHost
         ctx.subscriptions.push(
             languages.registerDocumentSymbolProvider(
                 ExtensionHost.langSelector,
-                new mxsSymbolProvider(this.backend)
+                new mxsSymbolProvider(this.backend, defaultSettings)
             ),
             languages.registerReferenceProvider(
                 ExtensionHost.langSelector,
-                new mxsReferenceProvider(this.backend)
+                new mxsReferenceProvider(this.backend, defaultSettings)
             ),
             languages.registerDefinitionProvider(
                 ExtensionHost.langSelector,
-                new mxsDefinitionProvider(this.backend)
+                new mxsDefinitionProvider(this.backend, defaultSettings)
             ),            
             languages.registerRenameProvider(
                 ExtensionHost.langSelector,
-                new mxsRenameProvider(this.backend)
+                new mxsRenameProvider(this.backend, defaultSettings)
             ),
             languages.registerDocumentHighlightProvider(
                 ExtensionHost.langSelector,
-                new mxsDocumentHighlightProvider(this.backend)
+                new mxsDocumentHighlightProvider(this.backend, defaultSettings)
             ),
             languages.registerCompletionItemProvider(
                 ExtensionHost.langSelector,
@@ -417,7 +417,7 @@ export class ExtensionHost
             ),
             languages.registerSignatureHelpProvider(
                 ExtensionHost.langSelector,
-                new mxsSignatureHelpProvider(this.backend),
+                new mxsSignatureHelpProvider(this.backend, defaultSettings),
                 "(", ",", " "
             ),
             languages.registerDocumentSemanticTokensProvider(
@@ -432,19 +432,19 @@ export class ExtensionHost
             ),
             languages.registerHoverProvider(
                 ExtensionHost.langSelector,
-                new mxsHoverProvider(this.backend)
+                new mxsHoverProvider(this.backend, defaultSettings)
             ),
             languages.registerLinkedEditingRangeProvider(
                 ExtensionHost.langSelector,
-                new mxsLinkedEditingRangeProvider(this.backend)
+                new mxsLinkedEditingRangeProvider(this.backend, defaultSettings)
             ),
             languages.registerFoldingRangeProvider(
                 ExtensionHost.langSelector,
-                new mxsFoldingRangeProvider(this.backend)
+                new mxsFoldingRangeProvider(this.backend, defaultSettings)
             ),
             languages.registerCallHierarchyProvider(
                 ExtensionHost.langSelector,
-                new mxsCallHierarchyProvider(this.backend)
+                new mxsCallHierarchyProvider(this.backend, defaultSettings)
             ),
             
             languages.registerCodeLensProvider(
