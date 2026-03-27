@@ -19,7 +19,7 @@ export class mxsRenameProvider implements RenameProvider
             return undefined;
         }
 
-        const ctx = this.backend.getContext(document.uri.toString());
+        const ctx = this.backend.borrowContext(document.uri.toString());
         const symbol = ctx.symbolAtPosition(position.line + 1, position.character);
 
         if (!symbol || !symbol.definition) {
@@ -42,9 +42,9 @@ export class mxsRenameProvider implements RenameProvider
         if (token.isCancellationRequested) {
             return undefined;
         }
-
+        const ctx = this.backend.borrowContext(document.uri.toString());
         const occurrences =
-            this.backend.getContext(document.uri.toString()).symbolInfoAtPositionCtxOccurrences(
+            ctx?.symbolInfoAtPositionCtxOccurrences(
                 position.line + 1,
                 position.character);
 

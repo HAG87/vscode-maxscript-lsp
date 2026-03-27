@@ -1,5 +1,6 @@
 import { writeFile } from 'fs/promises';
-import { basename } from 'path';
+import { existsSync } from 'fs';
+import { basename, dirname, isAbsolute, resolve } from 'path';
 import {
   commands, ConfigurationChangeEvent, DiagnosticChangeEvent, ExtensionContext,
   FileSystemWatcher, languages, ProgressLocation, Range,
@@ -31,7 +32,9 @@ import { mxsWorkspaceSymbolProvider } from './WorkspaceSymbolProvider.js';
 
 export class ExtensionHost
 {
+    private static readonly fileInLiteralPattern = /\bfilein\s*\(?\s*@?"([^"]+)"\s*\)?/ig;
     private changeTimers = new Map<string, ReturnType<typeof setTimeout>>();
+    private runtimeDependencies = new Map<string, Set<string>>();
     public static readonly langSelector = { language: 'maxscript', scheme: 'file' }
     private readonly backend: mxsBackend
     //----------------------------------------------------------------
@@ -42,12 +45,168 @@ export class ExtensionHost
     private semanticTokensProvider!: mxsSemanticTokensProvider
     // CodeLens provider - need reference for refresh notifications
     private codeLensProvider!: mxsCodeLensProvider
+    // Coalesce provider refreshes to avoid duplicate UI updates in the same tick.
+    private providersRefreshScheduled: boolean = false
     // diagnostics for the extension
     private readonly diagnosticCollection = languages.createDiagnosticCollection('maxscript');
     //----------------------------------------------------------------
     public updateProviders(uri: string)
     {
         this.workspaceSymbolProvider.updateWorkspaceSymbols(uri)
+    }
+
+    private resolveWorkspaceFileInUri(sourceUri: string, fileInTarget: string): string | undefined
+    {
+        const target = fileInTarget.trim();
+        if (!target || target.startsWith('$')) {
+            return undefined;
+        }
+
+        const sourceFsPath = Uri.parse(sourceUri).fsPath;
+        const sourceDir = dirname(sourceFsPath);
+        const resolvedPath = isAbsolute(target)
+            ? target
+            : resolve(sourceDir, target);
+
+        if (!existsSync(resolvedPath)) {
+            return undefined;
+        }
+
+        const uri = Uri.file(resolvedPath);
+        if (!workspace.getWorkspaceFolder(uri)) {
+            return undefined;
+        }
+
+        const lower = resolvedPath.toLowerCase();
+        if (!lower.endsWith('.ms') && !lower.endsWith('.mcr')) {
+            return undefined;
+        }
+
+        return uri.toString();
+    }
+
+    private collectRuntimeDependencyUris(sourceUri: string, sourceText: string): Set<string>
+    {
+        const uris = new Set<string>();
+        ExtensionHost.fileInLiteralPattern.lastIndex = 0;
+
+        let match: RegExpExecArray | null;
+        while ((match = ExtensionHost.fileInLiteralPattern.exec(sourceText)) !== null) {
+            const rawPath = match[1];
+            const depUri = this.resolveWorkspaceFileInUri(sourceUri, rawPath);
+            if (depUri && depUri !== sourceUri) {
+                uris.add(depUri);
+            }
+        }
+
+        return uris;
+    }
+
+    private reconcileRuntimeDependencies(sourceUri: string, sourceText: string): void
+    {
+        const current = this.collectRuntimeDependencyUris(sourceUri, sourceText);
+        const previous = this.runtimeDependencies.get(sourceUri) ?? new Set<string>();
+        const sourceContext = this.backend.getExistingContext(sourceUri);
+
+        if (!sourceContext) {
+            this.runtimeDependencies.set(sourceUri, current);
+            return;
+        }
+
+        for (const depUri of previous) {
+            if (!current.has(depUri)) {
+                this.backend.releaseDependencyContext(sourceUri, depUri)
+            }
+        }
+
+        for (const depUri of current) {
+            if (previous.has(depUri)) {
+                continue;
+            }
+            const depContext = this.backend.acquireDependencyContext(sourceUri, depUri)
+            sourceContext.addAsReferenceTo(depContext);
+        }
+
+        this.runtimeDependencies.set(sourceUri, current);
+    }
+
+    private removeRuntimeDependencyGraphFor(uri: string): void
+    {
+        const outgoing = this.runtimeDependencies.get(uri);
+        if (outgoing) {
+            for (const depUri of outgoing) {
+                this.backend.releaseDependencyContext(uri, depUri)
+            }
+        }
+        this.runtimeDependencies.delete(uri);
+
+        for (const [sourceUri, deps] of this.runtimeDependencies.entries()) {
+            if (!deps.has(uri)) {
+                continue;
+            }
+
+            this.backend.releaseDependencyContext(sourceUri, uri)
+            deps.delete(uri);
+        }
+    }
+
+    private scheduleProvidersRefresh(): void
+    {
+        if (this.providersRefreshScheduled) {
+            return
+        }
+
+        this.providersRefreshScheduled = true
+        queueMicrotask(() =>
+        {
+            this.providersRefreshScheduled = false
+            if (this.semanticTokensProvider) {
+                this.semanticTokensProvider.refresh()
+            }
+            if (this.codeLensProvider) {
+                this.codeLensProvider.refresh()
+            }
+        })
+    }
+
+    private publishDiagnosticsForDocument(document: TextDocument): void
+    {
+        const uri = document.uri.toString()
+        const context = this.backend.getExistingContext(uri)
+        if (!context) {
+            this.diagnosticCollection.delete(document.uri)
+            return
+        }
+
+        this.diagnosticCollection.set(
+            document.uri,
+            diagnosticAdapter(context.getDiagnostics)
+        )
+    }
+
+    private refreshOpenDocumentDiagnostics(): void
+    {
+        for (const document of workspace.textDocuments) {
+            if (!Utilities.isLanguageFile(document)) {
+                continue
+            }
+            this.publishDiagnosticsForDocument(document)
+        }
+    }
+
+    private reparseAndRefreshDocument(document: TextDocument, updateWorkspaceSymbols: boolean = false): void
+    {
+        const uri = document.uri.toString()
+
+        this.diagnosticCollection.delete(document.uri)
+        this.backend.reparse(uri)
+        this.reconcileRuntimeDependencies(uri, document.getText())
+        this.refreshOpenDocumentDiagnostics()
+        this.scheduleProvidersRefresh()
+
+        if (updateWorkspaceSymbols) {
+            this.updateProviders(uri)
+        }
     }
     //----------------------------------------------------------------
     public constructor(ctx: ExtensionContext)
@@ -78,14 +237,14 @@ export class ExtensionHost
         // /*
         for (const document of workspace.textDocuments) {
             if (Utilities.isLanguageFile(document)) {
-                this.backend.getContext(document.uri.toString(), document.getText())
-                this.diagnosticCollection.set(
-                    document.uri,
-                    diagnosticAdapter(this.backend.getContext(document.uri.toString())?.getDiagnostics)
-                )
+                const uri = document.uri.toString()
+                this.backend.setLiveDocumentText(uri, document.getText())
+                this.backend.acquireContext(uri, document.getText());
+                this.reconcileRuntimeDependencies(uri, document.getText())
             }
         }
         // */
+        this.refreshOpenDocumentDiagnostics()
         // workspace symbols
         this.workspaceSymbolProvider = new mxsWorkspaceSymbolProvider(this.backend)
         //register eventHandlers
@@ -116,25 +275,29 @@ export class ExtensionHost
             workspace.onDidOpenTextDocument((document: TextDocument) =>
             {
                 if (Utilities.isLanguageFile(document)) {
-                    this.backend.getContext(document.uri.toString(), document.getText())
-                    this.diagnosticCollection.set(
-                        document.uri,
-                        diagnosticAdapter(this.backend.getContext(document.uri.toString())?.getDiagnostics)
-                    )
+                    const uri = document.uri.toString()
+                    this.backend.setLiveDocumentText(uri, document.getText())
+                    this.backend.acquireContext(uri, document.getText())
+                    this.reconcileRuntimeDependencies(uri, document.getText())
+                    this.refreshOpenDocumentDiagnostics()
                 }
             }),
             workspace.onDidCloseTextDocument((document: TextDocument) =>
             {
                 if (Utilities.isLanguageFile(document)) {
+                    this.backend.clearLiveDocumentText(document.uri.toString())
+                    this.removeRuntimeDependencyGraphFor(document.uri.toString())
                     this.backend.releaseContext(document.uri.toString())
                     // clear diagnostics for the document
-                    this.diagnosticCollection.set(document.uri, [])
+                    this.diagnosticCollection.delete(document.uri)
+                    this.refreshOpenDocumentDiagnostics()
                 }
             }),
             workspace.onDidChangeTextDocument((event: TextDocumentChangeEvent) =>
             {
                 // check for content changes
                 if (event.contentChanges.length > 0 && Utilities.isLanguageFile(event.document)) {
+                    this.backend.setLiveDocumentText(event.document.uri.toString(), event.document.getText())
                     this.backend.setText(event.document.uri.toString(), event.document.getText())
 
                     const fileName = event.document.fileName
@@ -150,26 +313,7 @@ export class ExtensionHost
                     this.changeTimers.set(fileName, setTimeout(() =>
                     {
                         this.changeTimers.delete(fileName)
-                        
-                        // Clear diagnostics before reparsing to ensure stale errors are removed
-                        this.diagnosticCollection.delete(event.document.uri);
-                        
-                        // Reparse the document
-                        this.backend.reparse(event.document.uri)
-                        
-                        // Get fresh diagnostics after reparse
-                        const context = this.backend.getContext(event.document.uri.toString());
-                        const diagnostics = context?.getDiagnostics ?? [];
-                        
-                        this.diagnosticCollection.set(
-                            event.document.uri,
-                            diagnosticAdapter(diagnostics)
-                        )
-                        
-                        // Refresh semantic tokens after reparse
-                        this.semanticTokensProvider.refresh();
-                        this.codeLensProvider.refresh();
-                        // this.updateProviders(event.document.uri.toString())
+                        this.reparseAndRefreshDocument(event.document)
                     }, reparseDelay))
                 }
                 // */
@@ -180,6 +324,9 @@ export class ExtensionHost
                     const timer = this.changeTimers.get(document.fileName)
                     if (timer) {
                         clearTimeout(timer)
+                        this.changeTimers.delete(document.fileName)
+                        this.reparseAndRefreshDocument(document, true)
+                        return
                     }
                     //TODO:
                     // use this method to update data
@@ -437,7 +584,7 @@ export class ExtensionHost
     private minifyDocument(uri: Uri, shouldUnload: boolean = false, enhanced: boolean = false): string | null
     {
         // minify
-        const minResult = this.backend.getContext(uri.toString())?.minifyCode(minifySettings, enhanced)
+        const minResult = this.backend.acquireContext(uri.toString())?.minifyCode(minifySettings, enhanced)
         // minify done, dispose context
         if (shouldUnload) {
             this.backend.releaseContext(uri.toString())
@@ -479,7 +626,7 @@ export class ExtensionHost
     private prettifyDocument(uri: Uri, shouldUnload: boolean = false): string | null
     {
         const prettyResult =
-            this.backend.getContext(uri.toString())?.prettifyCode(prettifySettings)
+            this.backend.acquireContext(uri.toString())?.prettifyCode(prettifySettings)
         // done, dispose context
         if (shouldUnload) {
             this.backend.releaseContext(uri.toString())

@@ -19,7 +19,7 @@ export class mxsHoverProvider implements HoverProvider
             return undefined;
         }
         
-        const ctx = this.backend.getContext(document.uri.toString());
+        const ctx = this.backend.borrowContext(document.uri.toString());
         const info = ctx.symbolAtPosition(
             position.line + 1,
             position.character

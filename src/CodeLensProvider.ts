@@ -38,7 +38,8 @@ export class mxsCodeLensProvider implements CodeLensProvider
     provideCodeLenses(document: TextDocument, _token: CancellationToken): ProviderResult<CodeLens[]>
     {
         const uri = document.uri;
-        const symbols = this.backend.getContext(uri.toString())?.listTopLevelSymbols(false) ?? [];
+        const ctx = this.backend.borrowContext(document.uri.toString());
+        const symbols = ctx?.listTopLevelSymbols(false) ?? [];
         const lenses: CodeLens[] = [];
 
         for (const symbol of symbols) {
@@ -61,12 +62,12 @@ export class mxsCodeLensProvider implements CodeLensProvider
 
         // Resolve both count and targets from the same scoped occurrence set.
         const symbolNameRange = Utilities.symbolNameRange(lens.symbol);
+        const ctx = this.backend.borrowContext(lens.uri.toString());
         const occurrences =
-            this.backend.getContext(lens.uri.toString())
-                ?.symbolInfoAtPositionCtxOccurrences(
-                    symbolNameRange.start.line + 1,
-                    symbolNameRange.start.character,
-                ) ?? [];
+            ctx?.symbolInfoAtPositionCtxOccurrences(
+                symbolNameRange.start.line + 1,
+                symbolNameRange.start.character,
+            ) ?? [];
         const locations = Utilities.symbolTargets(occurrences)
             .map(target => new Location(target.uri, target.range));
 

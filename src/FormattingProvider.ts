@@ -15,11 +15,12 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
     provideDocumentRangeFormattingEdits(document: TextDocument, range: Range,
         _options: FormattingOptions, _token: CancellationToken): ProviderResult<TextEdit[]>
     {
+        const ctx = this.backend.borrowContext(document.uri.toString());
         const { code, start, stop } =
-            this.backend.getContext(document.uri.toString()).formatCode(
+            ctx?.formatCode(
                 Utilities.rangeToLexicalRange(range),
                 this.options
-            );
+            ) ?? { code: '', start: 0, stop: 0 };
         const resultRange = range.with(
             document.positionAt(start),
             document.positionAt(stop + 1)
@@ -32,16 +33,17 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
         _options: FormattingOptions, _token: CancellationToken): ProviderResult<TextEdit[]>
     {
         const results: TextEdit[] = [];
+        const ctx = this.backend.borrowContext(document.uri.toString());
         ranges.forEach(range =>
         {
             const { code, start, stop } =
-                this.backend.getContext(document.uri.toString()).formatCode(
+               ctx?.formatCode(
                     {
                         start: document.offsetAt(range.start),
                         stop: document.offsetAt(range.end) - 1
                     },
                     this.options
-                );
+                ) ?? { code: '', start: 0, stop: 0 };
             const resultRange = range.with(
                 document.positionAt(start),
                 document.positionAt(stop + 1)
@@ -69,11 +71,12 @@ export class mxsFormattingProvider implements DocumentFormattingEditProvider
             document.positionAt(0),
             document.positionAt(document.getText().length)
         );
+        const ctx = this.backend.borrowContext(document.uri.toString());
         const { code, start, stop } =
-            this.backend.getContext(document.uri.toString()).formatCode(
+            ctx?.formatCode(
                 Utilities.rangeToLexicalRange(range),
                 this.options
-            );
+            ) ?? { code: '', start: 0, stop: 0 };
         const resultRange = range.with(
             document.positionAt(start),
             document.positionAt(stop + 1)

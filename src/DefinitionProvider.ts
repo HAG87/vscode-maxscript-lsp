@@ -26,7 +26,9 @@ export class mxsDefinitionProvider implements DefinitionProvider
         if (token.isCancellationRequested) {
             return undefined;
         }
-        const info = this.backend.getContext(document.uri.toString())?.symbolDefinition(  
+        
+        const ctx = this.backend.borrowContext(document.uri.toString());
+        const info = ctx?.symbolDefinition(  
             position.line + 1,
             position.character);
 

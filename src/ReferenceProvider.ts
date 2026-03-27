@@ -24,9 +24,9 @@ export class mxsReferenceProvider implements ReferenceProvider
         if (token.isCancellationRequested) {
             return undefined;
         }
-
+        const ctx = this.backend.borrowContext(document.uri.toString());
         const occurrences =
-            this.backend.getContext(document.uri.toString()).symbolInfoAtPositionCtxOccurrences(
+            ctx?.symbolInfoAtPositionCtxOccurrences(
                 position.line + 1,
                 position.character);
 

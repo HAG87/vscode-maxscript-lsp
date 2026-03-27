@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import { Uri } from 'vscode';
 
 import {
   ICodeFormatSettings, ILexicalRange, IMinifySettings, IPrettifySettings,
@@ -7,6 +6,7 @@ import {
 } from '../types.js';
 import { IformatterResult } from './formatting/simpleCodeFormatter.js';
 import { SourceContext } from './SourceContext.js';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 export interface IContextEntry
 {
@@ -123,6 +123,8 @@ export class mxsBackend
 {
     // Hold the contexts for all loaded documents
     private sourceContexts: Map<string, IContextEntry> = new Map<string, IContextEntry>();
+    // Unsaved editor buffer text, keyed by normalized file URI.
+    private liveDocumentTextByUri: Map<string, string> = new Map<string, string>();
 
     public constructor() { }
 
@@ -157,37 +159,173 @@ export class mxsBackend
      * @param source Optional document content (reads from file if not provided)
      * @returns The SourceContext for the document
      */
+    public acquireContext(uri: string, source?: string): SourceContext
+    {
+        const targetUri = this.findLoadedContextKey(uri) ?? this.normalizeContextUri(uri);
+        return this.loadDocument(targetUri, source, true);
+    }
+
+    public borrowContext(uri: string, source?: string): SourceContext
+    {
+        const targetUri = this.findLoadedContextKey(uri) ?? this.normalizeContextUri(uri);
+        const existing = this.sourceContexts.get(targetUri);
+        if (existing) {
+            return existing.context;
+        }
+        return this.loadDocument(targetUri, source, false);
+    }
+
+    /**
+     * @deprecated Prefer acquireContext() or borrowContext() to make ownership explicit.
+     */
     public getContext(uri: string, source?: string): SourceContext
     {
-        return this.loadDocument(uri, source);
+        return this.acquireContext(uri, source);
     }
-    
+
     /**
      * Preload a context without parsing.
      * Useful for preparing contexts before they're needed.
      */
     public preloadContext(uri: string, source?: string): SourceContext
     {
-        return this.preloadDocument(uri, source);;
+        const targetUri = this.findLoadedContextKey(uri) ?? this.normalizeContextUri(uri);
+        return this.preloadDocument(targetUri, source);
     }
     
     /**
      * Release a context when it's no longer needed.
      * Decrements reference count and removes if reaches zero.
      */
-    public releaseContext(uri: string)
+    public releaseContext(uri: string): void
     {
-        this.unloadDocument(uri)
+        const key = this.findLoadedContextKey(uri) ?? this.normalizeContextUri(uri);
+        this.unloadDocument(key)
     }
     
+    private normalizeContextUri(uri: string): string
+    {
+        try {
+            const parsed = new URL(uri);
+            if (parsed.protocol === 'file:') {
+                return pathToFileURL(fileURLToPath(parsed)).toString();
+            }
+            return uri;
+        } catch {
+            return uri;
+        }
+    }
+
+    private normalizeGlobalName(name: string): string
+    {
+        return name.toLowerCase();
+    }
+
+    public setLiveDocumentText(uri: string, text: string): void
+    {
+        this.liveDocumentTextByUri.set(this.normalizeContextUri(uri), text);
+    }
+
+    public clearLiveDocumentText(uri: string): void
+    {
+        this.liveDocumentTextByUri.delete(this.normalizeContextUri(uri));
+    }
+
+    private getLiveDocumentText(uri: string): string | undefined
+    {
+        return this.liveDocumentTextByUri.get(this.normalizeContextUri(uri));
+    }
+
+    /** Returns the SourceContext for a URI if it is already loaded, without creating a new one. */
+    public getExistingContext(uri: string): SourceContext | undefined
+    {
+        const key = this.findLoadedContextKey(uri) ?? this.normalizeContextUri(uri);
+        return this.sourceContexts.get(key)?.context;
+    }
+
+    public acquireDependencyContext(ownerUri: string, dependencyUri: string, source?: string): SourceContext
+    {
+        const ownerKey = this.findLoadedContextKey(ownerUri) ?? this.normalizeContextUri(ownerUri);
+        const dependencyKey = this.findLoadedContextKey(dependencyUri) ?? this.normalizeContextUri(dependencyUri);
+
+        const ownerEntry = this.sourceContexts.get(ownerKey);
+        if (!ownerEntry || ownerKey === dependencyKey) {
+            return this.borrowContext(dependencyKey, source);
+        }
+
+        if (!ownerEntry.dependencies.includes(dependencyKey)) {
+            ownerEntry.dependencies.push(dependencyKey);
+            return this.acquireContext(dependencyKey, source);
+        }
+
+        return this.getExistingContext(dependencyKey) ?? this.acquireContext(dependencyKey, source);
+    }
+
+    public releaseDependencyContext(ownerUri: string, dependencyUri: string): void
+    {
+        const ownerKey = this.findLoadedContextKey(ownerUri) ?? this.normalizeContextUri(ownerUri);
+        const dependencyKey = this.findLoadedContextKey(dependencyUri) ?? this.normalizeContextUri(dependencyUri);
+        const ownerEntry = this.sourceContexts.get(ownerKey);
+        if (!ownerEntry) {
+            return;
+        }
+
+        const dependencyIndex = ownerEntry.dependencies.indexOf(dependencyKey);
+        if (dependencyIndex < 0) {
+            return;
+        }
+
+        ownerEntry.dependencies.splice(dependencyIndex, 1);
+        this.unloadDocument(dependencyKey, ownerEntry);
+    }
+
+    private getLoadedContextUriByFsPath(fsPath: string): string | undefined
+    {
+        const isWindows = /^[a-zA-Z]:[\\/]/.test(fsPath);
+        const expected = isWindows ? fsPath.toLowerCase() : fsPath;
+
+        for (const key of this.sourceContexts.keys()) {
+            let keyPath: string;
+            try {
+                keyPath = fileURLToPath(new URL(key));
+            } catch {
+                continue;
+            }
+
+            const normalized = isWindows ? keyPath.toLowerCase() : keyPath;
+            if (normalized === expected) {
+                return key;
+            }
+        }
+
+        return undefined;
+    }
+
+    private findLoadedContextKey(uri: string): string | undefined
+    {
+        const normalized = this.normalizeContextUri(uri);
+        if (this.sourceContexts.has(normalized)) {
+            return normalized;
+        }
+
+        try {
+            const fsPath = fileURLToPath(new URL(normalized));
+            return this.getLoadedContextUriByFsPath(fsPath);
+        } catch {
+            return undefined;
+        }
+    }
+
     /**
      * Triggers a reparse of a loaded document.
      * Document must have been loaded before calling this.
      * @param uri The document uri
      */
-    public reparse(uri: Uri): void
+    public reparse(uri: string): void
     {
-        const ctxEntry = this.sourceContexts.get(uri.toString());
+        const normalizedUri = this.normalizeContextUri(uri);
+        const key = this.findLoadedContextKey(normalizedUri) ?? normalizedUri;
+        const ctxEntry = this.sourceContexts.get(key);
         if (ctxEntry) {
             this.parseDocument(ctxEntry);
         }
@@ -200,7 +338,7 @@ export class mxsBackend
      */
     public getDocumentText(uri: string): string
     {
-        return fs.readFileSync(Uri.parse(uri).fsPath, "utf8");
+        return fs.readFileSync(fileURLToPath(new URL(uri)), "utf8");
     }
 
     /**
@@ -212,9 +350,15 @@ export class mxsBackend
      */
     public setText(uri: string, source?: string): void
     {
-        const ctxEntry = this.sourceContexts.get(uri.toString());
+        const normalizedUri = this.normalizeContextUri(uri);
+        if (source !== undefined) {
+            this.liveDocumentTextByUri.set(normalizedUri, source);
+        }
+
+        const key = this.findLoadedContextKey(normalizedUri) ?? normalizedUri;
+        const ctxEntry = this.sourceContexts.get(key);
         if (ctxEntry) {
-            ctxEntry.context.setText(source ?? this.getDocumentText(uri));
+            ctxEntry.context.setText(source ?? this.getLiveDocumentText(key) ?? this.getDocumentText(key));
         }
     }
 
@@ -224,25 +368,6 @@ export class mxsBackend
     private parseDocument(contextEntry: IContextEntry): void
     {
         contextEntry.context.parse();
-        /* //TODO:
-            const oldDependencies = contextEntry.dependencies;
-            contextEntry.dependencies = [];
-            const newDependencies = contextEntry.context.parse();
-
-            for (const dep of newDependencies) {
-                const depContext = this.loadDependency(contextEntry, dep);
-                if (depContext) {
-                    contextEntry.context.addAsReferenceTo(depContext);
-                }
-            }
-
-            // Release all old dependencies. This will only unload grammars which have
-            // not been ref-counted by the above dependency loading (or which are not used by other
-            // grammars).
-            for (const dep of oldDependencies) {
-                this.unloadDocument(dep);
-            }
-        */
     }
 
     /**
@@ -251,7 +376,7 @@ export class mxsBackend
      * @param source the document text
      * @returns 
      */
-    private loadDocument(uri: string, source?: string): SourceContext
+    private loadDocument(uri: string, source?: string, acquire: boolean = true): SourceContext
     {
         let ctxEntry = this.sourceContexts.get(uri);
 
@@ -259,7 +384,7 @@ export class mxsBackend
             // new context
             const ctx = new SourceContext(uri);
             // set ctx text            
-            ctx.setText(source ?? this.getDocumentText(uri));
+            ctx.setText(source ?? this.getLiveDocumentText(uri) ?? this.getDocumentText(uri));
             ctxEntry = {
                 context: ctx,
                 refCount: 0,
@@ -276,8 +401,10 @@ export class mxsBackend
             this.parseDocument(ctxEntry);
         }
         */
-        // count this as a referency
-        ctxEntry!.refCount++;
+        // Count this as an ownership reference when explicitly acquired.
+        if (acquire) {
+            ctxEntry!.refCount++;
+        }
         return ctxEntry.context;
     }
 
@@ -293,7 +420,7 @@ export class mxsBackend
                 dependencies: []
             };
             // set ctx text
-            ctx.setText(source ?? this.getDocumentText(uri));
+            ctx.setText(source ?? this.getLiveDocumentText(uri) ?? this.getDocumentText(uri));
             // add to SourceContexts
             this.sourceContexts.set(uri, ctxEntry);            
         }
@@ -319,217 +446,11 @@ export class mxsBackend
             ctxEntry.refCount--;
             if (ctxEntry.refCount === 0) {
                 this.sourceContexts.delete(uri);
+                this.clearLiveDocumentText(uri);
                 // release also all dependencies
-                for (const dep of ctxEntry.dependencies) {
+                for (const dep of [...ctxEntry.dependencies]) {
                     this.unloadDocument(dep, ctxEntry);
                 }
-            }
-        }
-    }
-
-    //------------------------------------------------------------------
-    // Wrapper Methods (Consider Deprecating)
-    //------------------------------------------------------------------
-    // These methods forward calls to SourceContext instances.
-    // REFACTORING NOTE: Consider replacing these with direct context access:
-    //   Instead of: backend.symbolInfoAtPosition(uri, line, char)
-    //   Use: backend.contexts.get(uri)?.context.symbolAtPosition(line, char)
-    //
-    // Keeping these temporarily for backward compatibility, but they add
-    // unnecessary indirection. Future versions should use direct access.
-    //------------------------------------------------------------------
-    
-    // Symbol Information
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.symbolAtPosition(line, character)
-     */
-    public symbolInfoAtPosition(
-        uri: string,
-        line: number,
-        character: number): ISymbolInfo | undefined
-    {
-        return this.getContext(uri).symbolAtPosition(line, character);
-    }
-
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.symbolDefinition(line, character)
-     */
-    public symbolInfoDefinition(
-        uri: string,
-        line: number,
-        character: number): ISymbolInfo | undefined
-    {
-        return this.getContext(uri).symbolDefinition(line, character);
-    }
-
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.getSymbolInfo(symbol)
-     */
-    public infoForSymbol(uri: string, symbol: string)
-    {
-        return this.getContext(uri).getSymbolInfo(symbol);
-    }
-
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.enclosingSymbolAtPosition(...)
-     */
-    public enclosingSymbolAtPosition(
-        uri: string,
-        line: number,
-        character: number,
-        ruleScope = false)
-    {
-        return this.getContext(uri).enclosingSymbolAtPosition(line, character, ruleScope);
-    }
-
-    /**
-     * Returns a list of top level symbols from a file (and optionally its dependencies).
-     *
-     * @param fileName The grammar file name.
-     * @param full If true, includes symbols from all dependencies as well.
-     * @returns A list of symbol info entries.
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.listTopLevelSymbols(!fullList)
-     */
-    public listTopLevelSymbols(uri: string, fullList: boolean): ISymbolInfo[]
-    {
-        return this.getContext(uri).listTopLevelSymbols(!fullList);
-    }
-
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.symbolTable.getSymbolOccurrences(symbolName, false)
-     */
-    public getSymbolOccurrences(uri: string, symbolName: string): ISymbolInfo[]
-    {
-        const result = this.getContext(uri).symbolTable.getSymbolOccurrences(symbolName, false);
-        // Sort result by kind. This way rule definitions appear before rule references and are re-parsed first.
-        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => lhs.kind - rhs.kind);
-    }
-
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.symbolTable.getScopedSymbolOccurrences(symbol)
-     */
-    public symbolInfoAtPositionCtxOccurrences(
-        uri: string,
-        line: number,
-        character: number): ISymbolInfo[] | undefined
-    {
-        const context = this.getContext(uri);
-        const symbol = context.symbolTable.getSymbolAtPosition(line, character);
-
-        if (!symbol) { return undefined; }
-
-        const result = context.symbolTable.getScopedSymbolOccurrences(symbol)
-
-        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => lhs.kind - rhs.kind);
-    }
-
-    // Code Completion
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.getCodeCompletionCandidates(...)
-     */
-    public async getCodeCompletionCandidates(
-        uri: string,
-        line: number,
-        character: number): Promise<ISymbolInfo[]>
-    {
-        return this.getContext(uri).getCodeCompletionCandidates(line, character);
-    }
-
-    // Diagnostics
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.getDiagnostics
-     */
-    public getDiagnostics(uri: string)
-    {
-        return this.getContext(uri).getDiagnostics;
-    }
-
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.hasErrors
-     */
-    public hasErrors(uri: string): boolean
-    {
-        return this.getContext(uri).hasErrors;
-    }
-
-    // Semantic Tokens
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.getSemanticTokens
-     */
-    public getDocumentSemanticTokens(uri: string): ISemanticToken[]
-    {
-        return this.getContext(uri).getSemanticTokens;
-    }
-
-    // Formatting
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.formatCode(range, options)
-     */
-    public formatCode(uri: string, range: ILexicalRange, options?: ICodeFormatSettings): IformatterResult
-    public formatCode(uri: string, range: { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult
-    public formatCode(uri: string, range: ILexicalRange | { start: number, stop: number }, options?: ICodeFormatSettings): IformatterResult
-    {
-        if ('stop' in range) {
-            return this.getContext(uri).formatCode(range, options);
-        }
-        return this.getContext(uri).formatCode(range, options);
-    }
-
-    // Minify
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.minifyCode(options, enhanced)
-     */
-    public minifyCode(uri: string, options: ICodeFormatSettings & IMinifySettings & IPrettifySettings, enhanced: boolean = false): string | null
-    {
-        return this.getContext(uri).minifyCode(options, enhanced)
-    }
-
-    // Prettify
-    /**
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.prettifyCode(options)
-     */
-    public prettifyCode(uri: string, options: ICodeFormatSettings & IMinifySettings & IPrettifySettings): string | null
-    {
-        return this.getContext(uri).prettifyCode(options)
-    }
-
-    // TODO: references
-    /**
-     * Count how many times a symbol has been referenced. The given file must contain the definition of this symbol.
-     * @deprecated Consider using: backend.contexts.get(uri)?.context.getReferenceCount(symbol)
-     *
-     * @param uri The grammar file name.
-     * @param symbol The symbol for which to determine the reference count.
-     * @returns The reference count.
-     */
-    public countReferences(uri: string, symbol: string)
-    {
-        return this.getContext(uri).getReferenceCount(symbol);
-    }
-
-    public getDependencies(uri: string): string[] {
-        const entry = this.sourceContexts.get(uri);
-        if (!entry) {
-            return [];
-        }
-        const dependencies: Set<SourceContext> = new Set();
-        this.pushDependencyFiles(entry, dependencies);
-
-        const result: string[] = [];
-        for (const dep of dependencies) {
-            result.push(dep.sourceUri);
-        }
-
-        return result;
-    }
-
-    private pushDependencyFiles(entry: IContextEntry, contexts: Set<SourceContext>) {
-        // Using a set for the context list here, to automatically exclude duplicates.
-        for (const dep of entry.dependencies) {
-            const depEntry = this.sourceContexts.get(dep);
-            if (depEntry && !contexts.has(depEntry.context)) {
-                contexts.add(depEntry.context);
-                this.pushDependencyFiles(depEntry, contexts);
             }
         }
     }

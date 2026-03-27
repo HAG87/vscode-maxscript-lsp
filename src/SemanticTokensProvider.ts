@@ -38,7 +38,8 @@ export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider
 
         // TODO: if no parse tree is available, fallback to simple method
         // const tokens = this.backend.getDocumentSemanticTokens(document.uri.toString());
-        const tokens = this.backend.getContext(document.uri.toString())?.getSemanticTokens;
+        const ctx = this.backend.borrowContext(document.uri.toString());
+        const tokens = ctx?.getSemanticTokens;
 
         // some optimizations to recompute the tokens only if they have changed...
         if (!tokens || tokens.length === 0) {
@@ -99,7 +100,7 @@ export class mxsRangeSemanticTokensProvider implements DocumentRangeSemanticToke
             return undefined;
         }
 
-        const tokens = this.backend.getContext(document.uri.toString())?.getSemanticTokens;
+        const tokens = this.backend.borrowContext(document.uri.toString())?.getSemanticTokens;
         if (!tokens || tokens.length === 0) {
             return undefined;
         }

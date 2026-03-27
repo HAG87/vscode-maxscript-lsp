@@ -40,8 +40,9 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
     provideDocumentSymbols(document: TextDocument, _token: CancellationToken):
         ProviderResult<SymbolInformation[] | DocumentSymbol[]>
     {
+        const ctx = this.backend.borrowContext(document.uri.toString());
         const symbols =
-            this.backend.getContext(document.uri.toString())?.listTopLevelSymbols(false);
+            ctx?.listTopLevelSymbols(false);
         const symbolsList: DocumentSymbol[] = [];
 
         for (const symbol of symbols) {
