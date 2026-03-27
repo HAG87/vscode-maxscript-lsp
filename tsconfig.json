@@ -113,6 +113,7 @@
     "src/backend/ast/test-*.ts",
     "src/backend/ast/test/run-tests.ts",
     "src/backend/ast/test/POC_Test.ts",
-    "src/backend/ast/docs/README_POC.ts"
+    "src/backend/ast/docs/README_POC.ts",
+    "test-*.ts"
   ]
 }

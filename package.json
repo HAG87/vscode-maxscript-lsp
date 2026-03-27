@@ -359,6 +359,8 @@
     "test:ast:definitions": "npx tsx src/backend/ast/test/test-definition-blocks.ts",
     "test:ast:ui": "npx tsx src/backend/ast/test/test-definition-blocks.ts",
     "test:ast:positions": "npx tsx src/backend/ast/test/test-query-positions.ts",
+    "test:format:minify": "npx tsx src/backend/formatting/test/test-minify-formatter.ts",
+    "test:format:simple": "npx tsx src/backend/formatting/test/test-simple-formatter.ts",
     "generate": "antlr4ng -Dlanguage=TypeScript -visitor -Xexact-output-dir src/parser/grammars/mxsLexer.g4 src/parser/grammars/mxsParser.g4 -o src/parser"
   },
   "devDependencies": {
