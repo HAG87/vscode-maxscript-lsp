@@ -2,7 +2,7 @@ import { writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { basename, dirname, isAbsolute, resolve } from 'path';
 import {
-  commands, ConfigurationChangeEvent, DiagnosticChangeEvent, ExtensionContext,
+    commands, ConfigurationChangeEvent, ExtensionContext,
   FileSystemWatcher, languages, ProgressLocation, Range,
   TextDocument, TextDocumentChangeEvent, TextEditorEdit, Uri,
   window, workspace,
@@ -237,10 +237,16 @@ export class ExtensionHost
         // /*
         for (const document of workspace.textDocuments) {
             if (Utilities.isLanguageFile(document)) {
-                const uri = document.uri.toString()
-                this.backend.setLiveDocumentText(uri, document.getText())
-                this.backend.acquireContext(uri, document.getText());
-                this.reconcileRuntimeDependencies(uri, document.getText())
+                try {
+                    const uri = document.uri.toString()
+                    this.backend.setLiveDocumentText(uri, document.getText())
+                    this.backend.acquireContext(uri, document.getText());
+                    this.reconcileRuntimeDependencies(uri, document.getText())
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error)
+                    console.error(`[language-maxscript] Failed to initialize context for ${document.uri.toString()}:`, error)
+                    void window.showErrorMessage(`MaxScript parser initialization failed for ${basename(document.fileName)}: ${message}`)
+                }
             }
         }
         // */
@@ -275,11 +281,17 @@ export class ExtensionHost
             workspace.onDidOpenTextDocument((document: TextDocument) =>
             {
                 if (Utilities.isLanguageFile(document)) {
-                    const uri = document.uri.toString()
-                    this.backend.setLiveDocumentText(uri, document.getText())
-                    this.backend.acquireContext(uri, document.getText())
-                    this.reconcileRuntimeDependencies(uri, document.getText())
-                    this.refreshOpenDocumentDiagnostics()
+                    try {
+                        const uri = document.uri.toString()
+                        this.backend.setLiveDocumentText(uri, document.getText())
+                        this.backend.acquireContext(uri, document.getText())
+                        this.reconcileRuntimeDependencies(uri, document.getText())
+                        this.refreshOpenDocumentDiagnostics()
+                    } catch (error) {
+                        const message = error instanceof Error ? error.message : String(error)
+                        console.error(`[language-maxscript] Failed to open context for ${document.uri.toString()}:`, error)
+                        void window.showErrorMessage(`MaxScript parser initialization failed for ${basename(document.fileName)}: ${message}`)
+                    }
                 }
             }),
             workspace.onDidCloseTextDocument((document: TextDocument) =>
