@@ -1,6 +1,6 @@
 import {
-  CancellationToken, Hover, HoverProvider, MarkdownString,
-        Position, ProviderResult, TextDocument, workspace,
+    CancellationToken, Hover, HoverProvider, MarkdownString,
+    Position, ProviderResult, TextDocument,
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
@@ -10,10 +10,11 @@ import {
 import { symbolDescriptionFromEnum } from './SymbolTranslator.js';
 import { SymbolKind } from '@backend/types.js';
 import { Utilities } from './utils.js';
+import { IMaxScriptSettings } from 'types.js';
 
 export class mxsHoverProvider implements HoverProvider
 {
-    public constructor(private backend: mxsBackend) { }
+    public constructor(private backend: mxsBackend, private options?: IMaxScriptSettings) { }
 
     private nowMs(): number {
         return typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -65,9 +66,9 @@ export class mxsHoverProvider implements HoverProvider
             return undefined;
         }
 
-        const config = workspace.getConfiguration('maxScript');
-        const traceRouting = config.get<boolean>('providers.traceRouting', false);
-        const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+        const traceRouting = this.options?.debug?.traceRouting || false;
+        const tracePerformance = this.options?.debug?.tracePerformance || false;
+
         const providerStart = tracePerformance ? this.nowMs() : 0;
         const logPerformance = (route: string): void => {
             if (!tracePerformance) {

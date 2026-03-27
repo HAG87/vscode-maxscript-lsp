@@ -2,7 +2,7 @@ import
     {
         CancellationToken, DocumentFormattingEditProvider,
         DocumentRangeFormattingEditProvider, FormattingOptions, ProviderResult, Range,
-        TextDocument, TextEdit, workspace,
+        TextDocument, TextEdit,
     } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
@@ -11,12 +11,7 @@ import { Utilities } from 'utils';
 
 export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditProvider
 {
-    public constructor(private backend: mxsBackend, private options?: ICodeFormatSettings)
-    {
-        if (!options) {
-            options = workspace.getConfiguration('maxScript').get('formatter') as ICodeFormatSettings;
-        }
-    }
+    public constructor(private backend: mxsBackend, private options: ICodeFormatSettings){ }
 
     provideDocumentRangeFormattingEdits(document: TextDocument, range: Range,
         _options: FormattingOptions, token: CancellationToken): ProviderResult<TextEdit[]>
@@ -66,12 +61,7 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
 
 export class mxsFormattingProvider implements DocumentFormattingEditProvider
 {
-    public constructor(private backend: mxsBackend, private options?: ICodeFormatSettings)
-    {
-        if (!options) {
-            options = workspace.getConfiguration('maxScript').get('formatter') as ICodeFormatSettings;
-        }
-    }
+    public constructor(private backend: mxsBackend, private options: ICodeFormatSettings){ }
 
     provideDocumentFormattingEdits(document: TextDocument,
         _options: FormattingOptions, token: CancellationToken): ProviderResult<TextEdit[]>

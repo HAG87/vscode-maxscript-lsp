@@ -1,7 +1,7 @@
 import {
   CancellationToken, CompletionContext, CompletionItem, CompletionItemKind,
   CompletionItemProvider, CompletionList, Position, ProviderResult,
-  Range, TextDocument, workspace,
+  Range, TextDocument,
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
@@ -106,9 +106,9 @@ export class mxsCompletionProvider implements CompletionItemProvider
             });
 
             const sourceContext = this.backend.getContext(document.uri.toString());
-            const config = workspace.getConfiguration('maxScript');
-            const useAst = config.get<boolean>('providers.ast.completionProvider', true);
-            const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+            const useAst = this.options.providers.codeCompletion;
+            const tracePerformance = this.options.debug?.tracePerformance || false;
+            
             const providerStart = tracePerformance ? this.nowMs() : 0;
             const logPerformance = (route: 'AST' | 'API' | 'None', items: number, mode?: 'member' | 'non-member', reason?: string): void => {
                 if (!tracePerformance) {
@@ -130,7 +130,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
                 const objectName = memberMatch[1];
 
                 // Path A: known API object — return its type members only.
-                if (this.options.completions.dataBaseCompletion) {
+                if (this.options.providers.dataBaseCompletion) {
                     const apiMembers = this.apiMembersForObject(objectName);
                     if (apiMembers && apiMembers.length > 0) {
                         cancelSubscription.dispose();
@@ -211,7 +211,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
                         }
                         completionList.push(item);
                     }
-                    if (this.options.completions.dataBaseCompletion) {
+                    if (this.options.providers.dataBaseCompletion) {
                         completionList.push(...this.completionsFromAPI(document, position, context));
                     }
                     cancelSubscription.dispose();

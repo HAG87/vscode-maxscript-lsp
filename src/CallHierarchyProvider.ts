@@ -9,7 +9,6 @@ import {
     SymbolKind,
     TextDocument,
     Uri,
-    workspace,
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
@@ -19,11 +18,12 @@ import {
     CallHierarchyItemModel,
 } from '@backend/callHierarchy/CallHierarchyService.js';
 import { Utilities } from './utils.js';
+import { IMaxScriptSettings } from 'types.js';
 
 export class mxsCallHierarchyProvider implements CallHierarchyProvider {
     private readonly itemDescriptors = new WeakMap<CallHierarchyItem, CallHierarchyDescriptor>();
 
-    public constructor(private backend: mxsBackend) { }
+    public constructor(private backend: mxsBackend, private options?: IMaxScriptSettings) { }
 
     private nowMs(): number {
         return typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -86,9 +86,9 @@ export class mxsCallHierarchyProvider implements CallHierarchyProvider {
             return undefined;
         }
 
-        const config = workspace.getConfiguration('maxScript');
-        const traceRouting = config.get<boolean>('providers.traceRouting', false);
-        const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+        const traceRouting = this.options?.debug?.traceRouting || false;
+        const tracePerformance = this.options?.debug?.tracePerformance || false;
+        
         const providerStart = tracePerformance ? this.nowMs() : 0;
         const logPerformance = (route: string): void => {
             if (!tracePerformance) {

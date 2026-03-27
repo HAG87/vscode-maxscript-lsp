@@ -7,10 +7,11 @@ import { mxsBackend } from '@backend/Backend.js';
 import { symbolDescriptionFromEnum, translateSymbolKind } from './SymbolTranslator.js';
 import { ISymbolInfo } from '@backend/types.js';
 import { Utilities } from './utils.js';
+import { IMaxScriptSettings } from 'types.js';
 
 export class mxsSymbolProvider implements DocumentSymbolProvider
 {
-    public constructor(private backend: mxsBackend) { }
+    public constructor(private backend: mxsBackend, private options?: IMaxScriptSettings) { }
 
     private nowMs(): number {
         return typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -50,11 +51,10 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
             return [];
         }
 
-        const config = workspace.getConfiguration('maxScript');
-        const useAst = config.get<boolean>('providers.ast.symbolProvider', true);
-        const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
-        const traceRouting = config.get<boolean>('providers.traceRouting', false);
-        const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+        const useAst = this.options?.providers?.astSymbolProvider ?? true;
+        const traceRouting = this.options?.debug?.traceRouting || false;
+        const tracePerformance = this.options?.debug?.tracePerformance || false;
+        
         const providerStart = tracePerformance ? this.nowMs() : 0;
         let route = 'None';
         const logPerformance = (count: number): void => {
@@ -86,7 +86,8 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
             }
         }
 
-        if ((!symbols || symbols.length === 0) && fallbackToLegacy) {
+        if (!useAst || symbols.length === 0)
+        {
             const legacyQueryStart = tracePerformance ? this.nowMs() : 0;
             symbols = sourceContext?.listTopLevelSymbols(false) ?? [];
             if (traceRouting) {

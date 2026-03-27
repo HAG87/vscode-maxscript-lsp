@@ -1,14 +1,15 @@
 import {
     CancellationToken, Position, ProviderResult, Range, RenameProvider,
-    TextDocument, WorkspaceEdit, workspace,
+    TextDocument, WorkspaceEdit,
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
 import { Utilities } from './utils.js';
+import { IMaxScriptSettings } from 'types.js';
 
 export class mxsRenameProvider implements RenameProvider
 {
-    public constructor(private backend: mxsBackend) { }
+    public constructor(private backend: mxsBackend, private options?: IMaxScriptSettings) { }
 
     private nowMs(): number {
         return typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -23,9 +24,9 @@ export class mxsRenameProvider implements RenameProvider
             return undefined;
         }
 
-        const config = workspace.getConfiguration('maxScript');
-        const traceRouting = config.get<boolean>('providers.traceRouting', false);
-        const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+        const traceRouting = this.options?.debug?.traceRouting || false;
+        const tracePerformance = this.options?.debug?.tracePerformance || false;
+        
         const providerStart = tracePerformance ? this.nowMs() : 0;
         const logPerformance = (route: 'AST' | 'None', reason?: string): void => {
             if (!tracePerformance) {
@@ -69,9 +70,8 @@ export class mxsRenameProvider implements RenameProvider
             return undefined;
         }
 
-        const config = workspace.getConfiguration('maxScript');
-        const traceRouting = config.get<boolean>('providers.traceRouting', false);
-        const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+        const traceRouting = this.options?.debug?.traceRouting || false;
+        const tracePerformance = this.options?.debug?.tracePerformance || false;
         const providerStart = tracePerformance ? this.nowMs() : 0;
         const logPerformance = (route: 'AST' | 'None', edits: number, reason?: string): void => {
             if (!tracePerformance) {

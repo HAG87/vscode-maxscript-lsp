@@ -1,14 +1,15 @@
 import {
     CancellationToken, FoldingRange, FoldingRangeProvider,
-    ProviderResult, TextDocument, workspace,
+    ProviderResult, TextDocument,
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
 import { Utilities } from './utils.js';
+import { IMaxScriptSettings } from 'types.js';
 
 export class mxsFoldingRangeProvider implements FoldingRangeProvider
 {
-    public constructor(private backend: mxsBackend) { }
+    public constructor(private backend: mxsBackend, private options?: IMaxScriptSettings) { }
 
     private nowMs(): number {
         return typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -23,9 +24,8 @@ export class mxsFoldingRangeProvider implements FoldingRangeProvider
             return undefined;
         }
 
-        const config = workspace.getConfiguration('maxScript');
-        const traceRouting = config.get<boolean>('providers.traceRouting', false);
-        const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+        const traceRouting = this.options?.debug?.traceRouting || false;
+        const tracePerformance = this.options?.debug?.tracePerformance || false;
         const providerStart = tracePerformance ? this.nowMs() : 0;
         const logPerformance = (route: 'AST' | 'None', folds: number, reason?: string): void => {
             if (!tracePerformance) {

@@ -5,15 +5,16 @@ TODO:
 */
 import {
     CancellationToken, Location, Position, ProviderResult,
-    ReferenceContext, ReferenceProvider, TextDocument, Uri, workspace,
+    ReferenceContext, ReferenceProvider, TextDocument, Uri,
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
 import { Utilities } from './utils.js';
+import { IMaxScriptSettings } from 'types.js';
 
 export class mxsReferenceProvider implements ReferenceProvider
 {
-    public constructor(private backend: mxsBackend) { }
+    public constructor(private backend: mxsBackend, private options?: IMaxScriptSettings) { }
 
     private nowMs(): number {
         return typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -30,9 +31,10 @@ export class mxsReferenceProvider implements ReferenceProvider
         }
 
         const sourceContext = this.backend.getContext(document.uri.toString());
-        const config = workspace.getConfiguration('maxScript');
-        const traceRouting = config.get<boolean>('providers.traceRouting', false);
-        const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+
+        const traceRouting = this.options?.debug?.traceRouting || false;
+        const tracePerformance = this.options?.debug?.tracePerformance || false;
+        
         const providerStart = tracePerformance ? this.nowMs() : 0;
         const logPerformance = (route: 'AST' | 'None', refs: number, reason?: string): void => {
             if (!tracePerformance) {

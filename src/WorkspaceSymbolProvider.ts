@@ -12,12 +12,13 @@ import { WorkspaceSymbolIndex } from '@backend/WorkspaceSymbolIndex.js';
 import { translateSymbolKind } from './SymbolTranslator.js';
 import { ISymbolInfo } from '@backend/types.js';
 import { Utilities } from './utils.js';
+import { IMaxScriptSettings } from 'types.js';
 
 export class mxsWorkspaceSymbolProvider implements WorkspaceSymbolProvider
 {
     private readonly index: WorkspaceSymbolIndex;
 
-    public constructor(private backend: mxsBackend)
+    public constructor(private backend: mxsBackend, private options?: IMaxScriptSettings)
     {
         this.index = new WorkspaceSymbolIndex(backend);
     }

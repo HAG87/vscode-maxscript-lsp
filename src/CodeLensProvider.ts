@@ -1,6 +1,6 @@
 import {
-  CancellationToken, CodeLens, CodeLensProvider, Event, EventEmitter,
-        Location, Position, ProviderResult, Range, TextDocument, Uri,
+    CancellationToken, CodeLens, CodeLensProvider, Event, EventEmitter,
+    Location, Position, ProviderResult, Range, TextDocument, Uri,
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
