@@ -409,36 +409,11 @@ export class ExtensionHost
     // register providers
     private registerProviders(ctx: ExtensionContext): void
     {
+        // Always on Providers
         ctx.subscriptions.push(
             languages.registerDocumentSymbolProvider(
                 ExtensionHost.langSelector,
                 new mxsSymbolProvider(this.backend, defaultSettings)
-            ),
-            languages.registerReferenceProvider(
-                ExtensionHost.langSelector,
-                new mxsReferenceProvider(this.backend, defaultSettings)
-            ),
-            languages.registerDefinitionProvider(
-                ExtensionHost.langSelector,
-                new mxsDefinitionProvider(this.backend, defaultSettings)
-            ),            
-            languages.registerRenameProvider(
-                ExtensionHost.langSelector,
-                new mxsRenameProvider(this.backend, defaultSettings)
-            ),
-            languages.registerDocumentHighlightProvider(
-                ExtensionHost.langSelector,
-                new mxsDocumentHighlightProvider(this.backend, defaultSettings)
-            ),
-            languages.registerCompletionItemProvider(
-                ExtensionHost.langSelector,
-                new mxsCompletionProvider(this.backend, defaultSettings),
-                " ", ".", "="
-            ),
-            languages.registerSignatureHelpProvider(
-                ExtensionHost.langSelector,
-                new mxsSignatureHelpProvider(this.backend, defaultSettings),
-                "(", ",", " "
             ),
             languages.registerDocumentSemanticTokensProvider(
                 ExtensionHost.langSelector,
@@ -450,28 +425,6 @@ export class ExtensionHost
                 new mxsRangeSemanticTokensProvider(this.backend),
                 mxsSemtoTokensLegend
             ),
-            languages.registerHoverProvider(
-                ExtensionHost.langSelector,
-                new mxsHoverProvider(this.backend, defaultSettings)
-            ),
-            languages.registerLinkedEditingRangeProvider(
-                ExtensionHost.langSelector,
-                new mxsLinkedEditingRangeProvider(this.backend, defaultSettings)
-            ),
-            languages.registerFoldingRangeProvider(
-                ExtensionHost.langSelector,
-                new mxsFoldingRangeProvider(this.backend, defaultSettings)
-            ),
-            languages.registerCallHierarchyProvider(
-                ExtensionHost.langSelector,
-                new mxsCallHierarchyProvider(this.backend, defaultSettings)
-            ),
-            
-            languages.registerCodeLensProvider(
-                ExtensionHost.langSelector,
-                this.codeLensProvider = new mxsCodeLensProvider(this.backend)
-            ),
-            // /*
             languages.registerDocumentRangeFormattingEditProvider(
                 ExtensionHost.langSelector,
                 new mxsRangeFormattingProvider(
@@ -479,18 +432,113 @@ export class ExtensionHost
                     defaultSettings.formatter
                 )
             ),
-            // */
             languages.registerDocumentFormattingEditProvider(
                 ExtensionHost.langSelector,
                 new mxsFormattingProvider(
                     this.backend,
                     prettifySettings)
             ),
-            languages.registerWorkspaceSymbolProvider(
-                this.workspaceSymbolProvider
+        );
+        // conditional Providers
+        if (defaultSettings.providers.dataBaseCompletion || defaultSettings.providers.codeCompletion) {
+            ctx.subscriptions.push(
+                languages.registerCompletionItemProvider(
+                    ExtensionHost.langSelector,
+                    new mxsCompletionProvider(this.backend, defaultSettings),
+                    " ", ".", "="
+                )
             )
-            //...
-        )
+        }
+        if (defaultSettings.providers.referenceProvider) {
+            ctx.subscriptions.push(
+                languages.registerReferenceProvider(
+                    ExtensionHost.langSelector,
+                    new mxsReferenceProvider(this.backend, defaultSettings)
+                )
+            )
+        }
+        if (defaultSettings.providers.definitionProvider) {
+            ctx.subscriptions.push(
+                languages.registerDefinitionProvider(
+                    ExtensionHost.langSelector,
+                    new mxsDefinitionProvider(this.backend, defaultSettings)
+                )
+            )
+        }
+        if (defaultSettings.providers.renameProvider) {
+            ctx.subscriptions.push(
+                languages.registerRenameProvider(
+                    ExtensionHost.langSelector,
+                    new mxsRenameProvider(this.backend, defaultSettings)
+                )
+            )
+        }
+        if (defaultSettings.providers.documentHighlightProvider) {
+            ctx.subscriptions.push(
+                languages.registerDocumentHighlightProvider(
+                    ExtensionHost.langSelector,
+                    new mxsDocumentHighlightProvider(this.backend, defaultSettings)
+                )
+            )
+        }
+        if (defaultSettings.providers.signatureHelpProvider) {
+            ctx.subscriptions.push(
+                languages.registerSignatureHelpProvider(
+                    ExtensionHost.langSelector,
+                    new mxsSignatureHelpProvider(this.backend, defaultSettings)
+                )
+            )
+        }
+        if (defaultSettings.providers.hoverProvider) {
+            ctx.subscriptions.push(
+                languages.registerHoverProvider(
+                    ExtensionHost.langSelector,
+                    new mxsHoverProvider(this.backend, defaultSettings)
+                )
+            )
+        }
+        if (defaultSettings.providers.linkedEditingRangeProvider) {
+            ctx.subscriptions.push(
+                languages.registerLinkedEditingRangeProvider(
+                    ExtensionHost.langSelector,
+                    new mxsLinkedEditingRangeProvider(this.backend, defaultSettings)
+                )
+            )
+        }
+        if (defaultSettings.providers.foldingRangeProvider) {
+            ctx.subscriptions.push(
+                languages.registerFoldingRangeProvider(
+                    ExtensionHost.langSelector,
+                    new mxsFoldingRangeProvider(this.backend, defaultSettings)
+                )
+            )
+        }
+        if (defaultSettings.providers.callHierarchyProvider) {
+            ctx.subscriptions.push(
+                languages.registerCallHierarchyProvider(
+                    ExtensionHost.langSelector,
+                    new mxsCallHierarchyProvider(this.backend, defaultSettings)
+                )
+            )
+        }
+        if (defaultSettings.providers.codelensProvider) {
+            ctx.subscriptions.push(
+                languages.registerCodeLensProvider(
+                    ExtensionHost.langSelector,
+                    new mxsCodeLensProvider(this.backend)
+                )
+            )
+        }
+        if (defaultSettings.providers.workspaceSymbolProvider) {
+            ctx.subscriptions.push(
+                languages.registerWorkspaceSymbolProvider(
+                    this.workspaceSymbolProvider
+                    // ExtensionHost.langSelector,
+                    // new mxsWorkspaceSymbolProvider(this.backend)
+                )
+            )
+        }
+        //...
     }
     // register commands
     private registerCommands(ctx: ExtensionContext): void
