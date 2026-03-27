@@ -63,6 +63,10 @@ export interface IBackendTraceSettings
     traceParserDecisions: boolean,
     traceRouting: boolean,
 }
+export interface IBackendAstSettings
+{
+    contextualSemanticTokens: boolean,
+}
 
 export const semTokenTypes =
     [

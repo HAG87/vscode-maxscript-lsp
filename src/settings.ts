@@ -77,6 +77,7 @@ export const defaultSettings: IMaxScriptSettings = {
         codelensProvider: true,
         callHierarchyProvider: true,
         workspaceSymbolProvider: true,
+        contextualSemanticTokens: true,
     },
     formatter: {
         indentChar: '\t',

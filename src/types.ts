@@ -28,6 +28,7 @@ export interface IMaxScriptSettings
         codelensProvider: boolean,
         callHierarchyProvider: boolean,
         workspaceSymbolProvider: boolean,
+        contextualSemanticTokens: boolean,
     };
     debug?: {
         tracePerformance: boolean,

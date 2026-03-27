@@ -12,7 +12,8 @@ import { mxsParser, ProgramContext } from '../parser/mxsParser.js';
 import {
     DiagnosticType, IBackendTraceSettings, ICodeFormatSettings, IDiagnosticEntry,
   ILexicalRange, IMinifySettings, IPrettifySettings, ISemanticToken,
-  ISymbolInfo, SignatureHelpModel, CompletionSuggestion
+  ISymbolInfo, SignatureHelpModel, CompletionSuggestion,
+  IBackendAstSettings
 } from './types.js';
 import { TreeQuery } from './TreeQuery.js';
 import { IformatterResult, mxsSimpleFormatter } from './formatting/simpleCodeFormatter.js';
@@ -122,6 +123,9 @@ export class SourceContext implements IAstContext
         traceParserDecisions: false,
         traceRouting: false,
     };
+    private astSettings: IBackendAstSettings = {
+        contextualSemanticTokens: true,
+    };
     private static readonly LARGE_FILE_CHAR_THRESHOLD = 100000;
     private static readonly LARGE_FILE_LINE_THRESHOLD = 3000;
 
@@ -131,6 +135,9 @@ export class SourceContext implements IAstContext
 
     private isPerformanceTraceEnabled(): boolean {
         return this.traceSettings.tracePerformance;
+    }
+    private isAstSemanticTokenTraceEnabled(): boolean {
+        return this.astSettings.contextualSemanticTokens;
     }
 
     private logPerformanceTrace(message: string): void {
@@ -257,6 +264,9 @@ export class SourceContext implements IAstContext
 
     public updateTraceSettings(settings: IBackendTraceSettings): void {
         this.traceSettings = { ...settings };
+    }
+    public updateAstSettings(settings: IBackendAstSettings): void {
+        this.astSettings = { ...settings };
     }
 
     public constructor(uri: string)
@@ -612,11 +622,13 @@ export class SourceContext implements IAstContext
                 prewarmDuration = this.nowMs() - prewarmStart;
             }
             
-            // 4. Append semantic tokens for user-defined identifiers based on resolved AST
-            const appendSemanticStart = tracePerformance ? this.nowMs() : 0;
-            appendAstSemanticTokens(this.ast, this.semanticTokens, this.identifierCandidates, this.traceSettings.traceRouting);
-            if (tracePerformance) {
-                appendSemanticDuration = this.nowMs() - appendSemanticStart;
+            if (this.isAstSemanticTokenTraceEnabled()) {
+                // 4. Append semantic tokens for user-defined identifiers based on resolved AST
+                const appendSemanticStart = tracePerformance ? this.nowMs() : 0;
+                appendAstSemanticTokens(this.ast, this.semanticTokens, this.identifierCandidates, this.traceSettings.traceRouting);
+                if (tracePerformance) {
+                    appendSemanticDuration = this.nowMs() - appendSemanticStart;
+                }
             }
             
         } catch (err) {

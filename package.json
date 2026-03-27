@@ -299,6 +299,11 @@
             "type": "boolean",
             "default": true,
             "description": "Workspace Symbols: Enable searching for symbols across the entire workspace"
+          },
+          "maxscript.providers.contextualSemanticTokens": {
+            "type": "boolean",
+            "default": true,
+            "description": "Contextual Semantic Tokens: Provide enhanced semantic highlighting based on AST analysis (may impact performance)"
           }
         }
       },

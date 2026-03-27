@@ -6,7 +6,7 @@ import { dirname, isAbsolute, resolve as pathResolve } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 import {
-    DiagnosticType, IBackendTraceSettings, ICodeFormatSettings, IDiagnosticEntry, ILexicalRange, IMinifySettings, IPrettifySettings,
+    DiagnosticType, IBackendAstSettings, IBackendTraceSettings, ICodeFormatSettings, IDiagnosticEntry, ILexicalRange, IMinifySettings, IPrettifySettings,
     ISemanticToken, ISymbolInfo,
 } from './types.js';
 import {
@@ -147,6 +147,9 @@ export class mxsBackend
         tracePerformance: false,
         traceParserDecisions: false,
         traceRouting: false,
+    };
+    private astSettings: IBackendAstSettings = {
+        contextualSemanticTokens: true,
     };
     private workspaceGlobalsVersion: number = 0;
     private readonly callHierarchyService: CallHierarchyService = new CallHierarchyService();
@@ -495,6 +498,13 @@ export class mxsBackend
         this.traceSettings = { ...settings };
         for (const entry of this.sourceContexts.values()) {
             entry.context.updateTraceSettings(this.traceSettings);
+        }
+    }
+    public updateAstSettings(settings: IBackendAstSettings): void
+    {
+        this.astSettings = { ...settings };
+        for (const entry of this.sourceContexts.values()) {
+            entry.context.updateAstSettings(this.astSettings);
         }
     }
 

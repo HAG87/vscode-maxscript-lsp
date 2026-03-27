@@ -69,6 +69,9 @@ export class ExtensionHost
             traceParserDecisions: config.get<boolean>('providers.traceParserDecisions', false),
             traceRouting: config.get<boolean>('providers.traceRouting', false),
         })
+        this.backend.updateAstSettings({
+            contextualSemanticTokens: config.get<boolean>('providers.contextualSemanticTokens', true),
+        })
     }
 
     private resolveWorkspaceFileInUri(sourceUri: string, fileInTarget: string): string | undefined
