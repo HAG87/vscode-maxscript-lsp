@@ -4,20 +4,32 @@ Autodesk 3ds Max Scripting language (MaxScript) support.
 
 ## Features
 
-- Syntax highlight.
-- Grammar error checking
-- Semantic syntax highlight
-- Code autocompletion
-- Outline symbols
-- Go to definition and peek definition in document
+- TextMate syntax highlighting for .ms and .mcr files
+- Parser diagnostics (grammar and syntax errors)
+- Semantic tokens (document and range)
+- Completion (built-in database + code-aware suggestions)
+- Document symbols (outline)
 - Workspace symbols
-- Find all references
-- Rename symbol
-- Code formatter
-- Code minify
-- Code prettifier
-- Code online documentation
+- Go to Definition
+- Find All References
+- Rename Symbol
+- Hover information
+- Document highlights
+- Signature Help
+- Linked editing ranges
+- Folding ranges
+- Call hierarchy
+- CodeLens
+- Document formatting and range formatting
+- Minify commands (open document, single file, multi-file)
+- Prettify commands (open document, single file)
+- Help lookup command
 - Snippets
+
+### Language intelligence notes
+
+- Core navigation and symbol features are AST-first.
+- Contextual semantic tokens can be toggled with a provider setting for performance tuning.
 
 ### Known limitations
 
@@ -31,46 +43,97 @@ Implementing a solution for these limitations will require a full interpreter:
 
 ![feature X](./images/feature-2.gif)
 
-## Release Notes
-
-[Changelog](./CHANGELOG.md)
-
-## Requirements
-
-None.
-
 ## Extension Settings
 
-```json
-  "maxscript.completions": true | false,
-  "maxscript.gotosymbol": true | false,
-  "maxscript.gotodefinition": true | false,
-  "maxscript.semantics": true | false,
-  "maxscript.helpprovider": string,
+Most settings are under the maxScript section.
 
-  "maxscript.completions.dataBaseCompletion": true | false,
-  "maxscript.completions.codeCompletion": true | false,
-  "maxscript.formatter.codeblock": {
-      "parensInNewLine": true | false,
-      "newlineAllways": false | false,
-      "spaced": true | false,
-  },
-  "maxscript.formatter.statements": {
-      "useLineBreaks": true | false,
-      "optionalWhitespace": false | false
-  },
-  "maxscript.formatter.list": {
-      "useLineBreaks": false | false
-  },    
-  "maxscript.prettifier": {
-      "filePrefix": "string",
-      "expressionsToBlock": true | false,
-  },
-  "maxscript.minifier": {
-      "filePrefix": "string",
-      "removeUnnecessaryScopes": true | false,
-      "condenseWhitespace": true | false,
-  }
+```json
+  "maxScript.help.provider": "https://help.autodesk.com/view/MAXDEV/2025/ENU/",
+
+  "maxScript.providers.dataBaseCompletion": true,
+  "maxScript.providers.codeCompletion": true,
+  "maxScript.providers.astSymbolProvider": true,
+  "maxScript.providers.definitionProvider": true,
+  "maxScript.providers.referenceProvider": true,
+  "maxScript.providers.hoverProvider": true,
+  "maxScript.providers.renameProvider": true,
+  "maxScript.providers.documentHighlightProvider": true,
+  "maxScript.providers.signatureHelpProvider": true,
+  "maxscript.providers.linkedEditingRangeProvider": true,
+  "maxscript.providers.foldingRangeProvider": true,
+  "maxscript.providers.codeLensProvider": true,
+  "maxscript.providers.callHierarchyProvider": true,
+  "maxscript.providers.workspaceSymbolProvider": true,
+  "maxscript.providers.contextualSemanticTokens": true,
+  "maxScript.providers.tracePerformance": false,
+  "maxScript.providers.traceRouting": false,
+  "maxScript.providers.traceParserDecisions": false,
+
+  "maxScript.parser.reparseDelay": 300,
+
+  "maxScript.formatter.indentChar": "\\t",
+  "maxScript.formatter.newLineChar": "\\r\\n",
+  "maxScript.formatter.codeblock.parensInNewLine": true,
+  "maxScript.formatter.codeblock.newlineAllways": false,
+  "maxScript.formatter.codeblock.spaced": true,
+  "maxScript.formatter.statements.useLineBreaks": true,
+  "maxScript.formatter.statements.optionalWhitespace": false,
+  "maxScript.formatter.list.useLineBreaks": false,
+
+  "maxScript.minifier.filePrefix": "min_",
+  "maxScript.minifier.removeUnnecessaryScopes": false,
+  "maxScript.minifier.condenseWhitespace": true,
+
+  "maxScript.prettifier.filePrefix": "pretty_",
+  "maxScript.prettifier.expressionsToBlock": true
+}
+```
+
+## Commands
+
+- MaxScript: Code reference...
+- MaxScript: Minify open document
+- MaxScript: Minify file
+- MaxScript: Minify files...
+- MaxScript: Prettify open document
+- MaxScript: Prettify file
+
+## Custom Tasks (Published Extension)
+
+The extension contributes a custom task type: maxscript.
+
+Supported task values:
+
+- minify
+- prettify
+
+Optional task properties:
+
+- patterns: array of glob patterns (relative to workspace folder)
+- continueOnError: continue processing when a file fails
+
+Example .vscode/tasks.json:
+
+```json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "mxs: minify src",
+      "type": "maxscript",
+      "task": "minify",
+      "patterns": ["src/**/*.{ms,mcr}"],
+      "continueOnError": true
+    },
+    {
+      "label": "mxs: prettify src",
+      "type": "maxscript",
+      "task": "prettify",
+      "patterns": ["src/**/*.{ms,mcr}"],
+      "continueOnError": true
+    }
+  ]
+}
 ```
 
 ## Syntax Highlight inside comments
@@ -79,9 +142,12 @@ None.
 
 ## Syntax Highlight
 
-Basic settings for **Custom highlighting**.
+Basic settings for custom highlighting.
 
-There is a list of available scopes [here](./TextMate-scopes.md), and some example rules [here](./tokenColorCustomizations-example.jsonc)
+Available references:
+
+- [TextMate scopes list](./TextMate-scopes.md)
+- [Token color customization examples](./tokenColorCustomizations-example.jsonc)
 
 ```jsonc
   /*
@@ -103,49 +169,56 @@ There is a list of available scopes [here](./TextMate-scopes.md), and some examp
         "name": "Plain text",
         "scope": "documentation.plain.mxs",
         "settings": { "foreground": "#cecece", "fontStyle": ""}
-      },
-      //...
+      }
+      // ...
     ]
-  },
+  }
 ```
 
 ## Executing MaxScript
 
-MXSPyCOM project allow for editing & execution of 3ds Max MaxScript and Python files from external code editors.
+MXSPyCOM project allows editing and execution of 3ds Max MaxScript and Python files from external code editors.
 
 - Get it here: [MXSPyCOM by Jeff Hannna](https://github.com/JeffHanna/MXSPyCOM)
 - Follow the configuration guide to register the COM server.
-- Set up a vscode task:
+- Set up a VS Code task:
 
 ```json
 {
-    "version": "2.0.0",
-    "tasks": [
-      {
-        "label": "MXSPyCOM execute Script",
-        "type": "shell",
-        // Add MXSPyCOM.exe to PATH or use file root, i.e: "C:/MXSPyCOM/MXSPyCOM.exe"
-        "command":".\\MXSPyCOM.exe",
-        "args": [
-            "-s",
-            { "value": "${file}", "quoting": "strong" }
-        ],
-        "group": "test",
-        "presentation": {
-            "echo": true,
-            "reveal": "silent",
-            "focus": false,
-            "panel": "shared"
-        }
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "MXSPyCOM execute Script",
+      "type": "shell",
+      "command": ".\\MXSPyCOM.exe",
+      "args": [
+        "-s",
+        { "value": "${file}", "quoting": "strong" }
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared"
+      }
     }
   ]
 }
 ```
 
-- run the task, enjoy the 3ds max listener catching errors.
+- Run the task to execute script content and inspect errors in the 3ds Max listener.
+
+## Release Notes
+
+[Changelog](./CHANGELOG.md)
+
+## Requirements
+
+None.
 
 ## Contribute
 
-[gitHub](https://github.com/HAG87/vscode-maxscript)
+[gitHub](https://github.com/HAG87/vscode-maxscript-lsp)
 
->Note: MaxScript Structure is to say at least, chaotic. I've done my best to organize structs, classes, interfaces and so on. However the grammar is usable enough.
+> Note: MaxScript structure is, to say the least, chaotic. The project organizes symbols and grammar handling pragmatically; contributions are welcome.
