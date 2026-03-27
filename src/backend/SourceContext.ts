@@ -6,12 +6,11 @@ import {
   ParseCancellationException, ParseTree, ParseTreeWalker,
   PredictionMode, TerminalNode,
 } from 'antlr4ng';
-import { workspace } from 'vscode';
 
 import { mxsLexer } from '../parser/mxsLexer.js';
 import { mxsParser, ProgramContext } from '../parser/mxsParser.js';
 import {
-  DiagnosticType, ICodeFormatSettings, IDiagnosticEntry,
+    DiagnosticType, IBackendTraceSettings, ICodeFormatSettings, IDiagnosticEntry,
   ILexicalRange, IMinifySettings, IPrettifySettings, ISemanticToken,
   ISymbolInfo, SignatureHelpModel, CompletionSuggestion
 } from './types.js';
@@ -118,6 +117,11 @@ export class SourceContext implements IAstContext
     private sllFallbackCount: number = 0;
     private sourceCharCount: number = 0;
     private sourceLineCount: number = 0;
+    private traceSettings: IBackendTraceSettings = {
+        tracePerformance: false,
+        traceParserDecisions: false,
+        traceRouting: false,
+    };
     private static readonly LARGE_FILE_CHAR_THRESHOLD = 100000;
     private static readonly LARGE_FILE_LINE_THRESHOLD = 3000;
 
@@ -126,7 +130,7 @@ export class SourceContext implements IAstContext
     }
 
     private isPerformanceTraceEnabled(): boolean {
-        return workspace.getConfiguration('maxScript').get<boolean>('providers.tracePerformance', false);
+        return this.traceSettings.tracePerformance;
     }
 
     private logPerformanceTrace(message: string): void {
@@ -249,6 +253,10 @@ export class SourceContext implements IAstContext
         this.declarationSourceUriProvider = declarationUriProvider;
         this.workspaceAstByUriProvider = workspaceAstByUriProvider;
         this.astQueryService.configure(resolver, versionProvider, astProvider, fileInAstProvider);
+    }
+
+    public updateTraceSettings(settings: IBackendTraceSettings): void {
+        this.traceSettings = { ...settings };
     }
 
     public constructor(uri: string)
@@ -397,9 +405,8 @@ export class SourceContext implements IAstContext
     // get getTokenStream() { return this.tokenStream; }
     public parse(): void
     {
-        const config = workspace.getConfiguration('maxScript');
-        const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
-        const traceParserDecisions = config.get<boolean>('providers.traceParserDecisions', false);
+        const tracePerformance = this.traceSettings.tracePerformance;
+        const traceParserDecisions = this.traceSettings.traceParserDecisions;
         const parseStart = tracePerformance ? this.nowMs() : 0;
         const sllStart = tracePerformance ? this.nowMs() : 0;
         const sourceMetrics = this.getSourceMetrics();
@@ -607,7 +614,7 @@ export class SourceContext implements IAstContext
             
             // 4. Append semantic tokens for user-defined identifiers based on resolved AST
             const appendSemanticStart = tracePerformance ? this.nowMs() : 0;
-            appendAstSemanticTokens(this.ast, this.semanticTokens, this.identifierCandidates);
+            appendAstSemanticTokens(this.ast, this.semanticTokens, this.identifierCandidates, this.traceSettings.traceRouting);
             if (tracePerformance) {
                 appendSemanticDuration = this.nowMs() - appendSemanticStart;
             }

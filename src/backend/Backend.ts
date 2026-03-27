@@ -3,10 +3,10 @@
 */
 import * as fs from 'fs';
 import { dirname, isAbsolute, resolve as pathResolve } from 'path';
-import { Uri, workspace } from 'vscode';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 import {
-    DiagnosticType, ICodeFormatSettings, IDiagnosticEntry, ILexicalRange, IMinifySettings, IPrettifySettings,
+    DiagnosticType, IBackendTraceSettings, ICodeFormatSettings, IDiagnosticEntry, ILexicalRange, IMinifySettings, IPrettifySettings,
     ISemanticToken, ISymbolInfo,
 } from './types.js';
 import {
@@ -142,6 +142,12 @@ export class mxsBackend
     private workspaceGlobalDeclSource: Map<VariableDeclaration, string> = new Map<VariableDeclaration, string>();
     private dirtyWorkspaceGlobalUris: Set<string> = new Set<string>();
     private runtimeDependencyGraph: Map<string, Set<string>> = new Map<string, Set<string>>();
+    private liveDocumentTextByUri: Map<string, string> = new Map<string, string>();
+    private traceSettings: IBackendTraceSettings = {
+        tracePerformance: false,
+        traceParserDecisions: false,
+        traceRouting: false,
+    };
     private workspaceGlobalsVersion: number = 0;
     private readonly callHierarchyService: CallHierarchyService = new CallHierarchyService();
     private readonly foldingRangeService: FoldingRangeService = new FoldingRangeService();
@@ -172,9 +178,9 @@ export class mxsBackend
     private normalizeContextUri(uri: string): string
     {
         try {
-            const parsed = Uri.parse(uri);
-            if (parsed.scheme === 'file') {
-                return Uri.file(parsed.fsPath).toString();
+            const parsed = new URL(uri);
+            if (parsed.protocol === 'file:') {
+                return pathToFileURL(fileURLToPath(parsed)).toString();
             }
             return uri;
         } catch {
@@ -470,18 +476,73 @@ export class mxsBackend
     /** Returns the SourceContext for a URI if it is already loaded, without creating a new one. */
     public getExistingContext(uri: string): SourceContext | undefined
     {
-        return this.sourceContexts.get(uri)?.context;
+        const key = this.findLoadedContextKey(uri) ?? this.normalizeContextUri(uri);
+        return this.sourceContexts.get(key)?.context;
+    }
+
+    public setLiveDocumentText(uri: string, text: string): void
+    {
+        this.liveDocumentTextByUri.set(this.normalizeContextUri(uri), text);
+    }
+
+    public clearLiveDocumentText(uri: string): void
+    {
+        this.liveDocumentTextByUri.delete(this.normalizeContextUri(uri));
+    }
+
+    public updateTraceSettings(settings: IBackendTraceSettings): void
+    {
+        this.traceSettings = { ...settings };
+        for (const entry of this.sourceContexts.values()) {
+            entry.context.updateTraceSettings(this.traceSettings);
+        }
+    }
+
+    public acquireDependencyContext(ownerUri: string, dependencyUri: string, source?: string): SourceContext
+    {
+        const ownerKey = this.findLoadedContextKey(ownerUri) ?? this.normalizeContextUri(ownerUri);
+        const dependencyKey = this.findLoadedContextKey(dependencyUri) ?? this.normalizeContextUri(dependencyUri);
+
+        const ownerEntry = this.sourceContexts.get(ownerKey);
+        if (!ownerEntry || ownerKey === dependencyKey) {
+            return this.getExistingContext(dependencyKey) ?? this.preloadContext(dependencyKey, source);
+        }
+
+        if (!ownerEntry.dependencies.includes(dependencyKey)) {
+            ownerEntry.dependencies.push(dependencyKey);
+            return this.loadDocument(dependencyKey, source);
+        }
+
+        return this.getExistingContext(dependencyKey) ?? this.loadDocument(dependencyKey, source);
+    }
+
+    public releaseDependencyContext(ownerUri: string, dependencyUri: string): void
+    {
+        const ownerKey = this.findLoadedContextKey(ownerUri) ?? this.normalizeContextUri(ownerUri);
+        const dependencyKey = this.findLoadedContextKey(dependencyUri) ?? this.normalizeContextUri(dependencyUri);
+        const ownerEntry = this.sourceContexts.get(ownerKey);
+        if (!ownerEntry) {
+            return;
+        }
+
+        const dependencyIndex = ownerEntry.dependencies.indexOf(dependencyKey);
+        if (dependencyIndex < 0) {
+            return;
+        }
+
+        ownerEntry.dependencies.splice(dependencyIndex, 1);
+        this.unloadDocument(dependencyKey, ownerEntry);
     }
 
     private getLoadedContextUriByFsPath(fsPath: string): string | undefined
     {
-        const isWindows = process.platform === 'win32';
+        const isWindows = /^[a-zA-Z]:[\\/]/.test(fsPath);
         const expected = isWindows ? fsPath.toLowerCase() : fsPath;
 
         for (const key of this.sourceContexts.keys()) {
             let keyPath: string;
             try {
-                keyPath = Uri.parse(key).fsPath;
+                keyPath = fileURLToPath(new URL(key));
             } catch {
                 continue;
             }
@@ -503,28 +564,16 @@ export class mxsBackend
         }
 
         try {
-            const fsPath = Uri.parse(normalized).fsPath;
+            const fsPath = fileURLToPath(new URL(normalized));
             return this.getLoadedContextUriByFsPath(fsPath);
         } catch {
             return undefined;
         }
     }
 
-    private getLiveDocumentTextByFsPath(fsPath: string): string | undefined
+    private getLiveDocumentText(uri: string): string | undefined
     {
-        const isWindows = process.platform === 'win32';
-        const expected = isWindows ? fsPath.toLowerCase() : fsPath;
-
-        for (const document of workspace.textDocuments) {
-            const candidate = isWindows
-                ? document.uri.fsPath.toLowerCase()
-                : document.uri.fsPath;
-            if (candidate === expected) {
-                return document.getText();
-            }
-        }
-
-        return undefined;
+        return this.liveDocumentTextByUri.get(this.normalizeContextUri(uri));
     }
 
     public getResolvedFileInAst(sourceUri: string, fileInTarget: string): Program | undefined
@@ -534,7 +583,7 @@ export class mxsBackend
             return undefined;
         }
 
-        const sourceFsPath = Uri.parse(sourceUri).fsPath;
+        const sourceFsPath = fileURLToPath(new URL(sourceUri));
         const sourceDir = dirname(sourceFsPath);
         const resolvedPath = isAbsolute(target)
             ? target
@@ -549,14 +598,14 @@ export class mxsBackend
             return undefined;
         }
 
-        const canonicalTargetUri = this.normalizeContextUri(Uri.file(resolvedPath).toString());
+        const canonicalTargetUri = this.normalizeContextUri(pathToFileURL(resolvedPath).toString());
         const targetUri = this.findLoadedContextKey(canonicalTargetUri) ?? canonicalTargetUri;
-        const targetContext = this.getContext(targetUri);
 
         // Always refresh from the newest available source snapshot.
         // Prefer live editor buffer when file is open; otherwise use on-disk text.
-        const latestSource = this.getLiveDocumentTextByFsPath(resolvedPath)
+        const latestSource = this.getLiveDocumentText(targetUri)
             ?? this.getDocumentText(targetUri);
+        const targetContext = this.acquireDependencyContext(sourceUri, targetUri, latestSource);
         targetContext.setText(latestSource);
 
         // Keep fileIn-driven member resolution in sync even before the normal delayed reparse runs.
@@ -673,9 +722,9 @@ export class mxsBackend
      * Document must have been loaded before calling this.
      * @param uri The document uri
      */
-    public reparse(uri: Uri): void
+    public reparse(uri: string): void
     {
-        const normalizedUri = this.normalizeContextUri(uri.toString());
+        const normalizedUri = this.normalizeContextUri(uri);
         const key = this.findLoadedContextKey(normalizedUri) ?? normalizedUri;
         const ctxEntry = this.sourceContexts.get(key);
         if (ctxEntry) {
@@ -691,7 +740,7 @@ export class mxsBackend
      */
     public getDocumentText(uri: string): string
     {
-        return fs.readFileSync(Uri.parse(uri).fsPath, "utf8");
+        return fs.readFileSync(fileURLToPath(new URL(uri)), "utf8");
     }
 
     /**
@@ -728,6 +777,7 @@ export class mxsBackend
         if (!ctxEntry) {
             // new context
             const ctx = new SourceContext(uri);
+            ctx.updateTraceSettings(this.traceSettings);
             ctx.configureWorkspaceGlobalLookup(
                 (name, requesterUri) => this.resolveWorkspaceGlobalDeclaration(name, requesterUri),
                 () => this.getWorkspaceGlobalsVersion(),
@@ -770,6 +820,7 @@ export class mxsBackend
         if (!ctxEntry) {
             // new context
             const ctx = new SourceContext(uri);
+            ctx.updateTraceSettings(this.traceSettings);
             ctx.configureWorkspaceGlobalLookup(
                 (name, requesterUri) => this.resolveWorkspaceGlobalDeclaration(name, requesterUri),
                 () => this.getWorkspaceGlobalsVersion(),
@@ -818,7 +869,7 @@ export class mxsBackend
                 this.removeWorkspaceGlobalsForUri(uri);
                 this.workspaceGlobalsVersion++;
                 // release also all dependencies
-                for (const dep of ctxEntry.dependencies) {
+                for (const dep of [...ctxEntry.dependencies]) {
                     this.unloadDocument(dep, ctxEntry);
                 }
             }

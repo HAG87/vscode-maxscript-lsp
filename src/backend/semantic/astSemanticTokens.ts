@@ -1,4 +1,3 @@
-import { workspace } from 'vscode';
 import { ISemanticToken, type SemTokenModifier, type SemTokenType } from "../types";
 import { CallExpression, DefinitionBlock, FunctionDefinition, MemberExpression, Program, StructDefinition, StructMemberField, VariableDeclaration, VariableReference } from "../ast/ASTNodes";
 import { ASTQuery } from "../ast/ASTQuery";
@@ -90,13 +89,16 @@ type SemanticDeclarationNode = FunctionDefinition | StructDefinition | Definitio
         return { semanticNodeByDeclaration, functionDeclarations };
     }
     
-export default function appendAstSemanticTokens(ast: Program, semTokensCollection: ISemanticToken[], tokenCandidates: Map<string, ISemanticToken[]>): void
+export default function appendAstSemanticTokens(
+    ast: Program,
+    semTokensCollection: ISemanticToken[],
+    tokenCandidates: Map<string, ISemanticToken[]>,
+    traceRouting: boolean = false,
+): void
     {
         if (!ast) {
             return;
         }
-
-        const traceRouting = workspace.getConfiguration('maxScript').get<boolean>('providers.traceRouting', false);
 
         const beforeCount = semTokensCollection.length;
         const tokenLocationCache = new Map<string, ISemanticToken | undefined>();

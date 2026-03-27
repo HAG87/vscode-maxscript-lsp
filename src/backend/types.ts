@@ -57,6 +57,13 @@ export interface IMinifySettings
     removeUnnecessaryScopes: boolean,
 }
 
+export interface IBackendTraceSettings
+{
+    tracePerformance: boolean,
+    traceParserDecisions: boolean,
+    traceRouting: boolean,
+}
+
 export const semTokenTypes =
     [
 		'method',

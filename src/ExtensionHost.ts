@@ -61,6 +61,16 @@ export class ExtensionHost
         this.workspaceSymbolProvider.updateWorkspaceSymbols(uri)
     }
 
+    private syncBackendTraceSettings(): void
+    {
+        const config = workspace.getConfiguration('maxScript')
+        this.backend.updateTraceSettings({
+            tracePerformance: config.get<boolean>('providers.tracePerformance', false),
+            traceParserDecisions: config.get<boolean>('providers.traceParserDecisions', false),
+            traceRouting: config.get<boolean>('providers.traceRouting', false),
+        })
+    }
+
     private resolveWorkspaceFileInUri(sourceUri: string, fileInTarget: string): string | undefined
     {
         const target = fileInTarget.trim();
@@ -123,17 +133,14 @@ export class ExtensionHost
             if (current.has(depUri)) {
                 continue;
             }
-            const depEntry = this.backend.contexts.get(depUri);
-            if (depEntry) {
-                sourceEntry.context.removeDependency(depEntry.context);
-            }
+            this.backend.releaseDependencyContext(sourceUri, depUri)
         }
 
         for (const depUri of current) {
             if (previous.has(depUri)) {
                 continue;
             }
-            const depContext = this.backend.getContext(depUri);
+            const depContext = this.backend.acquireDependencyContext(sourceUri, depUri)
             sourceEntry.context.addAsReferenceTo(depContext);
         }
 
@@ -147,10 +154,7 @@ export class ExtensionHost
         const outgoing = this.runtimeDependencies.get(uri);
         if (sourceEntry && outgoing) {
             for (const depUri of outgoing) {
-                const depEntry = this.backend.contexts.get(depUri);
-                if (depEntry) {
-                    sourceEntry.context.removeDependency(depEntry.context);
-                }
+                this.backend.releaseDependencyContext(uri, depUri)
             }
         }
         this.runtimeDependencies.delete(uri);
@@ -161,11 +165,7 @@ export class ExtensionHost
                 continue;
             }
 
-            const source = this.backend.contexts.get(sourceUri);
-            const closed = this.backend.contexts.get(uri);
-            if (source && closed) {
-                source.context.removeDependency(closed.context);
-            }
+            this.backend.releaseDependencyContext(sourceUri, uri)
             deps.delete(uri);
             this.backend.setRuntimeDependencyTargets(sourceUri, deps);
         }
@@ -189,11 +189,58 @@ export class ExtensionHost
             }
         })
     }
+
+    private publishDiagnosticsForDocument(document: TextDocument): void
+    {
+        const uri = document.uri.toString()
+        const context = this.backend.getExistingContext(uri)
+        if (!context) {
+            this.diagnosticCollection.delete(document.uri)
+            return
+        }
+
+        const diagnostics = [
+            ...context.getDiagnostics,
+            ...this.backend.getWorkspaceGlobalAmbiguityDiagnostics(uri),
+        ]
+
+        this.diagnosticCollection.set(
+            document.uri,
+            diagnosticAdapter(diagnostics)
+        )
+    }
+
+    private refreshOpenDocumentDiagnostics(): void
+    {
+        for (const document of workspace.textDocuments) {
+            if (!Utilities.isLanguageFile(document)) {
+                continue
+            }
+
+            this.publishDiagnosticsForDocument(document)
+        }
+    }
+
+    private reparseAndRefreshDocument(document: TextDocument, updateWorkspaceSymbols: boolean = false): void
+    {
+        const uri = document.uri.toString()
+
+        this.diagnosticCollection.delete(document.uri)
+        this.backend.reparse(uri)
+        this.reconcileRuntimeDependencies(uri, document.getText())
+        this.refreshOpenDocumentDiagnostics()
+        this.scheduleProvidersRefresh()
+
+        if (updateWorkspaceSymbols) {
+            this.updateProviders(uri)
+        }
+    }
     //----------------------------------------------------------------
     public constructor(ctx: ExtensionContext)
     {
         // start backend
         this.backend = new mxsBackend()
+        this.syncBackendTraceSettings()
         // load settings
         const savedSettings = workspace.getConfiguration('maxScript')
         Object.assign(defaultSettings, savedSettings.get('formatter'))
@@ -206,8 +253,7 @@ export class ExtensionHost
         if (editor && Utilities.isLanguageFile(editor.document)) {
             const document = editor.document
             this.backend.loadDocument(document.uri.toString(), document.getText())
-            // TODO:
-            //  this.regenerateBackgroundData(document);
+
             this.diagnosticCollection.set(
                 document.uri,
                 diagnosticAdapter(this.backend.getDiagnostics(document.uri.toString()))
@@ -220,16 +266,9 @@ export class ExtensionHost
             if (Utilities.isLanguageFile(document)) {
                 try {
                     const uri = document.uri.toString()
-                    const context = this.backend.getContext(uri, document.getText())
+                    this.backend.setLiveDocumentText(uri, document.getText())
+                    this.backend.getContext(uri, document.getText())
                     this.reconcileRuntimeDependencies(uri, document.getText())
-                    const diagnostics = [
-                        ...context.getDiagnostics,
-                        ...this.backend.getWorkspaceGlobalAmbiguityDiagnostics(uri),
-                    ]
-                    this.diagnosticCollection.set(
-                        document.uri,
-                        diagnosticAdapter(diagnostics)
-                    )
                 } catch (error) {
                     const message = error instanceof Error ? error.message : String(error)
                     console.error(`[language-maxscript] Failed to initialize context for ${document.uri.toString()}:`, error)
@@ -237,7 +276,8 @@ export class ExtensionHost
                 }
             }
         }
-        // */
+        // update diagnostics
+        this.refreshOpenDocumentDiagnostics()
         // workspace symbols
         this.workspaceSymbolProvider = new mxsWorkspaceSymbolProvider(this.backend)
         //register eventHandlers
@@ -246,7 +286,7 @@ export class ExtensionHost
         this.registerProviders(ctx)
         // register commands
         this.registerCommands(ctx)
-        // watch files
+        // TODO: watch files
         // this.registerFileWatcher(ctx)
     }
 
@@ -269,31 +309,27 @@ export class ExtensionHost
             {
                 if (Utilities.isLanguageFile(document)) {
                     const uri = document.uri.toString()
-                    const context = this.backend.getContext(uri, document.getText())
+                    this.backend.setLiveDocumentText(uri, document.getText())
+                    this.backend.getContext(uri, document.getText())
                     this.reconcileRuntimeDependencies(document.uri.toString(), document.getText())
-                    const diagnostics = [
-                        ...context.getDiagnostics,
-                        ...this.backend.getWorkspaceGlobalAmbiguityDiagnostics(uri),
-                    ]
-                    this.diagnosticCollection.set(
-                        document.uri,
-                        diagnosticAdapter(diagnostics)
-                    )
+                    this.refreshOpenDocumentDiagnostics()
                 }
             }),
             workspace.onDidCloseTextDocument((document: TextDocument) =>
             {
                 if (Utilities.isLanguageFile(document)) {
+                    this.backend.clearLiveDocumentText(document.uri.toString())
                     this.removeRuntimeDependencyGraphFor(document.uri.toString())
                     this.backend.releaseContext(document.uri.toString())
-                    // clear diagnostics for the document
-                    this.diagnosticCollection.set(document.uri, [])
+                    this.diagnosticCollection.delete(document.uri)
+                    this.refreshOpenDocumentDiagnostics()
                 }
             }),
             workspace.onDidChangeTextDocument((event: TextDocumentChangeEvent) =>
             {
                 // check for content changes
                 if (event.contentChanges.length > 0 && Utilities.isLanguageFile(event.document)) {
+                    this.backend.setLiveDocumentText(event.document.uri.toString(), event.document.getText())
                     this.backend.setText(event.document.uri.toString(), event.document.getText())
 
                     const fileName = event.document.fileName
@@ -309,30 +345,7 @@ export class ExtensionHost
                     this.changeTimers.set(fileName, setTimeout(() =>
                     {
                         this.changeTimers.delete(fileName)
-                        
-                        // Clear diagnostics before reparsing to ensure stale errors are removed
-                        this.diagnosticCollection.delete(event.document.uri);
-                        
-                        // Reparse the document
-                        this.backend.reparse(event.document.uri)
-                        this.reconcileRuntimeDependencies(event.document.uri.toString(), event.document.getText())
-                        
-                        // Get fresh diagnostics after reparse
-                        const context = this.backend.getContext(event.document.uri.toString());
-                        const uri = event.document.uri.toString();
-                        const diagnostics = [
-                            ...(context?.getDiagnostics ?? []),
-                            ...this.backend.getWorkspaceGlobalAmbiguityDiagnostics(uri),
-                        ];
-                        
-                        this.diagnosticCollection.set(
-                            event.document.uri,
-                            diagnosticAdapter(diagnostics)
-                        )
-                        
-                        // Refresh providers after reparse (coalesced).
-                        this.scheduleProvidersRefresh()
-                        // this.updateProviders(event.document.uri.toString())
+                        this.reparseAndRefreshDocument(event.document)
                     }, reparseDelay))
                 }
                 // */
@@ -343,6 +356,9 @@ export class ExtensionHost
                     const timer = this.changeTimers.get(document.fileName)
                     if (timer) {
                         clearTimeout(timer)
+                        this.changeTimers.delete(document.fileName)
+                        this.reparseAndRefreshDocument(document, true)
+                        return
                     }
                     //TODO:
                     // use this method to update data
@@ -374,6 +390,7 @@ export class ExtensionHost
                     Object.assign(defaultSettings, savedSettings.get('completions'))
                     Object.assign(minifySettings, savedSettings.get('minifier'))
                     Object.assign(prettifySettings, savedSettings.get('prettifier'))
+                    this.syncBackendTraceSettings()
                     //...
                     // console.log(JSON.stringify(prettifyOptions))
                 }
