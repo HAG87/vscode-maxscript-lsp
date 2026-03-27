@@ -201,10 +201,12 @@ const mandatoryWS: Set<number> = new Set([
     codeTypes.KEYWORD,
     // codeTypes.UNARY
 ])
-const mandatoryCases: Set<[number, number]> = new Set([
-    [codeTypes.COLON, codeTypes.ASSIGN],
-    [codeTypes.COLON, codeTypes.OPERATOR],
-])
+function isMandatoryPair(left: codeTypes, right: codeTypes): boolean {
+    return (
+        (left === codeTypes.COLON && right === codeTypes.ASSIGN) ||
+        (left === codeTypes.COLON && right === codeTypes.OPERATOR)
+    );
+}
 const shouldSkip: Set<number> = new Set([
     codeTypes.WHITESPACE,
     codeTypes.LINE_BREAK,
@@ -518,9 +520,11 @@ export class codeBlock
                     if (
                         (mandatoryWS.has(current.type) &&
                             mandatoryWS.has(next.type)) ||
+                        (mandatoryWS.has(next.type) && 
+                            (current.type === codeTypes.LINE_BREAK || current.type === codeTypes.BREAK)) ||
                         next.type === codeTypes.UNARY ||
                         next.hasPrefix ||
-                        mandatoryCases.has([current.type, next.type])
+                        isMandatoryPair(current.type, next.type)
                     ) {
                         acc += options.whitespaceChar
                     }
@@ -539,6 +543,10 @@ export class codeBlock
                         ) {
                             acc += options.whitespaceChar
                         }
+                    // } else if (mandatoryWS.has(next.type) && 
+                    //     (current.type === codeTypes.LINE_BREAK || current.type === codeTypes.BREAK)) {
+                    //     // Even after line breaks/breaks, add mandatory spacing before alphanumeric tokens
+                    //     acc += options.whitespaceChar
                     }
                 }
             }
@@ -911,7 +919,8 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         const body = <codeBlock>this.visit(ctx.structBody())
 
         body.start = [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak(false, this.indentLevel + 1)]
-        body.end = [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())]
+        // Keep struct closing paren aligned with the struct declaration line.
+        body.end = [this.emmitLineBreak(false, this.indentLevel), <codeToken>this.visit(ctx.rp())]
 
         const vals = [
             this.visit(ctx.STRUCT())!,
