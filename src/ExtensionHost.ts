@@ -55,6 +55,70 @@ export class ExtensionHost
         this.workspaceSymbolProvider.updateWorkspaceSymbols(uri)
     }
 
+    private isLanguageUri(uri: Uri): boolean
+    {
+        if (uri.scheme !== ExtensionHost.langSelector.scheme) {
+            return false;
+        }
+
+        const lower = uri.fsPath.toLowerCase();
+        return lower.endsWith('.ms') || lower.endsWith('.mcr');
+    }
+
+    private isDocumentOpen(uri: Uri): boolean
+    {
+        return workspace.textDocuments.some(document => document.uri.toString() === uri.toString());
+    }
+
+    private hasRuntimeDependencyOwners(targetUri: string): boolean
+    {
+        for (const dependencies of this.runtimeDependencies.values()) {
+            if (dependencies.has(targetUri)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private handleExternalFileChange(uri: Uri): void
+    {
+        if (!this.isLanguageUri(uri) || this.isDocumentOpen(uri)) {
+            return;
+        }
+
+        const targetUri = uri.toString();
+        this.updateProviders(targetUri)
+
+        const hasLoadedContext = this.backend.getExistingContext(targetUri) !== undefined;
+        if (!hasLoadedContext && !this.hasRuntimeDependencyOwners(targetUri)) {
+            return;
+        }
+
+        try {
+            this.backend.clearLiveDocumentText(targetUri)
+            this.backend.setText(targetUri)
+            this.backend.reparse(targetUri)
+            this.refreshOpenDocumentDiagnostics()
+            this.scheduleProvidersRefresh()
+        } catch (error) {
+            console.error(`[language-maxscript] Failed to refresh external file ${targetUri}:`, error)
+        }
+    }
+
+    private handleExternalFileDelete(uri: Uri): void
+    {
+        if (!this.isLanguageUri(uri)) {
+            return;
+        }
+
+        const targetUri = uri.toString();
+        this.workspaceSymbolProvider.removeWorkspaceSymbols(targetUri)
+        this.backend.clearLiveDocumentText(targetUri)
+        this.removeRuntimeDependencyGraphFor(targetUri)
+        this.refreshOpenDocumentDiagnostics()
+        this.scheduleProvidersRefresh()
+    }
+
     private resolveWorkspaceFileInUri(sourceUri: string, fileInTarget: string): string | undefined
     {
         const target = fileInTarget.trim();
@@ -219,19 +283,7 @@ export class ExtensionHost
         Object.assign(defaultSettings, savedSettings.get('completions'))
         Object.assign(minifySettings, savedSettings.get('minifier'))
         Object.assign(prettifySettings, savedSettings.get('prettifier'))
-        // process active open document, if any.
-        /*
-        const editor = window.activeTextEditor
-        if (editor && Utilities.isLanguageFile(editor.document)) {
-            const document = editor.document
-            this.backend.loadDocument(document.uri.toString(), document.getText())
-            // TODO:
-            //  this.regenerateBackgroundData(document);
-            this.diagnosticCollection.set(
-                document.uri,
-                diagnosticAdapter(this.backend.getDiagnostics(document.uri.toString()))
-            )
-        }
+       
         // */
         // Pre-load interpreter + cache data for each open document, if there's any.
         // /*
@@ -260,16 +312,28 @@ export class ExtensionHost
         // register commands
         this.registerCommands(ctx)
         // watch files
-        // this.registerFileWatcher(ctx)
+        this.registerFileWatcher(ctx)
     }
 
     // watch files for changes and update providers
     private registerFileWatcher(ctx: ExtensionContext): void
     {
         const watchFiles = workspace.createFileSystemWatcher('**/*.{ms,mcr}')
+        watchFiles.onDidCreate((uri) =>
+        {
+            if (!this.isLanguageUri(uri) || this.isDocumentOpen(uri)) {
+                return;
+            }
+
+            this.updateProviders(uri.toString())
+        })
         watchFiles.onDidChange((uri) =>
         {
-            this.updateProviders(uri.toString());
+            this.handleExternalFileChange(uri)
+        })
+        watchFiles.onDidDelete((uri) =>
+        {
+            this.handleExternalFileDelete(uri)
         })
         ctx.subscriptions.push(watchFiles)
     }
@@ -374,12 +438,6 @@ export class ExtensionHost
                     // console.log(JSON.stringify(prettifyOptions))
                 }
             }),
-            /*
-            //TODO: clean diagnostics
-            languages.onDidChangeDiagnostics((event:DiagnosticChangeEvent) => {
-                console.log(event.uris)
-            }),
-            //  */
         )
     }
     // register providers

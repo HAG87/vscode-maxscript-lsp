@@ -152,6 +152,12 @@ export class mxsWorkspaceSymbolProvider implements WorkspaceSymbolProvider
             () => this.collectWorkspaceSymbols()
         )
     }
+
+    public removeWorkspaceSymbols(uri: string): void
+    {
+        this.workspaceSymbolsMap.delete(uri)
+        this.collectWorkspaceSymbols()
+    }
     
     provideWorkspaceSymbols(query: string, token: CancellationToken): Promise<SymbolInformation[]>
     {
