@@ -285,11 +285,17 @@ class codeBlock
 	toString(start?: number, stop?: number): string
 	{
 		let result = this.flatten()
-		if (start && stop && start < stop) {
+		if (start !== undefined && stop !== undefined && start <= stop) {
 			// rectify positions
 			const startIndex = result.findIndex(item => item.pos >= start);
 			const stopPos = result.slice().reverse().find(item => item.pos <= stop);
-			const stopIndex = result.findIndex(item => item.pos === stopPos!.pos);
+			if (startIndex < 0 || !stopPos) {
+				return '';
+			}
+			const stopIndex = result.findIndex(item => item.pos === stopPos.pos);
+			if (stopIndex < startIndex) {
+				return '';
+			}
 
 			result = result.slice(startIndex, stopIndex + 1);
 		}
@@ -418,9 +424,10 @@ export class mxsSimpleFormatter
 	private emmit(token: Token, text: string, type: number, position: number): codeToken
 	private emmit(token: Token, text?: string, type?: number, position?: number): codeToken
 	{
+		const mappedType = tokenToCodeType.get(token.type) ?? codeTypes.SYMBOL;
 		return new codeToken(
 			text ?? token.text!,
-			type ?? tokenToCodeType.get(token.type)!,
+			type ?? mappedType,
 			position ?? token.stop
 		);
 	}
@@ -780,10 +787,10 @@ export class mxsSimpleFormatter
 				if (child instanceof codeToken) {
 					// result.push(child);					
 					if (child.type === codeTypes.BLOCK_COMMENT) {
-						child.val =
-							child.val.split(stringIndent)
-								.join(options.newLineChar + options.indentChar.repeat(node.indent));
-						result.push(child);
+						const normalizedVal = child.val
+							.split(stringIndent)
+							.join(options.newLineChar + options.indentChar.repeat(node.indent));
+						result.push(new codeToken(normalizedVal, child.type, child.pos));
 					} else {
 						result.push(child);
 					}
@@ -895,17 +902,23 @@ export class mxsSimpleFormatter
 	private tokensToString(tokenStream: codeToken[], options: ICodeFormatSettings, start: number, stop: number): string
 	private tokensToString(tokenStream: codeToken[], options: ICodeFormatSettings = defaultFormatSettings, start?: number, stop?: number): string
 	{
-		if (start && stop && start < stop) {
+		if (start !== undefined && stop !== undefined && start <= stop) {
 			// rectify positions
 			const startIndex = tokenStream.findIndex(item => item.pos >= start);
 			const stopPos = tokenStream.slice().reverse().find(item => item.pos <= stop);
-			const stopIndex = tokenStream.findIndex(item => item.pos === stopPos!.pos);
+			if (startIndex < 0 || !stopPos) {
+				return '';
+			}
+			const stopIndex = tokenStream.findIndex(item => item.pos === stopPos.pos);
+			if (stopIndex < startIndex) {
+				return '';
+			}
 
 
 			tokenStream = tokenStream.slice(startIndex, stopIndex + 1);
 			// /*
 			// TODO: move this to the flatten function
-			if (tokenStream[0].indent) {
+			if (tokenStream.length > 0 && tokenStream[0].indent) {
 				tokenStream.unshift(
 					new codeToken(
 						options.indentChar.repeat(tokenStream[0].indent),
@@ -944,6 +957,12 @@ export class mxsSimpleFormatter
 		const activeTokens =
 			this.tokenStream.getTokens(start, stop)
 				.filter(token => token.type !== mxsLexer.WS); // comment to disable filtering
+
+		if (activeTokens.length === 0) {
+			const startPos = start ?? 0;
+			const stopPos = stop ?? startPos;
+			return { code: '', start: startPos, stop: stopPos };
+		}
 
 		// produce the tree
 		const codeTree = this.formattingTree(activeTokens, this.options);
