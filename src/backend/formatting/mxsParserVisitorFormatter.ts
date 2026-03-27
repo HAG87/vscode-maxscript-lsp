@@ -833,7 +833,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.EXPR
         )
     }
-    visitRc_submenudefinition = (ctx: RcSubmenuDefinitionContext): codeBlock =>
+    visitRcSubmenuDefinition = (ctx: RcSubmenuDefinitionContext): codeBlock =>
     {
         const vals = [this.visit(ctx.submenuClause())!].flat()
         //------------------
@@ -881,7 +881,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.DECL
         )
     }
-    visitAttributes_clause = (ctx: AttributesClauseContext): codeBlock => // this.visitChildren(ctx)
+    visitAttributesClause = (ctx: AttributesClauseContext): codeBlock => // this.visitChildren(ctx)
     {
         const vals = [
             this.visit(ctx.Attributes())!,
@@ -1498,8 +1498,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     {
         const vals = this.visitChildren(ctx)!;
         // change prefix state
-        Object.assign(<codeToken>vals[0], { isPrefix: true });
-        // (vals[0] as codeToken).isPrefix = true
+        (<codeToken>vals[0]).hasPrefix = true;
         return vals
     }
     visitIdentifier = (ctx: IdentifierContext): codeToken =>

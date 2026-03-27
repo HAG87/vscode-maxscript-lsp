@@ -9,7 +9,7 @@ import {
   FnDefinitionContext, FnReturnStatementContext, ForLoopStatementContext,
   FunctionCallContext, IdentifierContext, IfStatementContext, IndexContext,
   LbContext, LbkContext, LcContext, LpContext,
-  MacroscriptDefinitionContext, mxsParser, OperandContext, ParamNameContext,
+    MacroscriptDefinitionContext, mxsParser, ParamNameContext,
   ParamContext, ParamsDefinitionContext, ParenPairContext,
   PluginDefinitionContext, ProgramContext, PropertyContext, RbContext,
   RcSubmenuDefinitionContext, RcContext, RcmenuControlContext, RcmenuDefinitionContext,
@@ -170,7 +170,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
                 let parent = ctx.parent
                 while (parent.parent && (
                     parent.ruleIndex === mxsParser.RULE_factor ||
-                    parent.ruleIndex === mxsParser.RULE_operand
+                    parent.ruleIndex === mxsParser.RULE_postfixExpr
                 )) {
                     parent = parent.parent
                 }
@@ -179,7 +179,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
                 if (
                     parentRule !== mxsParser.RULE_accessor &&
                     parentRule !== mxsParser.RULE_fnArgs &&
-                    parentRule !== mxsParser.RULE_fnCaller &&
+                        parentRule !== mxsParser.RULE_postfixOp &&
                     parentRule !== mxsParser.RULE_operandArg
                 ) {
                     // console.log(parent)
@@ -201,8 +201,6 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         this.visitChildren(ctx)!
     //-------------------------------------------------------    
     visitAssignment = (ctx: AssignmentContext): string =>
-        this.visitChildren(ctx)!
-    visitOperand = (ctx: OperandContext): string =>
         this.visitChildren(ctx)!
     //accessor
     visitAccessor = (ctx: AccessorContext): string =>

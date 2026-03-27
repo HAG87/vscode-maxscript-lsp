@@ -203,7 +203,7 @@ export class symbolTableListener extends mxsParserListener
 
     public override enterRcmenuControl = (ctx: RcmenuControlContext): void =>
     {
-        const id = ctx.operand()?.[0].getText() ?? ctx.identifier()?.getText();
+           const id = ctx.factor()?.[0].getText() ?? ctx.identifier()?.getText();
         this.pushNewSymbol(
             RcControlSymbol, ctx, id,
             ctx.MenuItem()?.getText() ?? ctx.Separator()?.getText()
@@ -334,7 +334,7 @@ export class symbolTableListener extends mxsParserListener
     public override enterEventHandlerStatement = (ctx: EventHandlerStatementContext): void =>
     {
         const refs = ctx._ev_args?._refs;
-        const evType = refs && refs.length > 1 ? refs[1] : refs?.[0];
+            const evType = refs && refs.length >= 2 ? refs[1] : refs?.[0];
         this.pushNewSymbol(EventHandlerStatementSymbol, ctx, evType?.getText());
     }
     public override exitEventHandlerStatement = (ctx: EventHandlerStatementContext): void => { this.popSymbol(); }
@@ -377,7 +377,7 @@ export class symbolTableListener extends mxsParserListener
     public override enterFunctionCall = (ctx: FunctionCallContext): void =>
     {
         //TODO: get caller definition...
-        this.pushNewSymbol(FnCallSymbol, ctx, ctx.fnCaller()?.getText());
+           this.pushNewSymbol(FnCallSymbol, ctx, ctx.parent?.parent?.getText() ?? ctx.getText());
     }
     public override exitFunctionCall = (ctx: FunctionCallContext): void => { this.popSymbol(); }
 
