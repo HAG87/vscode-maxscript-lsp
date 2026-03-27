@@ -1,4 +1,3 @@
-import { basename } from 'path';
 import {
     CallHierarchyIncomingCall,
     CallHierarchyItem,
@@ -7,179 +6,75 @@ import {
     CancellationToken,
     Position,
     ProviderResult,
-    Range,
     SymbolKind,
     TextDocument,
     Uri,
+    workspace,
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
-import { ASTQuery } from '@backend/ast/ASTQuery.js';
 import {
-    CallExpression,
-    FunctionDefinition,
-    MemberExpression,
-    Program,
-    StructDefinition,
-    VariableDeclaration,
-    VariableReference,
-} from '@backend/ast/ASTNodes.js';
+    CallHierarchyCallModel,
+    CallHierarchyDescriptor,
+    CallHierarchyItemModel,
+} from '@backend/callHierarchy/CallHierarchyService.js';
 import { Utilities } from './utils.js';
 
-interface DeclarationDescriptor {
-    declaration: VariableDeclaration;
-    uri: string;
-    ast: Program;
-}
-
 export class mxsCallHierarchyProvider implements CallHierarchyProvider {
-    private readonly itemDeclarations = new WeakMap<CallHierarchyItem, DeclarationDescriptor>();
+    private readonly itemDescriptors = new WeakMap<CallHierarchyItem, CallHierarchyDescriptor>();
 
     public constructor(private backend: mxsBackend) { }
 
-    private rangeFromDeclaration(declaration: VariableDeclaration): Range | undefined {
-        return declaration.position
-            ? Utilities.lexicalRangeToRange({
-                start: {
-                    row: declaration.position.start.line,
-                    column: declaration.position.start.column,
-                },
-                end: {
-                    row: declaration.position.end.line,
-                    column: declaration.position.end.column,
-                },
-            })
-            : undefined;
+    private nowMs(): number {
+        return typeof performance !== 'undefined' ? performance.now() : Date.now();
     }
 
-    private selectionRangeFromDeclaration(declaration: VariableDeclaration): Range | undefined {
-        const range = this.rangeFromDeclaration(declaration);
-        if (!range || !declaration.name) {
-            return range;
-        }
-
-        const start = range.start;
-        const end = start.translate(0, declaration.name.length);
-        return new Range(start, end);
-    }
-
-    private toItem(
-        declaration: VariableDeclaration,
-        sourceUri: string,
-        ast: Program,
-    ): CallHierarchyItem | undefined {
-        if (!declaration.name) {
-            return undefined;
-        }
-
-        const semanticNode = ASTQuery.findSemanticNodeForDeclaration(ast, declaration);
-        if (!(semanticNode instanceof FunctionDefinition)) {
-            return undefined;
-        }
-
-        const kind = this.isStructMethod(semanticNode) ? SymbolKind.Method : SymbolKind.Function;
-        const itemRange = this.rangeFromDeclaration(declaration);
-        const selectionRange = this.selectionRangeFromDeclaration(declaration) ?? itemRange;
-        if (!itemRange || !selectionRange) {
-            return undefined;
-        }
-
+    private toVscodeItem(model: CallHierarchyItemModel): CallHierarchyItem {
         const item = new CallHierarchyItem(
-            kind,
-            declaration.name,
-            basename(Uri.parse(sourceUri).fsPath),
-            Uri.parse(sourceUri),
-            itemRange,
-            selectionRange,
+            model.kind === 'method' ? SymbolKind.Method : SymbolKind.Function,
+            model.name,
+            model.detail,
+            Uri.parse(model.uri),
+            Utilities.lexicalRangeToRange(model.range),
+            Utilities.lexicalRangeToRange(model.selectionRange),
         );
 
-        this.itemDeclarations.set(item, { declaration, uri: sourceUri, ast });
+        this.itemDescriptors.set(item, {
+            uri: model.uri,
+            name: model.name,
+            selectionRange: model.selectionRange,
+        });
+
         return item;
     }
 
-    private isStructMethod(functionNode: FunctionDefinition): boolean {
-        let current = functionNode.parent;
-        while (current) {
-            if (current instanceof StructDefinition) {
-                return true;
-            }
-            current = current.parent;
-        }
-        return false;
+    private toVscodeIncomingCalls(calls: CallHierarchyCallModel[]): CallHierarchyIncomingCall[] {
+        return calls.map((entry) =>
+            new CallHierarchyIncomingCall(
+                this.toVscodeItem(entry.item),
+                entry.fromRanges.map((range) => Utilities.lexicalRangeToRange(range)),
+            ));
     }
 
-    private resolveItemDeclaration(item: CallHierarchyItem): DeclarationDescriptor | undefined {
-        const cached = this.itemDeclarations.get(item);
-        if (cached) {
-            return cached;
-        }
-
-        const context = this.backend.contexts.get(item.uri.toString())?.context;
-        const ast = context?.getResolvedAST();
-        if (!context || !ast) {
-            return undefined;
-        }
-
-        const declaration = context.astDeclarationAtPosition(
-            item.selectionRange.start.line + 1,
-            item.selectionRange.start.character,
-        );
-        if (!declaration || !declaration.name) {
-            return undefined;
-        }
-
-        const resolved = { declaration, uri: context.sourceUri, ast };
-        this.itemDeclarations.set(item, resolved);
-        return resolved;
+    private toVscodeOutgoingCalls(calls: CallHierarchyCallModel[]): CallHierarchyOutgoingCall[] {
+        return calls.map((entry) =>
+            new CallHierarchyOutgoingCall(
+                this.toVscodeItem(entry.item),
+                entry.fromRanges.map((range) => Utilities.lexicalRangeToRange(range)),
+            ));
     }
 
-    private resolveCalleeDeclaration(ast: Program, callExpression: CallExpression): VariableDeclaration | undefined {
-        if (callExpression.callee instanceof VariableReference) {
-            return ASTQuery.findDefinitionForReference(callExpression.callee);
-        }
-        if (callExpression.callee instanceof MemberExpression) {
-            return ASTQuery.resolveMemberExpressionDeclaration(ast, callExpression.callee);
-        }
-        return undefined;
-    }
-
-    private findEnclosingFunction(node: { parent?: unknown }): FunctionDefinition | undefined {
-        let current = node.parent;
-        while (current) {
-            if (current instanceof FunctionDefinition) {
-                return current;
-            }
-            current = (current as { parent?: unknown }).parent;
-        }
-        return undefined;
-    }
-
-    private declarationForFunction(fn: FunctionDefinition): VariableDeclaration | undefined {
-        return fn.name ? fn.parentScope?.resolveLocal(fn.name) : undefined;
-    }
-
-    private isSameDeclaration(
-        left: VariableDeclaration,
-        leftUri: string,
-        right: VariableDeclaration,
-        rightUri: string,
-    ): boolean {
-        if (left === right) {
-            return true;
+    private descriptorFromItem(item: CallHierarchyItem): CallHierarchyDescriptor | undefined {
+        const descriptor = this.itemDescriptors.get(item);
+        if (descriptor) {
+            return descriptor;
         }
 
-        if (!left.name || !right.name || left.name !== right.name || leftUri !== rightUri) {
-            return false;
-        }
-
-        if (!left.position || !right.position) {
-            return false;
-        }
-
-        return left.position.start.line === right.position.start.line
-            && left.position.start.column === right.position.start.column
-            && left.position.end.line === right.position.end.line
-            && left.position.end.column === right.position.end.column;
+        return {
+            uri: item.uri.toString(),
+            name: item.name,
+            selectionRange: Utilities.rangeToLexicalRange(item.selectionRange),
+        };
     }
 
     prepareCallHierarchy(
@@ -191,19 +86,36 @@ export class mxsCallHierarchyProvider implements CallHierarchyProvider {
             return undefined;
         }
 
-        const context = this.backend.getContext(document.uri.toString());
-        const ast = context.getResolvedAST();
-        if (!ast) {
+        const config = workspace.getConfiguration('maxScript');
+        const traceRouting = config.get<boolean>('providers.traceRouting', false);
+        const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
+        const providerStart = tracePerformance ? this.nowMs() : 0;
+        const logPerformance = (route: string): void => {
+            if (!tracePerformance) {
+                return;
+            }
+            console.log(`[language-maxscript][Performance] callHierarchy.prepare uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route}`);
+        };
+
+        const result = this.backend.prepareAstCallHierarchyItem(
+            document.uri.toString(),
+            position.line + 1,
+            position.character,
+        );
+        if (!result) {
+            if (traceRouting) {
+                console.log('[language-maxscript][CallHierarchyProvider] route=None reason=ast-miss phase=prepare');
+            }
+            logPerformance('None');
             return undefined;
         }
 
-        const declaration = context.astDeclarationAtPosition(position.line + 1, position.character);
-        if (!declaration) {
-            return undefined;
+        if (traceRouting) {
+            console.log('[language-maxscript][CallHierarchyProvider] route=AST phase=prepare');
         }
+        logPerformance('AST');
 
-        const item = this.toItem(declaration, context.sourceUri, ast);
-        return item ? [item] : undefined;
+        return [this.toVscodeItem(result.item)];
     }
 
     provideCallHierarchyOutgoingCalls(
@@ -214,63 +126,13 @@ export class mxsCallHierarchyProvider implements CallHierarchyProvider {
             return undefined;
         }
 
-        const source = this.resolveItemDeclaration(item);
-        if (!source) {
+        const descriptor = this.descriptorFromItem(item);
+        if (!descriptor) {
             return undefined;
         }
 
-        const semanticNode = ASTQuery.findSemanticNodeForDeclaration(source.ast, source.declaration);
-        if (!(semanticNode instanceof FunctionDefinition)) {
-            return undefined;
-        }
-
-        const callsByTarget = new Map<string, { item: CallHierarchyItem; fromRanges: Range[] }>();
-
-        for (const node of semanticNode.walk()) {
-            if (token.isCancellationRequested || !(node instanceof CallExpression) || !node.position) {
-                continue;
-            }
-
-            const callee = this.resolveCalleeDeclaration(source.ast, node);
-            if (!callee) {
-                continue;
-            }
-
-            const sourceContext = this.backend.contexts.get(source.uri)?.context;
-            const calleeUri = sourceContext?.getDeclarationSourceUri(callee) ?? source.uri;
-            const calleeContext = this.backend.contexts.get(calleeUri)?.context;
-            const calleeAst = calleeContext?.getResolvedAST();
-            if (!calleeAst) {
-                continue;
-            }
-
-            const calleeItem = this.toItem(callee, calleeUri, calleeAst);
-            if (!calleeItem) {
-                continue;
-            }
-
-            const key = `${calleeItem.uri.toString()}|${calleeItem.selectionRange.start.line}:${calleeItem.selectionRange.start.character}`;
-            const callRange = Utilities.lexicalRangeToRange({
-                start: {
-                    row: node.position.start.line,
-                    column: node.position.start.column,
-                },
-                end: {
-                    row: node.position.end.line,
-                    column: node.position.end.column,
-                },
-            });
-
-            const existing = callsByTarget.get(key);
-            if (existing) {
-                existing.fromRanges.push(callRange);
-            } else {
-                callsByTarget.set(key, { item: calleeItem, fromRanges: [callRange] });
-            }
-        }
-
-        return [...callsByTarget.values()].map((entry) =>
-            new CallHierarchyOutgoingCall(entry.item, entry.fromRanges));
+        const calls = this.backend.getAstCallHierarchyOutgoingCalls(descriptor);
+        return this.toVscodeOutgoingCalls(calls);
     }
 
     provideCallHierarchyIncomingCalls(
@@ -281,85 +143,12 @@ export class mxsCallHierarchyProvider implements CallHierarchyProvider {
             return undefined;
         }
 
-        const target = this.resolveItemDeclaration(item);
-        if (!target) {
+        const descriptor = this.descriptorFromItem(item);
+        if (!descriptor) {
             return undefined;
         }
 
-        const incoming = new Map<string, { item: CallHierarchyItem; fromRanges: Range[] }>();
-
-        for (const entry of this.backend.contexts.values()) {
-            if (token.isCancellationRequested) {
-                break;
-            }
-
-            const callerContext = entry.context;
-            const callerAst = callerContext.getResolvedAST();
-            if (!callerAst) {
-                continue;
-            }
-
-            for (const node of ASTQuery.walkAllNodes(callerAst)) {
-                if (token.isCancellationRequested || !(node instanceof CallExpression) || !node.position) {
-                    continue;
-                }
-
-                const calleeDeclaration = this.resolveCalleeDeclaration(callerAst, node);
-                if (!calleeDeclaration) {
-                    continue;
-                }
-
-                const resolvedCalleeUri = callerContext.getDeclarationSourceUri(calleeDeclaration) ?? callerContext.sourceUri;
-                if (!this.isSameDeclaration(calleeDeclaration, resolvedCalleeUri, target.declaration, target.uri)) {
-                    continue;
-                }
-
-                const callerFn = this.findEnclosingFunction(node);
-                if (!callerFn) {
-                    continue;
-                }
-
-                const callerDeclaration = this.declarationForFunction(callerFn);
-                if (!callerDeclaration) {
-                    continue;
-                }
-
-                const callerUri = callerContext.getDeclarationSourceUri(callerDeclaration) ?? callerContext.sourceUri;
-                const callerItemAst = this.backend.contexts.get(callerUri)?.context.getResolvedAST();
-                if (!callerItemAst) {
-                    continue;
-                }
-
-                const callerItem = this.toItem(callerDeclaration, callerUri, callerItemAst);
-                if (!callerItem) {
-                    continue;
-                }
-
-                const callRange = Utilities.lexicalRangeToRange({
-                    start: {
-                        row: node.position.start.line,
-                        column: node.position.start.column,
-                    },
-                    end: {
-                        row: node.position.end.line,
-                        column: node.position.end.column,
-                    },
-                });
-
-                const key = `${callerItem.uri.toString()}|${callerItem.selectionRange.start.line}:${callerItem.selectionRange.start.character}`;
-                const existing = incoming.get(key);
-                if (existing) {
-                    existing.fromRanges.push(callRange);
-                } else {
-                    incoming.set(key, {
-                        item: callerItem,
-                        fromRanges: [callRange],
-                    });
-                }
-            }
-        }
-
-        return [...incoming.values()].map((entry) =>
-            new CallHierarchyIncomingCall(entry.item, entry.fromRanges));
+        const calls = this.backend.getAstCallHierarchyIncomingCalls(descriptor);
+        return this.toVscodeIncomingCalls(calls);
     }
 }

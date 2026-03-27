@@ -1,5 +1,6 @@
 import type { Program, VariableDeclaration } from './ast/ASTNodes.js';
 import type { IDiagnosticEntry, ISemanticToken, ISymbolInfo } from './types.js';
+import type { ILexicalRange } from './types.js';
 
 /**
  * The minimal context contract that backend services depend on.
@@ -46,6 +47,14 @@ export interface IAstContext {
 
     /** Returns the resolved AST for another workspace document by URI. */
     getWorkspaceAstForUri(uri: string): Program | undefined;
+
+    /** Returns navigation reference locations for the symbol at the given position. */
+    getAstReferenceLocations(
+        row1Based: number,
+        column0Based: number,
+        includeDeclaration: boolean,
+        sourceLineText?: string,
+    ): Array<{ uri: string; range: ILexicalRange }> | undefined;
 
     /** Returns global-scope completion candidates from the entire workspace. */
     getWorkspaceGlobalCompletions(requesterUri: string): VariableDeclaration[];

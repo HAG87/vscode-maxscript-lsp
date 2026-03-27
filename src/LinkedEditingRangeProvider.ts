@@ -23,9 +23,8 @@ export class mxsLinkedEditingRangeProvider implements LinkedEditingRangeProvider
         if (token.isCancellationRequested) {
             return undefined;
         }
-        const sourceContext = this.backend.getContext(document.uri.toString());
+
         const config = workspace.getConfiguration('maxScript');
-        const useAst = config.get<boolean>('providers.ast.linkedEditingRangeProvider', true);
         const traceRouting = config.get<boolean>('providers.traceRouting', false);
         const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
         const providerStart = tracePerformance ? this.nowMs() : 0;
@@ -37,42 +36,28 @@ export class mxsLinkedEditingRangeProvider implements LinkedEditingRangeProvider
             console.log(`[language-maxscript][Performance] linkedEditingRangeProvider uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route} ranges=${ranges}${reasonPart}`);
         };
 
-        if (useAst) {
-            const sourceLineText = document.lineAt(position.line).text;
-            // Use the same reference lookup as ReferenceProvider, but WITH includeDeclaration
-            const astReferences = sourceContext.getAstReferenceLocations(
-                position.line + 1,
-                position.character,
-                true,  // includeDeclaration
-                sourceLineText,
-            );
+        const sourceLineText = document.lineAt(position.line).text;
+        const lexicalRanges = this.backend.getAstLinkedEditingRanges(
+            document.uri.toString(),
+            position.line + 1,
+            position.character,
+            sourceLineText,
+        );
 
+        if (lexicalRanges && lexicalRanges.length > 0) {
+            const ranges: Range[] = lexicalRanges.map((range) => Utilities.lexicalRangeToRange(range));
 
-
-            if (astReferences && astReferences.length > 0) {
-                const ranges: Range[] = astReferences.map((reference) =>
-                    Utilities.lexicalRangeToRange(reference.range));
-
-                if (traceRouting) {
-                    console.log(`[language-maxscript][LinkedEditingRangeProvider] route=AST ranges=${ranges.length}`);
-                }
-                logPerformance('AST', ranges.length);
-                return new LinkedEditingRanges(ranges);
-            }
             if (traceRouting) {
-                console.log('[language-maxscript][LinkedEditingRangeProvider] route=None reason=no-references');
+                console.log(`[language-maxscript][LinkedEditingRangeProvider] route=AST ranges=${ranges.length}`);
             }
-            logPerformance('None', 0, 'no-references');
-            return undefined;
+            logPerformance('AST', ranges.length);
+            return new LinkedEditingRanges(ranges);
         }
 
         if (traceRouting) {
-            console.log('[language-maxscript][LinkedEditingRangeProvider] route=None reason=ast-disabled');
+            console.log('[language-maxscript][LinkedEditingRangeProvider] route=None reason=no-references');
         }
-
-
-
-        logPerformance('None', 0, 'ast-disabled');
+        logPerformance('None', 0, 'no-references');
         return undefined;
     }
 }

@@ -9,6 +9,14 @@ import {
     DiagnosticType, ICodeFormatSettings, IDiagnosticEntry, ILexicalRange, IMinifySettings, IPrettifySettings,
     ISemanticToken, ISymbolInfo,
 } from './types.js';
+import {
+    CallHierarchyCallModel,
+    CallHierarchyDescriptor,
+    CallHierarchyItemModel,
+    CallHierarchyService,
+} from './callHierarchy/CallHierarchyService.js';
+import { FoldingRangeService } from './folding/FoldingRangeService.js';
+import { LinkedEditingService } from './linkedEditing/LinkedEditingService.js';
 import { ASTQuery } from './ast/ASTQuery.js';
 import { Program, ScopeNode, VariableDeclaration, VariableReference } from './ast/ASTNodes.js';
 import { IformatterResult } from './formatting/simpleCodeFormatter.js';
@@ -135,6 +143,9 @@ export class mxsBackend
     private dirtyWorkspaceGlobalUris: Set<string> = new Set<string>();
     private runtimeDependencyGraph: Map<string, Set<string>> = new Map<string, Set<string>>();
     private workspaceGlobalsVersion: number = 0;
+    private readonly callHierarchyService: CallHierarchyService = new CallHierarchyService();
+    private readonly foldingRangeService: FoldingRangeService = new FoldingRangeService();
+    private readonly linkedEditingService: LinkedEditingService = new LinkedEditingService();
 
     public constructor() { }
 
@@ -588,6 +599,53 @@ export class mxsBackend
     {
         const targetUri = this.findLoadedContextKey(uri) ?? this.normalizeContextUri(uri);
         return this.loadDocument(targetUri, source);
+    }
+
+    public prepareAstCallHierarchyItem(
+        uri: string,
+        row1Based: number,
+        column0Based: number,
+    ): { item: CallHierarchyItemModel; descriptor: CallHierarchyDescriptor } | undefined {
+        const context = this.getContext(uri);
+        return this.callHierarchyService.prepareItem(context, row1Based, column0Based);
+    }
+
+    public getAstCallHierarchyOutgoingCalls(descriptor: CallHierarchyDescriptor): CallHierarchyCallModel[] {
+        const sourceContext = this.getExistingContext(descriptor.uri) ?? this.getContext(descriptor.uri);
+        return this.callHierarchyService.getOutgoingCalls(
+            sourceContext,
+            descriptor,
+            (targetUri) => this.getExistingContext(targetUri) ?? this.getContext(targetUri),
+        );
+    }
+
+    public getAstCallHierarchyIncomingCalls(descriptor: CallHierarchyDescriptor): CallHierarchyCallModel[] {
+        const targetContext = this.getExistingContext(descriptor.uri) ?? this.getContext(descriptor.uri);
+        return this.callHierarchyService.getIncomingCalls(
+            targetContext,
+            descriptor,
+            Array.from(this.sourceContexts.values(), (entry) => entry.context),
+        );
+    }
+
+    public getAstLinkedEditingRanges(
+        uri: string,
+        row1Based: number,
+        column0Based: number,
+        sourceLineText: string,
+    ): ILexicalRange[] | undefined {
+        const sourceContext = this.getContext(uri);
+        return this.linkedEditingService.getLinkedEditingRanges(
+            sourceContext,
+            row1Based,
+            column0Based,
+            sourceLineText,
+        );
+    }
+
+    public getAstFoldingRanges(uri: string, sourceText: string): ILexicalRange[] {
+        const sourceContext = this.getContext(uri);
+        return this.foldingRangeService.getFoldingRanges(sourceContext, sourceText);
     }
     
     /**
