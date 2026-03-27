@@ -43,7 +43,7 @@ export class mxsHoverProvider implements HoverProvider
     }
 
     private astHover(document: TextDocument, position: Position): Hover | undefined {
-        const sourceContext = this.backend.getContext(document.uri.toString());
+        const sourceContext = this.backend.borrowContext(document.uri.toString());
         const hoverModel = sourceContext.getAstHoverModel(
             position.line + 1,
             position.character,

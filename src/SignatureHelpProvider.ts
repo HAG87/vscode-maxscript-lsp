@@ -55,7 +55,7 @@ export class mxsSignatureHelpProvider implements SignatureHelpProvider {
 
         const lineBeforeCursor = document.getText(new Range(position.line, 0, position.line, position.character));
         const row = position.line + 1;
-        const sourceContext = this.backend.getContext(document.uri.toString());
+        const sourceContext = this.backend.borrowContext(document.uri.toString());
         const model = sourceContext.getSignatureHelpModel(
             row,
             lineBeforeCursor,

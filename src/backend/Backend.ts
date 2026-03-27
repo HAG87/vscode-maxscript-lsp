@@ -505,15 +505,15 @@ export class mxsBackend
 
         const ownerEntry = this.sourceContexts.get(ownerKey);
         if (!ownerEntry || ownerKey === dependencyKey) {
-            return this.getExistingContext(dependencyKey) ?? this.preloadContext(dependencyKey, source);
+            return this.borrowContext(dependencyKey, source);
         }
 
         if (!ownerEntry.dependencies.includes(dependencyKey)) {
             ownerEntry.dependencies.push(dependencyKey);
-            return this.loadDocument(dependencyKey, source);
+            return this.acquireContext(dependencyKey, source);
         }
 
-        return this.getExistingContext(dependencyKey) ?? this.loadDocument(dependencyKey, source);
+        return this.getExistingContext(dependencyKey) ?? this.acquireContext(dependencyKey, source);
     }
 
     public releaseDependencyContext(ownerUri: string, dependencyUri: string): void
@@ -644,10 +644,28 @@ export class mxsBackend
      * @param source Optional document content (reads from file if not provided)
      * @returns The SourceContext for the document
      */
-    public getContext(uri: string, source?: string): SourceContext
+    public acquireContext(uri: string, source?: string): SourceContext
     {
         const targetUri = this.findLoadedContextKey(uri) ?? this.normalizeContextUri(uri);
-        return this.loadDocument(targetUri, source);
+        return this.loadDocument(targetUri, source, true);
+    }
+
+    public borrowContext(uri: string, source?: string): SourceContext
+    {
+        const targetUri = this.findLoadedContextKey(uri) ?? this.normalizeContextUri(uri);
+        const existing = this.sourceContexts.get(targetUri);
+        if (existing) {
+            return existing.context;
+        }
+        return this.loadDocument(targetUri, source, false);
+    }
+
+    /**
+     * @deprecated Prefer acquireContext() or borrowContext() to make ownership explicit.
+     */
+    public getContext(uri: string, source?: string): SourceContext
+    {
+        return this.acquireContext(uri, source);
     }
 
     public prepareAstCallHierarchyItem(
@@ -655,21 +673,21 @@ export class mxsBackend
         row1Based: number,
         column0Based: number,
     ): { item: CallHierarchyItemModel; descriptor: CallHierarchyDescriptor } | undefined {
-        const context = this.getContext(uri);
+        const context = this.borrowContext(uri);
         return this.callHierarchyService.prepareItem(context, row1Based, column0Based);
     }
 
     public getAstCallHierarchyOutgoingCalls(descriptor: CallHierarchyDescriptor): CallHierarchyCallModel[] {
-        const sourceContext = this.getExistingContext(descriptor.uri) ?? this.getContext(descriptor.uri);
+        const sourceContext = this.getExistingContext(descriptor.uri) ?? this.borrowContext(descriptor.uri);
         return this.callHierarchyService.getOutgoingCalls(
             sourceContext,
             descriptor,
-            (targetUri) => this.getExistingContext(targetUri) ?? this.getContext(targetUri),
+            (targetUri) => this.getExistingContext(targetUri) ?? this.borrowContext(targetUri),
         );
     }
 
     public getAstCallHierarchyIncomingCalls(descriptor: CallHierarchyDescriptor): CallHierarchyCallModel[] {
-        const targetContext = this.getExistingContext(descriptor.uri) ?? this.getContext(descriptor.uri);
+        const targetContext = this.getExistingContext(descriptor.uri) ?? this.borrowContext(descriptor.uri);
         return this.callHierarchyService.getIncomingCalls(
             targetContext,
             descriptor,
@@ -683,7 +701,7 @@ export class mxsBackend
         column0Based: number,
         sourceLineText: string,
     ): ILexicalRange[] | undefined {
-        const sourceContext = this.getContext(uri);
+        const sourceContext = this.borrowContext(uri);
         return this.linkedEditingService.getLinkedEditingRanges(
             sourceContext,
             row1Based,
@@ -693,7 +711,7 @@ export class mxsBackend
     }
 
     public getAstFoldingRanges(uri: string, sourceText: string): ILexicalRange[] {
-        const sourceContext = this.getContext(uri);
+        const sourceContext = this.borrowContext(uri);
         return this.foldingRangeService.getFoldingRanges(sourceContext, sourceText);
     }
     
@@ -770,7 +788,7 @@ export class mxsBackend
      * @param source the document text
      * @returns 
      */
-    private loadDocument(uri: string, source?: string): SourceContext
+    private loadDocument(uri: string, source?: string, acquire: boolean = true): SourceContext
     {
         let ctxEntry = this.sourceContexts.get(uri);
 
@@ -809,8 +827,10 @@ export class mxsBackend
             this.parseDocument(ctxEntry);
         }
         */
-        // count this as a referency
-        ctxEntry!.refCount++;
+        // Count this as an ownership reference when explicitly acquired.
+        if (acquire) {
+            ctxEntry!.refCount++;
+        }
         return ctxEntry.context;
     }
 

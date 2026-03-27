@@ -267,7 +267,7 @@ export class ExtensionHost
                 try {
                     const uri = document.uri.toString()
                     this.backend.setLiveDocumentText(uri, document.getText())
-                    this.backend.getContext(uri, document.getText())
+                    this.backend.acquireContext(uri, document.getText())
                     this.reconcileRuntimeDependencies(uri, document.getText())
                 } catch (error) {
                     const message = error instanceof Error ? error.message : String(error)
@@ -310,7 +310,7 @@ export class ExtensionHost
                 if (Utilities.isLanguageFile(document)) {
                     const uri = document.uri.toString()
                     this.backend.setLiveDocumentText(uri, document.getText())
-                    this.backend.getContext(uri, document.getText())
+                    this.backend.acquireContext(uri, document.getText())
                     this.reconcileRuntimeDependencies(document.uri.toString(), document.getText())
                     this.refreshOpenDocumentDiagnostics()
                 }
@@ -633,7 +633,7 @@ export class ExtensionHost
     private minifyDocument(uri: Uri, shouldUnload: boolean = false, enhanced: boolean = true): string | null
     {
         // minify
-        const minResult = this.backend.getContext(uri.toString())?.minifyCode(minifySettings, enhanced)
+        const minResult = this.backend.acquireContext(uri.toString())?.minifyCode(minifySettings, enhanced)
         // minify done, dispose context
         if (shouldUnload) {
             this.backend.releaseContext(uri.toString())
@@ -675,7 +675,7 @@ export class ExtensionHost
     private prettifyDocument(uri: Uri, shouldUnload: boolean = false): string | null
     {
         const prettyResult =
-            this.backend.getContext(uri.toString())?.prettifyCode(prettifySettings)
+            this.backend.acquireContext(uri.toString())?.prettifyCode(prettifySettings)
         // done, dispose context
         if (shouldUnload) {
             this.backend.releaseContext(uri.toString())

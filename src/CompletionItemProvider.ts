@@ -105,7 +105,7 @@ export class mxsCompletionProvider implements CompletionItemProvider
                 resolve(undefined);
             });
 
-            const sourceContext = this.backend.getContext(document.uri.toString());
+            const sourceContext = this.backend.borrowContext(document.uri.toString());
             const useAst = this.options.providers.codeCompletion;
             const tracePerformance = this.options.debug?.tracePerformance || false;
             

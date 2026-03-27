@@ -30,7 +30,7 @@ export class mxsReferenceProvider implements ReferenceProvider
             return undefined;
         }
 
-        const sourceContext = this.backend.getContext(document.uri.toString());
+        const sourceContext = this.backend.borrowContext(document.uri.toString());
 
         const traceRouting = this.options?.debug?.traceRouting || false;
         const tracePerformance = this.options?.debug?.tracePerformance || false;

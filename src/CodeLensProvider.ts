@@ -42,7 +42,7 @@ export class mxsCodeLensProvider implements CodeLensProvider
         }
 
         const uri = document.uri;
-        const context = this.backend.getContext(uri.toString());
+        const context = this.backend.borrowContext(uri.toString());
         const anchors = context.getAstCodeLensAnchors();
         if (anchors.length === 0) {
             return [];
@@ -72,7 +72,7 @@ export class mxsCodeLensProvider implements CodeLensProvider
         }
 
         const lens = codeLens as AstDeclarationCodeLens;
-        const context = this.backend.getContext(lens.uri.toString());
+        const context = this.backend.borrowContext(lens.uri.toString());
         const resolved = context.resolveAstCodeLens(lens.declarationLine, lens.declarationCharacter);
         if (!resolved) {
             return codeLens;

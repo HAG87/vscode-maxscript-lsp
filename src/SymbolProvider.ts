@@ -64,7 +64,7 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
             console.log(`[language-maxscript][Performance] symbolProvider uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route} symbols=${count}`);
         };
 
-        const sourceContext = this.backend.getContext(document.uri.toString());
+        const sourceContext = this.backend.borrowContext(document.uri.toString());
 
         if (traceRouting && !sourceContext) {
             console.log(`[language-maxscript][SymbolProvider] sourceContext=undefined for ${document.uri.toString()}`);

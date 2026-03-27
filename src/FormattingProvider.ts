@@ -21,7 +21,7 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
         }
 
         const { code } =
-            this.backend.getContext(document.uri.toString()).formatCode(
+            this.backend.borrowContext(document.uri.toString()).formatCode(
                 {
                     start: document.offsetAt(range.start),
                     stop: document.offsetAt(range.end) - 1
@@ -46,7 +46,7 @@ export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditPr
             }
 
             const { code } =
-                this.backend.getContext(document.uri.toString()).formatCode(
+                this.backend.borrowContext(document.uri.toString()).formatCode(
                     {
                         start: document.offsetAt(range.start),
                         stop: document.offsetAt(range.end) - 1
@@ -76,7 +76,7 @@ export class mxsFormattingProvider implements DocumentFormattingEditProvider
         );
 
         const { code } =
-            this.backend.getContext(document.uri.toString()).formatCode(
+            this.backend.borrowContext(document.uri.toString()).formatCode(
                 Utilities.rangeToLexicalRange(range),
                 this.options
             );

@@ -35,7 +35,7 @@ export class mxsRenameProvider implements RenameProvider
             const reasonPart = reason ? ` reason=${reason}` : '';
             console.log(`[language-maxscript][Performance] renameProvider.prepare uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route}${reasonPart}`);
         };
-        const sourceContext = this.backend.getContext(document.uri.toString());
+        const sourceContext = this.backend.borrowContext(document.uri.toString());
 
         const renameTarget = sourceContext.prepareAstRename(
             position.line + 1,
@@ -80,7 +80,7 @@ export class mxsRenameProvider implements RenameProvider
             const reasonPart = reason ? ` reason=${reason}` : '';
             console.log(`[language-maxscript][Performance] renameProvider.edits uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route} edits=${edits}${reasonPart}`);
         };
-        const sourceContext = this.backend.getContext(document.uri.toString());
+        const sourceContext = this.backend.borrowContext(document.uri.toString());
 
         const astEdits = sourceContext.buildAstRenameEdits(
             position.line + 1,

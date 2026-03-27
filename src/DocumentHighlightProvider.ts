@@ -24,7 +24,7 @@ export class mxsDocumentHighlightProvider implements DocumentHighlightProvider
             return undefined;
         }
 
-        const sourceContext = this.backend.getContext(document.uri.toString());
+        const sourceContext = this.backend.borrowContext(document.uri.toString());
         
         const traceRouting = this.options?.debug?.traceRouting || false;
         const tracePerformance = this.options?.debug?.tracePerformance || false;

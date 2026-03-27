@@ -24,7 +24,7 @@ export class mxsDefinitionProvider implements DefinitionProvider
             return null;
         }
 
-        const context = this.backend.getContext(document.uri.toString());
+        const context = this.backend.borrowContext(document.uri.toString());
 
         const traceRouting = this.options?.debug?.traceRouting || false;
         const tracePerformance = this.options?.debug?.tracePerformance || false;
