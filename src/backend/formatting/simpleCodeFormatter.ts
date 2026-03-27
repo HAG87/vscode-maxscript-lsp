@@ -292,7 +292,10 @@ class codeBlock
 			if (startIndex < 0 || !stopPos) {
 				return '';
 			}
-			const stopIndex = result.findIndex(item => item.pos === stopPos.pos);
+			const reverseStopIndex = result.slice().reverse().findIndex(item => item.pos === stopPos.pos);
+			const stopIndex = reverseStopIndex >= 0
+				? (result.length - 1 - reverseStopIndex)
+				: -1;
 			if (stopIndex < startIndex) {
 				return '';
 			}
@@ -429,6 +432,14 @@ export class mxsSimpleFormatter
 			text ?? token.text!,
 			type ?? mappedType,
 			position ?? token.stop
+		);
+	}
+
+	private filterFormattingTokens(tokens: Token[], options: ICodeFormatSettings): Token[]
+	{
+		return tokens.filter(token =>
+			token.type !== mxsLexer.WS ||
+			(token.text?.includes(options.lineContinuationChar) ?? false)
 		);
 	}
 
@@ -937,7 +948,10 @@ export class mxsSimpleFormatter
 			if (startIndex < 0 || !stopPos) {
 				return '';
 			}
-			const stopIndex = tokenStream.findIndex(item => item.pos === stopPos.pos);
+			const reverseStopIndex = tokenStream.slice().reverse().findIndex(item => item.pos === stopPos.pos);
+			const stopIndex = reverseStopIndex >= 0
+				? (tokenStream.length - 1 - reverseStopIndex)
+				: -1;
 			if (stopIndex < startIndex) {
 				return '';
 			}
@@ -971,8 +985,8 @@ export class mxsSimpleFormatter
 	// get tokens within range
 	public formatRange(start: number, stop: number): IformatterResult
 	{
-		// format the entire doc
-		const activeTokens = this.tokens.filter(token => token.type !== mxsLexer.WS);
+		// Keep continuation WS tokens so line continuation markers are preserved.
+		const activeTokens = this.filterFormattingTokens(this.tokens, this.options);
 
 		// produce the tree
 		// const codeTree = this.formattingTree(this.tokens, this.options); // disable filtering
@@ -992,9 +1006,7 @@ export class mxsSimpleFormatter
 	//FIXME: error when the file starts with a comment or a blank line, it doesn't work at all.
 	public formatTokenRange(start?: number, stop?: number): IformatterResult
 	{
-		const activeTokens =
-			this.tokenStream.getTokens(start, stop)
-				.filter(token => token.type !== mxsLexer.WS); // comment to disable filtering
+		const activeTokens = this.filterFormattingTokens(this.tokenStream.getTokens(start, stop), this.options);
 
 		if (activeTokens.length === 0) {
 			const startPos = start ?? 0;
