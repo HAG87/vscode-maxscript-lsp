@@ -226,10 +226,10 @@ export class mxsCompletionProvider implements CompletionItemProvider
         });
     }
     /*
-    TODO: Implement
+    // TODO: Implement
     resolveCompletionItem?(item: CompletionItem, token: CancellationToken): ProviderResult<CompletionItem>
     {
         throw new Error("Method not implemented.");
     }
-    */
+    // */
 }

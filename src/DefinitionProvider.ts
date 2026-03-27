@@ -32,7 +32,6 @@ export class mxsDefinitionProvider implements DefinitionProvider
         const context = this.backend.getContext(document.uri.toString());
 
         const config = workspace.getConfiguration('maxScript');
-        const useAst = config.get<boolean>('providers.ast.definitionProvider', true);
         const traceRouting = config.get<boolean>('providers.traceRouting', false);
         const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
         const providerStart = tracePerformance ? this.nowMs() : 0;
@@ -45,45 +44,41 @@ export class mxsDefinitionProvider implements DefinitionProvider
             console.log(`[language-maxscript][Performance] definitionProvider uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route}${scopePart}${reasonPart}`);
         };
 
-        if (useAst) {
-            const currentLineText = document.lineAt(position.line).text;
-            const definitionTarget = context.getAstDefinitionTarget(
-                position.line + 1,
-                position.character,
-                currentLineText,
-                (row1Based) => {
-                    const lineIndex = row1Based - 1;
-                    return lineIndex >= 0 && lineIndex < document.lineCount
-                        ? document.lineAt(lineIndex).text
-                        : undefined;
-                },
-                () => token.isCancellationRequested,
-            );
-            if (definitionTarget) {
-                if (traceRouting) {
-                    const scope = definitionTarget.targetUri === context.sourceUri ? 'local' : 'xfile';
-                    console.log(`[language-maxscript][DefinitionProvider] route=AST scope=${scope}`);
-                }
-                logPerformance(
-                    'AST',
-                    definitionTarget.targetUri === context.sourceUri ? 'local' : 'xfile',
-                );
-                return new Location(
-                    definitionTarget.targetUri === context.sourceUri
-                        ? document.uri
-                        : Uri.parse(definitionTarget.targetUri),
-                    Utilities.lexicalRangeToRange(definitionTarget.range),
-                );
-            }
+        const currentLineText = document.lineAt(position.line).text;
+        const definitionTarget = context.getAstDefinitionTarget(
+            position.line + 1,
+            position.character,
+            currentLineText,
+            (row1Based) => {
+                const lineIndex = row1Based - 1;
+                return lineIndex >= 0 && lineIndex < document.lineCount
+                    ? document.lineAt(lineIndex).text
+                    : undefined;
+            },
+            () => token.isCancellationRequested,
+        );
+        if (definitionTarget) {
             if (traceRouting) {
-                console.log('[language-maxscript][DefinitionProvider] route=None reason=ast-miss');
+                const scope = definitionTarget.targetUri === context.sourceUri ? 'local' : 'xfile';
+                console.log(`[language-maxscript][DefinitionProvider] route=AST scope=${scope}`);
             }
+            logPerformance(
+                'AST',
+                definitionTarget.targetUri === context.sourceUri ? 'local' : 'xfile',
+            );
+            return new Location(
+                definitionTarget.targetUri === context.sourceUri
+                    ? document.uri
+                    : Uri.parse(definitionTarget.targetUri),
+                Utilities.lexicalRangeToRange(definitionTarget.range),
+            );
         }
 
         if (traceRouting) {
-            console.log(`[language-maxscript][DefinitionProvider] route=None reason=${useAst ? 'ast-miss' : 'ast-disabled'}`);
+            console.log('[language-maxscript][DefinitionProvider] route=None reason=ast-miss');
         }
-        logPerformance('None', undefined, useAst ? 'ast-miss' : 'ast-disabled');
+
+        logPerformance('None', undefined, 'ast-miss');
         return null;
     }
 }

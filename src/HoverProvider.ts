@@ -1,6 +1,6 @@
 import {
   CancellationToken, Hover, HoverProvider, MarkdownString,
-    Position, ProviderResult, Range, TextDocument, workspace,
+        Position, ProviderResult, TextDocument, workspace,
 } from 'vscode';
 
 import { mxsBackend } from '@backend/Backend.js';
@@ -59,30 +59,6 @@ export class mxsHoverProvider implements HoverProvider
             : new Hover([markdown]);
     }
 
-    private legacyHover(document: TextDocument, position: Position): Hover | undefined {
-        const ctx = this.backend.getContext(document.uri.toString());
-        const info = ctx.symbolAtPosition(
-            position.line + 1,
-            position.character
-        );
-
-        if (!info) {
-            return undefined;
-        }
-
-        const hoverModel = ctx.getLegacyHoverModel(
-            position.line + 1,
-            position.character);
-
-        if (!hoverModel) {
-            return undefined;
-        }
-
-        const markedStr: MarkdownString = new MarkdownString(`**${symbolDescriptionFromEnum(hoverModel.symbolKind as SymbolKind)}**\n`);
-        markedStr.appendCodeblock(hoverModel.codeSnippet, 'maxscript');
-        return new Hover([markedStr]);
-    }
-
     provideHover(document: TextDocument, position: Position, token: CancellationToken): ProviderResult<Hover>
     {
         if (token.isCancellationRequested) {
@@ -90,8 +66,6 @@ export class mxsHoverProvider implements HoverProvider
         }
 
         const config = workspace.getConfiguration('maxScript');
-        const useAst = config.get<boolean>('providers.ast.hoverProvider', true);
-        const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
         const traceRouting = config.get<boolean>('providers.traceRouting', false);
         const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
         const providerStart = tracePerformance ? this.nowMs() : 0;
@@ -111,26 +85,13 @@ export class mxsHoverProvider implements HoverProvider
             return apiHover;
         }
 
-        if (useAst) {
-            const hover = this.astHover(document, position);
-            if (hover) {
-                if (traceRouting) {
-                    console.log('[language-maxscript][HoverProvider] route=AST');
-                }
-                logPerformance('AST');
-                return hover;
+        const hover = this.astHover(document, position);
+        if (hover) {
+            if (traceRouting) {
+                console.log('[language-maxscript][HoverProvider] route=AST');
             }
-        }
-
-        if (fallbackToLegacy) {
-            const hover = this.legacyHover(document, position);
-            if (hover) {
-                if (traceRouting) {
-                    console.log('[language-maxscript][HoverProvider] route=Legacy');
-                }
-                logPerformance('Legacy');
-                return hover;
-            }
+            logPerformance('AST');
+            return hover;
         }
 
         if (traceRouting) {

@@ -31,7 +31,6 @@ export class mxsReferenceProvider implements ReferenceProvider
 
         const sourceContext = this.backend.getContext(document.uri.toString());
         const config = workspace.getConfiguration('maxScript');
-        const useAst = config.get<boolean>('providers.ast.referenceProvider', true);
         const traceRouting = config.get<boolean>('providers.traceRouting', false);
         const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
         const providerStart = tracePerformance ? this.nowMs() : 0;
@@ -43,46 +42,41 @@ export class mxsReferenceProvider implements ReferenceProvider
             console.log(`[language-maxscript][Performance] referenceProvider uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route} refs=${refs}${reasonPart}`);
         };
 
-        if (useAst) {
-            const sourceLineText = document.lineAt(position.line).text;
-            const astReferences = sourceContext.getAstReferenceLocations(
-                position.line + 1,
-                position.character,
-                context.includeDeclaration,
-                sourceLineText,
-            );
+        const sourceLineText = document.lineAt(position.line).text;
+        const astReferences = sourceContext.getAstReferenceLocations(
+            position.line + 1,
+            position.character,
+            context.includeDeclaration,
+            sourceLineText,
+        );
 
-            if (astReferences) {
-                const parsedUris = new Map<string, Uri>();
-                const result = astReferences.map((reference) =>
-                    new Location(
-                        parsedUris.get(reference.uri)
-                        ?? (() => {
-                            const parsed = reference.uri === document.uri.toString()
-                                ? document.uri
-                                : Uri.parse(reference.uri);
-                            parsedUris.set(reference.uri, parsed);
-                            return parsed;
-                        })(),
-                        Utilities.lexicalRangeToRange(reference.range),
-                    ));
-
-                if (traceRouting) {
-                    console.log(`[language-maxscript][ReferenceProvider] route=AST refs=${result.length}`);
-                }
-                logPerformance('AST', result.length);
-                return result;
-            }
+        if (astReferences) {
+            const parsedUris = new Map<string, Uri>();
+            const result = astReferences.map((reference) =>
+                new Location(
+                    parsedUris.get(reference.uri)
+                    ?? (() => {
+                        const parsed = reference.uri === document.uri.toString()
+                            ? document.uri
+                            : Uri.parse(reference.uri);
+                        parsedUris.set(reference.uri, parsed);
+                        return parsed;
+                    })(),
+                    Utilities.lexicalRangeToRange(reference.range),
+                ));
 
             if (traceRouting) {
-                console.log('[language-maxscript][ReferenceProvider] route=None reason=ast-miss');
+                console.log(`[language-maxscript][ReferenceProvider] route=AST refs=${result.length}`);
             }
+            logPerformance('AST', result.length);
+            return result;
         }
 
         if (traceRouting) {
-            console.log(`[language-maxscript][ReferenceProvider] route=None reason=${useAst ? 'ast-miss' : 'ast-disabled'}`);
+            console.log('[language-maxscript][ReferenceProvider] route=None reason=ast-miss');
         }
-        logPerformance('None', 0, useAst ? 'ast-miss' : 'ast-disabled');
+
+        logPerformance('None', 0, 'ast-miss');
         return undefined;
     }
 }

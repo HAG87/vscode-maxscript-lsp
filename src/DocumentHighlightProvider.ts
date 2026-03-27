@@ -6,7 +6,6 @@ import {
 
 import { mxsBackend } from '@backend/Backend.js';
 import { Utilities } from './utils.js';
-import { translateHighlightKind } from './SymbolTranslator.js';
 
 export class mxsDocumentHighlightProvider implements DocumentHighlightProvider
 {
@@ -27,12 +26,10 @@ export class mxsDocumentHighlightProvider implements DocumentHighlightProvider
 
         const sourceContext = this.backend.getContext(document.uri.toString());
         const config = workspace.getConfiguration('maxScript');
-        const useAst = config.get<boolean>('providers.ast.documentHighlightProvider', true);
-        const fallbackToLegacy = config.get<boolean>('providers.fallbackToLegacy', true);
         const traceRouting = config.get<boolean>('providers.traceRouting', false);
         const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
         const providerStart = tracePerformance ? this.nowMs() : 0;
-        const logPerformance = (route: 'AST' | 'Legacy' | 'None', highlights: number, reason?: string): void => {
+        const logPerformance = (route: 'AST' | 'None', highlights: number, reason?: string): void => {
             if (!tracePerformance) {
                 return;
             }
@@ -40,70 +37,34 @@ export class mxsDocumentHighlightProvider implements DocumentHighlightProvider
             console.log(`[language-maxscript][Performance] highlightProvider uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route} highlights=${highlights}${reasonPart}`);
         };
 
-        if (useAst) {
-            const astHighlights = sourceContext.getAstDocumentHighlights(
-                position.line + 1,
-                position.character,
-                (row1Based) => {
-                    const lineIndex = row1Based - 1;
-                    return lineIndex >= 0 && lineIndex < document.lineCount
-                        ? document.lineAt(lineIndex).text
-                        : undefined;
-                },
-            );
+        const astHighlights = sourceContext.getAstDocumentHighlights(
+            position.line + 1,
+            position.character,
+            (row1Based) => {
+                const lineIndex = row1Based - 1;
+                return lineIndex >= 0 && lineIndex < document.lineCount
+                    ? document.lineAt(lineIndex).text
+                    : undefined;
+            },
+        );
 
-            if (astHighlights) {
-                const result = astHighlights.map((highlight) =>
-                    new DocumentHighlight(
-                        Utilities.lexicalRangeToRange(highlight.range),
-                        highlight.kind === 'write' ? DocumentHighlightKind.Write : DocumentHighlightKind.Read,
-                    ));
+        if (astHighlights) {
+            const result = astHighlights.map((highlight) =>
+                new DocumentHighlight(
+                    Utilities.lexicalRangeToRange(highlight.range),
+                    highlight.kind === 'write' ? DocumentHighlightKind.Write : DocumentHighlightKind.Read,
+                ));
 
-                if (result.length > 0) {
-                    if (traceRouting) {
-                        console.log(`[language-maxscript][DocumentHighlightProvider] route=AST highlights=${result.length}`);
-                    }
-                    logPerformance('AST', result.length);
-                    return result;
+            if (result.length > 0) {
+                if (traceRouting) {
+                    console.log(`[language-maxscript][DocumentHighlightProvider] route=AST highlights=${result.length}`);
                 }
-            }
-            if (traceRouting) {
-                console.log('[language-maxscript][DocumentHighlightProvider] route=None reason=ast-miss');
+                logPerformance('AST', result.length);
+                return result;
             }
         }
-
-        if (fallbackToLegacy) {
-            const occurrences = sourceContext.symbolInfoAtPositionCtxOccurrences(
-                position.line + 1,
-                position.character,
-            );
-
-            if (occurrences) {
-                const docUriStr = document.uri.toString();
-                const seen = new Set<string>();
-                const result: DocumentHighlight[] = [];
-
-                for (const occurrence of occurrences) {
-                    if (!occurrence.definition || occurrence.source !== docUriStr) {
-                        continue;
-                    }
-                    const range = Utilities.symbolNameRange(occurrence);
-                    const key = `${range.start.line}:${range.start.character}`;
-                    if (seen.has(key)) {
-                        continue;
-                    }
-                    seen.add(key);
-                    result.push(new DocumentHighlight(range, translateHighlightKind(occurrence.kind)));
-                }
-
-                if (result.length > 0) {
-                    if (traceRouting) {
-                        console.log(`[language-maxscript][DocumentHighlightProvider] route=Legacy highlights=${result.length}`);
-                    }
-                    logPerformance('Legacy', result.length);
-                    return result;
-                }
-            }
+        if (traceRouting) {
+            console.log('[language-maxscript][DocumentHighlightProvider] route=None reason=ast-miss');
         }
 
         const wordRange = document.getWordRangeAtPosition(position);

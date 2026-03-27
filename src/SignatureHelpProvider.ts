@@ -44,7 +44,6 @@ export class mxsSignatureHelpProvider implements SignatureHelpProvider {
         }
 
         const config = workspace.getConfiguration('maxScript');
-        const useAst = config.get<boolean>('providers.ast.completionProvider', true);
         const traceRouting = config.get<boolean>('providers.traceRouting', false);
         const tracePerformance = config.get<boolean>('providers.tracePerformance', false);
         const providerStart = tracePerformance ? this.nowMs() : 0;
@@ -54,13 +53,6 @@ export class mxsSignatureHelpProvider implements SignatureHelpProvider {
             }
             console.log(`[language-maxscript][Performance] signatureProvider uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route}`);
         };
-        if (!useAst) {
-            if (traceRouting) {
-                console.log('[language-maxscript][SignatureHelpProvider] route=None reason=ast-disabled');
-            }
-            logPerformance('None');
-            return undefined;
-        }
 
         const lineBeforeCursor = document.getText(new Range(position.line, 0, position.line, position.character));
         const row = position.line + 1;
