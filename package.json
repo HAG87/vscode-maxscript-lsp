@@ -225,60 +225,95 @@
       {
         "title": "General",
         "properties": {
-          "maxScript.completions.dataBaseCompletion": {
-            "type": "boolean",
-            "default": true,
-            "description": "Enable completions for build-in Classes, Methods, Structs and Interfaces"
-          },
-          "maxScript.completions.codeCompletion": {
-            "type": "boolean",
-            "default": true,
-            "description": "Enable suggestions provided by the current code"
-          },
           "maxScript.help.provider": {
             "type": "string",
             "default": "https://help.autodesk.com/view/MAXDEV/2025/ENU/",
             "description": "MaxScript help source"
           },
-          "maxScript.providers.ast.symbolProvider": {
+          "maxScript.providers.dataBaseCompletion": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable completions for build-in Classes, Methods, Structs and Interfaces"
+          },
+          "maxScript.providers.codeCompletion": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable suggestions provided by the current code"
+          },
+          "maxScript.providers.astSymbolProvider": {
             "type": "boolean",
             "default": true,
             "description": "Use AST-based document symbols provider (Outline)."
           },
-          "maxScript.providers.ast.definitionProvider": {
+          "maxScript.providers.definitionProvider": {
             "type": "boolean",
             "default": true,
-            "description": "Use AST-based go-to-definition provider."
+            "description": "Go to Definition: Navigate to where a symbol is defined"
           },
-          "maxScript.providers.ast.referenceProvider": {
+          "maxScript.providers.referenceProvider": {
             "type": "boolean",
             "default": true,
-            "description": "Use AST-based find-references provider."
+            "description": "Find All References: Locate all usages of a symbol"
           },
-          "maxScript.providers.ast.hoverProvider": {
+          "maxScript.providers.hoverProvider": {
             "type": "boolean",
             "default": true,
-            "description": "Use AST-based hover provider before legacy fallback."
+            "description": "Hover Information: Display symbol details and documentation when hovering"
           },
-          "maxScript.providers.ast.renameProvider": {
+          "maxScript.providers.renameProvider": {
             "type": "boolean",
             "default": true,
-            "description": "Use AST-based rename provider before legacy fallback."
+            "description": "Rename Symbol: Refactor symbol names throughout the workspace"
           },
-          "maxScript.providers.fallbackToLegacy": {
+          "maxScript.providers.documentHighlightProvider": {
             "type": "boolean",
             "default": true,
-            "description": "Allow provider fallback to legacy symbol table when AST misses."
+            "description": "Document Highlight: Highlight all occurrences of a symbol in the current file"
           },
-          "maxScript.providers.traceRouting": {
+          "maxScript.providers.signatureHelpProvider": {
             "type": "boolean",
-            "default": false,
-            "description": "Log provider routing decisions (AST/Legacy) to Extension Host output."
+            "default": true,
+            "description": "Signature Help: Display function and method signatures while typing"
           },
+          "maxscript.providers.linkedEditingRangeProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Linked Editing: Automatically rename related symbols when one is edited"
+          },
+          "maxscript.providers.foldingRangeProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Code Folding: Enable folding of code blocks to improve readability"
+          },
+          "maxscript.providers.codeLensProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Code Lens: Show inline information and action links in the editor"
+          },
+          "maxscript.providers.callHierarchyProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Call Hierarchy: Visualize the call tree showing who calls and who is called by a function"
+          },
+          "maxscript.providers.workspaceSymbolProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Workspace Symbols: Enable searching for symbols across the entire workspace"
+          }
+        }
+      },
+      {
+        "title": "Debug",
+        "properties": {
           "maxScript.providers.tracePerformance": {
             "type": "boolean",
             "default": false,
             "description": "Log parse, AST build, and provider query timings to Extension Host output."
+          },
+            "maxScript.providers.traceRouting": {
+            "type": "boolean",
+            "default": false,
+            "description": "Log provider routing decisions (AST/Legacy) to Extension Host output."
           },
           "maxScript.providers.traceParserDecisions": {
             "type": "boolean",
