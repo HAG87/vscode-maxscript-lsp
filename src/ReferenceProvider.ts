@@ -19,25 +19,26 @@ export class mxsReferenceProvider implements ReferenceProvider
         document: TextDocument,
         position: Position,
         _context: ReferenceContext,
-        _token: CancellationToken): ProviderResult<Location[]>
+        token: CancellationToken): ProviderResult<Location[]>
     {
-        return new Promise((resolve) =>
-        {
-            const occurrences =
-                this.backend.getContext(document.uri.toString()).symbolInfoAtPositionCtxOccurrences(
-                    position.line + 1,
-                    position.character);
+        if (token.isCancellationRequested) {
+            return undefined;
+        }
 
-            if (occurrences) {
-                const result: Location[] = [];
-                const targets = Utilities.symbolTargets(occurrences);
-                for (const target of targets) {
-                    result.push(new Location(target.uri, target.range));
-                }
-                resolve(result);
-            } else {
-                resolve(undefined);
+        const occurrences =
+            this.backend.getContext(document.uri.toString()).symbolInfoAtPositionCtxOccurrences(
+                position.line + 1,
+                position.character);
+
+        if (occurrences) {
+            const result: Location[] = [];
+            const targets = Utilities.symbolTargets(occurrences);
+            for (const target of targets) {
+                result.push(new Location(target.uri, target.range));
             }
-        });
+            return result;
+        }
+
+        return undefined;
     }
 }

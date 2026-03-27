@@ -13,23 +13,23 @@ export class mxsRenameProvider implements RenameProvider
     public prepareRename(
         document: TextDocument,
         position: Position,
-        _token: CancellationToken): ProviderResult<Range | { range: Range; placeholder: string }>
+        token: CancellationToken): ProviderResult<Range | { range: Range; placeholder: string }>
     {
-        return new Promise((resolve, reject) =>
-        {
-            const ctx = this.backend.getContext(document.uri.toString());
-            const symbol = ctx.symbolAtPosition(position.line + 1, position.character);
+        if (token.isCancellationRequested) {
+            return undefined;
+        }
 
-            if (!symbol || !symbol.definition) {
-                // Reject positions that are not on a renameable symbol.
-                reject(new Error('No renameable symbol at this position.'));
-                return;
-            }
+        const ctx = this.backend.getContext(document.uri.toString());
+        const symbol = ctx.symbolAtPosition(position.line + 1, position.character);
 
-            resolve({
-                range: Utilities.symbolNameRange(symbol),
-                placeholder: symbol.name,
-            });
+        if (!symbol || !symbol.definition) {
+            // Reject positions that are not on a renameable symbol.
+            throw new Error('No renameable symbol at this position.');
+        }
+
+        return({
+            range: Utilities.symbolNameRange(symbol),
+            placeholder: symbol.name,
         });
     }
 
@@ -37,25 +37,25 @@ export class mxsRenameProvider implements RenameProvider
         document: TextDocument,
         position: Position,
         newName: string,
-        _token: CancellationToken): ProviderResult<WorkspaceEdit>
+        token: CancellationToken): ProviderResult<WorkspaceEdit>
     {
-        return new Promise((resolve) =>
-        {
-            const occurrences =
-                this.backend.getContext(document.uri.toString()).symbolInfoAtPositionCtxOccurrences(
-                    position.line + 1,
-                    position.character);
+        if (token.isCancellationRequested) {
+            return undefined;
+        }
 
-            if (occurrences) {
-                const workspaceEdit = new WorkspaceEdit();
-                const targets = Utilities.symbolTargetsWithWordAtPosition(occurrences, document, position);
-                for (const target of targets) {
-                    workspaceEdit.replace(target.uri, target.range, newName);
-                }
-                resolve(workspaceEdit);
-            } else {
-                resolve(undefined);
+        const occurrences =
+            this.backend.getContext(document.uri.toString()).symbolInfoAtPositionCtxOccurrences(
+                position.line + 1,
+                position.character);
+
+        if (occurrences) {
+            const workspaceEdit = new WorkspaceEdit();
+            const targets = Utilities.symbolTargetsWithWordAtPosition(occurrences, document, position);
+            for (const target of targets) {
+                workspaceEdit.replace(target.uri, target.range, newName);
             }
-        });
+            return workspaceEdit;
+        }
+        return undefined;
     }
 }

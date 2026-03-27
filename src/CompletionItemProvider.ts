@@ -96,16 +96,6 @@ export class mxsCompletionProvider implements CompletionItemProvider
                     reject(reason);
                     // completionList.push(...this.completionsFromAPI(document, position, context));
                 });
-            // */
-            // resolve(new CompletionList(completionList, false));
-            // resolve(new CompletionList(completionList, true));
         });
     }
-    /*
-    TODO: Implement
-    resolveCompletionItem?(item: CompletionItem, token: CancellationToken): ProviderResult<CompletionItem>
-    {
-        throw new Error("Method not implemented.");
-    }
-    */
 }

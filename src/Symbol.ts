@@ -1,101 +1,128 @@
 import * as vscode from 'vscode';
 
-import { SymbolKind } from './types.js';
+import { SymbolKind as mxsSymbolKind } from './types.js';
+import { SymbolKind, CompletionItemKind, DocumentHighlightKind } from 'vscode';
 
-const symbolCodeTypeMap = new Map<SymbolKind, vscode.SymbolKind>([
-	[SymbolKind.Plugin,      vscode.SymbolKind.Class],
-	[SymbolKind.MacroScript, vscode.SymbolKind.Class],
-	[SymbolKind.Tool,        vscode.SymbolKind.Class],
-	[SymbolKind.Utility,     vscode.SymbolKind.Class],
-	[SymbolKind.Rollout,     vscode.SymbolKind.Class],
-	[SymbolKind.RcMenu,      vscode.SymbolKind.Class],
-	[SymbolKind.Parameters,  vscode.SymbolKind.Class],
-	[SymbolKind.Control,     vscode.SymbolKind.Field],
-	[SymbolKind.RcMenuControl,     vscode.SymbolKind.Field],
-	[SymbolKind.Attributes,  vscode.SymbolKind.Class],
-	[SymbolKind.Event,       vscode.SymbolKind.Event],
-	[SymbolKind.Struct,      vscode.SymbolKind.Struct],
-	[SymbolKind.Function,    vscode.SymbolKind.Function],
-	[SymbolKind.Declaration, vscode.SymbolKind.Variable],
-	[SymbolKind.Call,        vscode.SymbolKind.Method],
-	[SymbolKind.Property,    vscode.SymbolKind.Property],
-	[SymbolKind.Accessor,    vscode.SymbolKind.Key],
-	[SymbolKind.Identifier,  vscode.SymbolKind.Variable],
-	[SymbolKind.Operator,    vscode.SymbolKind.Operator],
-	[SymbolKind.Keyword,     vscode.SymbolKind.Key],
-	[SymbolKind.Array,       vscode.SymbolKind.Object],
-	[SymbolKind.BitArray,    vscode.SymbolKind.Object],
-	[SymbolKind.Object,      vscode.SymbolKind.Object],
-	[SymbolKind.Constant,    vscode.SymbolKind.Constant],
-	[SymbolKind.String,      vscode.SymbolKind.String],
-	[SymbolKind.Number,      vscode.SymbolKind.Number],
-	[SymbolKind.Boolean,     vscode.SymbolKind.Boolean],
-	[SymbolKind.Null,        vscode.SymbolKind.Class],
+const symbolCodeTypeMap = new Map<mxsSymbolKind, SymbolKind>([
+	[mxsSymbolKind.Plugin,      SymbolKind.Class],
+	[mxsSymbolKind.MacroScript, SymbolKind.Class],
+	[mxsSymbolKind.Tool,        SymbolKind.Class],
+	[mxsSymbolKind.Utility,     SymbolKind.Class],
+	[mxsSymbolKind.Rollout,     SymbolKind.Class],
+	[mxsSymbolKind.RcMenu,      SymbolKind.Class],
+	[mxsSymbolKind.Parameters,  SymbolKind.Class],
+	[mxsSymbolKind.Control,     SymbolKind.Field],
+	[mxsSymbolKind.RcMenuControl,     SymbolKind.Field],
+	[mxsSymbolKind.Attributes,  SymbolKind.Class],
+	[mxsSymbolKind.Event,       SymbolKind.Event],
+	[mxsSymbolKind.Struct,      SymbolKind.Struct],
+	[mxsSymbolKind.Function,    SymbolKind.Function],
+	[mxsSymbolKind.Declaration, SymbolKind.Variable],
+	[mxsSymbolKind.Call,        SymbolKind.Method],
+	[mxsSymbolKind.Property,    SymbolKind.Property],
+	[mxsSymbolKind.Accessor,    SymbolKind.Key],
+	[mxsSymbolKind.Identifier,  SymbolKind.Variable],
+	[mxsSymbolKind.Operator,    SymbolKind.Operator],
+	[mxsSymbolKind.Keyword,     SymbolKind.Key],
+	[mxsSymbolKind.Array,       SymbolKind.Object],
+	[mxsSymbolKind.BitArray,    SymbolKind.Object],
+	[mxsSymbolKind.Object,      SymbolKind.Object],
+	[mxsSymbolKind.Constant,    SymbolKind.Constant],
+	[mxsSymbolKind.String,      SymbolKind.String],
+	[mxsSymbolKind.Number,      SymbolKind.Number],
+	[mxsSymbolKind.Boolean,     SymbolKind.Boolean],
+	[mxsSymbolKind.Null,        SymbolKind.Class],
 ]);
 
-const symbolDescriptionMap = new Map<SymbolKind, string>([
-	[SymbolKind.Plugin,      'Plugin'],
-	[SymbolKind.MacroScript, 'MacroScript'],
-	[SymbolKind.Tool,        'Tool'],
-	[SymbolKind.Utility,     'Utiility'],
-	[SymbolKind.Rollout,     'Rollout'],
-	[SymbolKind.RcMenu,      'RCmenu'],
-	[SymbolKind.Parameters,  'Parameters def'],
-	[SymbolKind.Control,     'Control'],
-	[SymbolKind.RcMenuControl,     'Control'],
-	[SymbolKind.Attributes,  'Attributes def'],
-	[SymbolKind.Event,       'Event action'],
-	[SymbolKind.Struct,      'Struct'],
-	[SymbolKind.Function,    'Function'],
-	[SymbolKind.Declaration, 'Declaration'],
-	[SymbolKind.Call,        'Call'],
-	[SymbolKind.Property,    'Property'],
-	[SymbolKind.Accessor,    'Accessor'],
-	[SymbolKind.Argument,    'Function argument'],
-	[SymbolKind.Parameter,   'Function parameter'],
-	[SymbolKind.Identifier,  'Identifier'],
-	[SymbolKind.Operator,    'Operator'],
-	[SymbolKind.Keyword,     'Keyword'],
-	[SymbolKind.Array,       'Array'],
-	[SymbolKind.BitArray,    'BitArray'],
-	[SymbolKind.Object,      'Object'],
-	[SymbolKind.Constant,    'Literal'],
-	[SymbolKind.String,      'String'],
-	[SymbolKind.Number,      'Number'],
-	[SymbolKind.Boolean,     'Boolean'],
-	[SymbolKind.Null,        'Void value'],
+const symbolDescriptionMap = new Map<mxsSymbolKind, string>([
+	[mxsSymbolKind.Plugin,      'Plugin'],
+	[mxsSymbolKind.MacroScript, 'MacroScript'],
+	[mxsSymbolKind.Tool,        'Tool'],
+	[mxsSymbolKind.Utility,     'Utiility'],
+	[mxsSymbolKind.Rollout,     'Rollout'],
+	[mxsSymbolKind.RcMenu,      'RCmenu'],
+	[mxsSymbolKind.Parameters,  'Parameters def'],
+	[mxsSymbolKind.Control,     'Control'],
+	[mxsSymbolKind.RcMenuControl,     'Control'],
+	[mxsSymbolKind.Attributes,  'Attributes def'],
+	[mxsSymbolKind.Event,       'Event action'],
+	[mxsSymbolKind.Struct,      'Struct'],
+	[mxsSymbolKind.Function,    'Function'],
+	[mxsSymbolKind.Declaration, 'Declaration'],
+	[mxsSymbolKind.Call,        'Call'],
+	[mxsSymbolKind.Property,    'Property'],
+	[mxsSymbolKind.Accessor,    'Accessor'],
+	[mxsSymbolKind.Argument,    'Function argument'],
+	[mxsSymbolKind.Parameter,   'Function parameter'],
+	[mxsSymbolKind.Identifier,  'Identifier'],
+	[mxsSymbolKind.Operator,    'Operator'],
+	[mxsSymbolKind.Keyword,     'Keyword'],
+	[mxsSymbolKind.Array,       'Array'],
+	[mxsSymbolKind.BitArray,    'BitArray'],
+	[mxsSymbolKind.Object,      'Object'],
+	[mxsSymbolKind.Constant,    'Literal'],
+	[mxsSymbolKind.String,      'String'],
+	[mxsSymbolKind.Number,      'Number'],
+	[mxsSymbolKind.Boolean,     'Boolean'],
+	[mxsSymbolKind.Null,        'Void value'],
 ]);
 
-const symbolCompletionTypeMap = new Map<SymbolKind, vscode.CompletionItemKind>([
-	[SymbolKind.Plugin,      vscode.CompletionItemKind.Class],
-	[SymbolKind.MacroScript, vscode.CompletionItemKind.Class],
-	[SymbolKind.Tool,        vscode.CompletionItemKind.Class],
-	[SymbolKind.Utility,     vscode.CompletionItemKind.Class],
-	[SymbolKind.Rollout,     vscode.CompletionItemKind.Class],
-	[SymbolKind.RcMenu,      vscode.CompletionItemKind.Class],
-	[SymbolKind.Parameters,  vscode.CompletionItemKind.Class],
-	[SymbolKind.Control,     vscode.CompletionItemKind.Field],
-	[SymbolKind.RcMenuControl,     vscode.CompletionItemKind.Field],
-	[SymbolKind.Attributes,  vscode.CompletionItemKind.Field],
-	[SymbolKind.Event,       vscode.CompletionItemKind.Event],
-	[SymbolKind.Struct,      vscode.CompletionItemKind.Struct],
-	[SymbolKind.Function,    vscode.CompletionItemKind.Function],
-	[SymbolKind.Declaration, vscode.CompletionItemKind.Variable],
-	[SymbolKind.Call,        vscode.CompletionItemKind.Method],
-	[SymbolKind.Property,    vscode.CompletionItemKind.Reference],
-	[SymbolKind.Accessor,    vscode.CompletionItemKind.Reference],
-	[SymbolKind.Identifier,  vscode.CompletionItemKind.Variable],
-	[SymbolKind.Operator,    vscode.CompletionItemKind.Operator],
-	[SymbolKind.Keyword,     vscode.CompletionItemKind.Keyword],
-	[SymbolKind.Array,       vscode.CompletionItemKind.Value],
-	[SymbolKind.BitArray,    vscode.CompletionItemKind.Value],
-	[SymbolKind.Object,      vscode.CompletionItemKind.Value],
-	[SymbolKind.Constant,    vscode.CompletionItemKind.Constant],
-	[SymbolKind.String,      vscode.CompletionItemKind.Value],
-	[SymbolKind.Number,      vscode.CompletionItemKind.Value],
-	[SymbolKind.Boolean,     vscode.CompletionItemKind.Value],
-	[SymbolKind.Null,        vscode.CompletionItemKind.Value],
+const symbolCompletionTypeMap = new Map<mxsSymbolKind, CompletionItemKind>([
+	[mxsSymbolKind.Plugin,      CompletionItemKind.Class],
+	[mxsSymbolKind.MacroScript, CompletionItemKind.Class],
+	[mxsSymbolKind.Tool,        CompletionItemKind.Class],
+	[mxsSymbolKind.Utility,     CompletionItemKind.Class],
+	[mxsSymbolKind.Rollout,     CompletionItemKind.Class],
+	[mxsSymbolKind.RcMenu,      CompletionItemKind.Class],
+	[mxsSymbolKind.Parameters,  CompletionItemKind.Class],
+	[mxsSymbolKind.Control,     CompletionItemKind.Field],
+	[mxsSymbolKind.RcMenuControl,     CompletionItemKind.Field],
+	[mxsSymbolKind.Attributes,  CompletionItemKind.Field],
+	[mxsSymbolKind.Event,       CompletionItemKind.Event],
+	[mxsSymbolKind.Struct,      CompletionItemKind.Struct],
+	[mxsSymbolKind.Function,    CompletionItemKind.Function],
+	[mxsSymbolKind.Declaration, CompletionItemKind.Variable],
+	[mxsSymbolKind.Call,        CompletionItemKind.Method],
+	[mxsSymbolKind.Property,    CompletionItemKind.Reference],
+	[mxsSymbolKind.Accessor,    CompletionItemKind.Reference],
+	[mxsSymbolKind.Identifier,  CompletionItemKind.Variable],
+	[mxsSymbolKind.Operator,    CompletionItemKind.Operator],
+	[mxsSymbolKind.Keyword,     CompletionItemKind.Keyword],
+	[mxsSymbolKind.Array,       CompletionItemKind.Value],
+	[mxsSymbolKind.BitArray,    CompletionItemKind.Value],
+	[mxsSymbolKind.Object,      CompletionItemKind.Value],
+	[mxsSymbolKind.Constant,    CompletionItemKind.Constant],
+	[mxsSymbolKind.String,      CompletionItemKind.Value],
+	[mxsSymbolKind.Number,      CompletionItemKind.Value],
+	[mxsSymbolKind.Boolean,     CompletionItemKind.Value],
+	[mxsSymbolKind.Null,        CompletionItemKind.Value],
 ]);
+
+const symbolHighlightKindMap = new Map<mxsSymbolKind, DocumentHighlightKind>([
+	[mxsSymbolKind.Declaration, DocumentHighlightKind.Write],
+	[mxsSymbolKind.Function,    DocumentHighlightKind.Write],
+	[mxsSymbolKind.Struct,      DocumentHighlightKind.Write],
+	[mxsSymbolKind.Plugin,      DocumentHighlightKind.Write],
+	[mxsSymbolKind.MacroScript, DocumentHighlightKind.Write],
+	[mxsSymbolKind.Tool,        DocumentHighlightKind.Write],
+	[mxsSymbolKind.Utility,     DocumentHighlightKind.Write],
+	[mxsSymbolKind.Rollout,     DocumentHighlightKind.Write],
+	[mxsSymbolKind.RcMenu,      DocumentHighlightKind.Write],
+	[mxsSymbolKind.Attributes,  DocumentHighlightKind.Write],
+	[mxsSymbolKind.Event,       DocumentHighlightKind.Write],
+	[mxsSymbolKind.Call,        DocumentHighlightKind.Read],
+	[mxsSymbolKind.Identifier,  DocumentHighlightKind.Read],
+	// everything else is Text	
+]);
+
+/**
+ * Maps a symbol kind to the most appropriate DocumentHighlightKind.
+ * Definitions/declarations are marked as Write, call-sites as Read, everything else as Text.
+ */
+export const translateHighlightKind = (kind: mxsSymbolKind): vscode.DocumentHighlightKind => {
+	return symbolHighlightKindMap.get(kind) || vscode.DocumentHighlightKind.Text;
+}
+
 /**
  * Converts the native symbol kind to a vscode symbol kind.
  *
@@ -103,7 +130,7 @@ const symbolCompletionTypeMap = new Map<SymbolKind, vscode.CompletionItemKind>([
  *
  * @returns The vscode symbol kind for the given ANTLR4 kind.
  */
-export const translateSymbolKind = (kind: SymbolKind): vscode.SymbolKind => {
+export const translateSymbolKind = (kind: mxsSymbolKind): vscode.SymbolKind => {
     return symbolCodeTypeMap.get(kind) || vscode.SymbolKind.Null;
 };
 /**
@@ -113,7 +140,7 @@ export const translateSymbolKind = (kind: SymbolKind): vscode.SymbolKind => {
  *
  * @returns The vscode completion item kind.
  */
-export const translateCompletionKind = (kind: SymbolKind): vscode.CompletionItemKind => {
+export const translateCompletionKind = (kind: mxsSymbolKind): vscode.CompletionItemKind => {
     return symbolCompletionTypeMap.get(kind) || vscode.CompletionItemKind.Text;
 };
 /**
@@ -123,6 +150,6 @@ export const translateCompletionKind = (kind: SymbolKind): vscode.CompletionItem
  *
  * @returns The description.
  */
-export const symbolDescriptionFromEnum = (kind: SymbolKind): string => {
+export const symbolDescriptionFromEnum = (kind: mxsSymbolKind): string => {
     return symbolDescriptionMap.get(kind) || "Unknown";
 };

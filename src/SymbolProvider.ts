@@ -40,35 +40,30 @@ export class mxsSymbolProvider implements DocumentSymbolProvider
     provideDocumentSymbols(document: TextDocument, _token: CancellationToken):
         ProviderResult<SymbolInformation[] | DocumentSymbol[]>
     {
-        return new Promise((resolve) =>
-        {
-            const symbols =
-                this.backend.getContext(document.uri.toString())?.listTopLevelSymbols(false);
-            const symbolsList: DocumentSymbol[] = [];
+        const symbols =
+            this.backend.getContext(document.uri.toString())?.listTopLevelSymbols(false);
+        const symbolsList: DocumentSymbol[] = [];
 
-            for (const symbol of symbols) {
-                if (!symbol.definition || !symbol.name) {
-                    continue;
-                }
-                if (symbol.children?.length) {
-                    // childrens
-                    symbolsList.push(this.collectAllChildren(symbol));
-                } else {
-                    // symbol does not have children
-                    const range = Utilities.lexicalRangeToRange(symbol.definition.range);
-                    // /*
-                    symbolsList.push(new DocumentSymbol(
-                        symbol.name,
-                        symbolDescriptionFromEnum(symbol.kind),
-                        translateSymbolKind(symbol.kind),
-                        range,
-                        range // TODO: selectionRange
-                    ));
-                    // */
-                }
+        for (const symbol of symbols) {
+            if (!symbol.definition || !symbol.name) {
+                continue;
             }
-            resolve(symbolsList);
-            // resolve([]);
-        });
+            if (symbol.children?.length) {
+                // childrens
+                symbolsList.push(this.collectAllChildren(symbol));
+            } else {
+                // symbol does not have children
+                const range = Utilities.lexicalRangeToRange(symbol.definition.range);
+
+                symbolsList.push(new DocumentSymbol(
+                    symbol.name,
+                    symbolDescriptionFromEnum(symbol.kind),
+                    translateSymbolKind(symbol.kind),
+                    range,
+                    range // TODO: selectionRange
+                ));
+            }
+        }
+        return symbolsList;        
     }
 }

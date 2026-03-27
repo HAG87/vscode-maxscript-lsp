@@ -23,24 +23,25 @@ export class mxsDefinitionProvider implements DefinitionProvider
         position: Position,
         token: CancellationToken): ProviderResult<Definition | DefinitionLink[]>
     {
-        return new Promise((resolve) =>
-        {
-            const info = this.backend.getContext(document.uri.toString())?.symbolDefinition(  
-                position.line + 1,
-                position.character);
+        if (token.isCancellationRequested) {
+            return undefined;
+        }
+        const info = this.backend.getContext(document.uri.toString())?.symbolDefinition(  
+            position.line + 1,
+            position.character);
 
-            if (info) {
-                // VS code shows the text for the range given here on holding ctrl/cmd, which is rather
-                // useless given that we show this info already in the hover provider. So, in order
-                // to limit the amount of text we only pass on the smallest range which is possible.
-                // Yet we need the correct start position to not break the goto-definition feature.
-                if (info.definition) {
-                    resolve(new Location(Uri.parse(info.source), Utilities.lexicalRangeToRange(info.definition.range)));
-                } else {
-                    // Empty for built-in entities.
-                    resolve(new Location(Uri.parse(""), new Position(0, 0)));
-                }
-            } else resolve(null);
-        });
+        if (info) {
+            // VS code shows the text for the range given here on holding ctrl/cmd, which is rather
+            // useless given that we show this info already in the hover provider. So, in order
+            // to limit the amount of text we only pass on the smallest range which is possible.
+            // Yet we need the correct start position to not break the goto-definition feature.
+            if (info.definition) {
+                return(new Location(Uri.parse(info.source), Utilities.lexicalRangeToRange(info.definition.range)));
+            } else {
+                // Empty for built-in entities.
+                return(new Location(Uri.parse(""), new Position(0, 0)));
+            }
+        }
+        return null;
     }
 }

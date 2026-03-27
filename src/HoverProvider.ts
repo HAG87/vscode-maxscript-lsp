@@ -13,42 +13,42 @@ export class mxsHoverProvider implements HoverProvider
 {
     public constructor(private backend: mxsBackend) { }
 
-    provideHover(document: TextDocument, position: Position, _token: CancellationToken): ProviderResult<Hover>
+    provideHover(document: TextDocument, position: Position, token: CancellationToken): ProviderResult<Hover>
     {
-        return new Promise((resolve) =>
-        {
-            const ctx = this.backend.getContext(document.uri.toString());
-            const info = ctx.symbolAtPosition(
-                position.line + 1,
-                position.character
-            );
-            // console.log(info);
-            if (info) {
-                // provide hover for API definitions
-                const mxsReference = mxsLanguageCompletions.has(info.name);
+        if (token.isCancellationRequested) {
+            return undefined;
+        }
+        
+        const ctx = this.backend.getContext(document.uri.toString());
+        const info = ctx.symbolAtPosition(
+            position.line + 1,
+            position.character
+        );
+        // console.log(info);
+        if (info) {
+            // provide hover for API definitions
+            const mxsReference = mxsLanguageCompletions.has(info.name);
 
-                if (mxsReference) {
-                    resolve(new Hover([
-                        `**${mxsReference.label.toString()}**`,
-                        `3ds MaxAPI | ${mxsReference.detail}`,
-                    ]));
-                } else {
-                    // provide symbol definition
-                    const info = ctx.symbolDefinition(
-                        position.line + 1,
-                        position.character);
-                    
-                    if (info && info.definition) {
-                        const markedStr: MarkdownString = new MarkdownString(`**${symbolDescriptionFromEnum(info.kind)}**\n`)
-                        markedStr.appendCodeblock(info.definition.text, 'maxscript')
-                        resolve(new Hover([
-                            markedStr
-                        ]));
-                    } else resolve(undefined);
-                }
+            if (mxsReference) {
+                return(new Hover([
+                    `**${mxsReference.label.toString()}**`,
+                    `3ds MaxAPI | ${mxsReference.detail}`,
+                ]));
             } else {
-                resolve(undefined);
+                // provide symbol definition
+                const info = ctx.symbolDefinition(
+                    position.line + 1,
+                    position.character);
+                
+                if (info && info.definition) {
+                    const markedStr: MarkdownString = new MarkdownString(`**${symbolDescriptionFromEnum(info.kind)}**\n`)
+                    markedStr.appendCodeblock(info.definition.text, 'maxscript')
+                    return(new Hover([
+                        markedStr
+                    ]));
+                }
             }
-        });
+        }
+        return undefined;
     }
 }
