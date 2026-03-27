@@ -9,7 +9,7 @@ import {
   FnDefinitionContext, FnReturnStatementContext, ForLoopStatementContext,
   FunctionCallContext, IdentifierContext, IfStatementContext, IndexContext,
   LbContext, LbkContext, LcContext, LpContext,
-    MacroscriptDefinitionContext, mxsParser, ParamNameContext,
+  MacroscriptDefinitionContext, mxsParser, ParamNameContext,
   ParamContext, ParamsDefinitionContext, ParenPairContext,
   PluginDefinitionContext, ProgramContext, PropertyContext, RbContext,
   RcSubmenuDefinitionContext, RcContext, RcmenuControlContext, RcmenuDefinitionContext,
@@ -113,48 +113,74 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
 
         return factor + right + this.visit(ctx.COLON())! + left + expr
     }
+
+    private joinParts(...parts: Array<string | null | undefined>): string {
+        let result = this.defaultResult();
+        for (const part of parts) {
+            if (!part) {
+                continue;
+            }
+            result = this.aggregateResult(result, part) ?? result;
+        }
+        return result;
+    }
+
     visitIfStatement = (ctx: IfStatementContext): string =>
     {
-        let result = this.visit(ctx.IF())! + this.visit(ctx.simpleExpression())!
+        let result = this.joinParts(this.visit(ctx.IF())!, this.visit(ctx.simpleExpression())!);
         
         if (ctx.THEN()) {
-            result += this.visit(ctx.THEN()!)!
-            result += this.visit(ctx._thenBody!)!
+            result = this.joinParts(result, this.visit(ctx.THEN()!)!, this.visit(ctx._thenBody!)!);
             
             if (ctx.ELSE()) {
-                result += this.visit(ctx.ELSE()!)!
-                result += this.visit(ctx._elseBody!)!
+                result = this.joinParts(result, this.visit(ctx.ELSE()!)!, this.visit(ctx._elseBody!)!);
             }
         } else if (ctx.DO()) {
-            result += this.visit(ctx.DO()!)!
-            result += this.visit(ctx._doBody!)!
+            result = this.joinParts(result, this.visit(ctx.DO()!)!, this.visit(ctx._doBody!)!);
         }
         
         return result
     }
     visitDoLoopStatement = (ctx: DoLoopStatementContext): string =>
     {
-        return this.visit(ctx.DO()!)! + this.visit(ctx._body!)! + 
-               this.visit(ctx.WHILE()!)! + this.visit(ctx._condition!)!
+        return this.joinParts(
+            this.visit(ctx.DO()!)!,
+            this.visit(ctx._body!)!,
+            this.visit(ctx.WHILE()!)!,
+            this.visit(ctx._condition!)!,
+        );
     }
     visitWhileLoopStatement = (ctx: WhileLoopStatementContext): string =>
     {
-        return this.visit(ctx.WHILE()!)! + this.visit(ctx._condition!)! + 
-               this.visit(ctx.DO()!)! + this.visit(ctx._body!)!
+        return this.joinParts(
+            this.visit(ctx.WHILE()!)!,
+            this.visit(ctx._condition!)!,
+            this.visit(ctx.DO()!)!,
+            this.visit(ctx._body!)!,
+        );
     }
     visitForLoopStatement = (ctx: ForLoopStatementContext): string =>
     {
         const forOperator = ctx._for_operator!.text!
         const forAction = ctx._for_action!.text!
         
-        return this.visit(ctx.FOR()!)! + this.visit(ctx.forBody())! + 
-               forOperator + this.visit(ctx.forSequence())! + 
-               forAction + this.visit(ctx._body!)!
+        return this.joinParts(
+            this.visit(ctx.FOR()!)!,
+            this.visit(ctx.forBody())!,
+            forOperator,
+            this.visit(ctx.forSequence())!,
+            forAction,
+            this.visit(ctx._body!)!,
+        );
     }
     visitTryStatement = (ctx: TryStatementContext): string =>
     {
-        return this.visit(ctx.TRY()!)! + this.visit(ctx._tryBody!)! + 
-               this.visit(ctx.CATCH()!)! + this.visit(ctx._catchBody!)!
+        return this.joinParts(
+            this.visit(ctx.TRY()!)!,
+            this.visit(ctx._tryBody!)!,
+            this.visit(ctx.CATCH()!)!,
+            this.visit(ctx._catchBody!)!,
+        );
     }
     visitContextStatement = (ctx: ContextStatementContext): string =>
         this.visitChildren(ctx)!
@@ -179,7 +205,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
                 if (
                     parentRule !== mxsParser.RULE_accessor &&
                     parentRule !== mxsParser.RULE_fnArgs &&
-                        parentRule !== mxsParser.RULE_postfixOp &&
+                    parentRule !== mxsParser.RULE_postfixOp &&
                     parentRule !== mxsParser.RULE_operandArg
                 ) {
                     // console.log(parent)

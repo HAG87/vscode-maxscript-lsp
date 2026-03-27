@@ -1,16 +1,13 @@
 import { ParserRuleContext } from 'antlr4ng';
 
 import {
+    FnArgsContext,
+    FnParamsContext,
     FunctionCallContext, IdentifierContext, ParamNameContext,
 } from '../../parser/mxsParser.js';
 import { mxsParserListener } from '../../parser/mxsParserListener.js';
 import { ISemanticToken } from '../../types.js';
-import { maxAPI, maxAPILookup } from '../schemas/mxsAPI.js';
-
-// Pre-allocated modifier arrays to avoid repeated allocations
-const MODIFIERS_DEFAULT_LIBRARY = ['defaultLibrary'];
-const MODIFIERS_DEFAULT_LIBRARY_STATIC = ['defaultLibrary', 'static'];
-const MODIFIERS_DEFAULT_LIBRARY_READONLY = ['defaultLibrary', 'readonly'];
+import { maxAPILookup } from '../schemas/mxsAPI.js';
 
 // Use shared lookup exported from mxsAPI for fast classification
 
@@ -24,16 +21,12 @@ export class semanticTokenListener extends mxsParserListener {
         super();
     }
 
-    // public override enterFunctionCall = (ctx: FunctionCallContext): void => { this.symbolStack.push(ctx); }
-    // public override exitFunctionCall = (_ctx: FunctionCallContext): void => { this.symbolStack.pop(); }
+    public override enterFnArgs = (_ctx: FnArgsContext): void => { this.collect = false; }
+    public override exitFnArgs = (_ctx: FnArgsContext): void => { this.collect = true; }
 
-    /*
-    public override enterVariableDeclaration = (ctx: VariableDeclarationContext): void => { this.symbolStack.push(ctx); }
-    public override exitVariableDeclaration = (ctx: VariableDeclarationContext): void => { this.symbolStack.pop(); }
+    public override enterFnParams = (_ctx: FnParamsContext): void => { this.collect = false; }
+    public override exitFnParams = (_ctx: FnParamsContext): void => { this.collect = true; }
 
-    public override enterProperty = (ctx: PropertyContext): void => { this.symbolStack.push(ctx); }
-    public override exitProperty = (ctx: PropertyContext): void => { this.symbolStack.pop(); }
-    */
     public override enterParamName = (_ctx: ParamNameContext): void => { this.collect = false; }
     public override exitParamName = (_ctx: ParamNameContext): void => { this.collect = true; }
     
