@@ -145,19 +145,4 @@ export class HoverService {
         };
     }
 
-    public getLegacyHoverModel(
-        sourceContext: IAstContext,
-        row1Based: number,
-        column0Based: number,
-    ): HoverModel | undefined {
-        const definition = sourceContext.symbolDefinition(row1Based, column0Based);
-        if (!definition?.definition) {
-            return undefined;
-        }
-
-        return {
-            symbolKind: definition.kind,
-            codeSnippet: definition.definition.text,
-        };
-    }
 }

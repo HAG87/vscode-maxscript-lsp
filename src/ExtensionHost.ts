@@ -11,12 +11,15 @@ import {
 
 import { mxsBackend } from '@backend/Backend.js';
 import { mxsCodeLensProvider } from './CodeLensProvider.js';
+import { mxsCallHierarchyProvider } from './CallHierarchyProvider.js';
 import { mxsCompletionProvider } from './CompletionItemProvider.js';
 import { mxsDefinitionProvider } from './DefinitionProvider.js';
 import { mxsDocumentHighlightProvider } from './DocumentHighlightProvider.js';
 import { diagnosticAdapter } from './Diagnostics.js';
+import { mxsFoldingRangeProvider } from './FoldingRangeProvider.js';
 import { mxsRangeFormattingProvider } from './FormattingProvider.js';
 import { mxsHoverProvider } from './HoverProvider.js';
+import { mxsLinkedEditingRangeProvider } from './LinkedEditingRangeProvider.js';
 import { mxsReferenceProvider } from './ReferenceProvider.js';
 import { mxsRenameProvider } from './RenameProvider.js';
 import { mxsSignatureHelpProvider } from './SignatureHelpProvider.js';
@@ -435,6 +438,18 @@ export class ExtensionHost
             languages.registerHoverProvider(
                 ExtensionHost.langSelector,
                 new mxsHoverProvider(this.backend)
+            ),
+            languages.registerLinkedEditingRangeProvider(
+                ExtensionHost.langSelector,
+                new mxsLinkedEditingRangeProvider(this.backend)
+            ),
+            languages.registerFoldingRangeProvider(
+                ExtensionHost.langSelector,
+                new mxsFoldingRangeProvider(this.backend)
+            ),
+            languages.registerCallHierarchyProvider(
+                ExtensionHost.langSelector,
+                new mxsCallHierarchyProvider(this.backend)
             ),
             
             languages.registerCodeLensProvider(

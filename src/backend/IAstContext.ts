@@ -59,9 +59,6 @@ export interface IAstContext {
     /** Returns global-scope completion candidates from the entire workspace. */
     getWorkspaceGlobalCompletions(requesterUri: string): VariableDeclaration[];
 
-    /** Legacy symbol-table based definition lookup. */
-    symbolDefinition(row: number, column: number): ISymbolInfo | undefined;
-
     /** Legacy ANTLR-based code completion candidates at a position. */
     getCodeCompletionCandidates(row: number, column: number): Promise<ISymbolInfo[]>;
 }

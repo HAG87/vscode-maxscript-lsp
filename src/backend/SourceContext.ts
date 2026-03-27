@@ -381,13 +381,6 @@ export class SourceContext implements IAstContext
         return this.hoverService.getAstHoverModel(this, row1Based, column0Based, sourceText);
     }
 
-    public getLegacyHoverModel(
-        row1Based: number,
-        column0Based: number,
-    ): HoverModel | undefined {
-        return this.hoverService.getLegacyHoverModel(this, row1Based, column0Based);
-    }
-
     public getAstCodeLensAnchors(): CodeLensAnchorModel[] {
         return this.codeLensService.getCodeLensAnchors(this);
     }
@@ -552,8 +545,6 @@ export class SourceContext implements IAstContext
         // TODO: this.info.unreferencedRules = this.symbolTable.getUnreferencedSymbols();
         // TODO: this can be used to add dependencies... imports come from the listener
         // return this.info.imports;
-        this.symbolTable.rebuildReferenceIndex();
-        
         this.symbolTableDirty = false;
     }
 
@@ -789,53 +780,13 @@ export class SourceContext implements IAstContext
             this.symbolTable.getSymbolAtPosition(row, column);
         return symbol ? this.symbolTable.getSymbolInfo(symbol) : undefined;
     }
-    
-    /**
-     * Returns the symbol definition
-     * TODO: Add references in the symbol table to speed up things!
-     * @param row position line number
-     * @param column column position column number
-     * @returns ISymbolInfo located at the definition of the current symbol.
-     */
-    public symbolDefinition(row: number, column: number): ISymbolInfo | undefined
-    {
-        if (!this.tree) return undefined;
+
+    public listTopLevelSymbols(localOnly: boolean): ISymbolInfo[] {
+        if (!this.tree) return [];
         this.ensureSymbolTable();
-
-        const symbol = this.symbolTable.getSymbolAtPosition(row, column);
-        if (!symbol) return undefined;
-
-        const definition = this.symbolTable.getSymbolDefinition(symbol!);
-        return definition ? this.symbolTable.getSymbolInfo(definition) : undefined;
+        return this.symbolTable.symbolInfoTopLevel(localOnly);
     }
 
-    /**
-     * Determines source file and position of all occurrences of the given symbol. The search includes
-     * also all referencing and referenced contexts.
-     *
-     * @param fileName The grammar file name.
-     * @param symbolName The name of the symbol to check.
-     * @returns A list of symbol info entries, each describing one occurrence.
-     */
-    public getSymbolOccurrences(symbolName: string): ISymbolInfo[]
-    {
-        this.ensureSymbolTable();
-        const result = this.symbolTable.getSymbolOccurrences(symbolName, false);
-        // Sort result by kind. This way rule definitions appear before rule references and are re-parsed first.
-        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => lhs.kind - rhs.kind);
-    }
-
-    public symbolInfoAtPositionCtxOccurrences(line: number, character: number): ISymbolInfo[] | undefined
-    {
-        this.ensureSymbolTable();
-        const symbol = this.symbolTable.getSymbolAtPosition(line, character);
-
-        if (!symbol) { return undefined; }
-
-        const result = this.symbolTable.getScopedSymbolOccurrences(symbol)
-
-        return result.sort((lhs: ISymbolInfo, rhs: ISymbolInfo) => lhs.kind - rhs.kind);
-    }
 
     /**
      * Returns the symbol at the given position or one of its outer scopes.
@@ -847,81 +798,6 @@ export class SourceContext implements IAstContext
      * @returns The symbol at the given position (if there's any).
      * @deprecated
     */
-    public enclosingSymbolAtPosition(
-        row: number,
-        column: number,
-        ruleScope: boolean): ISymbolInfo | undefined
-    {
-        if (!this.tree) { return; }
-        this.ensureSymbolTable();
-
-        let context = TreeQuery.parseTreeFromPosition(this.tree, row, column);
-
-        if (context instanceof TerminalNode) {
-            context = context!.parent;
-        }
-
-        if (ruleScope) {
-            context = context!.parent;
-        }
-
-        if (context) {
-            const symbol = this.symbolTable.symbolWithContextSync(context);
-            if (symbol) {
-                return this.symbolTable.getSymbolInfo(symbol);
-            }
-        }
-
-        return;
-    }
-
-    /**
-     * Returns a list of top level symbols from a file (and optionally its dependencies).
-     *
-     * @param includeDependencies If true, includes symbols from all dependencies as well.
-     * @returns A list of symbol info entries.
-     */
-    public listTopLevelSymbols(includeDependencies: boolean): ISymbolInfo[]
-    {
-        this.ensureSymbolTable();
-        return this.symbolTable.symbolInfoTopLevel(includeDependencies);
-    }
-
-    /**
-     * Returns all symbols from this context and optionally its dependencies.
-     * @param recursive 
-     * @returns 
-     */
-    public async getAllSymbols(recursive: boolean): Promise<BaseSymbol[]>
-    {
-        this.ensureSymbolTable();
-        // /*
-        // The symbol table returns symbols of itself and those it depends on (if recursive is true).
-        const result = await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
-
-        // Add also symbols from contexts referencing us, this time not recursive
-        // as we have added our content already.
-        for (const reference of this.references) {
-            const symbols = await reference.symbolTable.getAllSymbols(BaseSymbol, true);
-            symbols.forEach((value) =>
-            {
-                result.push(value);
-            });
-        }
-        return result;
-        // */
-        // return await this.symbolTable.getAllSymbols(BaseSymbol, !recursive);
-    }
-
-    //------------------------------------------------- code completion
-    /**
-     * Get code completion candidates at the specified position.
-     * Delegates to CodeCompletionProvider for the heavy lifting.
-     * 
-     * @param row Line number (1-based)
-     * @param column Column number (0-based)
-     * @returns Array of completion candidates
-     */
     public async getCodeCompletionCandidates(row: number, column: number): Promise<ISymbolInfo[]>
     {
         if (!this.parser || !this.tree) {

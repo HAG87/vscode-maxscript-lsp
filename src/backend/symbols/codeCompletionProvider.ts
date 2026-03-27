@@ -84,18 +84,18 @@ const IGNORED_TOKENS = new Set([
  * These rules provide the most relevant completion contexts.
  */
 const PREFERRED_RULES = new Set([
-    mxsParser.RULE_identifier,
-    mxsParser.RULE_path,
-    mxsParser.RULE_name,
-    mxsParser.RULE_property,
-    mxsParser.RULE_accessor,
-    mxsParser.RULE_postfixExpr,
-    mxsParser.RULE_postfixOp,
     mxsParser.RULE_accesibleFactor,
+    mxsParser.RULE_accessor,
     mxsParser.RULE_basicFactor,
     mxsParser.RULE_factor,
-    mxsParser.RULE_rolloutControl,
+    // mxsParser.RULE_identifier,
+    mxsParser.RULE_name,
+    mxsParser.RULE_path,
+    mxsParser.RULE_postfixExpr,
+    mxsParser.RULE_postfixOp,
+    mxsParser.RULE_property,
     mxsParser.RULE_rcmenuControl,
+    mxsParser.RULE_rolloutControl,
     mxsParser.RULE_structMember,
 ]);
 

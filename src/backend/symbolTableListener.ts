@@ -1,28 +1,28 @@
 import { BaseSymbol, SymbolConstructor } from 'antlr4-c3';
-import { ParseTree, TerminalNode } from 'antlr4ng';
+import { ParseTree } from 'antlr4ng';
 
 import {
-  AccessorContext, AttributesDefinitionContext, DeclarationStatementContext,
-  EventHandlerStatementContext, ExprSeqContext, FnArgsContext, FnParamsContext,
-  FnDefinitionContext, ForBodyContext, FunctionCallContext, IdentifierContext,
-  IndexContext, KwOverrideContext, MacroscriptDefinitionContext, mxsParser,
-  ParamContext, ParamDefinitionContext, ParamsDefinitionContext, PathContext,
-  PluginDefinitionContext, PropertyContext, RcSubmenuDefinitionContext,
-  RcmenuControlContext, RcmenuDefinitionContext, ReferenceContext, RolloutControlContext,
-  RolloutDefinitionContext, RolloutGroupDefinitionContext, StructMemberContext,
-  StructDefinitionContext, ToolDefinitionContext, UtilityDefinitionContext,
-  VariableDeclarationContext,
+        AttributesDefinitionContext, DeclarationStatementContext,
+        EventHandlerStatementContext, FnArgsContext, FnParamsContext,
+        FnDefinitionContext, ForBodyContext, IdentifierContext,
+        KwOverrideContext, MacroscriptDefinitionContext, mxsParser,
+        ParamDefinitionContext, ParamsDefinitionContext, PathContext,
+        PluginDefinitionContext, RcSubmenuDefinitionContext,
+        RcmenuControlContext, RcmenuDefinitionContext, ReferenceContext, RolloutControlContext,
+        RolloutDefinitionContext, RolloutGroupDefinitionContext, StructMemberContext,
+        StructDefinitionContext, ToolDefinitionContext, UtilityDefinitionContext,
+        VariableDeclarationContext,
 } from '../parser/mxsParser.js';
 import { mxsParserListener } from '../parser/mxsParserListener.js';
 import {
-  AttributesDefSymbol, EventHandlerStatementSymbol, ExprSymbol,
-  ExpSeqSymbol, fnArgsSymbol, FnCallSymbol, FnDefinitionSymbol,
-  fnParamsSymbol, ForBodySymbol, IdentifierSymbol, MacroScriptDefinitionSymbol,
-  ParamsDefSymbol, ParamSymbol, PluginDefinitionSymbol, PropertyAccessSymbol,
-  RcControlSymbol, RcMenuDefinitionSymbol, RolloutControlSymbol,
-  RolloutDefinitionSymbol, rolloutGroupDefinitionSymbol, StructDefinitionSymbol,
-  StructMemberSymbol, ToolDefinitionSymbol, UtilityDefinitionSymbol,
-  VariableDeclSymbol,
+        AttributesDefSymbol, EventHandlerStatementSymbol,
+        fnArgsSymbol, FnDefinitionSymbol,
+        fnParamsSymbol, ForBodySymbol, IdentifierSymbol, MacroScriptDefinitionSymbol,
+        ParamsDefSymbol, PluginDefinitionSymbol,
+        RcControlSymbol, RcMenuDefinitionSymbol, RolloutControlSymbol,
+        RolloutDefinitionSymbol, rolloutGroupDefinitionSymbol, StructDefinitionSymbol,
+        StructMemberSymbol, ToolDefinitionSymbol, UtilityDefinitionSymbol,
+        VariableDeclSymbol,
 } from './symbols/symbolTypes.js';
 import { ContextSymbolTable } from './ContextSymbolTable.js';
 
@@ -41,12 +41,11 @@ export class symbolTableListener extends mxsParserListener
         if (this.symbolStack.length === 0) {
             return undefined;
         }
-
         return this.symbolStack[this.symbolStack.length - 1] as T;
     }
 
     /**
-     * Adds a new symbol to the current symbol TOS.
+     * Creates a new symbol without creating a new scope.
      *
      * @param type The type of the symbol to add.
      * @param context The symbol's parse tree, to allow locating it.
@@ -372,23 +371,6 @@ export class symbolTableListener extends mxsParserListener
     }
     */
     //-------------------------------------------------------------
-    /* function call */
-    //TODO: references...
-    public override enterFunctionCall = (ctx: FunctionCallContext): void =>
-    {
-        //TODO: get caller definition...
-        this.pushNewSymbol(FnCallSymbol, ctx, ctx.parent?.parent?.getText() ?? ctx.getText());
-    }
-    public override exitFunctionCall = (ctx: FunctionCallContext): void => { this.popSymbol(); }
-
-    /* params */
-    //TODO: references...
-    public override enterParam = (ctx: ParamContext): void =>
-    {
-        this.pushNewSymbol(ParamSymbol, ctx);
-    }
-    public override exitParam = (ctx: ParamContext): void => { this.popSymbol(); }
-
     /*
     //TODO: references...
     public override enterAccessor = (ctx: AccessorContext): void =>
@@ -402,15 +384,6 @@ export class symbolTableListener extends mxsParserListener
     }
     public override exitAccessor = (ctx: AccessorContext): void => { this.popSymbol(); }
     */
-    /* properties */
-    //TODO: references...
-    public override enterProperty = (ctx: PropertyContext): void =>
-    {
-        this.pushNewSymbol(PropertyAccessSymbol, ctx, ctx.identifier()?.getText())
-    }
-    public override exitProperty = (ctx: PropertyContext): void => { this.popSymbol(); }
-
-    /*
     // public override enterIndex = (ctx: IndexContext): void => { this.pushNewSymbol(PropertyAccessSymbol, ctx) }
     // public override exitIndex = (ctx: IndexContext): void => { this.popSymbol(); }
     // */
