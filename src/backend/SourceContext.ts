@@ -58,37 +58,39 @@ import {
 // One context for each valid document
 export class SourceContext implements IAstContext
 {
-    // context source uri pointing at the document
+    //──────────────────────────────────────────────────────────────────
+    // Core State
+    // Document identity and parser/runtime state for a single source file.
+    //──────────────────────────────────────────────────────────────────
+
+    // Context source URI pointing at the document.
     public sourceUri: string;
-    //-------------------------------------------------
-    // Parsing infrastructure.
+
+    // ANTLR parsing infrastructure.
     private tokenStream: CommonTokenStream;
     private lexer: mxsLexer;
     private parser: mxsParser;
+
     // The root context from the last parse run.
     private tree: ProgramContext | undefined;
-    
-    //-------------------------------------------------
-    // symbols for the current document
+
+    // Legacy symbol table model for the current document.
     public symbolTable: ContextSymbolTable;
 
-    // AST for the current document
+    // Resolved AST for the current document.
     public ast: Program | undefined;
-    
-    // could be useful to store te token stream...
 
-    //-------------------------------------------------
-    // hold diagnostics for the context
+    // Diagnostics and semantic tokens for the latest parse snapshot.
     public diagnostics: IDiagnosticEntry[] = [];
-    // semantic tokens
     public semanticTokens: ISemanticToken[] = [];
+
     // Lower-cased identifier text -> candidate token positions from parse-tree listener
     private identifierCandidates: Map<string, ISemanticToken[]> = new Map();
+
     // TODO: Contexts referencing us.
     private references: SourceContext[] = [];
-    //-------------------------------------------------
 
-    // error listeners
+    // Parser/lexer error listeners bound to this context diagnostics buffer.
     private lexerErrorListener: ContextLexerErrorListener =
         new ContextLexerErrorListener(this.diagnostics);
     private errorListener: ContextErrorListener =
@@ -99,6 +101,7 @@ export class SourceContext implements IAstContext
     // Flag to track if AST + semantic tokens need population (lazy loading)
     private astModelDirty: boolean = false;
 
+    // Workspace-aware callbacks configured by Backend for cross-file resolution.
     private workspaceGlobalResolver?: (name: string, requesterUri: string) => VariableDeclaration | undefined;
     private workspaceGlobalVersionProvider?: () => number;
     private workspaceDeclarationAstProvider?: (decl: VariableDeclaration) => Program | undefined;
@@ -114,10 +117,14 @@ export class SourceContext implements IAstContext
     private readonly navigationService: NavigationService;
     private readonly hoverService: HoverService;
     private readonly codeLensService: CodeLensService;
+
+    // Parse performance telemetry counters.
     private parseInvocationCount: number = 0;
     private sllFallbackCount: number = 0;
     private sourceCharCount: number = 0;
     private sourceLineCount: number = 0;
+
+    // Backend-controlled tracing and AST feature toggles.
     private traceSettings: IBackendTraceSettings = {
         tracePerformance: false,
         traceParserDecisions: false,
@@ -128,6 +135,12 @@ export class SourceContext implements IAstContext
     };
     private static readonly LARGE_FILE_CHAR_THRESHOLD = 100000;
     private static readonly LARGE_FILE_LINE_THRESHOLD = 3000;
+
+    //──────────────────────────────────────────────────────────────────
+    // Trace Helpers
+    // Utility methods used by the parse and AST build pipeline to emit
+    // consistent performance and parser-decision telemetry.
+    //──────────────────────────────────────────────────────────────────
 
     private nowMs(): number {
         return typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -242,6 +255,11 @@ export class SourceContext implements IAstContext
         return `${message}; token=${tokenDescription}`;
     }
 
+    //──────────────────────────────────────────────────────────────────
+    // Backend Configuration
+    // Hooks and settings injected from Backend to enable workspace-wide
+    // lookups without introducing hard dependencies on backend internals.
+    //──────────────────────────────────────────────────────────────────
 
     public configureWorkspaceGlobalLookup(
         resolver: (name: string, requesterUri: string) => VariableDeclaration | undefined,
@@ -265,9 +283,28 @@ export class SourceContext implements IAstContext
     public updateTraceSettings(settings: IBackendTraceSettings): void {
         this.traceSettings = { ...settings };
     }
+
     public updateAstSettings(settings: IBackendAstSettings): void {
         this.astSettings = { ...settings };
     }
+
+    public getWorkspaceGlobalCompletions(requesterUri: string): VariableDeclaration[] {
+        return this.workspaceGlobalCompletionsProvider?.(requesterUri) ?? [];
+    }
+
+    public getDeclarationSourceUri(declaration: VariableDeclaration): string | undefined {
+        return this.declarationSourceUriProvider?.(declaration);
+    }
+
+    public getWorkspaceAstForUri(uri: string): Program | undefined {
+        return this.workspaceAstByUriProvider?.(uri);
+    }
+
+    //──────────────────────────────────────────────────────────────────
+    // Construction
+    // Initializes parser components, error listeners, symbol table,
+    // and service collaborators for this source document context.
+    //──────────────────────────────────────────────────────────────────
 
     public constructor(uri: string)
     {
@@ -295,7 +332,7 @@ export class SourceContext implements IAstContext
         this.parser.removeErrorListeners();
         this.parser.addErrorListener(this.errorListener);
 
-                // initialize symbol table
+            // initialize symbol table
         this.symbolTable = new ContextSymbolTable(
             this.sourceUri,
             { allowDuplicateSymbols: true },
@@ -304,6 +341,12 @@ export class SourceContext implements IAstContext
         // initialize static global symbol table
         //...
     }
+
+    //──────────────────────────────────────────────────────────────────
+    // Language Service Delegates
+    // Thin wrappers over specialized services (signature, rename,
+    // completion, navigation, hover, code lens).
+    //──────────────────────────────────────────────────────────────────
 
     public getSignatureHelpModel(
         row1Based: number,
@@ -352,18 +395,6 @@ export class SourceContext implements IAstContext
         );
     }
 
-    public getWorkspaceGlobalCompletions(requesterUri: string): VariableDeclaration[] {
-        return this.workspaceGlobalCompletionsProvider?.(requesterUri) ?? [];
-    }
-
-    public getDeclarationSourceUri(declaration: VariableDeclaration): string | undefined {
-        return this.declarationSourceUriProvider?.(declaration);
-    }
-
-    public getWorkspaceAstForUri(uri: string): Program | undefined {
-        return this.workspaceAstByUriProvider?.(uri);
-    }
-
     public getAstDefinitionTarget(
         row1Based: number,
         column0Based: number,
@@ -410,7 +441,11 @@ export class SourceContext implements IAstContext
         return this.codeLensService.resolveCodeLens(this, declarationLine, declarationCharacter);
     }
 
-    //----------------------------------------------------------------parser
+    //──────────────────────────────────────────────────────────────────
+    // Parse Pipeline
+    // Runs two-stage SLL->LL parsing and marks derived models dirty for
+    // lazy materialization (symbol table, AST, semantic tokens).
+    //──────────────────────────────────────────────────────────────────
 
     // get getTokenStream() { return this.tokenStream; }
     public parse(): void
@@ -541,6 +576,11 @@ export class SourceContext implements IAstContext
         }
     }
 
+    //──────────────────────────────────────────────────────────────────
+    // Derived Model Materialization
+    // Lazily builds legacy symbol tables and AST-based semantic models.
+    //──────────────────────────────────────────────────────────────────
+
     /**
      * Ensure symbol table is populated. Called lazily before operations that need symbols.
      * @deprecated This is part of the old symbol table pipeline and should be removed in favor of direct AST queries.
@@ -644,8 +684,13 @@ export class SourceContext implements IAstContext
             );
         }
     }
-    //---------------------------------------------------------------
-    // 3. Build hierarchical symbol tree for VS Code
+
+    //──────────────────────────────────────────────────────────────────
+    // AST Query Surface
+    // Public helpers exposing resolved AST and position-based queries.
+    //──────────────────────────────────────────────────────────────────
+
+    // Build hierarchical symbol tree for VS Code.
     public buildSymbolTree(trace = false): ISymbolInfo[] {
         const tracePerformance = this.isPerformanceTraceEnabled();
         const totalStart = tracePerformance ? this.nowMs() : 0;
@@ -761,7 +806,10 @@ export class SourceContext implements IAstContext
         return this.astQueryService.astMemberCompletionsAtPosition(ast, this.sourceUri, row, column, text);
     }
 
-    //---------------------------------------------------------------
+    //──────────────────────────────────────────────────────────────────
+    // Text Snapshot Management
+    // Keeps lexer input and file-size metrics in sync with latest text.
+    //──────────────────────────────────────────────────────────────────
 
     /**
      * Update the text content of a loaded context.
@@ -782,7 +830,11 @@ export class SourceContext implements IAstContext
     {
         return source === this.lexer.text
     }
-    //------------------------------------------------- SYMBOLS
+
+    //──────────────────────────────────────────────────────────────────
+    // Legacy Symbol Table API
+    // Backward-compatible symbol queries and completion candidates.
+    //──────────────────────────────────────────────────────────────────
 
     /**
      * Gets the symbol at the specified position
@@ -835,7 +887,12 @@ export class SourceContext implements IAstContext
         );
     }
 
-    //-------------------------------------------------diagnostics
+    //──────────────────────────────────────────────────────────────────
+    // Diagnostics & Semantic Tokens
+    // Accessors used by providers to consume parse diagnostics and
+    // semantic tokens from the most recent AST snapshot.
+    //──────────────────────────────────────────────────────────────────
+
     public get getDiagnostics(): IDiagnosticEntry[]
     {
         // this.runSemanticAnalysisIfNeeded();
@@ -858,7 +915,13 @@ export class SourceContext implements IAstContext
         this.ensureAstModel();
         return this.semanticTokens;
     }
-    // -------------------------------------------------format code
+
+    //──────────────────────────────────────────────────────────────────
+    // Formatting & Minify/Prettify
+    // Shared formatting entry points for range/document formatting and
+    // command-based minify/prettify operations.
+    //──────────────────────────────────────────────────────────────────
+
     //#region format code
     // TODO: formatter that uses the parse tree and a visitor
     public formatCode(range: ILexicalRange, options?: ICodeFormatSettings): IformatterResult;
@@ -965,7 +1028,12 @@ export class SourceContext implements IAstContext
         return result
     }
     //#endregion
-    //-------------------------------------------------references
+
+    //──────────────────────────────────────────────────────────────────
+    // Inter-context References
+    // Maintains dependency links between contexts for legacy symbol
+    // table dependency propagation.
+    //──────────────────────────────────────────────────────────────────
 
     /**
      * Add this context to the list of referencing contexts in the given context.
