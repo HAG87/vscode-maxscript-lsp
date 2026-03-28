@@ -5,7 +5,7 @@
   "icon": "mxs.png",
   "author": "Atelier Bump",
   "license": "MIT",
-  "version": "2.3.0",
+  "version": "3.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/HAG87/vscode-maxscript-lsp"
@@ -345,7 +345,7 @@
             "default": false,
             "description": "Log parse, AST build, and provider query timings to Extension Host output."
           },
-            "maxScript.providers.traceRouting": {
+          "maxScript.providers.traceRouting": {
             "type": "boolean",
             "default": false,
             "description": "Log provider routing decisions (AST/Legacy) to Extension Host output."
