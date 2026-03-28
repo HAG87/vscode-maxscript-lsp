@@ -553,61 +553,9 @@ export class ExtensionHost
                         }
                     )
                 }),
-            commands.registerCommand('mxs.minify.file',
-                (uri: Uri) =>
-                {
-                    window.withProgress(
-                        {
-                            location: ProgressLocation.Window,
-                            title: 'Minify file',
-                        },
-                        async (_progress, _token) =>
-                        {
-                            return this.minifyFile(uri, true,
-                                minifySettings.filePrefix
-                            )
-                        }
-                    )
-                }
-            ),
             commands.registerCommand('mxs.minify.files', async (uri?: Uri, selectedUris?: Uri[]) =>
             {
-                const isMaxScriptFile = (candidate: Uri): boolean => {
-                    const lowerPath = candidate.fsPath.toLowerCase()
-                    return lowerPath.endsWith('.ms') || lowerPath.endsWith('.mcr')
-                }
-
-                const uniqueUris = new Map<string, Uri>()
-                const incomingUris = selectedUris && selectedUris.length > 0
-                    ? selectedUris
-                    : (uri ? [uri] : [])
-
-                for (const candidate of incomingUris) {
-                    if (!candidate || candidate.scheme !== 'file' || !isMaxScriptFile(candidate)) {
-                        continue
-                    }
-                    uniqueUris.set(candidate.toString(), candidate)
-                }
-
-                let uris = Array.from(uniqueUris.values())
-                if (uris.length === 0) {
-                    uris = (await window.showOpenDialog({
-                        canSelectMany: true,
-                        filters: {
-                            'MaxScript': ['ms', 'mcr']
-                        }
-                    })) ?? []
-                }
-
-                if (uris.length === 0) {
-                    return
-                }
-
-                for (const selectedUri of uris) {
-                    await this.minifyFile(selectedUri, true,
-                        minifySettings.filePrefix
-                    )
-                }
+                await this.processFiles(this.minifyFile, minifySettings.filePrefix || "", uri, selectedUris);
             }),
             commands.registerCommand('mxs.prettify',
                 (uri) =>
@@ -643,6 +591,7 @@ export class ExtensionHost
                         }
                     )
                 }),
+            /*
             commands.registerCommand('mxs.prettify.file',
                 (uri) =>
                 {
@@ -667,7 +616,11 @@ export class ExtensionHost
                         }
                     )
                 }),
-            //...
+            */
+            commands.registerCommand('mxs.prettify.files', async (uri?: Uri, selectedUris?: Uri[]) =>
+            {
+                await this.processFiles(this.prettifyFile, prettifySettings.filePrefix || "", uri, selectedUris);
+            }),
         )
     }
     // commands support
@@ -751,5 +704,42 @@ export class ExtensionHost
                 reject()
             }
         });
+    }
+    private async processFiles(formatter:any, prefix: string, uri?: Uri, selectedUris?: Uri[] ): Promise<void>
+    {
+        const isMaxScriptFile = (candidate: Uri): boolean => {
+            const lowerPath = candidate.fsPath.toLowerCase()
+            return lowerPath.endsWith('.ms') || lowerPath.endsWith('.mcr')
+        }
+
+        const uniqueUris = new Map<string, Uri>()
+        const incomingUris = selectedUris && selectedUris.length > 0
+            ? selectedUris
+            : (uri ? [uri] : [])
+
+        for (const candidate of incomingUris) {
+            if (!candidate || candidate.scheme !== 'file' || !isMaxScriptFile(candidate)) {
+                continue
+            }
+            uniqueUris.set(candidate.toString(), candidate)
+        }
+
+        let uris = Array.from(uniqueUris.values())
+        if (uris.length === 0) {
+            uris = (await window.showOpenDialog({
+                canSelectMany: true,
+                filters: {
+                    'MaxScript': ['ms', 'mcr']
+                }
+            })) ?? []
+        }
+
+        if (uris.length === 0) {
+            return
+        }
+
+        for (const selectedUri of uris) {
+            await formatter(selectedUri, true, prefix )
+        }
     }
 }
