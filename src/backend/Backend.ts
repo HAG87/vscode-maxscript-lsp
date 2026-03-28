@@ -416,21 +416,6 @@ export class mxsBackend
     }
 
     /**
-     * Update the text content of a loaded context.
-     * Call this before reparsing or requesting completions.
-     * @deprecated Use SourceContext.setText() instead.
-     */
-    public setText(uri: string, source?: string): void
-    {
-        const normalizedUri = this.normalizeContextUri(uri);
-        const key = this.findLoadedContextKey(normalizedUri) ?? normalizedUri;
-        const ctxEntry = this.sourceContexts.get(key);
-        if (ctxEntry) {
-            ctxEntry.context.setText(source ?? this.getDocumentText(key));
-        }
-    }
-
-    /**
      * Triggers a reparse of a loaded document.
      * The document must have been acquired before calling this.
      */

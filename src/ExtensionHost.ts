@@ -3,7 +3,7 @@ import { existsSync } from 'fs';
 import { dirname, isAbsolute, resolve } from 'path';
 import { basename } from 'path';
 import {
-  commands, ConfigurationChangeEvent, DiagnosticChangeEvent, ExtensionContext,
+  commands, ConfigurationChangeEvent, ExtensionContext,
   FileSystemWatcher, languages, ProgressLocation, Range,
   TextDocument, TextDocumentChangeEvent, TextEditorEdit, Uri,
   window, workspace,
@@ -41,6 +41,7 @@ export class ExtensionHost
     private static readonly fileInLiteralPattern = /\bfilein\s*\(?\s*@?"([^"]+)"\s*\)?/ig;
     private changeTimers = new Map<string, ReturnType<typeof setTimeout>>();
     private runtimeDependencies = new Map<string, Set<string>>();
+    private fileWatcher?: FileSystemWatcher
     public static readonly langSelector = { language: 'maxscript', scheme: 'file' }
     private readonly backend: mxsBackend
     //----------------------------------------------------------------
@@ -59,6 +60,167 @@ export class ExtensionHost
     public updateProviders(uri: string)
     {
         this.workspaceSymbolProvider.updateWorkspaceSymbols(uri)
+    }
+
+    private isTrackedWorkspaceScriptUri(uri: Uri): boolean
+    {
+        if (uri.scheme !== 'file') {
+            return false
+        }
+
+        const lowerPath = uri.fsPath.toLowerCase()
+        return lowerPath.endsWith('.ms') || lowerPath.endsWith('.mcr')
+    }
+
+    private findOpenDocument(uri: Uri): TextDocument | undefined
+    {
+        const target = uri.toString()
+        return workspace.textDocuments.find((document) => document.uri.toString() === target)
+    }
+
+    private clearPendingReparse(uri: Uri): void
+    {
+        const timer = this.changeTimers.get(uri.fsPath)
+        if (timer) {
+            clearTimeout(timer)
+            this.changeTimers.delete(uri.fsPath)
+        }
+    }
+
+    private getOpenRuntimeDependencyOwners(targetUri: string): TextDocument[]
+    {
+        const owners: TextDocument[] = []
+        for (const [sourceUri, deps] of this.runtimeDependencies.entries()) {
+            if (!deps.has(targetUri)) {
+                continue
+            }
+
+            const document = workspace.textDocuments.find((candidate) => candidate.uri.toString() === sourceUri)
+            if (document && Utilities.isLanguageFile(document)) {
+                owners.push(document)
+            }
+        }
+
+        return owners
+    }
+
+    private ensureDocumentContext(document: TextDocument): void
+    {
+        const uri = document.uri.toString()
+        const text = document.getText()
+
+        this.backend.setLiveDocumentText(uri, text)
+        const context = this.backend.getExistingContext(uri) ?? this.backend.acquireContext(uri, text)
+        context.setText(text)
+    }
+
+    private refreshRuntimeDependencyOwners(targetUri: string): void
+    {
+        for (const owner of this.getOpenRuntimeDependencyOwners(targetUri)) {
+            this.ensureDocumentContext(owner)
+            this.reparseAndRefreshDocument(owner, true)
+        }
+    }
+
+    private handleWatchedFileChange(uri: Uri): void
+    {
+        if (!this.isTrackedWorkspaceScriptUri(uri)) {
+            return
+        }
+
+        if (this.findOpenDocument(uri)) {
+            return
+        }
+
+        const uriString = uri.toString()
+        this.updateProviders(uriString)
+
+        const existingContext = this.backend.getExistingContext(uriString)
+        if (existingContext) {
+            const latestText = this.backend.getDocumentText(uriString)
+            existingContext.setText(latestText)
+            this.backend.reparse(uriString)
+            this.reconcileRuntimeDependencies(uriString, latestText)
+        }
+
+        this.refreshRuntimeDependencyOwners(uriString)
+        this.refreshOpenDocumentDiagnostics()
+        this.scheduleProvidersRefresh()
+    }
+
+    private handleWatchedFileCreate(uri: Uri): void
+    {
+        if (!this.isTrackedWorkspaceScriptUri(uri)) {
+            return
+        }
+
+        if (this.findOpenDocument(uri)) {
+            return
+        }
+
+        this.updateProviders(uri.toString())
+    }
+
+    private handleWatchedFileDelete(uri: Uri): void
+    {
+        if (!this.isTrackedWorkspaceScriptUri(uri)) {
+            return
+        }
+
+        this.clearPendingReparse(uri)
+
+        if (this.findOpenDocument(uri)) {
+            return
+        }
+
+        const uriString = uri.toString()
+        const owners = this.getOpenRuntimeDependencyOwners(uriString)
+        this.removeRuntimeDependencyGraphFor(uriString)
+        this.updateProviders(uriString)
+
+        for (const owner of owners) {
+            this.ensureDocumentContext(owner)
+            this.reparseAndRefreshDocument(owner, true)
+        }
+
+        this.refreshOpenDocumentDiagnostics()
+        this.scheduleProvidersRefresh()
+    }
+
+    private handleWorkspaceFileDelete(uri: Uri): void
+    {
+        this.handleWatchedFileDelete(uri)
+    }
+
+    private handleWorkspaceFileRename(oldUri: Uri, newUri: Uri): void
+    {
+        const oldTracked = this.isTrackedWorkspaceScriptUri(oldUri)
+        const newTracked = this.isTrackedWorkspaceScriptUri(newUri)
+
+        if (!oldTracked && !newTracked) {
+            return
+        }
+
+        this.clearPendingReparse(oldUri)
+        this.clearPendingReparse(newUri)
+
+        if (oldTracked) {
+            this.handleWatchedFileDelete(oldUri)
+        }
+
+        if (newTracked) {
+            this.handleWatchedFileCreate(newUri)
+
+            const renamedDocument = this.findOpenDocument(newUri)
+            if (renamedDocument && Utilities.isLanguageFile(renamedDocument)) {
+                const uri = renamedDocument.uri.toString()
+                this.ensureDocumentContext(renamedDocument)
+                this.reconcileRuntimeDependencies(uri, renamedDocument.getText())
+                this.refreshOpenDocumentDiagnostics()
+                this.scheduleProvidersRefresh()
+                this.updateProviders(uri)
+            }
+        }
     }
 
     private syncBackendTraceSettings(): void
@@ -269,8 +431,7 @@ export class ExtensionHost
             if (Utilities.isLanguageFile(document)) {
                 try {
                     const uri = document.uri.toString()
-                    this.backend.setLiveDocumentText(uri, document.getText())
-                    this.backend.acquireContext(uri, document.getText())
+                    this.ensureDocumentContext(document)
                     this.reconcileRuntimeDependencies(uri, document.getText())
                 } catch (error) {
                     const message = error instanceof Error ? error.message : String(error)
@@ -289,19 +450,26 @@ export class ExtensionHost
         this.registerProviders(ctx)
         // register commands
         this.registerCommands(ctx)
-        // TODO: watch files
-        // this.registerFileWatcher(ctx)
+        this.registerFileWatcher(ctx)
     }
 
     // watch files for changes and update providers
     private registerFileWatcher(ctx: ExtensionContext): void
     {
-        const watchFiles = workspace.createFileSystemWatcher('**/*.{ms,mcr}')
-        watchFiles.onDidChange((uri) =>
+        this.fileWatcher = workspace.createFileSystemWatcher('**/*.{ms,mcr}')
+        this.fileWatcher.onDidChange((uri) =>
         {
-            this.updateProviders(uri.toString());
+            this.handleWatchedFileChange(uri)
         })
-        ctx.subscriptions.push(watchFiles)
+        this.fileWatcher.onDidCreate((uri) =>
+        {
+            this.handleWatchedFileCreate(uri)
+        })
+        this.fileWatcher.onDidDelete((uri) =>
+        {
+            this.handleWatchedFileDelete(uri)
+        })
+        ctx.subscriptions.push(this.fileWatcher)
     }
     
     //register eventHandlers
@@ -312,8 +480,7 @@ export class ExtensionHost
             {
                 if (Utilities.isLanguageFile(document)) {
                     const uri = document.uri.toString()
-                    this.backend.setLiveDocumentText(uri, document.getText())
-                    this.backend.acquireContext(uri, document.getText())
+                    this.ensureDocumentContext(document)
                     this.reconcileRuntimeDependencies(document.uri.toString(), document.getText())
                     this.refreshOpenDocumentDiagnostics()
                 }
@@ -332,8 +499,7 @@ export class ExtensionHost
             {
                 // check for content changes
                 if (event.contentChanges.length > 0 && Utilities.isLanguageFile(event.document)) {
-                    this.backend.setLiveDocumentText(event.document.uri.toString(), event.document.getText())
-                    this.backend.setText(event.document.uri.toString(), event.document.getText())
+                    this.ensureDocumentContext(event.document)
 
                     const fileName = event.document.fileName
                     const timer = this.changeTimers.get(fileName)
@@ -368,22 +534,7 @@ export class ExtensionHost
                     this.updateProviders(document.uri.toString())
                 }
             }),
-            /*
-            //TODO:
-            window.onDidChangeTextEditorSelection((event: TextEditorSelectionChangeEvent) => {
-                if (FrontendUtils.isGrammarFile(event.textEditor.document)) {
-                    this.actionsProvider.update(event.textEditor);
-                }
-            }),
-            //TODO:
-            window.onDidChangeActiveTextEditor((textEditor: TextEditor | undefined) => {
-                if (textEditor) {
-                    FrontendUtils.updateVsCodeContext(this.backend, textEditor.document);
-                    this.updateTreeProviders(textEditor.document);
-                }
-            }),
-            // */
-            //TODO:
+           //TODO:
             workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) =>
             {
                 // console.log('Configuration changed, reloading')
@@ -396,6 +547,16 @@ export class ExtensionHost
                     this.syncBackendTraceSettings()
                     //...
                     // console.log(JSON.stringify(prettifyOptions))
+                }
+            }),
+            workspace.onDidRenameFiles((event) => {
+                for (const file of event.files) {
+                    this.handleWorkspaceFileRename(file.oldUri, file.newUri)
+                }
+            }),
+            workspace.onDidDeleteFiles((event) => {
+                for (const file of event.files) {
+                    this.handleWorkspaceFileDelete(file)
                 }
             }),
             /*
