@@ -9,6 +9,7 @@ import {
     TaskProvider,
     Uri,
     WorkspaceFolder,
+    window,
     workspace,
 } from 'vscode';
 
@@ -45,6 +46,12 @@ class MaxScriptFilesTaskTerminal implements Pseudoterminal {
         return lowerPath.endsWith('.ms') || lowerPath.endsWith('.mcr');
     }
 
+    private resolveVsCodeVariables(value: string): string {
+        return value
+            .replace(/\$\{file\}/g, window.activeTextEditor?.document.uri.fsPath ?? '')
+            .replace(/\$\{workspaceFolder\}/g, this.workspaceFolder.uri.fsPath);
+    }
+
     private resolveTaskFileUri(filePath: string): Uri {
         if (/^[a-zA-Z]:[\\/]/.test(filePath) || filePath.startsWith('\\\\')) {
             return Uri.file(filePath);
@@ -65,7 +72,13 @@ class MaxScriptFilesTaskTerminal implements Pseudoterminal {
             const uniqueFiles = new Map<string, Uri>();
 
             if (this.definition.targetFile && this.definition.targetFile.trim().length > 0) {
-                const explicitFile = this.resolveTaskFileUri(this.definition.targetFile.trim());
+                const resolved = this.resolveVsCodeVariables(this.definition.targetFile.trim());
+                if (!resolved) {
+                    this.writeLine('Task failed: could not resolve targetFile (no active editor).');
+                    this.closeEmitter.fire(1);
+                    return;
+                }
+                const explicitFile = this.resolveTaskFileUri(resolved);
                 if (!this.isMaxScriptFile(explicitFile)) {
                     this.writeLine(`Ignored non-MaxScript file: ${workspace.asRelativePath(explicitFile, false)}`);
                 } else {
@@ -80,17 +93,19 @@ class MaxScriptFilesTaskTerminal implements Pseudoterminal {
                 }
             }
 
-            const patterns = this.definition.patterns && this.definition.patterns.length > 0
-                ? this.definition.patterns
-                : ['**/*.{ms,mcr}'];
+            if (uniqueFiles.size === 0) {
+                const patterns = this.definition.patterns && this.definition.patterns.length > 0
+                    ? this.definition.patterns
+                    : ['**/*.{ms,mcr}'];
 
-            for (const pattern of patterns) {
-                const files = await workspace.findFiles(
-                    new RelativePattern(this.workspaceFolder, pattern),
-                    '**/{node_modules,.git,out,dist}/**',
-                );
-                for (const file of files) {
-                    uniqueFiles.set(file.toString(), file);
+                for (const pattern of patterns) {
+                    const files = await workspace.findFiles(
+                        new RelativePattern(this.workspaceFolder, pattern),
+                        '**/{node_modules,.git,out,dist}/**',
+                    );
+                    for (const file of files) {
+                        uniqueFiles.set(file.toString(), file);
+                    }
                 }
             }
 
