@@ -1,6 +1,7 @@
 .vscode/**
 .vscode-test/**
 .gitignore
+.github
 vsc-extension-quickstart.md
 src/**
 out/**
@@ -18,4 +19,5 @@ dev-notes/**
 parser/grammars/**
 **/*.bak
 tokenColorCustomizations-example.jsonc
+syntaxes/*.yaml
 images/**
