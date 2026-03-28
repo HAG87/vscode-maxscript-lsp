@@ -555,7 +555,7 @@ export class ExtensionHost
                 }),
             commands.registerCommand('mxs.minify.files', async (uri?: Uri, selectedUris?: Uri[]) =>
             {
-                await this.processFiles(this.minifyFile, minifySettings.filePrefix || "", uri, selectedUris);
+                await this.processFiles(this.minifyFile.bind(this), minifySettings.filePrefix || "", uri, selectedUris);
             }),
             commands.registerCommand('mxs.prettify',
                 (uri) =>
@@ -619,7 +619,7 @@ export class ExtensionHost
             */
             commands.registerCommand('mxs.prettify.files', async (uri?: Uri, selectedUris?: Uri[]) =>
             {
-                await this.processFiles(this.prettifyFile, prettifySettings.filePrefix || "", uri, selectedUris);
+                await this.processFiles(this.prettifyFile.bind(this), prettifySettings.filePrefix || "", uri, selectedUris);
             }),
         )
     }
