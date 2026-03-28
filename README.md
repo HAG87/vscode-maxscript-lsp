@@ -21,7 +21,7 @@ Autodesk 3ds Max Scripting language (MaxScript) support.
 - Call hierarchy
 - CodeLens
 - Document formatting and range formatting
-- Minify commands (open document, single file, multi-file)
+- Minify commands (open document, multi-file)
 - Prettify commands (open document, single file)
 - Help lookup command
 - Snippets
@@ -93,7 +93,6 @@ Most settings are under the maxScript section.
 
 - MaxScript: Code reference...
 - MaxScript: Minify open document
-- MaxScript: Minify file
 - MaxScript: Minify files...
 - MaxScript: Prettify open document
 - MaxScript: Prettify file

@@ -114,11 +114,6 @@
         "icon": "$(package)"
       },
       {
-        "command": "mxs.minify.file",
-        "title": "Minify file",
-        "category": "MaxScript"
-      },
-      {
         "command": "mxs.minify.files",
         "title": "Minify files...",
         "category": "MaxScript"
@@ -130,8 +125,8 @@
         "icon": "$(pencil)"
       },
       {
-        "command": "mxs.prettify.file",
-        "title": "Prettify file",
+        "command": "mxs.prettify.files",
+        "title": "Prettify files...",
         "category": "MaxScript"
       }
     ],
@@ -177,17 +172,12 @@
       ],
       "explorer/context": [
         {
-          "command": "mxs.minify.file",
+          "command": "mxs.minify.files",
           "when": "resourceExtname == .ms || resourceExtname == .mcr",
           "group": "1_modification@1"
         },
         {
-          "command": "mxs.minify.files",
-          "when": "resourceExtname == .ms || resourceExtname == .mcr",
-          "group": "1_modification@2"
-        },
-        {
-          "command": "mxs.prettify.file",
+          "command": "mxs.prettify.files",
           "when": "resourceExtname == .ms || resourceExtname == .mcr",
           "group": "1_modification@1"
         }
@@ -210,6 +200,9 @@
         {
           "command": "mxs.prettify",
           "when": "editorLangId  == maxscript  && resourceExtname == .ms || resourceExtname == .mcr"
+        },
+        {
+          "command": "mxs.prettify.files"
         }
       ]
     },
