@@ -6,6 +6,7 @@ vsc-extension-quickstart.md
 src/**
 out/**
 !out/extension.cjs
+!out/ExtensionHost.cjs
 node_modules/**
 scripts/**
 .eslintrc.json
