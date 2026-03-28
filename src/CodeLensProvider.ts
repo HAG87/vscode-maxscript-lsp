@@ -1,25 +1,25 @@
 import {
-  CancellationToken, CodeLens, CodeLensProvider, Event, EventEmitter,
-    Location, ProviderResult, Range, TextDocument, Uri,
+    CancellationToken, CodeLens, CodeLensProvider, Event, EventEmitter,
+    Location, Position, ProviderResult, Range, TextDocument, Uri,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
-import { ISymbolInfo } from './types.js';
+import { mxsBackend } from '@backend/Backend.js';
 import { Utilities } from './utils.js';
 
-/** CodeLens that carries the symbol info and document URI for deferred resolution. */
-class SymbolCodeLens extends CodeLens
+/** CodeLens that carries an AST declaration anchor for deferred reference resolution. */
+class AstDeclarationCodeLens extends CodeLens
 {
     constructor(
         range: Range,
-        public readonly symbol: ISymbolInfo,
         public readonly uri: Uri,
+        public readonly declarationLine: number,
+        public readonly declarationCharacter: number,
     ) {
         super(range);
     }
 }
 
-/** Provides "N references" code lenses above top-level symbol definitions. */
+/** Provides "N references" code lenses above AST declarations. */
 export class mxsCodeLensProvider implements CodeLensProvider
 {
     public constructor(private backend: mxsBackend) { }
@@ -35,41 +35,67 @@ export class mxsCodeLensProvider implements CodeLensProvider
         this._onDidChangeCodeLenses.fire();
     }
 
-    provideCodeLenses(document: TextDocument, _token: CancellationToken): ProviderResult<CodeLens[]>
+    provideCodeLenses(document: TextDocument, token: CancellationToken): ProviderResult<CodeLens[]>
     {
-        const uri = document.uri;
-        const ctx = this.backend.borrowContext(document.uri.toString());
-        const symbols = ctx?.listTopLevelSymbols(false) ?? [];
-        const lenses: CodeLens[] = [];
+        if (token.isCancellationRequested) {
+            return [];
+        }
 
-        for (const symbol of symbols) {
-            if (!symbol.definition) {
-                continue;
+        const uri = document.uri;
+        const context = this.backend.borrowContext(uri.toString());
+        const anchors = context.getAstCodeLensAnchors();
+        if (anchors.length === 0) {
+            return [];
+        }
+
+        const lenses: CodeLens[] = [];
+        for (const anchor of anchors) {
+            if (token.isCancellationRequested) {
+                return [];
             }
-            const range = Utilities.lexicalRangeToRange(symbol.definition.range);
-            lenses.push(new SymbolCodeLens(range, symbol, uri));
+
+            lenses.push(new AstDeclarationCodeLens(
+                Utilities.lexicalRangeToRange(anchor.range),
+                uri,
+                anchor.declarationLine,
+                anchor.declarationCharacter,
+            ));
         }
 
         return lenses;
     }
 
-    resolveCodeLens(codeLens: CodeLens, _token: CancellationToken): ProviderResult<CodeLens>
+    resolveCodeLens(codeLens: CodeLens, token: CancellationToken): ProviderResult<CodeLens>
     {
-        const lens = codeLens as SymbolCodeLens;
-        if (!lens.symbol?.definition) {
+        if (token.isCancellationRequested) {
             return codeLens;
         }
 
-        // Resolve both count and targets from the same scoped occurrence set.
-        const symbolNameRange = Utilities.symbolNameRange(lens.symbol);
-        const ctx = this.backend.borrowContext(lens.uri.toString());
-        const occurrences =
-            ctx?.symbolInfoAtPositionCtxOccurrences(
-                symbolNameRange.start.line + 1,
-                symbolNameRange.start.character,
-            ) ?? [];
-        const locations = Utilities.symbolTargets(occurrences)
-            .map(target => new Location(target.uri, target.range));
+        const lens = codeLens as AstDeclarationCodeLens;
+        const context = this.backend.borrowContext(lens.uri.toString());
+        const resolved = context.resolveAstCodeLens(lens.declarationLine, lens.declarationCharacter);
+        if (!resolved) {
+            return codeLens;
+        }
+
+        const parsedUris = new Map<string, Uri>();
+        const locations = resolved.locations.map((location) =>
+            new Location(
+                parsedUris.get(location.uri)
+                ?? (() => {
+                    const parsed = location.uri === lens.uri.toString()
+                        ? lens.uri
+                        : Uri.parse(location.uri);
+                    parsedUris.set(location.uri, parsed);
+                    return parsed;
+                })(),
+                Utilities.lexicalRangeToRange(location.range),
+            ));
+
+        const declarationPosition = new Position(
+            Math.max(0, resolved.declarationLine - 1),
+            resolved.declarationCharacter,
+        );
 
         const refs = Math.max(0, locations.length - 1);
         const title = refs === 1 ? '1 reference' : `${refs} references`;
@@ -85,7 +111,7 @@ export class mxsCodeLensProvider implements CodeLensProvider
         lens.command = {
             title,
             command: 'editor.action.showReferences',
-            arguments: [lens.uri, symbolNameRange.start, locations],
+            arguments: [lens.uri, declarationPosition, locations],
         };
 
         return lens;

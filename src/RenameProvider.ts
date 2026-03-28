@@ -3,12 +3,17 @@ import {
     TextDocument, WorkspaceEdit,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
+import { mxsBackend } from '@backend/Backend.js';
 import { Utilities } from './utils.js';
+import { IMaxScriptSettings } from 'types.js';
 
 export class mxsRenameProvider implements RenameProvider
 {
-    public constructor(private backend: mxsBackend) { }
+    public constructor(private backend: mxsBackend, private options?: IMaxScriptSettings) { }
+
+    private nowMs(): number {
+        return typeof performance !== 'undefined' ? performance.now() : Date.now();
+    }
 
     public prepareRename(
         document: TextDocument,
@@ -19,18 +24,40 @@ export class mxsRenameProvider implements RenameProvider
             return undefined;
         }
 
-        const ctx = this.backend.borrowContext(document.uri.toString());
-        const symbol = ctx.symbolAtPosition(position.line + 1, position.character);
+        const traceRouting = this.options?.debug?.traceRouting || false;
+        const tracePerformance = this.options?.debug?.tracePerformance || false;
+        
+        const providerStart = tracePerformance ? this.nowMs() : 0;
+        const logPerformance = (route: 'AST' | 'None', reason?: string): void => {
+            if (!tracePerformance) {
+                return;
+            }
+            const reasonPart = reason ? ` reason=${reason}` : '';
+            console.log(`[language-maxscript][Performance] renameProvider.prepare uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route}${reasonPart}`);
+        };
+        const sourceContext = this.backend.borrowContext(document.uri.toString());
 
-        if (!symbol || !symbol.definition) {
-            // Reject positions that are not on a renameable symbol.
-            throw new Error('No renameable symbol at this position.');
+        const renameTarget = sourceContext.prepareAstRename(
+            position.line + 1,
+            position.character,
+            document.getText(),
+        );
+        if (renameTarget) {
+            if (traceRouting) {
+                console.log('[language-maxscript][RenameProvider] route=AST phase=prepare');
+            }
+            logPerformance('AST');
+            return {
+                range: Utilities.lexicalRangeToRange(renameTarget.range),
+                placeholder: renameTarget.placeholder,
+            };
+        }
+        if (traceRouting) {
+            console.log('[language-maxscript][RenameProvider] route=None reason=ast-miss phase=prepare');
         }
 
-        return({
-            range: Utilities.symbolNameRange(symbol),
-            placeholder: symbol.name,
-        });
+        logPerformance('None', 'ast-miss');
+        throw new Error('No renameable symbol at this position.');
     }
 
     public provideRenameEdits(
@@ -42,20 +69,41 @@ export class mxsRenameProvider implements RenameProvider
         if (token.isCancellationRequested) {
             return undefined;
         }
-        const ctx = this.backend.borrowContext(document.uri.toString());
-        const occurrences =
-            ctx?.symbolInfoAtPositionCtxOccurrences(
-                position.line + 1,
-                position.character);
 
-        if (occurrences) {
-            const workspaceEdit = new WorkspaceEdit();
-            const targets = Utilities.symbolTargetsWithWordAtPosition(occurrences, document, position);
-            for (const target of targets) {
-                workspaceEdit.replace(target.uri, target.range, newName);
+        const traceRouting = this.options?.debug?.traceRouting || false;
+        const tracePerformance = this.options?.debug?.tracePerformance || false;
+        const providerStart = tracePerformance ? this.nowMs() : 0;
+        const logPerformance = (route: 'AST' | 'None', edits: number, reason?: string): void => {
+            if (!tracePerformance) {
+                return;
             }
+            const reasonPart = reason ? ` reason=${reason}` : '';
+            console.log(`[language-maxscript][Performance] renameProvider.edits uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route} edits=${edits}${reasonPart}`);
+        };
+        const sourceContext = this.backend.borrowContext(document.uri.toString());
+
+        const astEdits = sourceContext.buildAstRenameEdits(
+            position.line + 1,
+            position.character,
+            newName,
+            document.getText(),
+        );
+        if (astEdits) {
+            const workspaceEdit = new WorkspaceEdit();
+            for (const edit of astEdits) {
+                workspaceEdit.replace(document.uri, Utilities.lexicalRangeToRange(edit.range), edit.newText);
+            }
+            if (traceRouting) {
+                console.log('[language-maxscript][RenameProvider] route=AST phase=edits');
+            }
+            logPerformance('AST', astEdits.length);
             return workspaceEdit;
         }
+        if (traceRouting) {
+            console.log('[language-maxscript][RenameProvider] route=None reason=ast-miss phase=edits');
+        }
+
+        logPerformance('None', 0, 'ast-miss');
         return undefined;
     }
 }

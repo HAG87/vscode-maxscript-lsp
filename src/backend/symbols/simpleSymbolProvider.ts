@@ -3,7 +3,7 @@ import { CharStream, CommonTokenStream, Token } from 'antlr4ng';
 import { mxsLexer } from '../../parser/mxsLexer.js';
 import {
   IDefinition, ILexicalRange, ISymbolInfo, SymbolKind,
-} from '../../types.js';
+} from '../types.js';
 
 const tokenTypeToSymbolKind: Map<number, SymbolKind> = new Map<number, SymbolKind>([
     [mxsLexer.FN, SymbolKind.Function],

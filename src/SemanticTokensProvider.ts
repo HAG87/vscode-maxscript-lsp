@@ -1,18 +1,18 @@
 import {
-  CancellationToken, DocumentRangeSemanticTokensProvider,
-  DocumentSemanticTokensProvider, Event, EventEmitter, ProviderResult, Range,
-  SemanticTokens, SemanticTokensBuilder, SemanticTokensLegend, TextDocument,
+    CancellationToken, DocumentRangeSemanticTokensProvider,
+    DocumentSemanticTokensProvider, Event, EventEmitter, ProviderResult, Range,
+    SemanticTokens, SemanticTokensBuilder, SemanticTokensLegend, TextDocument,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
-import { semTokenModifiers, semTokenTypes } from './types.js';
+import { mxsBackend } from '@backend/Backend.js';
+import { semTokenModifiers, semTokenTypes, type SemTokenType } from '@backend/types.js';
 
-export const mxsSemtoTokensLegend = new SemanticTokensLegend(semTokenTypes, semTokenModifiers);
+export const mxsSemtoTokensLegend = new SemanticTokensLegend([...semTokenTypes], [...semTokenModifiers]);
 
 /**
  * Always takes a full document as input.
  */
-export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider 
+export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider
 {
     private _onDidChangeSemanticTokens = new EventEmitter<void>();
 
@@ -30,16 +30,14 @@ export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider
         this._onDidChangeSemanticTokens.fire();
     }
 
-    provideDocumentSemanticTokens(document: TextDocument, token: CancellationToken): ProviderResult<SemanticTokens>
-    {
+    provideDocumentSemanticTokens(document: TextDocument, token: CancellationToken): ProviderResult<SemanticTokens> {
         if (token.isCancellationRequested) {
             return undefined;
         }
 
         // TODO: if no parse tree is available, fallback to simple method
         // const tokens = this.backend.getDocumentSemanticTokens(document.uri.toString());
-        const ctx = this.backend.borrowContext(document.uri.toString());
-        const tokens = ctx?.getSemanticTokens;
+        const tokens = this.backend.borrowContext(document.uri.toString())?.getSemanticTokens;
 
         // some optimizations to recompute the tokens only if they have changed...
         if (!tokens || tokens.length === 0) {
@@ -47,20 +45,23 @@ export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider
         }
 
         const tokensBuilder = new SemanticTokensBuilder(mxsSemtoTokensLegend);
+
         for (const semToken of tokens) {
             if (token.isCancellationRequested) {
                 return undefined;
             }
-
+            // console.log(`[SemanticTokensProvider] Adding token: ${JSON.stringify(semToken)}`);
             tokensBuilder.push(
                 new Range(
-                    semToken.line - 1,
+                    semToken.startLine - 1,
                     semToken.startCharacter,
-                    semToken.line - 1,
+                    semToken.startLine - 1,
                     semToken.startCharacter + semToken.length,
+                    // (semToken.endLine || semToken.startLine) - 1,
+                    // semToken.endCharacter || semToken.startCharacter + semToken.length,
                 ),
-                semToken.tokenType as string,
-                semToken.tokenModifiers as string[],
+                semToken.tokenType || ('generic' as SemTokenType),
+                semToken.tokenModifiers,
             );
         }
 
@@ -85,7 +86,6 @@ export class mxsSemanticTokensProvider implements DocumentSemanticTokensProvider
  */
 export class mxsRangeSemanticTokensProvider implements DocumentRangeSemanticTokensProvider
 {
-
     constructor(private backend: mxsBackend) { }
 
     /**
@@ -94,8 +94,7 @@ export class mxsRangeSemanticTokensProvider implements DocumentRangeSemanticToke
      * @param range 
      * @param token 
      */
-    provideDocumentRangeSemanticTokens(document: TextDocument, range: Range, token: CancellationToken): ProviderResult<SemanticTokens>
-    {
+    provideDocumentRangeSemanticTokens(document: TextDocument, range: Range, token: CancellationToken): ProviderResult<SemanticTokens> {
         if (token.isCancellationRequested) {
             return undefined;
         }
@@ -116,7 +115,7 @@ export class mxsRangeSemanticTokensProvider implements DocumentRangeSemanticToke
                 return undefined;
             }
 
-            const tokenLine = semToken.line - 1;
+            const tokenLine = semToken.startLine - 1;
             const tokenStart = semToken.startCharacter;
             const tokenEnd = semToken.startCharacter + semToken.length;
 

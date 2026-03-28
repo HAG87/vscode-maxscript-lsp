@@ -5,9 +5,9 @@
 import { ParserRuleContext, ParseTree, TerminalNode } from 'antlr4ng';
 
 import { mxsParser } from '../parser/mxsParser.js';
-import { ILexicalRange } from '../types.js';
+import { ILexicalRange } from './types.js';
 
-export class BackendUtils
+export class TreeQuery
 {
     /**
      * Get the lowest level parse tree, which covers the given position.
@@ -52,7 +52,7 @@ export class BackendUtils
 
             if (context.children) {
                 for (const child of context.children) {
-                    const result = BackendUtils.parseTreeFromPosition(child, row, column);
+                    const result = TreeQuery.parseTreeFromPosition(child, row, column);
                     if (result) {
                         return result;
                     }
@@ -77,21 +77,21 @@ export class BackendUtils
     {
         let ctx: ParserRuleContext = root as ParserRuleContext;
         let ctxStart =
-            BackendUtils.parseTreeFromPosition(root, range.start.row, range.start.column) as ParserRuleContext;
+            TreeQuery.parseTreeFromPosition(root, range.start.row, range.start.column) as ParserRuleContext;
 
         if (ctxStart) {
             if (ctxStart instanceof TerminalNode) {
-                ctxStart = BackendUtils.findParentExpr(ctxStart);
+                ctxStart = TreeQuery.findParentExpr(ctxStart);
             }
             ctx = ctxStart;
         }
 
         let ctxStop =
-            (BackendUtils.parseTreeFromPosition(root, range.end.row, range.end.column) ?? root) as ParserRuleContext;
+            (TreeQuery.parseTreeFromPosition(root, range.end.row, range.end.column) ?? root) as ParserRuleContext;
 
         if (ctxStop) {
             if (ctxStop instanceof TerminalNode) {
-                ctxStop = BackendUtils.findParentExpr(ctxStop);
+                ctxStop = TreeQuery.findParentExpr(ctxStop);
             }
             const startEnd = ctx.stop?.tokenIndex ?? 0;
             const stopEnd = ctxStop.stop?.tokenIndex ?? 0;

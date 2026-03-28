@@ -2,7 +2,7 @@
 */
 import { Diagnostic, DiagnosticSeverity } from 'vscode';
 
-import { DiagnosticType, IDiagnosticEntry } from './types.js';
+import { DiagnosticType, IDiagnosticEntry } from '@backend/types.js';
 import { Utilities } from './utils.js';
 
 const diagnosticTypeMap = new Map<DiagnosticType, DiagnosticSeverity>();

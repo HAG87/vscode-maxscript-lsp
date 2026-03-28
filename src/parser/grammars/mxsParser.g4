@@ -537,15 +537,15 @@ simpleExpression
 // Ordered choice in ANTLR: first match wins
 //
 // 1. Try prefix operators (&, *) first - they bind to the tightest construct after them
-//    &foo.bar ÔåÆ &(foo.bar) - reference to accessor result
-//    *foo.bar ÔåÆ *(foo.bar) - dereference accessor result
+//    &foo.bar → &(foo.bar) - reference to accessor result
+//    *foo.bar → *(foo.bar) - dereference accessor result
 //
 // 2. Then try function calls - postfix operator that needs call syntax
-//    foo.bar() ÔåÆ (foo.bar)() - call the result of accessor
+//    foo.bar() → (foo.bar)() - call the result of accessor
 //
 // 3. Finally try operand - accessor (postfix .[]) or primary (literals/identifiers)
-//    foo.bar ÔåÆ accessor
-//    foo ÔåÆ identifier (via factor)
+//    foo.bar → accessor
+//    foo → identifier (via factor)
 //
 // This ordering correctly implements MaxScript's precedence where & and * are prefix
 // operators that have lower precedence than postfix operators (. [] ()), meaning:
@@ -645,7 +645,7 @@ exprSeq:
 	;
 
 //---------------------------------------- TYPES
-// Unified vector literal: [expr, expr, ...] ÔÇö covers Point2, Point3, Box2, etc.
+// Unified vector literal: [expr, expr, ...] — covers Point2, Point3, Box2, etc.
 vector:
     lb
         expr (comma expr)*
@@ -657,10 +657,10 @@ bitArray: SHARP NL* lc bitList? rc
 	;
 bitList: bitexpr ( comma bitexpr)*
 	;
-// Current: SLL conflict ÔÇö both alts start with expr
+// Current: SLL conflict — both alts start with expr
 // bitexpr: expr NL* DOTDOT NL* expr | expr
 
-// Fix: factor common prefix ÔÇö fully LL(1) after parsing expr
+// Fix: factor common prefix — fully LL(1) after parsing expr
 bitexpr: expr (NL* DOTDOT NL* expr)?
 	;
 

@@ -44,7 +44,7 @@ class MaxScriptFilesTaskTerminal implements Pseudoterminal {
             const taskKind = this.definition.task;
             const operation = taskKind === 'prettify' ? 'prettify' : 'minify';
             const progressVerb = taskKind === 'prettify' ? 'Prettifying' : 'Minifying';
-            const commandId = taskKind === 'prettify' ? 'mxs.prettify.file' : 'mxs.minify.file';
+            const commandId = taskKind === 'prettify' ? 'mxs.prettify.files' : 'mxs.minify.files';
 
             this.writeLine(`MaxScript task: ${operation}`);
 

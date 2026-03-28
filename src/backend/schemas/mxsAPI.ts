@@ -1,3 +1,5 @@
+import type { SemTokenModifier, SemTokenType } from '../types.js';
+
 const maxConstant: Set<string> = new Set([
 	'assetuser',
 	'constant',
@@ -2432,13 +2434,13 @@ export const maxAPI = {
  * Maps lowercase identifier -> { tokenType, tokenModifiers }
  * Built once at module initialization and reused by consumers.
  */
-export const maxAPILookup: Map<string, { tokenType: string; tokenModifiers: string[] }> = new Map();
+export const maxAPILookup: Map<string, { tokenType: SemTokenType; tokenModifiers: SemTokenModifier[] }> = new Map();
 (function buildLookup() {
 	const lib = (k: keyof typeof maxAPI) => (maxAPI as any)[k] as Set<string>;
 
-	const MOD_DEFAULT = ['defaultLibrary'];
-	const MOD_STATIC = ['defaultLibrary', 'static'];
-	const MOD_READONLY = ['defaultLibrary', 'readonly'];
+	const MOD_DEFAULT: SemTokenModifier[] = ['defaultLibrary'];
+	const MOD_STATIC: SemTokenModifier[] = ['defaultLibrary', 'static'];
+	const MOD_READONLY: SemTokenModifier[] = ['defaultLibrary', 'readonly'];
 
 	for (const f of lib('function')) {
 		maxAPILookup.set(f, { tokenType: 'function', tokenModifiers: MOD_DEFAULT });

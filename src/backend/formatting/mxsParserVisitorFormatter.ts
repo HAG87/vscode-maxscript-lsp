@@ -25,7 +25,7 @@ import {
 import { mxsParserVisitor } from '../../parser/mxsParserVisitor.js';
 import {
   ICodeFormatSettings, IMinifySettings, IPrettifySettings,
-} from '../../types.js';
+} from '../types.js';
 
 type R = codeToken | codeBlock
 
@@ -841,7 +841,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.EXPR
         )
     }
-    visitRcSubmenuDefinition = (ctx: RcSubmenuDefinitionContext): codeBlock =>
+    visitRc_submenudefinition = (ctx: RcSubmenuDefinitionContext): codeBlock =>
     {
         const vals = [this.visit(ctx.submenuClause())!].flat()
         //------------------
@@ -889,7 +889,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             blockTypes.DECL
         )
     }
-    visitAttributesClause = (ctx: AttributesClauseContext): codeBlock => // this.visitChildren(ctx)
+    visitAttributes_clause = (ctx: AttributesClauseContext): codeBlock => // this.visitChildren(ctx)
     {
         const vals = [
             this.visit(ctx.Attributes())!,
@@ -1507,7 +1507,8 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     {
         const vals = this.visitChildren(ctx)!;
         // change prefix state
-        (<codeToken>vals[0]).hasPrefix = true;
+        Object.assign(<codeToken>vals[0], { isPrefix: true });
+        // (vals[0] as codeToken).isPrefix = true
         return vals
     }
     visitIdentifier = (ctx: IdentifierContext): codeToken =>

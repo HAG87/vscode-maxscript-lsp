@@ -3,8 +3,8 @@ import { CommonTokenStream, ParseTree, ParserRuleContext, Token } from 'antlr4ng
 
 import { mxsLexer } from '../../parser/mxsLexer.js';
 import { mxsParser } from '../../parser/mxsParser.js';
-import { ISymbolInfo, SymbolKind } from '../../types.js';
-import { BackendUtils } from '../BackendUtils.js';
+import { ISymbolInfo, SymbolKind } from '../types.js';
+import { TreeQuery } from '../TreeQuery.js';
 import {
     FnDefinitionSymbol, fnArgsSymbol, fnParamsSymbol, IdentifierSymbol,
     StructDefinitionSymbol, StructMemberSymbol,
@@ -84,18 +84,18 @@ const IGNORED_TOKENS = new Set([
  * These rules provide the most relevant completion contexts.
  */
 const PREFERRED_RULES = new Set([
-    mxsParser.RULE_identifier,
-    mxsParser.RULE_path,
+    mxsParser.RULE_accesibleFactor,
+    mxsParser.RULE_accessor,
+    mxsParser.RULE_basicFactor,
+    mxsParser.RULE_factor,
+    // mxsParser.RULE_identifier,
     mxsParser.RULE_name,
+    mxsParser.RULE_path,
+    mxsParser.RULE_postfixExpr,
+    mxsParser.RULE_postfixOp,
     mxsParser.RULE_property,
-        mxsParser.RULE_accessor,
-        mxsParser.RULE_postfixExpr,
-        mxsParser.RULE_postfixOp,
-        mxsParser.RULE_accesibleFactor,
-        mxsParser.RULE_basicFactor,
-        mxsParser.RULE_factor,
-    mxsParser.RULE_rolloutControl,
     mxsParser.RULE_rcmenuControl,
+    mxsParser.RULE_rolloutControl,
     mxsParser.RULE_structMember,
 ]);
 
@@ -227,7 +227,7 @@ export class CodeCompletionProvider
 
                 case mxsParser.RULE_identifier:
                     {
-                        const context = BackendUtils.parseTreeFromPosition(tree as ParseTree, row, column);
+                        const context = TreeQuery.parseTreeFromPosition(tree as ParseTree, row, column);
                         if (!context) { return; }
 
                         const currentSymbol = symbolTable.symbolContainingContext(context);

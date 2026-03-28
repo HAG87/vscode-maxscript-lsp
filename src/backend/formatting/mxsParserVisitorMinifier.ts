@@ -19,7 +19,7 @@ import {
   UtilityDefinitionContext, WhenStatementContext, WhileLoopStatementContext,
 } from '../../parser/mxsParser.js';
 import { mxsParserVisitor } from '../../parser/mxsParserVisitor.js';
-import { ICodeFormatSettings, IMinifySettings } from '../../types.js';
+import { ICodeFormatSettings, IMinifySettings } from '../types.js';
 
 export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
 {

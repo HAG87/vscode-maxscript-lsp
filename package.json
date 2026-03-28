@@ -5,7 +5,7 @@
   "icon": "mxs.png",
   "author": "Atelier Bump",
   "license": "MIT",
-  "version": "2.3.0",
+  "version": "3.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/HAG87/vscode-maxscript-lsp"
@@ -59,7 +59,16 @@
           "classclass.defaultLibrary": [
             "support.class.mxs"
           ],
+          "function": [
+            "entity.name.function.mxs"
+          ],
           "function.defaultLibrary": [
+            "support.function.mxs"
+          ],
+          "method": [
+            "entity.name.function.mxs"
+          ],
+          "method.defaultLibrary": [
             "support.function.mxs"
           ],
           "interface": [
@@ -105,11 +114,6 @@
         "icon": "$(package)"
       },
       {
-        "command": "mxs.minify.file",
-        "title": "Minify file",
-        "category": "MaxScript"
-      },
-      {
         "command": "mxs.minify.files",
         "title": "Minify files...",
         "category": "MaxScript"
@@ -121,8 +125,8 @@
         "icon": "$(pencil)"
       },
       {
-        "command": "mxs.prettify.file",
-        "title": "Prettify file",
+        "command": "mxs.prettify.files",
+        "title": "Prettify files...",
         "category": "MaxScript"
       }
     ],
@@ -168,17 +172,12 @@
       ],
       "explorer/context": [
         {
-          "command": "mxs.minify.file",
+          "command": "mxs.minify.files",
           "when": "resourceExtname == .ms || resourceExtname == .mcr",
           "group": "1_modification@1"
         },
         {
-          "command": "mxs.minify.files",
-          "when": "resourceExtname == .ms || resourceExtname == .mcr",
-          "group": "1_modification@2"
-        },
-        {
-          "command": "mxs.prettify.file",
+          "command": "mxs.prettify.files",
           "when": "resourceExtname == .ms || resourceExtname == .mcr",
           "group": "1_modification@1"
         }
@@ -201,6 +200,9 @@
         {
           "command": "mxs.prettify",
           "when": "editorLangId  == maxscript  && resourceExtname == .ms || resourceExtname == .mcr"
+        },
+        {
+          "command": "mxs.prettify.files"
         }
       ]
     },
@@ -253,20 +255,105 @@
       {
         "title": "General",
         "properties": {
-          "maxScript.completions.dataBaseCompletion": {
-            "type": "boolean",
-            "default": true,
-            "description": "Enable completions for build-in Classes, Methods, Structs and Interfaces"
-          },
-          "maxScript.completions.codeCompletion": {
-            "type": "boolean",
-            "default": true,
-            "description": "Enable suggestions provided by the current code"
-          },
           "maxScript.help.provider": {
             "type": "string",
             "default": "https://help.autodesk.com/view/MAXDEV/2025/ENU/",
             "description": "MaxScript help source"
+          },
+          "maxScript.providers.dataBaseCompletion": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable completions for build-in Classes, Methods, Structs and Interfaces"
+          },
+          "maxScript.providers.codeCompletion": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable suggestions provided by the current code"
+          },
+          "maxScript.providers.astSymbolProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Use AST-based document symbols provider (Outline)."
+          },
+          "maxScript.providers.definitionProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Go to Definition: Navigate to where a symbol is defined"
+          },
+          "maxScript.providers.referenceProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Find All References: Locate all usages of a symbol"
+          },
+          "maxScript.providers.hoverProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Hover Information: Display symbol details and documentation when hovering"
+          },
+          "maxScript.providers.renameProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Rename Symbol: Refactor symbol names throughout the workspace"
+          },
+          "maxScript.providers.documentHighlightProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Document Highlight: Highlight all occurrences of a symbol in the current file"
+          },
+          "maxScript.providers.signatureHelpProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Signature Help: Display function and method signatures while typing"
+          },
+          "maxscript.providers.linkedEditingRangeProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Linked Editing: Automatically rename related symbols when one is edited"
+          },
+          "maxscript.providers.foldingRangeProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Code Folding: Enable folding of code blocks to improve readability"
+          },
+          "maxscript.providers.codeLensProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Code Lens: Show inline information and action links in the editor"
+          },
+          "maxscript.providers.callHierarchyProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Call Hierarchy: Visualize the call tree showing who calls and who is called by a function"
+          },
+          "maxscript.providers.workspaceSymbolProvider": {
+            "type": "boolean",
+            "default": true,
+            "description": "Workspace Symbols: Enable searching for symbols across the entire workspace"
+          },
+          "maxscript.providers.contextualSemanticTokens": {
+            "type": "boolean",
+            "default": true,
+            "description": "Contextual Semantic Tokens: Provide enhanced semantic highlighting based on AST analysis (may impact performance)"
+          }
+        }
+      },
+      {
+        "title": "Debug",
+        "properties": {
+          "maxScript.providers.tracePerformance": {
+            "type": "boolean",
+            "default": false,
+            "description": "Log parse, AST build, and provider query timings to Extension Host output."
+          },
+          "maxScript.providers.traceRouting": {
+            "type": "boolean",
+            "default": false,
+            "description": "Log provider routing decisions (AST/Legacy) to Extension Host output."
+          },
+          "maxScript.providers.traceParserDecisions": {
+            "type": "boolean",
+            "default": false,
+            "description": "Log ANTLR parse decision profiling details (expensive and fallback-heavy decisions)."
           }
         }
       },
@@ -331,6 +418,19 @@
     "pretest": "npm run compile-tests && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test",
+    "test:ast": "npx tsx src/backend/ast/test/run-tests.ts",
+    "test:ast:simple": "npx tsx src/backend/ast/test/test-simple.ts",
+    "test:ast:functions": "npx tsx src/backend/ast/test/test-functions.ts",
+    "test:ast:nested": "npx tsx src/backend/ast/test/test-nested.ts",
+    "test:ast:performance": "npx tsx src/backend/ast/test/test-performance.ts",
+    "test:ast:symboltree": "npx tsx src/backend/ast/test/test-symboltree.ts",
+    "test:ast:control-flow": "npx tsx src/backend/ast/test/test-control-flow.ts",
+    "test:ast:contexts": "npx tsx src/backend/ast/test/test-context-handlers.ts",
+    "test:ast:definitions": "npx tsx src/backend/ast/test/test-definition-blocks.ts",
+    "test:ast:ui": "npx tsx src/backend/ast/test/test-definition-blocks.ts",
+    "test:ast:positions": "npx tsx src/backend/ast/test/test-query-positions.ts",
+    "test:format:minify": "npx tsx src/backend/formatting/test/test-minify-formatter.ts",
+    "test:format:simple": "npx tsx src/backend/formatting/test/test-simple-formatter.ts",
     "generate": "antlr4ng -Dlanguage=TypeScript -visitor -Xexact-output-dir src/parser/grammars/mxsLexer.g4 src/parser/grammars/mxsParser.g4 -o src/parser"
   },
   "devDependencies": {
@@ -343,10 +443,12 @@
     "globals": "^15.9.0",
     "npm-run-all": "^4.1.5",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
     "typescript": "^5.6.2",
     "typescript-eslint": "^8.6.0"
   },
   "dependencies": {
+    "@strumenta/tylasu": "^1.6.30",
     "antlr4-c3": "^3.4.2",
     "antlr4ng": "^3.0.14"
   }

@@ -1,0 +1,225 @@
+/*
+ * Copyright (c) Mike Lischke. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+*/
+
+export interface ICodeFormatSettings
+{
+    indentChar: string,
+    newLineChar: string,
+    exprEndChar: string,
+    lineContinuationChar: string,
+    whitespaceChar: string,
+    codeblock: {
+        /**
+         * If true, the formatter will add a line break after the opening and closing braces of a code block. when the code block contains multiple expressions
+         */
+        parensInNewLine: boolean,
+        /**
+         * If true, the formatter will add a line break after the opening and closing braces of a code block whenever is possible, regarding the number of expressions in the block.
+         */
+        newlineAllways: boolean,
+        /**
+         * If true, the formatter will add witespace after the opening and before the closing braces of a code block whenever the block contains a single expression.
+         */
+        spaced: boolean,
+    },
+    statements: {
+        /**
+		 * if true, the formatter will add a line break after keywords like `do`, `else`, `try`, `catch`, `then`, `where`, `while`
+		 */
+        useLineBreaks: boolean,
+        /**
+         * If true, the formatter will add optional whitespaces in statements.
+         */
+        optionalWhitespace: boolean
+    },
+    list: {
+        /**
+         * Add line breaks after each list item in an array or point structure.
+         */
+        useLineBreaks: boolean
+    }
+}
+
+export interface IPrettifySettings
+{
+    filePrefix?: string,
+    keepComments?: boolean,
+    keepEmptyLines?: boolean,
+    expressionsToBlock: boolean,
+}
+
+export interface IMinifySettings
+{
+    filePrefix?: string,
+    condenseWhitespace: boolean,
+    removeUnnecessaryScopes: boolean,
+}
+
+export interface IBackendTraceSettings
+{
+    tracePerformance: boolean,
+    traceParserDecisions: boolean,
+    traceRouting: boolean,
+}
+export interface IBackendAstSettings
+{
+    contextualSemanticTokens: boolean,
+}
+
+export const semTokenTypes =
+    [
+		'method',
+        'class',
+        'function',
+        'interface',
+        'keyword',
+        'namespace',
+        'struct',
+        'type',
+        'variable',
+        'parameter',
+        'property',
+        'accessor',
+        'generic',
+        // 'enumMember',
+        // 'string',
+        // 'number',
+        // 'member',
+    ] as const;
+
+export const semTokenModifiers =
+    [
+		'defaultLibrary',
+        'declaration',
+        'modification',
+        'readonly',
+        'static',
+        // 'documentation',
+        // 'abstract',
+        // 'deprecated',
+    ] as const;
+
+export type SemTokenType = typeof semTokenTypes[number];
+export type SemTokenModifier = typeof semTokenModifiers[number];
+
+export interface ISemanticToken
+{
+	startLine: number;
+	startCharacter: number;
+    endLine?: number;
+    endCharacter?: number;
+	length: number;
+    tokenType?: SemTokenType;
+    tokenModifiers?: SemTokenModifier[];
+}
+
+/**
+ * A symbol kind.
+ */
+export enum SymbolKind
+{
+	Accessor,
+	Array,
+	RcMenuControl,
+	Attributes,
+	BitArray,
+	Boolean,
+	Call,
+	Constant,
+	Control,
+	Declaration,	
+	Event,
+	Field,
+	Function,
+	Identifier,
+	Keyword,
+	MacroScript,
+	Null,
+	Number,
+	Object,
+	Operator,
+	Parameters,
+	Plugin,
+	Property,
+	RcMenu,
+	Rollout,
+	String,
+	Struct,
+	Tool,
+	Utility,
+    Argument,
+    GlobalVar,
+    LocalVar,
+    Parameter,
+    Variable,
+}
+
+
+/**
+ * A range within a text. Just like the range object in vscode the end position is not included in the range.
+ * Hence when start and end position are equal the range is empty.
+ */
+export interface ILexicalRange
+{
+	start: {
+		row: number;
+		column: number;
+	};
+	end: {
+		row: number;
+		column: number;
+	};
+}
+
+export interface IDefinition
+{
+	text: string;
+	range: ILexicalRange;
+}
+
+export interface ISymbolInfo
+{
+	name: string;
+	kind: SymbolKind;
+	source: string;
+	definition?: IDefinition;
+	/** Used for code completion. Provides a small description for certain symbols. */
+	description?: string;
+	children?: ISymbolInfo[];
+}
+
+export enum DiagnosticType
+{
+	Hint,
+	Info,
+	Warning,
+	Error,
+}
+
+export interface IDiagnosticEntry
+{
+	type: DiagnosticType;
+	message: string;
+	range: ILexicalRange;
+}
+
+export type CompletionKindHint = 'function' | 'class' | 'module' | 'typeParameter' | 'field' | 'event' | 'variable';
+
+export interface CompletionSuggestion {
+    label: string;
+    kindHint?: CompletionKindHint;
+    symbolKind?: SymbolKind;
+    detail?: string;
+    sortText?: string;
+}
+
+export type SignatureCallStyle = 'paren' | 'space';
+
+export interface SignatureHelpModel {
+    signatureLabel: string;
+    parameters: string[];
+    activeParameter: number;
+    style: SignatureCallStyle;
+}
