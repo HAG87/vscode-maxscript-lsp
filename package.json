@@ -136,6 +136,10 @@
             ],
             "description": "MaxScript custom task type."
           },
+          "targetFile": {
+            "type": "string",
+            "description": "Single file path to process. Supports workspace-relative or absolute paths."
+          },
           "patterns": {
             "type": "array",
             "items": {

@@ -15,6 +15,7 @@ import {
 interface MaxScriptTaskDefinition extends TaskDefinition {
     type: 'maxscript';
     task: 'minify' | 'prettify';
+    targetFile?: string;
     patterns?: string[];
     continueOnError?: boolean;
 }
@@ -39,6 +40,19 @@ class MaxScriptFilesTaskTerminal implements Pseudoterminal {
         // No-op: there is no long-running process to terminate.
     }
 
+    private isMaxScriptFile(uri: Uri): boolean {
+        const lowerPath = uri.fsPath.toLowerCase();
+        return lowerPath.endsWith('.ms') || lowerPath.endsWith('.mcr');
+    }
+
+    private resolveTaskFileUri(filePath: string): Uri {
+        if (/^[a-zA-Z]:[\\/]/.test(filePath) || filePath.startsWith('\\\\')) {
+            return Uri.file(filePath);
+        }
+
+        return Uri.joinPath(this.workspaceFolder.uri, filePath);
+    }
+
     private async run(): Promise<void> {
         try {
             const taskKind = this.definition.task;
@@ -48,11 +62,28 @@ class MaxScriptFilesTaskTerminal implements Pseudoterminal {
 
             this.writeLine(`MaxScript task: ${operation}`);
 
+            const uniqueFiles = new Map<string, Uri>();
+
+            if (this.definition.targetFile && this.definition.targetFile.trim().length > 0) {
+                const explicitFile = this.resolveTaskFileUri(this.definition.targetFile.trim());
+                if (!this.isMaxScriptFile(explicitFile)) {
+                    this.writeLine(`Ignored non-MaxScript file: ${workspace.asRelativePath(explicitFile, false)}`);
+                } else {
+                    try {
+                        await workspace.fs.stat(explicitFile);
+                        uniqueFiles.set(explicitFile.toString(), explicitFile);
+                    } catch {
+                        this.writeLine(`Task failed: file not found: ${workspace.asRelativePath(explicitFile, false)}`);
+                        this.closeEmitter.fire(1);
+                        return;
+                    }
+                }
+            }
+
             const patterns = this.definition.patterns && this.definition.patterns.length > 0
                 ? this.definition.patterns
                 : ['**/*.{ms,mcr}'];
 
-            const uniqueFiles = new Map<string, Uri>();
             for (const pattern of patterns) {
                 const files = await workspace.findFiles(
                     new RelativePattern(this.workspaceFolder, pattern),
