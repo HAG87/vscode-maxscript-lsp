@@ -199,8 +199,22 @@ const mandatoryWS: Set<number> = new Set([
     codeTypes.ID,
     codeTypes.NUMBER,
     codeTypes.KEYWORD,
+    codeTypes.MODIF,
     // codeTypes.UNARY
 ])
+function isAlphaNumericLike(token: codeToken): boolean {
+    if (mandatoryWS.has(token.type)) {
+        return true
+    }
+    // VALUE tokens include strings and booleans; only word-like values need a boundary.
+    if (token.type === codeTypes.VALUE) {
+        return /^[$0-9_\p{L}]/u.test(token.val)
+    }
+    return false
+}
+function createsDoubleMinus(left: codeToken, right: codeToken): boolean {
+    return left.val.endsWith('-') && right.val.startsWith('-')
+}
 function isMandatoryPair(left: codeTypes, right: codeTypes): boolean {
     return (
         (left === codeTypes.COLON && right === codeTypes.ASSIGN) ||
@@ -518,11 +532,10 @@ export class codeBlock
                 if (options.condenseWhitespace) {
                     //TODO: mandatory whitespace
                     if (
-                        (mandatoryWS.has(current.type) &&
-                            mandatoryWS.has(next.type)) ||
-                        (mandatoryWS.has(next.type) && 
-                            (current.type === codeTypes.LINE_BREAK || current.type === codeTypes.BREAK)) ||
+                        (isAlphaNumericLike(current) &&
+                            isAlphaNumericLike(next)) ||
                         next.type === codeTypes.UNARY ||
+                        createsDoubleMinus(current, next) ||
                         next.hasPrefix ||
                         isMandatoryPair(current.type, next.type)
                     ) {
@@ -754,7 +767,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.rolloutMembers()),
+            this.collectWithLineBreak(ctx.rolloutMembers(), false),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -778,7 +791,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.rolloutControl()),
+            this.collectWithLineBreak(ctx.rolloutControl(), false),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -1122,7 +1135,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel--;
         //--------------------------------------------
         return new codeBlock(
-            [...vals, this.emmitLineBreak(), clause, this.emmitLineBreak(true)],
+            [...vals, this.emmitLineBreak(), clause],
             this.indentLevel,
             undefined, undefined,
             blockTypes.EXPR
