@@ -6,6 +6,7 @@ import { minifySettings } from '../../../settings.js';
 import { mxsLexer } from '../../../parser/mxsLexer.js';
 import { mxsParser } from '../../../parser/mxsParser.js';
 import { codeBlock, mxsParserVisitorFormatter } from '../mxsParserVisitorFormatter.js';
+import { ICodeFormatSettings, IMinifySettings, IPrettifySettings } from '../../types.js';
 
 const source = `
 fn pivotToSnapPoint mode: #world =
@@ -66,6 +67,20 @@ function minifyWithFormatter(input: string): string {
     return formatted.toString(minifySettings);
 }
 
+function formatWithFormatter(input: string, settings: ICodeFormatSettings & IMinifySettings & IPrettifySettings): string {
+    const stream = CharStream.fromString(input);
+    const lexer = new mxsLexer(stream);
+    const tokens = new CommonTokenStream(lexer);
+    const parser = new mxsParser(tokens);
+    const tree = parser.program();
+
+    const visitor = new mxsParserVisitorFormatter(settings);
+    const formatted = visitor.visit(tree as ParseTree);
+
+    assert.ok(!Array.isArray(formatted) && formatted instanceof codeBlock, 'Formatter visitor must return a codeBlock');
+    return formatted.toString(settings);
+}
+
 console.log('=== Formatter Minify Regression Test ===');
 
 try {
@@ -80,6 +95,45 @@ try {
     // Guard against the exact historical regressions.
     assert.equal(minified.includes('ifsnapMode'), false, 'Regression: merged "if" + identifier');
     assert.equal(minified.includes('forobjinobjsdo'), false, 'Regression: merged for-loop tokens');
+
+    // Operators should not trigger mandatory whitespace around numeric/ID operands.
+    const arithmeticMinified = minifyWithFormatter('a=5+5\nb=foo+bar\nif 5+5>0 then c=1');
+    assert.ok(arithmeticMinified.includes('a=5+5'), 'Regression: inserted whitespace around "+" for numeric operands');
+    assert.ok(arithmeticMinified.includes('b=foo+bar'), 'Regression: inserted whitespace around "+" for identifier operands');
+    assert.equal(arithmeticMinified.includes('5 +5'), false, 'Regression: unexpected left-space around "+"');
+    assert.equal(arithmeticMinified.includes('5+ 5'), false, 'Regression: unexpected right-space around "+"');
+    assert.equal(arithmeticMinified.includes('foo +bar'), false, 'Regression: unexpected left-space around "+" with identifiers');
+    assert.equal(arithmeticMinified.includes('foo+ bar'), false, 'Regression: unexpected right-space around "+" with identifiers');
+
+    // Unary minus semantics: avoid collapsing "- -" into "--" (line comment in MXS).
+    const minusMinified = minifyWithFormatter('x=1-1\ny=1 -1\nz=1 - -1');
+    assert.ok(minusMinified.includes('x=1-1'), 'Regression: binary subtraction should remain compact');
+    assert.ok(minusMinified.includes('y=1 -1'), 'Regression: unary minus operand should preserve boundary space');
+    assert.ok(minusMinified.includes('z=1- -1'), 'Regression: adjacent minus tokens must not collapse into comment starter');
+    assert.equal(minusMinified.includes('z=1--1'), false, 'Regression: "--" created from subtraction and unary minus');
+
+    // Avoid gratuitous spaces after separators and before quoted strings.
+    const separatorAndStringMinified = minifyWithFormatter('a=1\nb=2\nrollout r "R" ( button b "B" )');
+    assert.equal(separatorAndStringMinified.includes('; b='), false, 'Regression: inserted whitespace after mandatory separator');
+    assert.equal(separatorAndStringMinified.includes('b "B"'), false, 'Regression: inserted whitespace between identifier and quoted string');
+
+    // Avoid duplicate mandatory separators around case expressions.
+    const caseMinified = minifyWithFormatter('case state of (1:(a=1);2:(a=2))\na=3');
+    assert.equal(caseMinified.includes('));;'), false, 'Regression: duplicate separator emitted after case expression');
+
+    const prettifySettings: ICodeFormatSettings & IMinifySettings & IPrettifySettings = {
+        ...minifySettings,
+        condenseWhitespace: false,
+        whitespaceChar: ' ',
+        newLineChar: '\r\n',
+        exprEndChar: '\r\n',
+        indentChar: '\t',
+        codeblock: { parensInNewLine: true, newlineAllways: true, spaced: true },
+        removeUnnecessaryScopes: false,
+        expressionsToBlock: true,
+    };
+    const casePrettified = formatWithFormatter('case state of (1:(a=1);2:(a=2))\na=3', prettifySettings);
+    assert.equal(casePrettified.includes('\r\n\r\n\r\na=3'), false, 'Regression: duplicate mandatory break emitted in prettify mode');
 
     console.log('✅ Formatter minify output preserves mandatory whitespace boundaries');
 } catch (error) {
