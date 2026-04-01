@@ -39,42 +39,104 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         this.visitChildren(ctx)!
     visitExpr = (ctx: ExprContext): string =>
         this.visitChildren(ctx)!
+
+    private joinWithMandatorySeparator(items: ParserRuleContext[]): string {
+        let result = this.defaultResult();
+        for (let i = 0; i < items.length; i++) {
+            const item = this.visit(items[i])!;
+            result = this.aggregateResult(result, item) ?? result;
+            if (i < items.length - 1) {
+                result = this.aggregateResult(result, this.options.exprEndChar) ?? result;
+            }
+        }
+        return result;
+    }
     //-------------------------------------------------------
     visitPluginDefinition = (ctx: PluginDefinitionContext): string =>
-        this.visitChildren(ctx)!
+        this.joinParts(
+            this.visit(ctx.pluginClause())!,
+            this.visit(ctx.lp())!,
+            this.joinWithMandatorySeparator(ctx.pluginMembers()),
+            this.visit(ctx.rp())!,
+        )
     visitParamsDefinition = (ctx: ParamsDefinitionContext): string =>
-        this.visitChildren(ctx)!
+        this.joinParts(
+            this.visit(ctx.paramsClause())!,
+            this.visit(ctx.lp())!,
+            this.joinWithMandatorySeparator(ctx.paramsMembers()),
+            this.visit(ctx.rp())!,
+        )
     //-------------------------------------------------------
     visitToolDefinition = (ctx: ToolDefinitionContext): string =>
-        this.visitChildren(ctx)!
+        this.joinParts(
+            this.visit(ctx.toolClause())!,
+            this.visit(ctx.lp())!,
+            this.joinWithMandatorySeparator(ctx.toolMembers()),
+            this.visit(ctx.rp())!,
+        )
     // visitToolClause = (ctx: ToolClauseContext): string => { return this.visitChildren(ctx)! }
     // visitTool_body = (ctx: Tool_bodyContext): string => { return this.visitChildren(ctx)! }
     //-------------------------------------------------------
     visitMacroscriptDefinition = (ctx: MacroscriptDefinitionContext): string =>
-        this.visitChildren(ctx)!
+        this.joinParts(
+            this.visit(ctx.macroscriptClause())!,
+            this.visit(ctx.lp())!,
+            this.joinWithMandatorySeparator(ctx.macroscriptMembers()),
+            this.visit(ctx.rp())!,
+        )
     // visitMacropscript_predicate = (ctx: Macropscript_predicateContext): string => { return this.visitChildren(ctx)! }
     // visitMacroscript_body = (ctx: Macroscript_bodyContext): string => { return this.visitChildren(ctx)! }
     //-------------------------------------------------------
     visitUtilityDefinition = (ctx: UtilityDefinitionContext): string =>
-        this.visitChildren(ctx)!
+        this.joinParts(
+            this.visit(ctx.utilityClause())!,
+            this.visit(ctx.lp())!,
+            this.joinWithMandatorySeparator(ctx.rolloutMembers()),
+            this.visit(ctx.rp())!,
+        )
     visitRolloutDefinition = (ctx: RolloutDefinitionContext): string =>
-        this.visitChildren(ctx)!
+        this.joinParts(
+            this.visit(ctx.rolloutClause())!,
+            this.visit(ctx.lp())!,
+            this.joinWithMandatorySeparator(ctx.rolloutMembers()),
+            this.visit(ctx.rp())!,
+        )
     // visitRolloutClause = (ctx: RolloutClauseContext): string => { return this.visitChildren(ctx)! }
     // visitRollout_body = (ctx: Rollout_bodyContext): string => { return this.visitChildren(ctx)! }
     visitRolloutGroupDefinition = (ctx: RolloutGroupDefinitionContext): string =>
-        this.visitChildren(ctx)!
+        this.joinParts(
+            this.visit(ctx.groupClause())!,
+            this.visit(ctx.lp())!,
+            this.joinWithMandatorySeparator(ctx.rolloutControl()),
+            this.visit(ctx.rp())!,
+        )
     visitRolloutControl = (ctx: RolloutControlContext): string =>
         this.visitChildren(ctx)!
     //-------------------------------------------------------
     visitRcmenuDefinition = (ctx: RcmenuDefinitionContext): string =>
-        this.visitChildren(ctx)!
+        this.joinParts(
+            this.visit(ctx.rcmenuClause())!,
+            this.visit(ctx.lp())!,
+            this.joinWithMandatorySeparator(ctx.rcMembers()),
+            this.visit(ctx.rp())!,
+        )
     visitRcmenuControl = (ctx: RcmenuControlContext): string =>
         this.visitChildren(ctx)!
     visitRc_submenudefinition = (ctx: RcSubmenuDefinitionContext): string =>
-        this.visitChildren(ctx)!
+        this.joinParts(
+            this.visit(ctx.submenuClause())!,
+            this.visit(ctx.lp())!,
+            this.joinWithMandatorySeparator(ctx.rcMembers()),
+            this.visit(ctx.rp())!,
+        )
     //-------------------------------------------------------
     visitAttributesDefinition = (ctx: AttributesDefinitionContext): string =>
-        this.visitChildren(ctx)!
+        this.joinParts(
+            this.visit(ctx.attributesClause())!,
+            this.visit(ctx.lp())!,
+            this.joinWithMandatorySeparator(ctx.attributesMembers()),
+            this.visit(ctx.rp())!,
+        )
     visitWhenStatement = (ctx: WhenStatementContext): string =>
         this.visitChildren(ctx)!
     //-------------------------------------------------------
@@ -300,7 +362,7 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
                 if (this.options.condenseWhitespace) {
                     // special cases
                     const end = /[$0-9_\p{L}]$/u.test(aggregate)
-                    const start = /^([0-9_\p{L}]|[:]{2})/u.test(nextResult)
+                    const start = /^([$0-9_\p{L}]|[:]{2})/u.test(nextResult)
 
                     const minusEnd = aggregate.endsWith('-')
                     const minusStart = nextResult.startsWith('-')
