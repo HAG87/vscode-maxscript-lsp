@@ -215,6 +215,21 @@ function isAlphaNumericLike(token: codeToken): boolean {
 function createsDoubleMinus(left: codeToken, right: codeToken): boolean {
     return left.val.endsWith('-') && right.val.startsWith('-')
 }
+function isBreakLikeToken(token?: codeToken): boolean {
+    return token?.type === codeTypes.LINE_BREAK || token?.type === codeTypes.BREAK
+}
+function resultEndsWithBreakLike(result: R | R[]): boolean {
+    if (Array.isArray(result)) {
+        if (result.length === 0) {
+            return false
+        }
+        return resultEndsWithBreakLike(result[result.length - 1])
+    }
+    if (result instanceof codeBlock) {
+        return result.endsWithBreakLike()
+    }
+    return isBreakLikeToken(result)
+}
 function isMandatoryPair(left: codeTypes, right: codeTypes): boolean {
     return (
         (left === codeTypes.COLON && right === codeTypes.ASSIGN) ||
@@ -318,6 +333,14 @@ export class codeBlock
     {
         return (this.last instanceof codeToken && this.last.check(codeTypes.LINE_BREAK))
     }
+    public startsWithBreakLike(): boolean
+    {
+        return (this.first instanceof codeToken && isBreakLikeToken(this.first))
+    }
+    public endsWithBreakLike(): boolean
+    {
+        return (this.last instanceof codeToken && isBreakLikeToken(this.last))
+    }
     public isEmpty(): boolean { return this.vals.length === 0 }
     public canBeMultiline(): boolean { return this.vals.length > 1 }
     protected emmitIndent(options: ICodeFormatSettings, level: number): codeToken
@@ -337,8 +360,21 @@ export class codeBlock
     protected blockWrap(block: codeBlock, items: codeToken[], linebreaks: boolean = true): void
     {
         if (block.start && block.end) {
-            const start: codeToken[] = Array.isArray(block.start) ? block.start : [block.start]
-            const end: codeToken[] = Array.isArray(block.end) ? block.end : [block.end]
+            let start: codeToken[] = Array.isArray(block.start) ? [...block.start] : [block.start]
+            let end: codeToken[] = Array.isArray(block.end) ? [...block.end] : [block.end]
+
+            if (items.length > 0) {
+                if (isBreakLikeToken(start[start.length - 1]) && isBreakLikeToken(items[0])) {
+                    start = start.slice(0, -1)
+                }
+                if (isBreakLikeToken(end[0]) && isBreakLikeToken(items[items.length - 1])) {
+                    if (items[items.length - 1].type === codeTypes.BREAK) {
+                        items.pop()
+                    } else {
+                        end = end.slice(1)
+                    }
+                }
+            }
 
             items.unshift(...start.filter(item => linebreaks ? true : item.type !== codeTypes.LINE_BREAK))
             items.push(...end.filter(item => linebreaks ? true : item.type !== codeTypes.LINE_BREAK))
@@ -1135,7 +1171,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel--;
         //--------------------------------------------
         return new codeBlock(
-            [...vals, this.emmitLineBreak(), clause],
+            [...vals, this.emmitLineBreak(), clause, this.emmitLineBreak(true)],
             this.indentLevel,
             undefined, undefined,
             blockTypes.EXPR
@@ -1452,10 +1488,17 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             res = this.collectWithLineBreak(ctx.expr(), false),
             start = [<codeToken>this.visit(ctx.lp())],
             end = [<codeToken>this.visit(ctx.rp())]
+        const singleCaseExpr = ctx.expr().length === 1 && /^case/i.test(ctx.expr()[0].getText())
         // add linebreaks
         if (res.some(item => item.hasLineBreaks()) || res.length > 1) {
             start.push(this.emmitLineBreak())
-            end.unshift(this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0))
+            end.unshift(
+                singleCaseExpr
+                    ? this.emmitLineBreak(true, this.indentLevel > 0 ? this.indentLevel - 1 : 0)
+                    : this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0)
+            )
+        } else if (singleCaseExpr) {
+            end.unshift(this.emmitLineBreak(true, this.indentLevel > 0 ? this.indentLevel - 1 : 0))
         }
         const block = new codeBlock(res, this.indentLevel, start, end, blockTypes.SEQUENCE)
         //--------------------------------------------
@@ -1656,7 +1699,8 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             } else {
                 result.push(curr)
             }
-            if (i < ctx.length - 1) {
+            const endsWithBreakLike = resultEndsWithBreakLike(curr)
+            if (i < ctx.length - 1 && !endsWithBreakLike) {
                 result.push(this.emmitLineBreak(!isOptional))
             }
         }
