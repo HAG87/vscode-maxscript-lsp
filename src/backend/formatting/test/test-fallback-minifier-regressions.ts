@@ -43,6 +43,14 @@ try {
         'Regression: missing mandatory separator between rollout controls in fallback minifier'
     );
 
+    const rolloutFnsMinified = minifyWithFallback(
+        'rollout r "R" (\nlocal x=1\nfn a=()\nfn b=()\n)'
+    );
+    assert.ok(
+        rolloutFnsMinified.includes('local x=1;fn a=();fn b=()'),
+        'Regression: missing mandatory separator between rollout declarations/functions in fallback minifier'
+    );
+
     // 2) Keep mandatory boundaries between alnum/keyword tokens.
     const spacingMinified = minifyWithFallback('if objs.count==0 then objs=#()');
     assert.equal(spacingMinified.includes('thenobjs'), false, 'Regression: merged keyword and identifier');

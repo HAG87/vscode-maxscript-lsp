@@ -117,9 +117,46 @@ try {
     assert.equal(separatorAndStringMinified.includes('; b='), false, 'Regression: inserted whitespace after mandatory separator');
     assert.equal(separatorAndStringMinified.includes('b "B"'), false, 'Regression: inserted whitespace between identifier and quoted string');
 
+    const rolloutFnsMinified = minifyWithFormatter('rollout r "R" (\nlocal x=1\nfn a=()\nfn b=()\n)');
+    assert.ok(
+        rolloutFnsMinified.includes('local x=1;fn a=();fn b=()'),
+        'Regression: missing separator between rollout-local declarations/functions in formatter minify output'
+    );
+
+    const rolloutComplexFnsMinified = minifyWithFormatter(`rollout r "R" (
+        fn get_cam_res cam &width &height &ratio =
+        (
+            if isValidNode cam then (
+                local w = getUserProp cam "w_res", h = getUserProp cam "h_res", r = getUserProp cam "aspect_ratio"
+                width = if w != undefined then w as integer
+                height = if h != undefined then h as integer
+                ratio = if r != undefined then r as float
+            )
+        )
+        fn shutterType2Values cam =
+        (
+            case drp_ev.selection of (
+                1: (spn_sh.value = 1.0 / cam.shutter_length_seconds)
+                2: (spn_sh.value = cam.shutter_length_seconds)
+            )
+        )
+        fn shutterValue cam val =
+        (
+            case drp_ev.selection of (
+                1: (cam.shutter_length_seconds = val / 1.0)
+                2: (cam.shutter_length_seconds = val)
+            )
+        )
+    )`);
+    assert.ok(
+        rolloutComplexFnsMinified.includes(')););fn shutterValue'),
+        'Regression: case-expression function body must emit one separator before its closing paren'
+    );
+
     // Avoid duplicate mandatory separators around case expressions.
     const caseMinified = minifyWithFormatter('case state of (1:(a=1);2:(a=2))\na=3');
     assert.equal(caseMinified.includes('));;'), false, 'Regression: duplicate separator emitted after case expression');
+    assert.ok(caseMinified.includes('));a=3'), 'Regression: case expression should emit exactly one separator before following expression');
 
     const prettifySettings: ICodeFormatSettings & IMinifySettings & IPrettifySettings = {
         ...minifySettings,
@@ -134,6 +171,9 @@ try {
     };
     const casePrettified = formatWithFormatter('case state of (1:(a=1);2:(a=2))\na=3', prettifySettings);
     assert.equal(casePrettified.includes('\r\n\r\n\r\na=3'), false, 'Regression: duplicate mandatory break emitted in prettify mode');
+
+    const singleCasePrettified = formatWithFormatter('fn x=(case state of(1:(a=1)\n2:(a=2)))', prettifySettings);
+    assert.ok(singleCasePrettified.endsWith('\r\n)'), 'Regression: final closing paren inherited extra indent from trailing case separator');
 
     console.log('✅ Formatter minify output preserves mandatory whitespace boundaries');
 } catch (error) {
