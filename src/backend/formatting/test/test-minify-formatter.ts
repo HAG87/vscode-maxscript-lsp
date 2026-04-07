@@ -158,6 +158,30 @@ try {
     assert.equal(caseMinified.includes('));;'), false, 'Regression: duplicate separator emitted after case expression');
     assert.ok(caseMinified.includes('));a=3'), 'Regression: case expression should emit exactly one separator before following expression');
 
+    // Preserve parameter-member boundaries in plugin parameters blocks.
+    const pluginParamsSource = `plugin simpleObject sample name:#sample (
+        parameters main rollout:params (
+            width type:#float default:10
+            height type:#float default:20
+        )
+    )`;
+    const pluginParamsMinified = minifyWithFormatter(pluginParamsSource);
+    assert.ok(
+        pluginParamsMinified.includes('width type:#float default:10;height type:#float default:20'),
+        'Regression: missing separator between parameter members inside parameters block'
+    );
+
+    const stream = CharStream.fromString(pluginParamsMinified);
+    const lexer = new mxsLexer(stream);
+    const tokens = new CommonTokenStream(lexer);
+    const parser = new mxsParser(tokens);
+    parser.program();
+    assert.equal(
+        parser.numberOfSyntaxErrors,
+        0,
+        'Regression: formatter minify output for plugin parameters must remain reparsable'
+    );
+
     const prettifySettings: ICodeFormatSettings & IMinifySettings & IPrettifySettings = {
         ...minifySettings,
         condenseWhitespace: false,
