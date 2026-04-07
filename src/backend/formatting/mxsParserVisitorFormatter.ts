@@ -636,7 +636,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel++;
         //--------------------------------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.pluginMembers()),
+            this.collectWithLineBreak(ctx.pluginMembers(), false),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -682,7 +682,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel++;
         //--------------------------------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.paramsMembers()),
+            this.collectWithLineBreak(ctx.paramsMembers(), false),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
