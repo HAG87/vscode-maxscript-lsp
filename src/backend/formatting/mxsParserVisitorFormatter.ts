@@ -707,7 +707,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.toolMembers()),
+            this.collectWithLineBreak(ctx.toolMembers(), false),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -732,7 +732,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.macroscriptMembers()),
+            this.collectWithLineBreak(ctx.macroscriptMembers(), false),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -779,7 +779,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.rolloutMembers()),
+            this.collectWithLineBreak(ctx.rolloutMembers(), false),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -863,7 +863,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.rcMembers()),
+            this.collectWithLineBreak(ctx.rcMembers(), false),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -897,7 +897,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.rcMembers()),
+            this.collectWithLineBreak(ctx.rcMembers(), false),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -922,7 +922,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel++;
         //------------------
         const clause = new codeBlock(
-            this.collectWithLineBreak(ctx.attributesMembers()),
+            this.collectWithLineBreak(ctx.attributesMembers(), false),
             this.indentLevel,
             [<codeToken>this.visit(ctx.lp()), this.emmitLineBreak()],
             [this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0), <codeToken>this.visit(ctx.rp())],
@@ -1070,7 +1070,6 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
                 }
                 switch (last.symbol.type) {
                     case mxsLexer.DO:
-                    case mxsLexer.RETURN:
                         vals.push(this.emmitLineBreak(false, indent))
                         break;
                 }
@@ -1090,25 +1089,9 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     visitFnReturnStatement = (ctx: FnReturnStatementContext): codeBlock =>
     {
         const vals: (R | R[])[] = []
-        let last: ParseTree | undefined;
 
-        for (const [i, child] of ctx.children.entries()) {
-            if (last && last instanceof TerminalNode) {
-                let indent: number = this.indentLevel
-                let ref = i
-                while (ctx.children[ref] instanceof TerminalNode && (<TerminalNode>ctx.children[ref]).symbol.type === mxsLexer.NL) {
-                    ref++;
-                }
-                if (!ctx.children[ref].getText().startsWith('(')) {
-                    indent++;
-                }
-
-                if (last.symbol.type === mxsLexer.RETURN) {
-                    vals.push(this.emmitLineBreak(false, indent))
-                }
-            }
+        for (const child of ctx.children) {
             vals.push(this.visit(child)!)
-            last = child
         }
         return new codeBlock(
             // this.visitChildren(ctx)!,
