@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 import { strict as assert } from 'assert';
 import process from 'node:process';
 import { CharStream, CommonTokenStream, ParseTree } from 'antlr4ng';
@@ -64,7 +66,7 @@ function minifyWithFormatter(input: string): string {
     const formatted = visitor.visit(tree as ParseTree);
 
     assert.ok(!Array.isArray(formatted) && formatted instanceof codeBlock, 'Formatter visitor must return a codeBlock');
-    return formatted.toString(minifySettings);
+    return (formatted as codeBlock).toString(minifySettings);
 }
 
 function formatWithFormatter(input: string, settings: ICodeFormatSettings & IMinifySettings & IPrettifySettings): string {
@@ -78,7 +80,7 @@ function formatWithFormatter(input: string, settings: ICodeFormatSettings & IMin
     const formatted = visitor.visit(tree as ParseTree);
 
     assert.ok(!Array.isArray(formatted) && formatted instanceof codeBlock, 'Formatter visitor must return a codeBlock');
-    return formatted.toString(settings);
+    return (formatted as codeBlock).toString(settings);
 }
 
 console.log('=== Formatter Minify Regression Test ===');
@@ -171,6 +173,32 @@ try {
         'Regression: missing separator between parameter members inside parameters block'
     );
 
+    const pluginClauseBoundarySource = `plugin simpleSpline p remap:#(#(#a),#(#b)) (
+        tool create (
+            fn f=()
+        )
+    )`;
+    const pluginClauseBoundaryMinified = minifyWithFormatter(pluginClauseBoundarySource);
+    assert.ok(
+        pluginClauseBoundaryMinified.includes('remap:#(#(#a),#(#b))('),
+        'Regression: plugin clause/body boundary should not emit a mandatory separator before opening body scope'
+    );
+
+    const utilityEventHandlerSource = `utility u "U" (
+        fn beforeFn=()
+        on btn pressed do (a=1)
+        fn nextFn=()
+    )`;
+    const utilityEventHandlerMinified = minifyWithFormatter(utilityEventHandlerSource);
+    assert.ok(
+        utilityEventHandlerMinified.includes('fn beforeFn=();on btn pressed do(a=1)'),
+        'Regression: missing mandatory separator before event handler member'
+    );
+    assert.ok(
+        utilityEventHandlerMinified.includes('on btn pressed do(a=1);fn nextFn=()'),
+        'Regression: missing mandatory separator after event handler before next member'
+    );
+
     const stream = CharStream.fromString(pluginParamsMinified);
     const lexer = new mxsLexer(stream);
     const tokens = new CommonTokenStream(lexer);
@@ -198,6 +226,20 @@ try {
 
     const singleCasePrettified = formatWithFormatter('fn x=(case state of(1:(a=1)\n2:(a=2)))', prettifySettings);
     assert.ok(singleCasePrettified.endsWith('\r\n)'), 'Regression: final closing paren inherited extra indent from trailing case separator');
+
+    const fnReturnPrettified = formatWithFormatter('fn f=(return 1)', prettifySettings);
+    assert.equal(fnReturnPrettified.includes('return\r\n'), false, 'Regression: formatter inserted line break after RETURN in function body');
+
+    const eventReturnPrettified = formatWithFormatter('utility u "U" (\non x return 1\n)', prettifySettings);
+    assert.equal(eventReturnPrettified.includes('return\r\n'), false, 'Regression: formatter inserted line break after RETURN in event handler');
+
+    const trailingCaseMinified = minifyWithFormatter(
+        'fn getKnotBuilder mode includeBezier:false=(fn addAutoKnot p iv ov=setAutoKnot p iv ov;fn addLineKnot p iv ov=setLineKnot p;fn addFullKnot p iv ov=setSplineKnot p iv ov;case mode of(#line:addLineKnot;#bezier:(if includeBezier then addFullKnot else addAutoKnot);default:addAutoKnot))'
+    );
+    assert.ok(
+        trailingCaseMinified.includes('default:addAutoKnot);)'),
+        'Regression: missing mandatory separator after trailing case-expression before closing scope'
+    );
 
     console.log('✅ Formatter minify output preserves mandatory whitespace boundaries');
 } catch (error) {
