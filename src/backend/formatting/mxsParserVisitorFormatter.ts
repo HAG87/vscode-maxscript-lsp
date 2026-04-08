@@ -6,7 +6,7 @@ import {
   AttributesDefinitionContext, BitArrayContext, BitListContext,
   CaseItemContext, CaseClauseContext, CaseStatementContext, CommaContext,
   ContextStatementContext, DeRefContext, DeclarationStatementContext,
-  DoLoopStatementContext, EventHandlerStatementContext, ExprSeqContext,
+    DoLoopStatementContext, EventHandlerStatementContext, ExprContext, ExprSeqContext,
   FnBodyContext, FnDefinitionContext, FnReturnStatementContext,
   ForSequenceContext, ForWhereContext, ForWhileContext,
   ForLoopStatementContext, GroupClauseContext, IdentifierContext,
@@ -646,7 +646,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel--;
         //--------------------------------------------
         return new codeBlock(
-            [...vals, this.emmitLineBreak(), clause],
+            [...vals, this.emmitLineBreak(false), clause],
             this.indentLevel,
             undefined, undefined,
             blockTypes.DECL
@@ -692,7 +692,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel--
         //--------------------------------------------
         return new codeBlock(
-            [...vals, this.emmitLineBreak(), clause],
+            [...vals, this.emmitLineBreak(false), clause],
             this.indentLevel,
             undefined, undefined,
             blockTypes.DECL
@@ -717,7 +717,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel--;
         //------------------
         return new codeBlock(
-            [...vals, this.emmitLineBreak(), clause],
+            [...vals, this.emmitLineBreak(false), clause],
             this.indentLevel,
             undefined, undefined,
             blockTypes.DECL
@@ -742,7 +742,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel--;
         //------------------
         return new codeBlock(
-            [...vals, this.emmitLineBreak(), clause],
+            [...vals, this.emmitLineBreak(false), clause],
             this.indentLevel,
             undefined, undefined,
             blockTypes.DECL
@@ -789,7 +789,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel--;
         //------------------
         return new codeBlock(
-            [...vals, this.emmitLineBreak(), clause],
+            [...vals, this.emmitLineBreak(false), clause],
             this.indentLevel,
             undefined, undefined,
             blockTypes.DECL
@@ -813,7 +813,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel--;
         //------------------
         return new codeBlock(
-            [...vals, this.emmitLineBreak(), clause],
+            [...vals, this.emmitLineBreak(false), clause],
             this.indentLevel,
             undefined, undefined,
             blockTypes.DECL
@@ -838,7 +838,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel--;
         //------------------
         return new codeBlock(
-            [...vals, this.emmitLineBreak(), clause],
+            [...vals, this.emmitLineBreak(false), clause],
             this.indentLevel,
             undefined, undefined,
             blockTypes.DECL
@@ -873,7 +873,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel--;
         //------------------
         return new codeBlock(
-            [...vals, this.emmitLineBreak(), clause],
+            [...vals, this.emmitLineBreak(false), clause],
             this.indentLevel,
             undefined, undefined,
             blockTypes.DECL
@@ -907,7 +907,7 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel--;
         //------------------
         return new codeBlock(
-            [...vals, this.emmitLineBreak(), clause],
+            [...vals, this.emmitLineBreak(false), clause],
             this.indentLevel,
             undefined, undefined,
             blockTypes.DECL
@@ -1471,12 +1471,15 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
             res = this.collectWithLineBreak(ctx.expr(), false),
             start = [<codeToken>this.visit(ctx.lp())],
             end = [<codeToken>this.visit(ctx.rp())]
-        const singleCaseExpr = ctx.expr().length === 1 && /^case/i.test(ctx.expr()[0].getText())
+        const exprs = ctx.expr()
+        const isCaseExpr = (expr: ExprContext): boolean => Boolean(expr.caseStatement()) || /^case/i.test(expr.getText())
+        const singleCaseExpr = exprs.length === 1 && isCaseExpr(exprs[0])
+        const lastExprIsCase = exprs.length > 0 && isCaseExpr(exprs[exprs.length - 1])
         // add linebreaks
         if (res.some(item => item.hasLineBreaks()) || res.length > 1) {
             start.push(this.emmitLineBreak())
             end.unshift(
-                singleCaseExpr
+                lastExprIsCase
                     ? this.emmitLineBreak(true, this.indentLevel > 0 ? this.indentLevel - 1 : 0)
                     : this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0)
             )
