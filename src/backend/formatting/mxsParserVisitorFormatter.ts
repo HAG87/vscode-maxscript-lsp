@@ -1154,6 +1154,8 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         this.indentLevel--;
         //--------------------------------------------
         return new codeBlock(
+            // Keep a hard separator after case blocks to avoid tail-collapse in minified output
+            // when a parent scope immediately closes after the case expression.
             [...vals, this.emmitLineBreak(), clause, this.emmitLineBreak(true)],
             this.indentLevel,
             undefined, undefined,
@@ -1466,39 +1468,14 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     {
         this.indentLevel++;
         //--------------------------------------------
-        const exprContainsCaseStatement = (expr: ExprContext): boolean => {
-            const stack: ParseTree[] = [expr]
-            while (stack.length > 0) {
-                const node = stack.pop()
-                if (!node) {
-                    continue
-                }
-                if (node instanceof CaseStatementContext) {
-                    return true
-                }
-                const childCount = (node as ParseTree).getChildCount?.() ?? 0
-                for (let i = 0; i < childCount; i++) {
-                    const child = (node as ParseTree).getChild(i)
-                    if (child) {
-                        stack.push(child)
-                    }
-                }
-            }
-            return false
-        }
         const
             // res = this.visitChildren(ctx), start = [<codeToken>res.shift()], end = [<codeToken>res.pop()]
             res = this.collectWithLineBreak(ctx.expr(), false),
             start = [<codeToken>this.visit(ctx.lp())],
             end = [<codeToken>this.visit(ctx.rp())]
         const exprs = ctx.expr()
-        const isCaseExpr = (expr: ExprContext): boolean => {
-            return Boolean(expr.caseStatement())
-                || /^case/i.test(expr.getText())
-                || exprContainsCaseStatement(expr)
-        }
-        const singleCaseExpr = exprs.length === 1 && isCaseExpr(exprs[0])
-        const lastExprIsCase = exprs.length > 0 && isCaseExpr(exprs[exprs.length - 1])
+        const singleCaseExpr = exprs.length === 1 && this.shouldForceCaseTailSeparator(exprs[0])
+        const lastExprIsCase = exprs.length > 0 && this.shouldForceCaseTailSeparator(exprs[exprs.length - 1])
         // add linebreaks
         if (res.some(item => item.hasLineBreaks()) || res.length > 1) {
             start.push(this.emmitLineBreak())
@@ -1696,6 +1673,43 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         token.indent = indent
         return token
     }
+
+    // Global strategy for case-expression boundaries:
+    // Case bodies can end in a closing paren that is immediately followed by another
+    // closing token from the parent scope. In minified output this can collapse into
+    // ambiguous/invalid constructs for 3ds Max if no hard separator is emitted.
+    // We therefore force a BREAK when an expression tail is or contains a case statement.
+    protected shouldForceCaseTailSeparator(expr: ExprContext): boolean
+    {
+        return Boolean(expr.caseStatement())
+            || /^case/i.test(expr.getText())
+            || this.exprContainsCaseStatement(expr)
+    }
+
+    // Detect nested case statements (e.g. assignment RHS: has_selection = case of (...)).
+    // This keeps the policy centralized and avoids ad-hoc checks per caller.
+    protected exprContainsCaseStatement(expr: ParseTree): boolean
+    {
+        const stack: ParseTree[] = [expr]
+        while (stack.length > 0) {
+            const node = stack.pop()
+            if (!node) {
+                continue
+            }
+            if (node instanceof CaseStatementContext) {
+                return true
+            }
+            const childCount = node.getChildCount?.() ?? 0
+            for (let i = 0; i < childCount; i++) {
+                const child = node.getChild(i)
+                if (child) {
+                    stack.push(child)
+                }
+            }
+        }
+        return false
+    }
+
     protected emmitWhiteSpac(): codeToken
     {
         return new codeToken(this.options.whitespaceChar, codeTypes.WHITESPACE)
