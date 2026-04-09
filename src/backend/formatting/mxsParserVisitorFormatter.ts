@@ -1466,13 +1466,37 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
     {
         this.indentLevel++;
         //--------------------------------------------
+        const exprContainsCaseStatement = (expr: ExprContext): boolean => {
+            const stack: ParseTree[] = [expr]
+            while (stack.length > 0) {
+                const node = stack.pop()
+                if (!node) {
+                    continue
+                }
+                if (node instanceof CaseStatementContext) {
+                    return true
+                }
+                const childCount = (node as ParseTree).getChildCount?.() ?? 0
+                for (let i = 0; i < childCount; i++) {
+                    const child = (node as ParseTree).getChild(i)
+                    if (child) {
+                        stack.push(child)
+                    }
+                }
+            }
+            return false
+        }
         const
             // res = this.visitChildren(ctx), start = [<codeToken>res.shift()], end = [<codeToken>res.pop()]
             res = this.collectWithLineBreak(ctx.expr(), false),
             start = [<codeToken>this.visit(ctx.lp())],
             end = [<codeToken>this.visit(ctx.rp())]
         const exprs = ctx.expr()
-        const isCaseExpr = (expr: ExprContext): boolean => Boolean(expr.caseStatement()) || /^case/i.test(expr.getText())
+        const isCaseExpr = (expr: ExprContext): boolean => {
+            return Boolean(expr.caseStatement())
+                || /^case/i.test(expr.getText())
+                || exprContainsCaseStatement(expr)
+        }
         const singleCaseExpr = exprs.length === 1 && isCaseExpr(exprs[0])
         const lastExprIsCase = exprs.length > 0 && isCaseExpr(exprs[exprs.length - 1])
         // add linebreaks
