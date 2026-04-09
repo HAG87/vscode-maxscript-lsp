@@ -13,7 +13,7 @@ import {
     StructDefinition,
     TryStatement,
     WhileStatement,
-} from '@backend/ast/ASTNodes.js';
+} from '@ast/ASTNodes.js';
 
 export class FoldingRangeService {
     public getFoldingRanges(sourceContext: IAstContext, sourceText: string): ILexicalRange[] {

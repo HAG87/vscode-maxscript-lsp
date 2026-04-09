@@ -1,59 +1,56 @@
 import {
-  BaseSymbol,
-} from 'antlr4-c3';
-import {
   BailErrorStrategy, CharStream, CommonTokenStream, 
   ParseCancellationException, ParseTree, ParseTreeWalker,
-  PredictionMode, TerminalNode,
+  PredictionMode,
 } from 'antlr4ng';
 
-import { mxsLexer } from '../parser/mxsLexer.js';
-import { mxsParser, ProgramContext } from '../parser/mxsParser.js';
+import { mxsLexer } from '@parser/mxsLexer.js';
+import { mxsParser, ProgramContext } from '@parser/mxsParser.js';
 import {
     DiagnosticType, IBackendTraceSettings, ICodeFormatSettings, IDiagnosticEntry,
   ILexicalRange, IMinifySettings, IPrettifySettings, ISemanticToken,
   ISymbolInfo, SignatureHelpModel, CompletionSuggestion,
   IBackendAstSettings
-} from './types.js';
-import { TreeQuery } from './TreeQuery.js';
-import { IformatterResult, mxsSimpleFormatter } from './formatting/simpleCodeFormatter.js';
-import { ContextErrorListener } from './diagnostics/ContextErrorListener.js';
-import { ContextLexerErrorListener } from './diagnostics/ContextLexerErrorListener.js';
-import { CustomErrorStrategy } from './diagnostics/CustomErrorStrategy.js';
-import { ContextSymbolTable } from './ContextSymbolTable.js';
+} from '@backend/types.js';
+import { TreeQuery } from '@backend/TreeQuery.js';
+import { IformatterResult, mxsSimpleFormatter } from '@backend/formatting/simpleCodeFormatter.js';
+import { ContextErrorListener } from '@backend/diagnostics/ContextErrorListener.js';
+import { ContextLexerErrorListener } from '@backend/diagnostics/ContextLexerErrorListener.js';
+import { CustomErrorStrategy } from '@backend/diagnostics/CustomErrorStrategy.js';
+import { ContextSymbolTable } from '@backend/ContextSymbolTable.js';
 import {
   codeBlock, mxsParserVisitorFormatter,
-} from './formatting/mxsParserVisitorFormatter.js';
-import { mxsParserVisitorMinifier } from './formatting/mxsParserVisitorMinifier.js';
-import { semanticTokenListener } from './semantic/semanticTokenListener.js';
-import { CodeCompletionProvider } from './symbols/codeCompletionProvider.js';
-import { symbolTableListener } from './symbolTableListener.js';
-import { ASTBuilder } from './ast/ASTBuilder.js';
+} from '@backend/formatting/mxsParserVisitorFormatter.js';
+import { mxsParserVisitorMinifier } from '@backend/formatting/mxsParserVisitorMinifier.js';
+import { semanticTokenListener } from '@backend/semantic/semanticTokenListener.js';
+import { CodeCompletionProvider } from '@backend/symbols/codeCompletionProvider.js';
+import { symbolTableListener } from '@backend/symbolTableListener.js';
+import { ASTBuilder } from '@ast/ASTBuilder.js';
 import {
     Program,
     VariableDeclaration,
-} from './ast/ASTNodes.js';
-import { SymbolResolver } from './ast/SymbolResolver.js';
-import { SymbolTreeBuilder } from './ast/SymbolTreeBuilder';
-import { ASTQuery } from './ast/ASTQuery.js';
-import appendAstSemanticTokens from './semantic/astSemanticTokens.js';
-import { IAstContext } from './IAstContext.js';
-import { AstQueryService } from './query/AstQueryService.js';
-import { SignatureHelpService } from './signature/SignatureHelpService.js';
-import { RenameEditModel, RenamePrepareModel, RenameService } from './rename/RenameService.js';
-import { CompletionService } from './completion/CompletionService.js';
+} from '@ast/ASTNodes.js';
+import { SymbolResolver } from '@ast/SymbolResolver.js';
+import { SymbolTreeBuilder } from '@ast/SymbolTreeBuilder';
+import { ASTQuery } from '@ast/ASTQuery.js';
+import appendAstSemanticTokens from '@backend/semantic/astSemanticTokens.js';
+import { IAstContext } from '@backend/IAstContext.js';
+import { AstQueryService } from '@backend/query/AstQueryService.js';
+import { SignatureHelpService } from '@backend/signature/SignatureHelpService.js';
+import { RenameEditModel, RenamePrepareModel, RenameService } from '@backend/rename/RenameService.js';
+import { CompletionService } from '@backend/completion/CompletionService.js';
 import {
     DefinitionTargetModel,
     NavigationHighlightModel,
     NavigationReferenceModel,
     NavigationService,
-} from './navigation/NavigationService.js';
-import { HoverModel, HoverService } from './hover/HoverService.js';
+} from '@backend/navigation/NavigationService.js';
+import { HoverModel, HoverService } from '@backend/hover/HoverService.js';
 import {
     CodeLensAnchorModel,
     CodeLensResolveModel,
     CodeLensService,
-} from './codelens/CodeLensService.js';
+} from '@backend/codelens/CodeLensService.js';
 
 // One context for each valid document
 export class SourceContext implements IAstContext

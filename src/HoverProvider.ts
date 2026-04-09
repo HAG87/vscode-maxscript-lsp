@@ -3,14 +3,14 @@ import {
     Position, ProviderResult, TextDocument,
 } from 'vscode';
 
-import { mxsBackend } from '@backend/Backend.js';
+import { mxsBackend } from '@backend/Backend';
 import {
   mxsLanguageCompletions,
-} from '@backend/schemas/mxsCompletions-base.js';
-import { symbolDescriptionFromEnum } from './SymbolTranslator.js';
-import { SymbolKind } from '@backend/types.js';
-import { Utilities } from './utils.js';
-import { IMaxScriptSettings } from 'types.js';
+} from '@backend/schemas/mxsCompletions-base';
+import { symbolDescriptionFromEnum } from './SymbolTranslator';
+import { SymbolKind } from '@backend/types';
+import { Utilities } from './utils';
+import { IMaxScriptSettings } from './types';
 
 export class mxsHoverProvider implements HoverProvider
 {

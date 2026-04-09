@@ -11,9 +11,9 @@ import {
     TextDocument,
 } from 'vscode';
 
-import { mxsBackend } from '@backend/Backend.js';
-import { SignatureHelpModel } from '@backend/types.js';
-import { IMaxScriptSettings } from 'types';
+import { mxsBackend } from '@backend/Backend';
+import { SignatureHelpModel } from '@backend/types';
+import { IMaxScriptSettings } from './types';
 
 export class mxsSignatureHelpProvider implements SignatureHelpProvider {
     public constructor(private backend: mxsBackend, private options?: IMaxScriptSettings) { }

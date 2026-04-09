@@ -1,5 +1,5 @@
 import type { IAstContext } from '@backend/IAstContext.js';
-import { ASTQuery } from '@backend/ast/ASTQuery.js';
+import { ASTQuery } from '@ast/ASTQuery.js';
 import {
     ArrayLiteral,
     BooleanLiteral,
@@ -10,8 +10,8 @@ import {
     PathLiteral,
     StringLiteral,
     UndefinedLiteral,
-} from '@backend/ast/ASTNodes.js';
-import { SignatureCallStyle, SignatureHelpModel } from '@backend/types';
+} from '@ast/ASTNodes.js';
+import { SignatureCallStyle, SignatureHelpModel } from '@backend/types.js';
 
 export class SignatureHelpService {
     public getSignatureHelpModel(

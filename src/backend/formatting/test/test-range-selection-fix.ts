@@ -1,5 +1,5 @@
 import { CharStream, CommonTokenStream } from 'antlr4ng';
-import { mxsLexer } from '../../../parser/mxsLexer.js';
+import { mxsLexer } from '@parser/mxsLexer.js';
 import { mxsSimpleFormatter } from '../simpleCodeFormatter.js';
 
 console.log('=== Range Selection Newline Preservation Test ===\n');

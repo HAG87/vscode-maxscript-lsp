@@ -1,4 +1,4 @@
-import { ICodeFormatSettings, IMinifySettings, IPrettifySettings } from '@backend/types.js';
+import { ICodeFormatSettings, IMinifySettings, IPrettifySettings } from '@backend/types';
 
 export interface IMaxScriptSettings
 {

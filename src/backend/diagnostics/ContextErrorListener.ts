@@ -9,7 +9,7 @@ import {
   NoViableAltException, InputMismatchException,
 } from 'antlr4ng';
 
-import { DiagnosticType, IDiagnosticEntry } from '../types.js';
+import { DiagnosticType, IDiagnosticEntry } from '@backend/types.js';
 
 export class ContextErrorListener extends BaseErrorListener
 {

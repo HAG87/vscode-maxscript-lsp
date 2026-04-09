@@ -1,6 +1,5 @@
-import type { Program, VariableDeclaration } from './ast/ASTNodes.js';
-import type { IDiagnosticEntry, ISemanticToken, ISymbolInfo } from './types.js';
-import type { ILexicalRange } from './types.js';
+import type { Program, VariableDeclaration } from '@ast/ASTNodes.js';
+import type { ISymbolInfo, ILexicalRange } from '@backend/types.js';
 
 /**
  * The minimal context contract that backend services depend on.

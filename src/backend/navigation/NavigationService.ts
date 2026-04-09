@@ -2,7 +2,7 @@ import type { Position as AstPosition } from '@strumenta/tylasu';
 import type { Node as AstNode } from '@strumenta/tylasu';
 import type { IAstContext } from '@backend/IAstContext.js';
 import type { ILexicalRange } from '@backend/types.js';
-import { ASTQuery } from '@backend/ast/ASTQuery.js';
+import { ASTQuery } from '@ast/ASTQuery.js';
 import {
     FunctionDefinition,
     MemberExpression,
@@ -10,7 +10,7 @@ import {
     StructDefinition,
     StructMemberField,
     VariableDeclaration,
-} from '@backend/ast/ASTNodes.js';
+} from '@ast/ASTNodes.js';
 
 export interface DefinitionTargetModel {
     targetUri: string;

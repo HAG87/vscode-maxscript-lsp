@@ -1,6 +1,6 @@
 import { commands, Disposable, ExtensionContext, tasks, TextDocument, TextEditor, window, workspace } from 'vscode';
 
-import { MaxScriptTaskProvider } from './tasks/MaxScriptTaskProvider.js';
+import { MaxScriptTaskProvider } from './tasks/MaxScriptTaskProvider';
 
 const bootstrapCommandIds = [
     'mxs.help',

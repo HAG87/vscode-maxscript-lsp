@@ -2,10 +2,10 @@ import { strict as assert } from 'assert';
 import process from 'node:process';
 import { CharStream, CommonTokenStream, ParseTree } from 'antlr4ng';
 
-import { mxsLexer } from '../../../parser/mxsLexer.js';
-import { mxsParser } from '../../../parser/mxsParser.js';
+import { mxsLexer } from '@parser/mxsLexer.js';
+import { mxsParser } from '@parser/mxsParser.js';
 import { mxsParserVisitorMinifier } from '../mxsParserVisitorMinifier.js';
-import { ICodeFormatSettings, IMinifySettings } from '../../types.js';
+import { ICodeFormatSettings, IMinifySettings } from '@backend/types.js';
 
 const minifySettings: ICodeFormatSettings & IMinifySettings = {
     whitespaceChar: ' ',

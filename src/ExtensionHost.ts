@@ -9,32 +9,29 @@ import {
   window, workspace,
 } from 'vscode';
 
-import { mxsBackend } from '@backend/Backend.js';
-import { mxsCodeLensProvider } from './CodeLensProvider.js';
-import { mxsCallHierarchyProvider } from './CallHierarchyProvider.js';
-import { mxsCompletionProvider } from './CompletionItemProvider.js';
-import { mxsDefinitionProvider } from './DefinitionProvider.js';
-import { mxsDocumentHighlightProvider } from './DocumentHighlightProvider.js';
-import { diagnosticAdapter } from './Diagnostics.js';
-import { mxsFoldingRangeProvider } from './FoldingRangeProvider.js';
-import { mxsFormattingProvider, mxsRangeFormattingProvider } from './FormattingProvider.js';
-import { mxsHoverProvider } from './HoverProvider.js';
-import { mxsLinkedEditingRangeProvider } from './LinkedEditingRangeProvider.js';
-import { mxsReferenceProvider } from './ReferenceProvider.js';
-import { mxsRenameProvider } from './RenameProvider.js';
-import { mxsSignatureHelpProvider } from './SignatureHelpProvider.js';
+import { mxsBackend } from '@backend/Backend';
+import { mxsCodeLensProvider } from './CodeLensProvider';
+import { mxsCallHierarchyProvider } from './CallHierarchyProvider';
+import { mxsCompletionProvider } from './CompletionItemProvider';
+import { mxsDefinitionProvider } from './DefinitionProvider';
+import { mxsDocumentHighlightProvider } from './DocumentHighlightProvider';
+import { diagnosticAdapter } from './Diagnostics';
+import { mxsFoldingRangeProvider } from './FoldingRangeProvider';
+import { mxsFormattingProvider, mxsRangeFormattingProvider } from './FormattingProvider';
+import { mxsHoverProvider } from './HoverProvider';
+import { mxsLinkedEditingRangeProvider } from './LinkedEditingRangeProvider';
+import { mxsReferenceProvider } from './ReferenceProvider';
+import { mxsRenameProvider } from './RenameProvider';
+import { mxsSignatureHelpProvider } from './SignatureHelpProvider';
 import {
     mxsRangeSemanticTokensProvider, mxsSemanticTokensProvider, mxsSemtoTokensLegend,
-} from './SemanticTokensProvider.js';
+} from './SemanticTokensProvider';
 import {
   defaultSettings, minifySettings, prettifySettings,
-} from './settings.js';
-import { mxsSymbolProvider } from './SymbolProvider.js';
-import { Utilities } from './utils.js';
-import { mxsWorkspaceSymbolProvider } from './WorkspaceSymbolProvider.js';
-
-
-// import { ICodeFormatSettings } from './types.js';
+} from './settings';
+import { mxsSymbolProvider } from './SymbolProvider';
+import { Utilities } from './utils';
+import { mxsWorkspaceSymbolProvider } from './WorkspaceSymbolProvider';
 
 export class ExtensionHost
 {

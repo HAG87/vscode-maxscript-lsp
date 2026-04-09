@@ -1,6 +1,6 @@
 import type { IAstContext } from '@backend/IAstContext.js';
 import { ILexicalRange, SymbolKind } from '@backend/types.js';
-import { ASTQuery } from '@backend/ast/ASTQuery.js';
+import { ASTQuery } from '@ast/ASTQuery.js';
 import {
     DefinitionBlock,
     FunctionArgument,
@@ -12,7 +12,7 @@ import {
     StructDefinition,
     StructMemberField,
     VariableDeclaration,
-} from '@backend/ast/ASTNodes.js';
+} from '@ast/ASTNodes.js';
 
 export interface HoverModel {
     symbolKind: SymbolKind;

@@ -5,8 +5,8 @@ import {
     StringLiteral,
     VariableDeclaration,
     VariableReference,
-} from '@backend/ast/ASTNodes.js';
-import { ASTQuery } from '@backend/ast/ASTQuery.js';
+} from '@ast/ASTNodes.js';
+import { ASTQuery } from '@ast/ASTQuery.js';
 
 /**
  * Owns all cached position-based AST queries for a single document.

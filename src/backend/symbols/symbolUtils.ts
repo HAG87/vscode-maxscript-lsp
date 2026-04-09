@@ -1,6 +1,6 @@
 import { ParserRuleContext, ParseTree, TerminalNode } from "antlr4ng";
 import { BaseSymbol } from "antlr4-c3";
-import { IDefinition, SymbolKind } from "../types.js";
+import { IDefinition, SymbolKind } from "@backend/types.js";
 import {
     AttributesDefSymbol, EventHandlerStatementSymbol,
     fnArgsSymbol, FnDefinitionSymbol, fnParamsSymbol,

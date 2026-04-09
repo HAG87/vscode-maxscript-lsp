@@ -1,6 +1,8 @@
-import { ISemanticToken, type SemTokenModifier, type SemTokenType } from "../types";
-import { CallExpression, DefinitionBlock, FunctionDefinition, MemberExpression, Program, StructDefinition, StructMemberField, VariableDeclaration, VariableReference } from "../ast/ASTNodes";
-import { ASTQuery } from "../ast/ASTQuery";
+import { ISemanticToken, type SemTokenModifier, type SemTokenType } from "@backend/types.js";
+import { CallExpression, DefinitionBlock, FunctionDefinition, MemberExpression,
+    Program, StructDefinition, StructMemberField,
+    VariableDeclaration, VariableReference } from "../ast/ASTNodes.js";
+import { ASTQuery } from "@ast/ASTQuery.js";
 
 type SemanticDeclarationNode = FunctionDefinition | StructDefinition | DefinitionBlock | VariableDeclaration;
 

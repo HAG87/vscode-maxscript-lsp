@@ -6,21 +6,19 @@ import { dirname, isAbsolute, resolve as pathResolve } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 import {
-    DiagnosticType, IBackendAstSettings, IBackendTraceSettings, ICodeFormatSettings, IDiagnosticEntry, ILexicalRange, IMinifySettings, IPrettifySettings,
-    ISemanticToken, ISymbolInfo,
-} from './types.js';
+    DiagnosticType, IBackendAstSettings, IBackendTraceSettings, IDiagnosticEntry, ILexicalRange
+} from '@backend/types.js';
 import {
     CallHierarchyCallModel,
     CallHierarchyDescriptor,
     CallHierarchyItemModel,
     CallHierarchyService,
-} from './callHierarchy/CallHierarchyService.js';
-import { FoldingRangeService } from './folding/FoldingRangeService.js';
-import { LinkedEditingService } from './linkedEditing/LinkedEditingService.js';
-import { ASTQuery } from './ast/ASTQuery.js';
-import { Program, ScopeNode, VariableDeclaration, VariableReference } from './ast/ASTNodes.js';
-import { IformatterResult } from './formatting/simpleCodeFormatter.js';
-import { SourceContext } from './SourceContext.js';
+} from '@backend/callHierarchy/CallHierarchyService.js';
+import { FoldingRangeService } from '@backend/folding/FoldingRangeService.js';
+import { LinkedEditingService } from '@backend/linkedEditing/LinkedEditingService.js';
+import { ASTQuery } from '@ast/ASTQuery.js';
+import { Program, ScopeNode, VariableDeclaration, VariableReference } from '@ast/ASTNodes.js';
+import { SourceContext } from '@backend/SourceContext.js';
 
 export interface IContextEntry
 {

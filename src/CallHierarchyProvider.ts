@@ -11,14 +11,14 @@ import {
     Uri,
 } from 'vscode';
 
-import { mxsBackend } from '@backend/Backend.js';
+import { mxsBackend } from '@backend/Backend';
 import {
     CallHierarchyCallModel,
     CallHierarchyDescriptor,
     CallHierarchyItemModel,
-} from '@backend/callHierarchy/CallHierarchyService.js';
-import { Utilities } from './utils.js';
-import { IMaxScriptSettings } from 'types.js';
+} from '@backend/callHierarchy/CallHierarchyService';
+import { Utilities } from './utils';
+import { IMaxScriptSettings } from './types';
 
 export class mxsCallHierarchyProvider implements CallHierarchyProvider {
     private readonly itemDescriptors = new WeakMap<CallHierarchyItem, CallHierarchyDescriptor>();

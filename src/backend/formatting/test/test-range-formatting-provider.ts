@@ -1,6 +1,6 @@
 import { CharStream, CommonTokenStream } from 'antlr4ng';
-import { mxsLexer } from '../../../parser/mxsLexer.js';
-import { mxsParser } from '../../../parser/mxsParser.js';
+import { mxsLexer } from '@parser/mxsLexer.js';
+import { mxsParser } from '@parser/mxsParser.js';
 import { mxsSimpleFormatter } from '../simpleCodeFormatter.js';
 
 // Test the simpleCodeFormatter directly with full-range formatting

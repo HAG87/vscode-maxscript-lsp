@@ -1,7 +1,7 @@
 import type { Position as AstPosition } from '@strumenta/tylasu';
 import type { IAstContext } from '@backend/IAstContext.js';
 import { ILexicalRange } from '@backend/types.js';
-import { ASTQuery } from '@backend/ast/ASTQuery.js';
+import { ASTQuery } from '@ast/ASTQuery.js';
 
 export interface RenamePrepareModel {
     range: ILexicalRange;

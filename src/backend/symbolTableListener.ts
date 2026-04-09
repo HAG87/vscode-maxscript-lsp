@@ -12,8 +12,8 @@ import {
         RolloutDefinitionContext, RolloutGroupDefinitionContext, StructMemberContext,
         StructDefinitionContext, ToolDefinitionContext, UtilityDefinitionContext,
         VariableDeclarationContext,
-} from '../parser/mxsParser.js';
-import { mxsParserListener } from '../parser/mxsParserListener.js';
+} from '@parser/mxsParser.js';
+import { mxsParserListener } from '@parser/mxsParserListener.js';
 import {
         AttributesDefSymbol, EventHandlerStatementSymbol,
         fnArgsSymbol, FnDefinitionSymbol,

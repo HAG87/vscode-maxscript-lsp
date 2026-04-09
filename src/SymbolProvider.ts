@@ -3,11 +3,11 @@ import {
   Range, SymbolInformation, TextDocument, workspace,
 } from 'vscode';
 
-import { mxsBackend } from '@backend/Backend.js';
-import { symbolDescriptionFromEnum, translateSymbolKind } from './SymbolTranslator.js';
-import { ISymbolInfo } from '@backend/types.js';
-import { Utilities } from './utils.js';
-import { IMaxScriptSettings } from 'types.js';
+import { mxsBackend } from '@backend/Backend';
+import { symbolDescriptionFromEnum, translateSymbolKind } from './SymbolTranslator';
+import { ISymbolInfo } from '@backend/types';
+import { Utilities } from './utils';
+import { IMaxScriptSettings } from './types';
 
 export class mxsSymbolProvider implements DocumentSymbolProvider
 {

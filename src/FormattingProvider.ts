@@ -5,9 +5,9 @@ import
         TextDocument, TextEdit,
     } from 'vscode';
 
-import { mxsBackend } from '@backend/Backend.js';
-import { ICodeFormatSettings } from '@backend/types.js';
-import { Utilities } from 'utils';
+import { mxsBackend } from '@backend/Backend';
+import { ICodeFormatSettings } from '@backend/types';
+import { Utilities } from './utils';
 
 export class mxsRangeFormattingProvider implements DocumentRangeFormattingEditProvider
 {

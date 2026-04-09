@@ -4,14 +4,14 @@ import {
 } from 'antlr4-c3';
 import { ParserRuleContext, ParseTree, TerminalNode } from 'antlr4ng';
 
-import { mxsParser } from '../parser/mxsParser.js';
-import { IDefinition, ISymbolInfo, SymbolKind } from './types.js';
-import { TreeQuery } from './TreeQuery.js';
-import { SymbolUtils } from './symbols/symbolUtils.js';
-import { SourceContext } from './SourceContext.js';
+import { mxsParser } from '@parser/mxsParser.js';
+import { ISymbolInfo } from '@backend/types.js';
+import { TreeQuery } from '@backend/TreeQuery.js';
+import { SymbolUtils } from '@backend/symbols/symbolUtils.js';
+import { SourceContext } from '@backend/SourceContext.js';
 import {
-    ExpSeqSymbol, IdentifierSymbol, topLevelSymbolsType,
-} from './symbols/symbolTypes.js';
+    ExpSeqSymbol, topLevelSymbolsType,
+} from '@backend/symbols/symbolTypes.js';
 
 
 export class ContextSymbolTable extends SymbolTable {

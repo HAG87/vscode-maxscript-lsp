@@ -1,8 +1,8 @@
 import { CommonTokenStream, Token } from 'antlr4ng';
 
-import { mxsLexer } from '../../parser/mxsLexer.js';
-import { ISemanticToken } from '../types.js';
-import { maxAPI, maxAPILookup } from '../schemas/mxsAPI.js';
+import { mxsLexer } from '@parser/mxsLexer.js';
+import { ISemanticToken } from '@backend/types.js';
+import { maxAPI, maxAPILookup } from '@backend/schemas/mxsAPI.js';
 
 /**
  * Fallback class to provide semantic tokens when the parser is not available

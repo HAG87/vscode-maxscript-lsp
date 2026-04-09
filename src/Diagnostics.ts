@@ -2,8 +2,8 @@
 */
 import { Diagnostic, DiagnosticSeverity } from 'vscode';
 
-import { DiagnosticType, IDiagnosticEntry } from '@backend/types.js';
-import { Utilities } from './utils.js';
+import { DiagnosticType, IDiagnosticEntry } from '@backend/types';
+import { Utilities } from './utils';
 
 const diagnosticTypeMap = new Map<DiagnosticType, DiagnosticSeverity>();
 diagnosticTypeMap.set(DiagnosticType.Hint, DiagnosticSeverity.Hint);

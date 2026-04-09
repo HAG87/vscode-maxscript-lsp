@@ -2,10 +2,10 @@ import {
     FnArgsContext,
     FnParamsContext,
     IdentifierContext, ParamNameContext,
-} from '../../parser/mxsParser.js';
-import { mxsParserListener } from '../../parser/mxsParserListener.js';
-import { ISemanticToken } from '../types.js';
-import { maxAPILookup } from '../schemas/mxsAPI.js';
+} from '@parser/mxsParser.js';
+import { mxsParserListener } from '@parser/mxsParserListener.js';
+import { ISemanticToken } from '@backend/types.js';
+import { maxAPILookup } from '@backend/schemas/mxsAPI.js';
 
 // Pre-allocated modifier arrays to avoid repeated allocations
 /*

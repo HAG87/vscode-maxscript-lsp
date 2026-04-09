@@ -5,9 +5,9 @@
  */
 
 import { CharStream, CommonTokenStream } from 'antlr4ng';
-import { mxsLexer } from '../../../parser/mxsLexer.js';
-import { mxsParser } from '../../../parser/mxsParser.js';
-import { SymbolKind } from '../../types.js';
+import { mxsLexer } from '@parser/mxsLexer.js';
+import { mxsParser } from '@parser/mxsParser.js';
+import { SymbolKind } from '@backend/types.js';
 import { ASTBuilder } from '../ASTBuilder.js';
 import { SymbolTreeBuilder } from '../SymbolTreeBuilder.js';
 import {

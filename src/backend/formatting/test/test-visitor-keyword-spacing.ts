@@ -1,9 +1,9 @@
 import { CharStream, CommonTokenStream } from 'antlr4ng';
-import { mxsLexer } from '../../../parser/mxsLexer.js';
-import { mxsParser } from '../../../parser/mxsParser.js';
+import { mxsLexer } from '@parser/mxsLexer.js';
+import { mxsParser } from '@parser/mxsParser.js';
 import { codeBlock, mxsParserVisitorFormatter } from '../mxsParserVisitorFormatter.js';
 import { ParseTree } from 'antlr4ng';
-import { ICodeFormatSettings, IMinifySettings, IPrettifySettings } from '../../types.js';
+import { ICodeFormatSettings, IMinifySettings, IPrettifySettings } from '@backend/types.js';
 import { strict as assert } from 'assert';
 
 console.log('=== Visitor Formatter Keyword-ID Spacing Regression Test ===\n');

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { SymbolKind, CompletionKindHint } from '@backend/types.js';
+import { SymbolKind, CompletionKindHint } from '@backend/types';
 import { CompletionItemKind, DocumentHighlightKind } from 'vscode';
 
 const symbolCodeTypeMap = new Map<SymbolKind, vscode.SymbolKind>([

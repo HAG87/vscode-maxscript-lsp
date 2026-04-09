@@ -3,10 +3,10 @@ import { readFileSync } from 'fs';
 
 import { CharStream, CommonTokenStream, ParseTree } from 'antlr4ng';
 
-import { mxsLexer } from '../../../parser/mxsLexer.js';
-import { mxsParser } from '../../../parser/mxsParser.js';
+import { mxsLexer } from '@parser/mxsLexer.js';
+import { mxsParser } from '@parser/mxsParser.js';
 import { codeBlock, mxsParserVisitorFormatter } from '../mxsParserVisitorFormatter.js';
-import { ICodeFormatSettings, IMinifySettings, IPrettifySettings } from '../../types.js';
+import { ICodeFormatSettings, IMinifySettings, IPrettifySettings } from '@backend/types.js';
 
 const source = readFileSync('E:/repos/maxscript-parser/examples/example-12.ms', 'utf8');
 

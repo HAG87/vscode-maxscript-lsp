@@ -4,20 +4,20 @@ import {
   Range, TextDocument,
 } from 'vscode';
 
-import { mxsBackend } from '@backend/Backend.js';
+import { mxsBackend } from '@backend/Backend';
 import {
   maxCompletions, mxsLanguageCompletions,
-} from '@backend/schemas/mxsCompletions-base.js';
-import { mxClassMembers } from '@backend/schemas/mxsCompletions-clases.js';
+} from '@backend/schemas/mxsCompletions-base';
+import { mxClassMembers } from '@backend/schemas/mxsCompletions-clases';
 import {
   mxInterfaceMembers,
-} from '@backend/schemas/mxsCompletions-interfaces.js';
-import { mxStructsMembers } from '@backend/schemas/mxsCompletions-structs.js';
+} from '@backend/schemas/mxsCompletions-interfaces';
+import { mxStructsMembers } from '@backend/schemas/mxsCompletions-structs';
 import {
   symbolDescriptionFromEnum, translateCompletionKind,
   translateCompletionKindFromHint,
-} from './SymbolTranslator.js';
-import { IMaxScriptSettings } from './types.js';
+} from './SymbolTranslator';
+import { IMaxScriptSettings } from './types';
 
 export class mxsCompletionProvider implements CompletionItemProvider
 {

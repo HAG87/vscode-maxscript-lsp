@@ -2,7 +2,7 @@ import { basename } from 'path';
 
 import type { IAstContext } from '@backend/IAstContext.js';
 import type { ILexicalRange } from '@backend/types.js';
-import { ASTQuery } from '@backend/ast/ASTQuery.js';
+import { ASTQuery } from '@ast/ASTQuery.js';
 import {
     CallExpression,
     FunctionDefinition,
@@ -10,7 +10,7 @@ import {
     StructDefinition,
     VariableDeclaration,
     VariableReference,
-} from '@backend/ast/ASTNodes.js';
+} from '@ast/ASTNodes.js';
 
 export interface CallHierarchyDescriptor {
     uri: string;

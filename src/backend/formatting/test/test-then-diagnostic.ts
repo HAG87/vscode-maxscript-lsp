@@ -1,9 +1,9 @@
 import { CharStream, CommonTokenStream } from 'antlr4ng';
-import { mxsLexer } from '../../../parser/mxsLexer.js';
-import { mxsParser } from '../../../parser/mxsParser.js';
+import { mxsLexer } from '@parser/mxsLexer.js';
+import { mxsParser } from '@parser/mxsParser.js';
 import { codeBlock, mxsParserVisitorFormatter } from '../mxsParserVisitorFormatter.js';
 import { ParseTree } from 'antlr4ng';
-import { ICodeFormatSettings, IMinifySettings, IPrettifySettings } from '../../types.js';
+import { ICodeFormatSettings, IMinifySettings, IPrettifySettings } from '@backend/types.js';
 
 console.log('=== Diagnostic: THEN followed by ID spacing ===\n');
 

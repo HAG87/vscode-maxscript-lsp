@@ -3,9 +3,9 @@ import {
     TextDocument, WorkspaceEdit,
 } from 'vscode';
 
-import { mxsBackend } from '@backend/Backend.js';
-import { Utilities } from './utils.js';
-import { IMaxScriptSettings } from 'types.js';
+import { mxsBackend } from '@backend/Backend';
+import { Utilities } from './utils';
+import { IMaxScriptSettings } from './types';
 
 export class mxsRenameProvider implements RenameProvider
 {

@@ -134,8 +134,8 @@ import {
     WhenClauseContext,
     WhenStatementContext,
     WhileLoopStatementContext,
-} from '../../parser/mxsParser.js';
-import { mxsParserVisitor } from '../../parser/mxsParserVisitor.js';
+} from '@parser/mxsParser.js';
+import { mxsParserVisitor } from '@parser/mxsParserVisitor.js';
 import {
     ArrayLiteral,
     AssignmentExpression,

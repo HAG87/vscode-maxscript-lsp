@@ -8,7 +8,7 @@ import {
   Token,
 } from 'antlr4ng';
 
-import { DiagnosticType, IDiagnosticEntry } from '../types.js';
+import { DiagnosticType, IDiagnosticEntry } from '@backend/types.js';
 
 export class ContextLexerErrorListener extends BaseErrorListener
 {

@@ -86,7 +86,7 @@
  * @see ISymbolInfo - Output format (types.ts)
  */
 
-import { ISymbolInfo, SymbolKind, IDefinition, ILexicalRange } from '../types.js';
+import { ISymbolInfo, SymbolKind, IDefinition, ILexicalRange } from '@backend/types.js';
 import {
     DefinitionBlock,
     EventHandlerStatement,

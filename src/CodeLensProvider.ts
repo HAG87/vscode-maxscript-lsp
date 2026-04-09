@@ -3,8 +3,8 @@ import {
     Location, Position, ProviderResult, Range, TextDocument, Uri,
 } from 'vscode';
 
-import { mxsBackend } from '@backend/Backend.js';
-import { Utilities } from './utils.js';
+import { mxsBackend } from '@backend/Backend';
+import { Utilities } from './utils';
 
 /** CodeLens that carries an AST declaration anchor for deferred reference resolution. */
 class AstDeclarationCodeLens extends CodeLens

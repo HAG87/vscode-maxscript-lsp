@@ -1,6 +1,6 @@
 import { ParserRuleContext, TerminalNode } from 'antlr4ng';
 
-import { mxsLexer } from '../../parser/mxsLexer.js';
+import { mxsLexer } from '@parser/mxsLexer.js';
 import {
   AccessorContext, AssignmentContext, AttributesDefinitionContext,
   CaseItemContext, CaseStatementContext, CommaContext,
@@ -17,9 +17,9 @@ import {
   RpContext, SimpleExpressionContext, StructBodyContext,
   StructDefinitionContext, ToolDefinitionContext, TryStatementContext,
   UtilityDefinitionContext, WhenStatementContext, WhileLoopStatementContext,
-} from '../../parser/mxsParser.js';
-import { mxsParserVisitor } from '../../parser/mxsParserVisitor.js';
-import { ICodeFormatSettings, IMinifySettings } from '../types.js';
+} from '@parser/mxsParser.js';
+import { mxsParserVisitor } from '@parser/mxsParserVisitor.js';
+import { ICodeFormatSettings, IMinifySettings } from '@backend/types.js';
 
 export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
 {

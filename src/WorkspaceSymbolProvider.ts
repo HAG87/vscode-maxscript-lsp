@@ -7,12 +7,12 @@ import {
   Uri, workspace, WorkspaceSymbolProvider,
 } from 'vscode';
 
-import { mxsBackend } from '@backend/Backend.js';
-import { WorkspaceSymbolIndex } from '@backend/WorkspaceSymbolIndex.js';
-import { translateSymbolKind } from './SymbolTranslator.js';
-import { ISymbolInfo } from '@backend/types.js';
-import { Utilities } from './utils.js';
-import { IMaxScriptSettings } from 'types.js';
+import { mxsBackend } from '@backend/Backend';
+import { WorkspaceSymbolIndex } from '@backend/WorkspaceSymbolIndex';
+import { translateSymbolKind } from './SymbolTranslator';
+import { ISymbolInfo } from '@backend/types';
+import { Utilities } from './utils';
+import { IMaxScriptSettings } from './types';
 
 export class mxsWorkspaceSymbolProvider implements WorkspaceSymbolProvider
 {
