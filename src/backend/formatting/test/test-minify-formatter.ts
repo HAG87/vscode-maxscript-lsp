@@ -241,6 +241,14 @@ try {
         'Regression: missing mandatory separator after trailing case-expression before closing scope'
     );
 
+    const trailingAssignedCaseMinified = minifyWithFormatter(
+        'fn EPOLY_getSubObjSel obj=(if (isValidNode obj) AND (isKindOf obj Editable_poly) then (if so!=undefined then (has_selection=case of((so==1):(true);default:false))))'
+    );
+    assert.ok(
+        trailingAssignedCaseMinified.includes('default:false););'),
+        'Regression: missing mandatory separator after trailing assigned case-expression before closing scope'
+    );
+
     console.log('✅ Formatter minify output preserves mandatory whitespace boundaries');
 } catch (error) {
     console.error('❌ Test failed:', error);

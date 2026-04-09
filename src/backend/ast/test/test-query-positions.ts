@@ -573,6 +573,36 @@ const byRefDeclOnByRefLine = byRefTailUse?.position?.start.line === 4;
 console.log(`  declaration originates from by-ref argument line => ${byRefDeclOnByRefLine ? '✓' : `❌ line ${byRefTailUse?.position?.start.line ?? 'undefined'}`}`);
 if (!byRefDeclOnByRefLine) { errors++; }
 
+// --- rollout filter parameter reference regression ---------------------------
+const rolloutFilterCode = `plugin simpleObject p name:#p (
+    fn shapeFilt o = (isKindOf o line)
+    parameters main rollout:params (dummy type:#float default:1)
+    rollout params "Blend" (
+        pickbutton pickA "First" autoDisplay:true filter:shapeFilt width:140 height:25
+    )
+)`;
+
+const rolloutFilterInput = CharStream.fromString(rolloutFilterCode);
+const rolloutFilterLexer = new mxsLexer(rolloutFilterInput);
+const rolloutFilterTokens = new CommonTokenStream(rolloutFilterLexer);
+const rolloutFilterParser = new mxsParser(rolloutFilterTokens);
+const rolloutFilterAst = new ASTBuilder().visitProgram(rolloutFilterParser.program());
+new SymbolResolver(rolloutFilterAst).resolve();
+
+console.log();
+console.log('=== rollout filter parameter probes ===');
+
+const filterDecl = ASTQuery.findDeclarationAtPosition(rolloutFilterAst, 2, 8);
+const filterRef = ASTQuery.findDeclarationAtPosition(rolloutFilterAst, 5, 57);
+
+const filterRefResolved = filterRef?.name === 'shapeFilt';
+console.log(`  filter:shapeFilt reference resolves => ${filterRefResolved ? '✓' : `❌ got ${filterRef?.name ?? 'undefined'}`}`);
+if (!filterRefResolved) { errors++; }
+
+const filterSameDeclaration = !!filterDecl && !!filterRef && filterDecl === filterRef;
+console.log(`  reference binds function declaration => ${filterSameDeclaration ? '✓' : '❌'}`);
+if (!filterSameDeclaration) { errors++; }
+
 console.log();
 if (errors > 0) {
     console.log(`❌ ${errors} total probe(s) failed`);
