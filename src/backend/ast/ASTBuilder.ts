@@ -1422,8 +1422,8 @@ export class ASTBuilder extends mxsParserVisitor<any> {
 
     private collectExpressions(contexts: ParserRuleContext[]): Expression[] {
         return contexts
-            .map(context => this.visit(context) as Expression | null)
-            .filter((expr): expr is Expression => expr instanceof Expression);
+            .map(context => this.visit(context) as Expression | VariableReference | null)
+            .filter((expr): expr is Expression => expr instanceof Expression || expr instanceof VariableReference);
     }
 
     /**
