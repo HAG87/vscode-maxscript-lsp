@@ -1,44 +1,36 @@
 /**
  * Workspace Symbol Provider
- * Provides symbols across the entire workspace
- * This is a WORK IN PROGRESS!
- * 
+ * Provides symbols across the entire workspace using an incremental index.
  */
-import { readlinkSync } from 'node:fs';
-
 import {
-  CancellationToken, Location, Position, SymbolInformation,
+  CancellationToken, Location, SymbolInformation,
   Uri, workspace, WorkspaceSymbolProvider,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
-import { mxsSimpleSymbolProvider } from './backend/symbols/simpleSymbolProvider.js';
-import { translateSymbolKind } from './Symbol.js';
-import { ISymbolInfo } from './types.js';
-import { Utilities } from './utils.js';
+import { mxsBackend } from '@backend/Backend';
+import { WorkspaceSymbolIndex } from '@backend/WorkspaceSymbolIndex';
+import { translateSymbolKind } from './SymbolTranslator';
+import { ISymbolInfo } from '@backend/types';
+import { Utilities } from './utils';
+import { IMaxScriptSettings } from './types';
 
 export class mxsWorkspaceSymbolProvider implements WorkspaceSymbolProvider
 {
-    private symbolProvider: mxsSimpleSymbolProvider;
-    private workspaceSymbolsCollection: SymbolInformation[] = [];
-    private workspaceSymbolsMap: Map<string, ISymbolInfo[]> = new Map();
+    private readonly index: WorkspaceSymbolIndex;
 
-    public constructor(private backend: mxsBackend)
+    public constructor(private backend: mxsBackend, private options?: IMaxScriptSettings)
     {
-        this.symbolProvider = new mxsSimpleSymbolProvider()
-        // this.resolveWorkspaceSymbols().then(() => this.collectWorkspaceSymbols());
+        this.index = new WorkspaceSymbolIndex(backend);
     }
 
     async collectDocuments(): Promise<string[]>
     {
-        const paths: string[] = [];
-
         async function collect(uri: Uri): Promise<string[]>
         {
             const result: string[] = [];
             const files = await workspace.fs.readDirectory(uri)
             for (const file of files) {
-                switch (file[1]) {
+                switch (file[1] as number) {
                     case 2:
                         result.push(...await collect(Uri.joinPath(uri, file[0])))
                         break;
@@ -49,16 +41,15 @@ export class mxsWorkspaceSymbolProvider implements WorkspaceSymbolProvider
                             result.push(Uri.joinPath(uri, file[0]).toString())
                         }
                         break;
-                    case 64:
-                        {
-                            const dest = readlinkSync(file[0])
-                            if (
-                                dest.toLowerCase().endsWith('.ms') ||
-                                dest.toLowerCase().endsWith('.mcr')
-                            ) {
-                                result.push(file[0])
-                            }
+                    case 65: // FileType.File | FileType.SymbolicLink
+                        if (
+                            file[0].toLowerCase().endsWith('.ms') || file[0].toLowerCase().endsWith('.mcr')
+                        ) {
+                            result.push(Uri.joinPath(uri, file[0]).toString())
                         }
+                        break;
+                    case 66: // FileType.Directory | FileType.SymbolicLink
+                        result.push(...await collect(Uri.joinPath(uri, file[0])))
                         break;
                 }
             }
@@ -66,6 +57,8 @@ export class mxsWorkspaceSymbolProvider implements WorkspaceSymbolProvider
         }
 
         const folders = workspace.workspaceFolders;
+        const paths: string[] = [];
+
         if (folders) {
             for (const folder of folders) {
                 paths.push(...await collect(folder.uri));
@@ -75,123 +68,85 @@ export class mxsWorkspaceSymbolProvider implements WorkspaceSymbolProvider
         return paths;
     }
 
-    private resolveSymbolInfo(uri?: string): Promise<void>
+    private symbolInfoToSymbolInformation(symbol: ISymbolInfo): SymbolInformation
     {
-        return new Promise<void>((resolve, reject) =>
-        {
-            if (!uri) {
-                this.collectDocuments().then((documents) =>
-                {
-                    for (const document of documents) {
-                        // get simple symbols
-                        this.workspaceSymbolsMap.set(document,
-                            this.symbolProvider.getSymbols(document, this.backend.getDocumentText(document))
-                        )
-                    }
-                    resolve()
-                }, (_err) => reject());
-            } else {
-                // get simple symbols        
-                this.workspaceSymbolsMap.set(uri,
-                    this.symbolProvider.getSymbols(uri, this.backend.getDocumentText(uri))
-                )
-                resolve()
-            }
-        })
-    }
-
-    private collectWorkspaceSymbols(): void
-    {
-        // this.workspaceSymbolsCollection = [...this.workspaceSymbolsMap.values()].flat()
-        this.workspaceSymbolsCollection = [];
-
-        const symbolInfo = [...this.workspaceSymbolsMap.values()].flat().map((symbol) =>
-        {
-            return new SymbolInformation(
-                symbol.name,
-                translateSymbolKind(symbol.kind),
-                '',
-                // /*
-                new Location(
-                    Uri.parse(symbol.source),
-                    // Utilities.lexicalRangeToRange(symbol.definition!.range)
-                    // <Range>{}
-                    // /*
-                    new Position(
-                        symbol.definition!.range.start.row === 0 ? 0 : symbol.definition!.range.start.row - 1,
-                        symbol.definition!.range.start.column
-                    )
-                    // */
-                )
+        return new SymbolInformation(
+            symbol.name,
+            translateSymbolKind(symbol.kind),
+            '',
+            new Location(
+                Uri.parse(symbol.source),
+                Utilities.lexicalRangeToRange(symbol.definition!.range)
             )
-        })
-        this.workspaceSymbolsCollection.push(...symbolInfo)
-        /*
-        this.workspaceSymbolsMap.forEach((symbols, uri) =>
-        {
-            const symbolInfo = symbols.map((symbol): SymbolInformation =>
-            {
-                return new SymbolInformation(
-                    symbol.name,
-                    translateSymbolKind(symbol.kind),
-                    '',
-                    new Location(
-                        Uri.parse(uri),
-                        new Position(
-                            symbol.definition!.range.start.row === 0 ? 0 : symbol.definition!.range.start.row - 1,
-                            symbol.definition!.range.start.column
-                        )
-                    )
-                )
-            })
-            this.workspaceSymbolsCollection.push(...symbolInfo)
-        });
-        // */
+        );
     }
-    public updateWorkspaceSymbols(uri: string)
+
+    /**
+     * Called by ExtensionHost after a document reparse.
+     * O(1) — marks the file dirty in the index without doing any extraction work.
+     * Extraction is deferred to the next provideWorkspaceSymbols() call.
+     */
+    public updateWorkspaceSymbols(uri: string): void
     {
-        // console.log('Updating workspace symbols')
-        this.resolveSymbolInfo(uri).then(
-            () => this.collectWorkspaceSymbols()
-        )
+        this.index.setFileDirty(uri);
     }
-    
+
     provideWorkspaceSymbols(query: string, token: CancellationToken): Promise<SymbolInformation[]>
     {
-        return new Promise<SymbolInformation[]>((resolve, reject) =>
+        return new Promise<SymbolInformation[]>((resolve) =>
         {
-            token.onCancellationRequested(() =>
-            {
-                resolve([])
+            if (token.isCancellationRequested) {
+                resolve([]);
                 return;
-            })
-
-            if (this.workspaceSymbolsCollection.length === 0) {
-                this.resolveSymbolInfo().then(() =>
-                {
-                    // derive symbols
-                    this.collectWorkspaceSymbols()
-                    resolve(this.workspaceSymbolsCollection)
-                    // resolve(this.workspaceSymbolsCollection.filter( (symbol) => symbol.name.toLowerCase().includes(query.toLowerCase())) )
-                }, () => resolve([]));
-            } else {
-                resolve(this.workspaceSymbolsCollection)
-                // resolve(this.workspaceSymbolsCollection.filter( (symbol) => symbol.name.toLowerCase().includes(query.toLowerCase())) )
             }
-        })
+
+            const cancelSubscription = token.onCancellationRequested(() =>
+            {
+                cancelSubscription.dispose();
+                resolve([]);
+                return;
+            });
+
+            const serve = (): SymbolInformation[] =>
+            {
+                // VS Code does its own fuzzy filtering on the returned list,
+                // so we only apply our own filter when a query is present to
+                // avoid returning the full workspace set on every keystroke.
+                const symbols = query
+                    ? this.index.findByName(query)
+                    : this.index.getAll();
+                return symbols
+                    .filter(s => s.definition !== undefined)
+                    .map(s => this.symbolInfoToSymbolInformation(s));
+            };
+
+            if (!this.index.isInitialized) {
+                // First call — seed the index with all workspace files.
+                this.collectDocuments().then((uris) =>
+                {
+                    if (token.isCancellationRequested) {
+                        cancelSubscription.dispose();
+                        resolve([]);
+                        return;
+                    }
+                    this.index.seedUris(uris);
+                    cancelSubscription.dispose();
+                    resolve(serve());
+                }, () => {
+                    cancelSubscription.dispose();
+                    resolve([]);
+                });
+            } else {
+                cancelSubscription.dispose();
+                resolve(serve());
+            }
+        });
     }
+
     resolveWorkspaceSymbol?(symbol: SymbolInformation, _token: CancellationToken): Promise<SymbolInformation>
     {
-        return new Promise<SymbolInformation>((resolve, reject) =>
-        {
-            const docUri = symbol.location.uri.toString()
-            //resolve range
-            if (this.workspaceSymbolsMap.has(docUri)) {
-                // this is guaranteed to exist
-                const symbolRef = this.workspaceSymbolsMap.get(docUri)!.find((s) => s.name === symbol.name)!;
-                symbol.location.range = Utilities.lexicalRangeToRange(symbolRef.definition!.range)
-            }
-            resolve(symbol)
-        })
+        // Full range is already included in the Location produced by provideWorkspaceSymbols,
+        // so no additional resolution is needed.
+        return Promise.resolve(symbol);
     }
 }

@@ -1,10 +1,12 @@
 .vscode/**
 .vscode-test/**
 .gitignore
+.github
 vsc-extension-quickstart.md
 src/**
 out/**
 !out/extension.cjs
+!out/ExtensionHost.cjs
 node_modules/**
 scripts/**
 .eslintrc.json
@@ -14,3 +16,9 @@ eslint.config.js
 *.md
 !README.md
 !CHANGELOG.md
+dev-notes/**
+parser/grammars/**
+**/*.bak
+tokenColorCustomizations-example.jsonc
+syntaxes/*.yaml
+images/**

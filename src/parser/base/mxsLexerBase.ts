@@ -1,6 +1,6 @@
 import { CharStream, Lexer, Token } from 'antlr4ng';
 
-import { mxsLexer } from './mxsLexer.js';
+import { mxsLexer } from '../mxsLexer.js';
 
 export abstract class mxsLexerBase extends Lexer
 {

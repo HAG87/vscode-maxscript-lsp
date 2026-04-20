@@ -1,3 +1,5 @@
+import type { SemTokenModifier, SemTokenType } from '@backend/types.js';
+
 const maxConstant: Set<string> = new Set([
 	'assetuser',
 	'constant',
@@ -2426,3 +2428,42 @@ export const maxAPI = {
 };
 // export default maxAPI;
 //# sourceMappingURL=mxsSchema.js.map
+
+/**
+ * Shared lookup map for quick semantic token classification.
+ * Maps lowercase identifier -> { tokenType, tokenModifiers }
+ * Built once at module initialization and reused by consumers.
+ */
+export const maxAPILookup: Map<string, { tokenType: SemTokenType; tokenModifiers: SemTokenModifier[] }> = new Map();
+(function buildLookup() {
+	const lib = (k: keyof typeof maxAPI) => (maxAPI as any)[k] as Set<string>;
+
+	const MOD_DEFAULT: SemTokenModifier[] = ['defaultLibrary'];
+	const MOD_STATIC: SemTokenModifier[] = ['defaultLibrary', 'static'];
+	const MOD_READONLY: SemTokenModifier[] = ['defaultLibrary', 'readonly'];
+
+	for (const f of lib('function')) {
+		maxAPILookup.set(f, { tokenType: 'function', tokenModifiers: MOD_DEFAULT });
+	}
+	for (const v of lib('variable')) {
+		maxAPILookup.set(v, { tokenType: 'variable', tokenModifiers: MOD_DEFAULT });
+	}
+	for (const c of lib('constant')) {
+		maxAPILookup.set(c, { tokenType: 'variable', tokenModifiers: MOD_READONLY });
+	}
+	for (const cl of lib('class')) {
+		maxAPILookup.set(cl, { tokenType: 'class', tokenModifiers: MOD_STATIC });
+	}
+	for (const t of lib('type')) {
+		maxAPILookup.set(t, { tokenType: 'type', tokenModifiers: MOD_DEFAULT });
+	}
+	for (const s of lib('struct')) {
+		maxAPILookup.set(s, { tokenType: 'struct', tokenModifiers: MOD_DEFAULT });
+	}
+	for (const i of lib('interface')) {
+		maxAPILookup.set(i, { tokenType: 'interface', tokenModifiers: MOD_DEFAULT });
+	}
+	for (const ns of lib('namespace')) {
+		maxAPILookup.set(ns, { tokenType: 'namespace', tokenModifiers: MOD_DEFAULT });
+	}
+})();

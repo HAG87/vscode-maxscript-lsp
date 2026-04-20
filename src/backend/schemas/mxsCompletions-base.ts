@@ -2634,11 +2634,11 @@ export class mxsLanguageCompletions
 {
 	public static has(name: string): CompletionItem | undefined
 	{
-		return maxCompletions.find(item => item.label === name);
+		return maxCompletions.find(item => (item.label as string).toLowerCase() === name.toLowerCase());
 	}
 	public static contains(pattern: string): CompletionItem[]
 	{
-		return maxCompletions.filter(item => (item.label as string).startsWith(pattern));
+		return maxCompletions.filter(item => (item.label as string).toLowerCase().startsWith(pattern.toLowerCase()));
 	}
 }
 //# sourceMappingURL=mxsSchema.js.map

@@ -9,7 +9,7 @@
 lexer grammar mxsLexer;
 
 @header {
-	import { mxsLexerBase } from './mxsLexerBase.js'
+	import { mxsLexerBase } from './base/mxsLexerBase.js'
 }
 
 options {
@@ -114,10 +114,6 @@ LEVEL: L E V E L
 TIME: T I M E
 	;
 UNDO: U N D O
-	;
-CHANGE: C H A N G E S?
-	;
-DELETED: D E L E T E D
 	;
 DefaultAction: D E F A U L T A C T I O N
 	;

@@ -1,86 +1,119 @@
 import {
-  CancellationToken, CodeLens, CodeLensProvider, Event,
-  ProviderResult, TextDocument,
+    CancellationToken, CodeLens, CodeLensProvider, Event, EventEmitter,
+    Location, Position, ProviderResult, Range, TextDocument, Uri,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
+import { mxsBackend } from '@backend/Backend';
+import { Utilities } from './utils';
 
-//TODO: add codeLens for references in structs, functions, declarations, rollouts, etc
+/** CodeLens that carries an AST declaration anchor for deferred reference resolution. */
+class AstDeclarationCodeLens extends CodeLens
+{
+    constructor(
+        range: Range,
+        public readonly uri: Uri,
+        public readonly declarationLine: number,
+        public readonly declarationCharacter: number,
+    ) {
+        super(range);
+    }
+}
 
+/** Provides "N references" code lenses above AST declarations. */
 export class mxsCodeLensProvider implements CodeLensProvider
 {
     public constructor(private backend: mxsBackend) { }
 
-    // private changeEvent = new EventEmitter<void>();
-    // private documentName: string;
+    private _onDidChangeCodeLenses = new EventEmitter<void>();
 
-    onDidChangeCodeLenses?: Event<void> | undefined;
-
-    /*
-     public get onDidChangeCodeLenses(): Event<void> {
-        return this.changeEvent.event;
+    public get onDidChangeCodeLenses(): Event<void> {
+        return this._onDidChangeCodeLenses.event;
     }
 
+    /** Notify VS Code that code lenses have changed and should be refreshed. */
     public refresh(): void {
-        this.changeEvent.fire();
+        this._onDidChangeCodeLenses.fire();
     }
-    */
-    
+
     provideCodeLenses(document: TextDocument, token: CancellationToken): ProviderResult<CodeLens[]>
     {
-        throw new Error("Method not implemented.");
-        /*
-                return new Promise((resolve) => {
-            if (workspace.getConfiguration("antlr4.referencesCodeLens").enabled !== true) {
-                resolve(null);
-            } else {
-                this.documentName = document.fileName;
-                const symbols = this.backend.listTopLevelSymbols(document.fileName, false);
-                const lenses = [];
-                for (const symbol of symbols) {
-                    if (!symbol.definition) {
-                        continue;
-                    }
+        if (token.isCancellationRequested) {
+            return [];
+        }
 
-                    switch (symbol.kind) {
-                        case SymbolKind.FragmentLexerToken:
-                        case SymbolKind.LexerRule:
-                        case SymbolKind.LexerMode:
-                        case SymbolKind.ParserRule: {
-                            const range = new Range(
-                                symbol.definition.range.start.row - 1,
-                                symbol.definition.range.start.column,
-                                symbol.definition.range.end.row - 1,
-                                symbol.definition.range.end.column,
-                            );
-                            const lens = new SymbolCodeLens(symbol, range);
-                            lenses.push(lens);
+        const uri = document.uri;
+        const context = this.backend.borrowContext(uri.toString());
+        const anchors = context.getAstCodeLensAnchors();
+        if (anchors.length === 0) {
+            return [];
+        }
 
-                            break;
-                        }
-
-                        default:
-                    }
-                }
-
-                resolve(lenses);
+        const lenses: CodeLens[] = [];
+        for (const anchor of anchors) {
+            if (token.isCancellationRequested) {
+                return [];
             }
-        });
-        */
+
+            lenses.push(new AstDeclarationCodeLens(
+                Utilities.lexicalRangeToRange(anchor.range),
+                uri,
+                anchor.declarationLine,
+                anchor.declarationCharacter,
+            ));
+        }
+
+        return lenses;
     }
-    
-    resolveCodeLens?(codeLens: CodeLens, token: CancellationToken): ProviderResult<CodeLens>
+
+    resolveCodeLens(codeLens: CodeLens, token: CancellationToken): ProviderResult<CodeLens>
     {
-        throw new Error("Method not implemented.");
-        /*
-        const refs = this.backend.countReferences(this.documentName, (codeLens as SymbolCodeLens).symbol.name);
-        codeLens.command = {
-            title: (refs === 1) ? "1 reference" : `${refs} references`,
-            command: "",
-            arguments: undefined,
+        if (token.isCancellationRequested) {
+            return codeLens;
+        }
+
+        const lens = codeLens as AstDeclarationCodeLens;
+        const context = this.backend.borrowContext(lens.uri.toString());
+        const resolved = context.resolveAstCodeLens(lens.declarationLine, lens.declarationCharacter);
+        if (!resolved) {
+            return codeLens;
+        }
+
+        const parsedUris = new Map<string, Uri>();
+        const locations = resolved.locations.map((location) =>
+            new Location(
+                parsedUris.get(location.uri)
+                ?? (() => {
+                    const parsed = location.uri === lens.uri.toString()
+                        ? lens.uri
+                        : Uri.parse(location.uri);
+                    parsedUris.set(location.uri, parsed);
+                    return parsed;
+                })(),
+                Utilities.lexicalRangeToRange(location.range),
+            ));
+
+        const declarationPosition = new Position(
+            Math.max(0, resolved.declarationLine - 1),
+            resolved.declarationCharacter,
+        );
+
+        const refs = Math.max(0, locations.length - 1);
+        const title = refs === 1 ? '1 reference' : `${refs} references`;
+
+        if (refs === 0) {
+            lens.command = {
+                title,
+                command: '',
+            };
+            return lens;
+        }
+
+        lens.command = {
+            title,
+            command: 'editor.action.showReferences',
+            arguments: [lens.uri, declarationPosition, locations],
         };
 
-        return codeLens;
-        */
+        return lens;
     }
 }

@@ -6,8 +6,8 @@
 
 import { CharStream, CommonTokenStream, Token } from 'antlr4ng';
 
-import { mxsLexer } from '../../parser/mxsLexer.js';
-import { ICodeFormatSettings } from '../../types.js';
+import { mxsLexer } from '@parser/mxsLexer.js';
+import { ICodeFormatSettings } from '@backend/types.js';
 
 export interface IformatterResult
 {
@@ -105,8 +105,6 @@ const tokenToCodeType = new Map<number, codeTypes>([
 	[mxsLexer.LEVEL, codeTypes.KEYWORD],
 	[mxsLexer.TIME, codeTypes.KEYWORD],
 	[mxsLexer.UNDO, codeTypes.KEYWORD],
-	[mxsLexer.CHANGE, codeTypes.KEYWORD],
-	[mxsLexer.DELETED, codeTypes.KEYWORD],
 	[mxsLexer.DefaultAction, codeTypes.KEYWORD],
 	[mxsLexer.ANIMATE, codeTypes.KEYWORD],
 	[mxsLexer.DontRepeatMessages, codeTypes.KEYWORD],
@@ -287,11 +285,20 @@ class codeBlock
 	toString(start?: number, stop?: number): string
 	{
 		let result = this.flatten()
-		if (start && stop && start < stop) {
+		if (start !== undefined && stop !== undefined && start <= stop) {
 			// rectify positions
 			const startIndex = result.findIndex(item => item.pos >= start);
 			const stopPos = result.slice().reverse().find(item => item.pos <= stop);
-			const stopIndex = result.findIndex(item => item.pos === stopPos!.pos);
+			if (startIndex < 0 || !stopPos) {
+				return '';
+			}
+			const reverseStopIndex = result.slice().reverse().findIndex(item => item.pos === stopPos.pos);
+			const stopIndex = reverseStopIndex >= 0
+				? (result.length - 1 - reverseStopIndex)
+				: -1;
+			if (stopIndex < startIndex) {
+				return '';
+			}
 
 			result = result.slice(startIndex, stopIndex + 1);
 		}
@@ -420,10 +427,19 @@ export class mxsSimpleFormatter
 	private emmit(token: Token, text: string, type: number, position: number): codeToken
 	private emmit(token: Token, text?: string, type?: number, position?: number): codeToken
 	{
+		const mappedType = tokenToCodeType.get(token.type) ?? codeTypes.SYMBOL;
 		return new codeToken(
 			text ?? token.text!,
-			type ?? tokenToCodeType.get(token.type)!,
+			type ?? mappedType,
 			position ?? token.stop
+		);
+	}
+
+	private filterFormattingTokens(tokens: Token[], options: ICodeFormatSettings): Token[]
+	{
+		return tokens.filter(token =>
+			token.type !== mxsLexer.WS ||
+			(token.text?.includes(options.lineContinuationChar) ?? false)
 		);
 	}
 
@@ -764,8 +780,8 @@ export class mxsSimpleFormatter
 					signalMultiLine = true;
 					if (!node.startsWithNL()) {
 						result.push(new codeToken(options.newLineChar, codeTypes.LINE_BREAK, node.start.pos));
+						result.push(new codeToken(options.indentChar.repeat(node.indent), codeTypes.WHITESPACE, node.start.pos));
 					}
-					result.push(new codeToken(options.indentChar.repeat(node.indent), codeTypes.WHITESPACE, node.start.pos));
 				} else if (!node.isEmpty()) {
 					result.push(new codeToken(options.whitespaceChar, codeTypes.WHITESPACE, node.start.pos));
 				}
@@ -782,10 +798,10 @@ export class mxsSimpleFormatter
 				if (child instanceof codeToken) {
 					// result.push(child);					
 					if (child.type === codeTypes.BLOCK_COMMENT) {
-						child.val =
-							child.val.split(stringIndent)
-								.join(options.newLineChar + options.indentChar.repeat(node.indent));
-						result.push(child);
+						const normalizedVal = child.val
+							.split(stringIndent)
+							.join(options.newLineChar + options.indentChar.repeat(node.indent));
+						result.push(new codeToken(normalizedVal, child.type, child.pos));
 					} else {
 						result.push(child);
 					}
@@ -803,42 +819,39 @@ export class mxsSimpleFormatter
 					//----------------------------
 					// whitespace before block start
 					// check prior token
-					// /*
 					if (lastResult) {
 						switch (lastResult.type) {
-							// case codeTypes.WHITESPACE:
 							case codeTypes.SHARP:
 							case codeTypes.LINE_BREAK:
 								break;
+							case codeTypes.WHITESPACE:
+								// Phase-1 (formattingTree) may have emitted a trailing WS.
+								// If we need NL+indent before the block, replace that WS instead of
+								// stacking WS + NL + indent.
+								if (child.hasLineBreaks() && options.codeblock.parensInNewLine) {
+									const prevToken = getLastRealToken(result);
+									if (prevToken && (prevToken.type !== codeTypes.LINE_COMMENT && prevToken.type !== codeTypes.BLOCK_COMMENT)) {
+										result.pop(); // remove trailing WS before inserting NL+indent
+										result.push(new codeToken(options.newLineChar, codeTypes.LINE_BREAK, lastResult.pos));
+										result.push(new codeToken(options.indentChar.repeat(node.indent), codeTypes.WHITESPACE, lastResult.pos));
+									}
+								}
+								break;
 							default:
-								{
-									if (child.hasLineBreaks() && options.codeblock.parensInNewLine) {
-										const prevToken = getLastRealToken(result);
-										if (prevToken && (prevToken.type !== codeTypes.LINE_COMMENT && prevToken.type !== codeTypes.BLOCK_COMMENT)) {
-											result.push(
-												new codeToken(options.newLineChar, codeTypes.LINE_BREAK, lastResult.pos)
-											);
-											result.push(
-												new codeToken(options.indentChar.repeat(node.indent), codeTypes.WHITESPACE, lastResult.pos)
-											);
-										}
+								if (child.hasLineBreaks() && options.codeblock.parensInNewLine) {
+									const prevToken = getLastRealToken(result);
+									if (prevToken && (prevToken.type !== codeTypes.LINE_COMMENT && prevToken.type !== codeTypes.BLOCK_COMMENT)) {
+										result.push(new codeToken(options.newLineChar, codeTypes.LINE_BREAK, lastResult.pos));
+										result.push(new codeToken(options.indentChar.repeat(node.indent), codeTypes.WHITESPACE, lastResult.pos));
 									}
-									//FIXME: functioncall () -> Thats why Im handling the whitespace in the formatingTree instead of here
-									/*
-									else if (lastResult.type !== codeTypes.WHITESPACE) {
-										result.push( new codeToken(options.whitespaceChar, codeTypes.WHITESPACE, lastResult.pos) );
-									}
-									*/
 								}
 								break;
 						}
 					}
-					// */
 					// block contents
 					//----------------------------
 					result.push(...inner);
 					//----------------------------
-					// /*
 					// block end: look ahead
 					lastResult = result[result.length - 1] ?? 0;
 					if (next instanceof codeToken) {
@@ -848,25 +861,23 @@ export class mxsSimpleFormatter
 							case codeTypes.DOT:
 							case codeTypes.OPERATOR:
 								break;
-							default:
-								{
+							default: {
+								// Only add post-block spacing if phase-1 has not already
+								// recorded a WS/NL at the tail of result.
+								const tail = result[result.length - 1];
+								const tailIsSpacing = tail && (tail.type === codeTypes.WHITESPACE || tail.type === codeTypes.LINE_BREAK);
+								if (!tailIsSpacing) {
 									if (hasLineBreaks) {
-										result.push(
-											new codeToken(options.newLineChar, codeTypes.LINE_BREAK, lastResult.pos)
-										);
-										result.push(
-											new codeToken(options.indentChar.repeat(node.indent), codeTypes.WHITESPACE, lastResult.pos)
-										);
+										result.push(new codeToken(options.newLineChar, codeTypes.LINE_BREAK, lastResult.pos));
+										result.push(new codeToken(options.indentChar.repeat(node.indent), codeTypes.WHITESPACE, lastResult.pos));
 									} else {
-										result.push(
-											new codeToken(options.whitespaceChar, codeTypes.WHITESPACE, lastResult.pos)
-										);
+										result.push(new codeToken(options.whitespaceChar, codeTypes.WHITESPACE, lastResult.pos));
 									}
 								}
 								break;
 						}
 					}
-					// */
+					}
 				}
 				// -- end block add --
 			}
@@ -893,21 +904,72 @@ export class mxsSimpleFormatter
 		return dfs(node);
 	}
 
+	private getRangeLeadingIndent(start: number): string
+	{
+		const sourceText = this.tokens[0]?.inputStream?.toString() ?? '';
+		if (!sourceText || start < 0) {
+			return '';
+		}
+
+		const safeStart = Math.min(start, sourceText.length);
+		const lineBreakIndex = sourceText.lastIndexOf('\n', Math.max(0, safeStart - 1));
+		const lineStart = lineBreakIndex >= 0 ? lineBreakIndex + 1 : 0;
+		const lineEndIndex = sourceText.indexOf('\n', safeStart);
+		const lineEnd = lineEndIndex >= 0 ? lineEndIndex : sourceText.length;
+		const lineText = sourceText.slice(lineStart, lineEnd).replace(/\r$/, '');
+
+		const leadingIndent = lineText.match(/^[\t ]*/)?.[0] ?? '';
+		if (!leadingIndent) {
+			return '';
+		}
+
+		const firstNonWsOffset = lineStart + leadingIndent.length;
+		if (safeStart > firstNonWsOffset) {
+			return '';
+		}
+
+
+		if (safeStart > lineStart && safeStart < firstNonWsOffset) {
+			return leadingIndent.slice(safeStart - lineStart);
+		}
+
+		return leadingIndent;
+	}
+
 	private tokensToString(tokenStream: codeToken[], options: ICodeFormatSettings): string
 	private tokensToString(tokenStream: codeToken[], options: ICodeFormatSettings, start: number, stop: number): string
 	private tokensToString(tokenStream: codeToken[], options: ICodeFormatSettings = defaultFormatSettings, start?: number, stop?: number): string
 	{
-		if (start && stop && start < stop) {
+		let baseIndent = '';
+		if (start !== undefined && stop !== undefined && start <= stop) {
 			// rectify positions
 			const startIndex = tokenStream.findIndex(item => item.pos >= start);
 			const stopPos = tokenStream.slice().reverse().find(item => item.pos <= stop);
-			const stopIndex = tokenStream.findIndex(item => item.pos === stopPos!.pos);
+			if (startIndex < 0 || !stopPos) {
+				return '';
+			}
+			const reverseStopIndex = tokenStream.slice().reverse().findIndex(item => item.pos === stopPos.pos);
+			const stopIndex = reverseStopIndex >= 0
+				? (tokenStream.length - 1 - reverseStopIndex)
+				: -1;
+			if (stopIndex < startIndex) {
+				return '';
+			}
 
 
 			tokenStream = tokenStream.slice(startIndex, stopIndex + 1);
+
+			baseIndent = this.getRangeLeadingIndent(start);
+			if (baseIndent.length > 0 && tokenStream.length > 0) {
+				const firstToken = tokenStream[0];
+				if (firstToken.type !== codeTypes.WHITESPACE && firstToken.type !== codeTypes.LINE_BREAK) {
+					tokenStream.unshift(new codeToken(baseIndent, codeTypes.WHITESPACE, firstToken.pos));
+				}
+			}
+
 			// /*
 			// TODO: move this to the flatten function
-			if (tokenStream[0].indent) {
+			if (tokenStream.length > 0 && tokenStream[0].indent) {
 				tokenStream.unshift(
 					new codeToken(
 						options.indentChar.repeat(tokenStream[0].indent),
@@ -916,14 +978,15 @@ export class mxsSimpleFormatter
 			}
 			// */
 		}
-		return tokenStream.reduce((acc: string, curr: codeToken) => { return acc += curr.val; }, '');
+		const result = tokenStream.reduce((acc: string, curr: codeToken) => { return acc += curr.val; }, '');
+		return result;
 	}
 
 	// get tokens within range
 	public formatRange(start: number, stop: number): IformatterResult
 	{
-		// format the entire doc
-		const activeTokens = this.tokens.filter(token => token.type !== mxsLexer.WS);
+		// Keep continuation WS tokens so line continuation markers are preserved.
+		const activeTokens = this.filterFormattingTokens(this.tokens, this.options);
 
 		// produce the tree
 		// const codeTree = this.formattingTree(this.tokens, this.options); // disable filtering
@@ -943,9 +1006,13 @@ export class mxsSimpleFormatter
 	//FIXME: error when the file starts with a comment or a blank line, it doesn't work at all.
 	public formatTokenRange(start?: number, stop?: number): IformatterResult
 	{
-		const activeTokens =
-			this.tokenStream.getTokens(start, stop)
-				.filter(token => token.type !== mxsLexer.WS); // comment to disable filtering
+		const activeTokens = this.filterFormattingTokens(this.tokenStream.getTokens(start, stop), this.options);
+
+		if (activeTokens.length === 0) {
+			const startPos = start ?? 0;
+			const stopPos = stop ?? startPos;
+			return { code: '', start: startPos, stop: stopPos };
+		}
 
 		// produce the tree
 		const codeTree = this.formattingTree(activeTokens, this.options);

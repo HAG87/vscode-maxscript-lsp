@@ -7,8 +7,9 @@
 */
 
 import {
-  ICodeFormatSettings, IMaxScriptSettings, IMinifySettings, IPrettifySettings,
-} from './types.js';
+  ICodeFormatSettings, IMinifySettings, IPrettifySettings,
+} from '@backend/types';
+import {IMaxScriptSettings} from './types';
 
 export const minifySettings: ICodeFormatSettings & IMinifySettings & IPrettifySettings = {
     whitespaceChar: ' ',
@@ -58,18 +59,25 @@ export const prettifySettings: ICodeFormatSettings & IMinifySettings & IPrettify
 
 // default settings
 export const defaultSettings: IMaxScriptSettings = {
-    // language: {
-    //  SemanticTokens: true,
-    //  GoToSymbol: true,
-    //  GoToDefinition: true,
-    //  Diagnostics: true,
-    //},
-    // parser: {
-    // 	multiThreading: true,
-    // },
-    completions: {
+    parser: {
+        reparseDelay: 300  // 300ms debounce delay for reparsing
+    },
+    providers: {
         dataBaseCompletion: true,
-        codeCompletion: true
+        codeCompletion: true,
+        astSymbolProvider: true,
+        definitionProvider: true,
+        referenceProvider: true,
+        hoverProvider: true,
+        renameProvider: true,
+        documentHighlightProvider: true,
+        signatureHelpProvider: true,
+        linkedEditingRangeProvider: true,
+        foldingRangeProvider: true,
+        codelensProvider: true,
+        callHierarchyProvider: true,
+        workspaceSymbolProvider: true,
+        contextualSemanticTokens: true,
     },
     formatter: {
         indentChar: '\t',
@@ -98,5 +106,10 @@ export const defaultSettings: IMaxScriptSettings = {
         filePrefix: 'min_',
         removeUnnecessaryScopes: false,
         condenseWhitespace: true,
+    },
+    debug: {
+        tracePerformance: false,
+        traceRouting: false,
+        traceParseDecisions: false,
     }
 };

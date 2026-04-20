@@ -10,7 +10,7 @@
 parser grammar mxsParser;
 
 @header {
-    import { mxsParserBase } from "./mxsParserBase.js"
+    import { mxsParserBase } from "./base/mxsParserBase.js"
     import { mxsLexer } from "./mxsLexer.js"
 }
 
@@ -19,26 +19,73 @@ options {
 	superClass = mxsParserBase;
 	//language = TypeScript; output = AST;
 }
+/*
+Most programming languages share some concepts.
+We identified these common concepts and defined marker types for them.
+In this way, we can treat these elements similary in all languages.
+
+They are:
+
+- Statement: for example print statements, expression statements, or return statements
+- Expression: for example, literals, mathematical expressions, boolean expressions
+- Entity Declaration: for example, class declarations, top level function declarations
+
+A Primitive Type is anything that is not a Node is considered a primitive type.
+Typically these are Strings, Chars, Ints.
+This does not include Enums, which are treated separately.
+Arbitrary other types can be used.
+They may require additional configuration for example, for serialization.
+
+
+*/
 
 /*GRAMMAR RULES*/
 
 program: NL* expr (lbk expr)* NL* EOF
 	;
 
+ /*
+// OLD VERSION:
+expr
+	: simpleExpression
+	| declarationExpression
+	| assignmentExpression
+	| ifStatement
+	| whileLoopStatement
+	| doLoopStatement
+	| forLoopStatement
+	| loopExitStatement
+	| caseStatement
+	| structDefinition
+	| tryStatement
+	| fnDefinition
+	| fnReturnStatement
+	| contextStatement
+	| attributesDefinition
+	| whenStatement
+	| utilityDefinition
+	| rolloutDefinition
+	| toolDefinition
+	| rcmenuDefinition
+	| macroscriptDefinition
+	| pluginDefinition
+	;
+//*/
+///*
 expr
 	// Keyword-led expressions - unambiguous, fast first-token lookup
-	: ifExpression                  // IF
-	| whileLoopExpression           // WHILE
-	| forLoopExpression             // FOR
-	| tryExpression                 // TRY
-	| caseExpression                // CASE
-	| declarationExpression         // LOCAL | GLOBAL | PERSISTENT
-	| fnDefinition                  // FN | MAPPED
-	| fnReturnStatement             // RETURN
-	| structDefinition              // STRUCT
-	| contextExpression             // AT | IN | WITH | SET | ABOUT
-	| whenStatement                 // WHEN
-	| loopExitStatement             // EXIT
+	: ifStatement                  // IF
+	| whileLoopStatement           // WHILE
+	| forLoopStatement             // FOR
+	| tryStatement                 // TRY
+	| caseStatement                // CASE
+	| declarationStatement         // LOCAL | GLOBAL | PERSISTENT
+	| fnDefinition                 // FN | MAPPED
+	| fnReturnStatement            // RETURN
+	| structDefinition             // STRUCT
+	| contextStatement              // AT | IN | WITH | SET | ABOUT
+	| whenStatement                // WHEN
+	| loopExitStatement            // EXIT
 	// Definition blocks - keyword-led
 	| macroscriptDefinition         // MacroScript
 	| utilityDefinition             // Utility
@@ -48,63 +95,61 @@ expr
 	| pluginDefinition              // Plugin
 	| attributesDefinition          // Attributes
 	// Ambiguous cases - must be last (can start with identifier/accessor/path)
-	| doLoopExpression              // DO (conflicts with if-do, while-do, etc.)
-	| assignmentExpression          // identifier/accessor/path = ...
-	| simpleExpression              // Fallback - expressions, function calls, etc.
+	| doLoopStatement              // DO (conflicts with if-do, while-do, etc.)
+	| simpleExpression              // Fallback - expressions, assignments, function calls, etc.
 	;
-
+//*/
 //-------------------------------------- MACROSCRIPT_DEF
 macroscriptDefinition
-	: macroscript_predicate NL*
+	: macroscriptClause NL*
     lp
-        (macroscript_clause (lbk? macroscript_clause)*)?
+        (macroscriptMembers (lbk? macroscriptMembers)*)?
     rp
 	;
-macroscript_predicate: MacroScript NL* macro_name = identifier ( NL* param )*
+macroscriptClause: MacroScript NL* macro_name = identifier ( NL* param )*
 	;
-macroscript_clause: expr | eventHandlerClause
+macroscriptMembers: expr | eventHandlerStatement
 	;
-
 //-------------------------------------- UTILITY_DEF
 utilityDefinition
-	: utility_predicate NL*
+	: utilityClause NL*
     lp
-        ( rollout_clause (lbk? rollout_clause)* )?
+        ( rolloutMembers (lbk? rolloutMembers)* )?
     rp
 	;
-utility_predicate: Utility NL* utility_name = identifier NL* operand (NL* param)*
+utilityClause: Utility NL* utility_name = identifier NL* factor (NL* param)*
 	;
 //-------------------------------------- ROLLOUT_DEF
 rolloutDefinition
-	: rollout_predicate NL*
+	: rolloutClause NL*
     lp
-        ( rollout_clause (lbk? rollout_clause)* )?
+        ( rolloutMembers (lbk? rolloutMembers)* )?
     rp
 	;
 
-rollout_predicate: Rollout NL* rollout_name = identifier NL* operand (NL* param)*
+rolloutClause: Rollout NL* rollout_name = identifier NL* factor (NL* param)*
 	;
-rollout_clause
-	: declarationExpression
+rolloutMembers
+	: declarationStatement
 	| rolloutControl
-	| rolloutGroup
+	| rolloutGroupDefinition
 	| fnDefinition
 	| structDefinition
-	| eventHandlerClause
+	| eventHandlerStatement
 	| toolDefinition
 	| rolloutDefinition
 	;
 
-rolloutGroup
-	: group_predicate NL*
+rolloutGroupDefinition
+	: groupClause NL*
     lp
         ( rolloutControl (lbk? rolloutControl)* )?
     rp
 	;
-group_predicate: Group NL* group_name = STRING?
+groupClause: Group NL* group_name = STRING?
 	;
 
-rolloutControl: rolloutControlType NL* controlName = identifier (NL* operand)? (NL* param)*
+rolloutControl: rolloutControlType NL* controlName = identifier (NL* factor)? (NL* param)*
 	;
 
 rolloutControlType
@@ -139,63 +184,63 @@ rolloutControlType
 
 //-------------------------------------- TOOL_DEF
 toolDefinition
-	: tool_predicate NL*
+	: toolClause NL*
     lp
-        tool_clause (lbk? tool_clause)*
+        toolMembers (lbk? toolMembers)*
     rp
 	;
-tool_predicate: Tool NL* tool_name = identifier (NL* param)*
+toolClause: Tool NL* tool_name = identifier (NL* param)*
 	;
-tool_clause: declarationExpression | fnDefinition | structDefinition | eventHandlerClause
+toolMembers: declarationStatement | fnDefinition | structDefinition | eventHandlerStatement
 	;
 
 //-------------------------------------- RCMENU_DEF
 rcmenuDefinition
-	: rcmenu_predicate NL*
+	: rcmenuClause NL*
 	lp
-		(rc_clause (NL* rc_clause)*)?
+		(rcMembers (lbk? rcMembers)*)?
 	rp
 	;
-rcmenu_predicate: RCmenu NL* rc_name = identifier
+rcmenuClause: RCmenu NL* rc_name = identifier
 	;
-rc_submenu
-	: submenu_predicate NL*
+rcSubmenuDefinition
+	: submenuClause NL*
     lp
-        ( rc_clause (lbk? rc_clause)* )?
+        ( rcMembers (lbk? rcMembers)* )?
     rp
 	;
-submenu_predicate: SubMenu NL* submenu_name = STRING (NL* param)*
+submenuClause: SubMenu NL* submenu_name = STRING (NL* param)*
 	;
-rc_clause
-	: declarationExpression
+rcMembers
+	: declarationStatement
 	| fnDefinition
 	| structDefinition
-	| eventHandlerClause
-	| rc_submenu
+	| eventHandlerStatement
+	| rcSubmenuDefinition
 	| rcmenuControl
 	;
 
 rcmenuControl
-	: MenuItem (NL* operand)+ (NL* param)*
+	: MenuItem (NL* factor)+ (NL* param)*
 	| Separator NL* identifier (NL* param)*
 	;
 
 //-------------------------------------- PLUGIN_DEF
 pluginDefinition
-	: plugin_predicate NL*
+	: pluginClause NL*
     lp
-        plugin_clause (lbk? plugin_clause)*
+        pluginMembers (lbk? pluginMembers)*
     rp
 	;
-plugin_predicate: Plugin NL* plugin_kind = identifier NL* plugin_name = identifier (NL* param)*
+pluginClause: Plugin NL* plugin_kind = identifier NL* plugin_name = identifier (NL* param)*
 	;
-plugin_clause
-	: declarationExpression
+pluginMembers
+	: declarationStatement
 	| fnDefinition
 	| structDefinition
 	| toolDefinition
 	| rolloutDefinition
-	| eventHandlerClause
+	| eventHandlerStatement
 	| paramsDefinition
 	;
 
@@ -204,58 +249,91 @@ plugin_clause
 // deleted [ id:<name> ] [handleAt:#redrawViews|#timeChange] [ <object_parameter> ] do <expr>
 // objects var_name | path | array
 
-whenStatement: when_predicate NL* DO NL* expr
+whenStatement: whenClause NL* DO NL* expr
 	;
 
-when_predicate
-	: WHEN NL* (reference NL*)? (reference | path | expr_seq | array) NL* (CHANGE | DELETED)  NL*  (NL* param)* (NL* operand)?
+whenClause
+	: WHEN NL* (reference NL*)? (reference | path | exprSeq | array) NL* identifier  NL*  (NL* param)* (NL* factor)?
 	;
 
 //-------------------------------------- CONTEXT_EXPR
-contextExpression: ctx_cascading | ctx_set
+
+contextStatement
+	: ctxCascading
+	| ctxSet
 	;
 
-ctx_cascading: ctx_predicate (comma ctx_predicate)* NL* expr
+ctxCascading: ctxClause (comma ctxClause)* NL* expr
 	;
-ctx_set
-	: SET (ANIMATE | TIME | IN | LEVEL) NL* operand
-	| SET COORDSYS NL* (LOCAL | operand)
-	| SET ABOUT NL* (COORDSYS | operand)
-	| SET UNDO NL* (STRING | param | reference)? NL* simpleExpression
-	;
-
-ctx_predicate
-	: AT NL* (LEVEL | TIME) NL* operand
-	| IN NL* operand
-	| ABOUT NL* (COORDSYS | operand)
-	| (IN NL*)? COORDSYS NL* (LOCAL | operand)
-	| (WITH NL*)? UNDO NL* (STRING | param | reference)? NL* simpleExpression
-	| (WITH NL*)? DefaultAction NL* name
-	| (WITH NL*)? ctx_keyword NL* simpleExpression
+/*
+	set <context>      
+	Where, <context> is one of the MAXScript context prefixes: animate , time , in , coordsys , about , level , or undo .
+ */
+ctxSet
+	: SET (
+		(ANIMATE | TIME | LEVEL | IN) NL* factor
+		| ctxCoordsys
+		| ctxAbout
+		| ctxUndo
+	)
 	;
 
-ctx_keyword
+/* One of the following context expressions:
+	at level <node>
+	at time <time>
+	in <node>
+	[ in ] coordsys ( local | world | parent | <operand> )
+	about ( pivot | selection | coordsys | <operand> )
+	[ with ] animate <boolean> 
+	[ with ] undo <boolean>
+	[ with ] redraw <boolean>
+	[ with ] quiet <boolean>
+	[ with ] redraw <boolean>
+	[ with ] printAllElements <boolean>
+	[ with ] defaultAction <action>
+	[ with ] MXSCallstackCaptureEnabled <boolean>
+	[ with ] dontRepeatMessages <boolean>
+	[ with ] macroRecorderEmitterEnabled <boolean>
+ */
+ctxClause
+	: AT NL* (LEVEL | TIME) NL* factor
+	| IN NL* (ctxCoordsys | factor)
+	| WITH NL* (ctxUndo | ctxSwitches)
+	| ctxAbout
+	| ctxCoordsys
+	| ctxUndo
+	| ctxSwitches
+	;
+
+ctxAbout: ABOUT NL* (COORDSYS | factor)
+	;
+ctxCoordsys: COORDSYS NL* (LOCAL | factor)
+	;
+ctxUndo: UNDO NL* (STRING | param | reference)? NL* factor
+	;
+ctxSwitches
 	: ( ANIMATE
+	| DefaultAction
 	| DontRepeatMessages
 	| MacroRecorderEmitterEnabled
 	| MXScallstackCaptureEnabled
 	| PrintAllElements
 	| QUIET
-	| REDRAW )
+	| REDRAW ) NL* factor
 	;
 
 //-------------------------------------- PARAMETER DEF
 paramsDefinition
-	: params_predicate NL*
+	: paramsClause NL*
     lp
-        ( params_clause (lbk params_clause)* )?
+        ( paramsMembers (lbk paramsMembers)* )?
     rp
 	;
-params_predicate: Parameters NL* identifier (NL* param)*
+paramsClause: Parameters NL* identifier (NL* param)*
 	;
-params_clause
+paramsMembers
 	: paramDefinition
-	| eventHandlerClause
+	| eventHandlerStatement
 	;
 paramDefinition: identifier (NL* param)*
 	;
@@ -264,70 +342,68 @@ paramDefinition: identifier (NL* param)*
 // [silentErrors:t/f] [initialRollupState:0xnnnnn] [remap:#(<old_param_names_array>,
 // <new_param_names_array>)]
 attributesDefinition
-	: attributes_predicate NL*
+	: attributesClause NL*
     lp
-        attributes_clause ( lbk attributes_clause )*
+        attributesMembers ( lbk attributesMembers )*
     rp
 	;
-attributes_predicate: Attributes NL* identifier (NL* param)*
+attributesClause: Attributes NL* identifier (NL* param)*
 	;
-attributes_clause
-	: declarationExpression
-	| eventHandlerClause
+attributesMembers
+	: declarationStatement
+	| eventHandlerStatement
 	| paramsDefinition
 	| rolloutDefinition
 	;
 
 //-------------------------------------- EVENT HANDLER
-eventHandlerClause
-	: ON NL* ev_args = event_args NL* ev_action = (DO | RETURN) NL* ev_body = expr
+eventHandlerStatement
+	: ON NL* ev_args = eventArgs NL* ev_action = (DO | RETURN) NL* ev_body = expr
 	;
 
-event_args
-	: ev_target = reference NL* ev_type = reference ( NL* ev_args += reference )+
-	| ev_target = reference NL* ev_type = reference
-	| ev_type = reference
+eventArgs
+	: refs += reference (NL* refs += reference)*
 	;
 
 //---------------------------------------- STRUCT DEF
 structDefinition
 	: STRUCT NL* str_name = identifier NL*
     lp
-        struct_body
+        structBody
     rp
 	;
 
-struct_body: (struct_access NL*)? struct_members ( comma (struct_access NL*)? struct_members )*
+structBody: (structAccess NL*)? structMembers ( comma (structAccess NL*)? structMembers )*
 	;
 
-struct_members
-	: struct_member
+structMembers
+	: structMember
 	| fnDefinition
-	| eventHandlerClause	
+	| eventHandlerStatement	
 	;
 
-struct_member: identifier assignment? ;
+structMember: identifier assignment? ;
 
-struct_access: PUBLIC | PRIVATE
+structAccess: PUBLIC | PRIVATE
 	;
 
 //---------------------------------------- FUNCTION DEF
 fnDefinition
 	: (fn_mod = MAPPED NL* fn_decl = FN | fn_decl = FN) NL* fn_name = identifier NL*
-		( NL* fn_args )*
-		( NL* fn_params )*
-		NL* fn_body
+		( NL* fnArgs )*
+		( NL* fnParams )*
+		NL* fnBody
 	;
 
-fn_body
+fnBody
 	: EQ NL* expr
 	;
-fn_args
-	: reference
-	// | de_ref
+fnArgs
+	: {this.noWSBeNext()}? AMP identifier   // &arg - by-reference parameter
+	| identifier                             // arg - by-value parameter
 	;
-fn_params
-	: {this.colonBeNext()}? (identifier | kw_override) COLON (NL* operand_arg)?
+fnParams
+	: {this.colonBeNext()}? (identifier | kwOverride) COLON (NL* operandArg)?
 	;
 
 //FN_RETURN
@@ -335,11 +411,11 @@ fnReturnStatement: RETURN NL* returnValue = expr
 	;
 
 //---------------------------------------- LOOPS While loop
-whileLoopExpression: WHILE NL* condition = expr NL* DO NL* body = expr
+whileLoopStatement: WHILE NL* condition = expr NL* DO NL* body = expr
 	;
 
 // Do loop
-doLoopExpression: DO NL* body = expr NL* WHILE NL* condition = expr
+doLoopStatement: DO NL* body = expr NL* WHILE NL* condition = expr
 	;
 
 /* For loop
@@ -351,102 +427,47 @@ doLoopExpression: DO NL* body = expr NL* WHILE NL* condition = expr
  * <expr> [where <expr>]
  */
 
-forLoopExpression
-	: FOR NL* for_body NL* for_operator = (IN | EQ) NL* for_sequence NL* for_action = (DO | COLLECT) NL* body = expr
+forLoopStatement
+	: FOR NL* forBody NL* for_operator = (IN | EQ) NL* forSequence NL* for_action = (DO | COLLECT) NL* body = expr
 	;
 
-for_body : var = reference ( comma index_name = reference ( comma filtered_index_name = reference )? )?
+forBody : var = reference ( comma index_name = reference ( comma filtered_index_name = reference )? )?
 	;
-for_sequence : expr ( NL* for_to NL* for_by? )? ( NL* (for_while NL* for_where? | for_where) )?
+forSequence : expr ( NL* forTo NL* forBy? )? ( NL* (forWhile NL* forWhere? | forWhere) )?
 	;
-for_to: TO NL* expr
+forTo: TO NL* expr
 	;
-for_by: BY NL* expr
+forBy: BY NL* expr
 	;
-for_while: WHILE NL* expr
+forWhile: WHILE NL* expr
 	;
-for_where: WHERE NL* expr
+forWhere: WHERE NL* expr
 	;
 loopExitStatement: EXIT (NL* WITH NL* exitValue = expr)?
 	;
 
 //----------------------------------------TRY EXPR
-tryExpression: TRY NL* tryBody = expr NL* CATCH NL* catchBody = expr
+tryStatement: TRY NL* tryBody = expr NL* CATCH NL* catchBody = expr
 	;
 
 //---------------------------------------- CASE-EXPR
-caseExpression
-	: case_predicate NL*
+caseStatement
+	: caseClause NL*
 	lp
-		case_item (lbk case_item)*
+		caseItem (lbk caseItem)*
 	rp
 	;
-case_predicate: CASE (NL* expr)? NL* OF
+caseClause: CASE (NL* expr)? NL* OF
 	;
 // This will produce errors at compile time...
-case_item: factor COLON NL* expr
+caseItem: factor COLON NL* expr
 	;
 
-/*
- // this is not correct, because if should work for 5:(a), buuuut.....
-case_item
-    :{!this.colonBeNext()}? (NUMBER | TIMEVAL) COLON NL* expr;
-    | (NUMBER | TIMEVAL) COLON (lbk | {!this.noSpaces()}?) expr
-    | factor NL* COLON NL* expr
-    ;
-
- case_factor
-	: accessor
-	| var_name
-	| path
-	| bool
-	| STRING
-	| name
-	| array
-	| bitArray
-	| point3
-	| point2
-	| box2
-	| unary_minus
-	| expr_seq
-	;
- */
 //---------------------------------------- IF-CLAUSE
-/*
- ('else' e | {_input.LA(1) != ELSE}?)
- ifStatement
-    : 'if' expression 'then' (statement | block) 'else' (statement | block)
-    | 'if' expression 'then' (statementNoIf | block)
-    ;
-*/
-
-/*
- statement : non_if_statement | if_statement ;
-
- if_statement
-    : 'if' parExpression 
-        ifBody= (
-            non_if_statement 'else' elseBody=statement
-                | if_statement )
-    ;   
-*/
-/*
- stmt : matched_stmt ∣ open_stmt ;
-
- matched_stmt
-    : if expr then matched_stmt else matched_stmt
-    ∣ other
- ;
- open_stmt
-    : if expr then stmt
-    ∣ if expr then matched_stmt else open_stmt
- ;
- */
-
 // OPTIMIZED: Factor common prefix to avoid re-parsing condition
 // Key insight: Use simpleExpression for condition (not expr) to avoid infinite recursion
 // The body can be expr (which may include nested if statements)
-ifExpression
+ifStatement
 	: IF NL* ifCondition = simpleExpression NL* (
 		THEN NL* thenBody = expr (NL* ELSE NL* elseBody = expr)?
 		| DO NL* doBody = expr
@@ -456,12 +477,12 @@ ifExpression
 /* PREVIOUS VERSIONS (kept for reference)
 
 // This works but is slow - parses condition twice
-ifExpression
+ifStatement
 	: IF NL* simpleExpression NL* THEN NL* expr (NL* ELSE NL* expr)?
 	| IF NL* simpleExpression NL*   DO NL* expr	
 	;
 
-// This caused infinite loop - used expr in condition (includes ifExpression recursively)
+// This caused infinite loop - used expr in condition (includes ifStatement recursively)
 if_statement
  : IF NL* ifClause = expr NL* THEN NL*
     ifBody = expr NL*
@@ -471,24 +492,16 @@ if_statement
 */
 
 //---------------------------------------- DECLARATIONS
-declarationExpression
-	: scope = decl_scope NL*
+declarationStatement
+	: scope = declScope NL*
         decl += variableDeclaration ( comma decl += variableDeclaration )*
 	;
 variableDeclaration: identifier assignment?
 	;
-decl_scope: ( LOCAL | GLOBAL | PERSISTENT NL* GLOBAL)
-	;
-
-//---------------------------------------- ASSIGNMENT EXPRESSION
-assignmentExpression
-	: destination (ASSIGN | EQ) NL* expr
+declScope: ( LOCAL | GLOBAL | PERSISTENT NL* GLOBAL)
 	;
 
 assignment: EQ NL* expr
-	;
-
-destination: de_ref | reference | path | accessor
 	;
 
 //---------------------------------------- SIMPLE_EXPR
@@ -504,9 +517,11 @@ destination: de_ref | reference | path | accessor
 // 7. Exponentiation (^) - right associative
 // 8. Unary prefix (-, +, not) - right associative
 // 9. Primary expressions (highest)
+// ASSIGNMENT EXPRESSION is now integrated into simpleExpression as its lowest-precedence operator.
 
 simpleExpression
-	: left = simpleExpression AS NL* classname	                                        //# TypecastExpr (LOWEST precedence)
+	: left = simpleExpression (ASSIGN | EQ) NL* assignExpr = expr						//# AssignmentExpr (LOWEST precedence)
+	| left = simpleExpression AS NL* classname	                                        //# TypecastExpr
 	| left = simpleExpression OR NL* right = simpleExpression					        //# LogicOrExpr
 	| left = simpleExpression AND NL* right = simpleExpression					        //# LogicAndExpr
 	| left = simpleExpression COMPARE NL* right = simpleExpression						//# ComparisonExpr
@@ -515,89 +530,83 @@ simpleExpression
 	| <assoc = right> left = simpleExpression POW NL* right = simpleExpression			//# ExponentExpr (right assoc)
 	| (MINUS | UNARY_MINUS) right = simpleExpression									//# UnaryMinusExpr (prefix)
 	| <assoc = right> NOT NL* right = simpleExpression									//# LogicNotExpr (prefix)
-	| expr_operand							                                            //# ExprOperand (HIGHEST precedence)
+	| exprOperand							                                            //# ExprOperand (HIGHEST precedence)
 	;
 
-expr_operand
-	: functionCall
-	| de_ref
-	| operand
+// MaxScript operator precedence within exprOperand:
+// Ordered choice in ANTLR: first match wins
+//
+// 1. Try prefix operators (&, *) first - they bind to the tightest construct after them
+//    &foo.bar → &(foo.bar) - reference to accessor result
+//    *foo.bar → *(foo.bar) - dereference accessor result
+//
+// 2. Then try function calls - postfix operator that needs call syntax
+//    foo.bar() → (foo.bar)() - call the result of accessor
+//
+// 3. Finally try operand - accessor (postfix .[]) or primary (literals/identifiers)
+//    foo.bar → accessor
+//    foo → identifier (via factor)
+//
+// This ordering correctly implements MaxScript's precedence where & and * are prefix
+// operators that have lower precedence than postfix operators (. [] ()), meaning:
+// - &obj.prop is parsed as &(obj.prop), not (&obj).prop
+// - *arr[0] is parsed as *(arr[0]), not (*arr)[0]
+exprOperand
+	: deRef
+	| postfixExpr
 	;
 
-operand
+classname: ID | kwReserved | exprSeq
+	;
+
+//---------------------------------------- POSTFIX EXPRESSION (access/index/call chain)
+// Unifies operand + call parsing to reduce top-level ambiguity in exprOperand.
+// Example chains handled here:
+//   foo.bar[1]()
+//   caller(arg1)(arg2)
+//   obj.prop x:1
+postfixExpr
+	: accesibleFactor (postfixOp)*
+	| basicFactor
+	;
+
+postfixOp
 	: accessor
-	| factor
+	| functionCall
 	;
 
-classname: ID | kw_reserved | expr_seq
-	;
-
-//---------------------------------------- FUNCTION CALL Positional Arguments Keyword Arguments
-/*
- A <function_call> has a lower precedence than an <operand>,
- but it has a higher precedence than
- all the math,
- comparison, and logical operations.
- This means you have to be careful 
- about
- correctly parenthesizing function arguments
- 
- Strategy to reduce backtracking:
- 1. fn_caller now excludes de_ref (handled separately in expr_operand)
- 2. Parser tries functionCall first, which requires call syntax
- 3. If no call syntax present, falls back to plain operand
- 4. This still requires backtracking but is necessary for MaxScript's syntax
- 
- The ambiguity between "foo bar" (call) and "foo bar" (two identifiers)
- is resolved by operator precedence - function calls bind tighter than
- most operators, so arguments are consumed greedily up to an operator.
- */
-
+//---------------------------------------- FUNCTION CALL SUFFIX
+// FunctionCall is now a postfix operation, not a separate top-level expression.
 functionCall
-	: fn_caller (
-		paren_pair                                    // foo()
-		| (args += operand_arg)+ (params += param)*   // foo arg1 arg2 x:val
-		| (params += param)+                          // foo x:val y:val
-	)
+	: parenPair                                    // foo()
+	| (args += operandArg)+ (params += param)*     // foo arg1 arg2 x:val
+	| (params += param)+                            // foo x:val y:val
 	;
 
-paren_pair: {this.closedParens()}? LPAREN RPAREN
-	;
-
-fn_caller
-	: accessor
-	| reference
-	| path
-	| expr_seq
-	| QUESTION
+parenPair: {this.closedParens()}? LPAREN RPAREN
 	;
 
 //---------------------------------------- PARAMETER
-param: param_name NL* operand_arg
+param: paramName NL* operandArg
 	;
 
-param_name: {this.colonBeNext()}? (identifier | kw_override) COLON
+paramName: {this.colonBeNext()}? (identifier | kwOverride) COLON
 	;
 
-operand_arg
-	: UNARY_MINUS operand
-	| operand
+operandArg
+	: UNARY_MINUS factor
+	| factor
 	;
 
-// unary_op : UNARY_MINUS operand ;
-// ------------------------------------------------------------------------//
-
-//------------------------------------------------------------------------//
-// TODO: Remove left recursion
+// ------------------------------------------------------------------------ ACCESSORS
 accessor
-    // : accessor (index | property)
-    // | factor (index | property)
-    : factor (index | property)+
+    : index
+	| property
 	;
 
-//------------------------------------------------------------------------//
 // Property accessor
-property: DOT NL* (identifier | kw_override)
+property
+	: DOT NL* (identifier | kwOverride)
 	;
 
 //Index accessor
@@ -606,72 +615,76 @@ index: lb expr rb
 
 //---------------------------------------- FACTORS
 factor
-	: reference
-	| bool
+	: basicFactor
+	| accesibleFactor
+	;
+
+accesibleFactor
+	: (reference
 	| STRING
 	| RESOURCE
 	| path
-	| name
-	| NUMBER
-	| TIMEVAL
 	| QUESTION
 	| array
 	| bitArray
-	| point3
-	| point2
-	| box2
-	| expr_seq //EXPRESSION SEQUENCE
+	| vector
+	| exprSeq) accessor*
 	;
 
-//---------------------------------------- EXPR_SEQ <expr_seq> ::= ( <expr> { ( ; | <eol>) <expr> }
-expr_seq:
+basicFactor
+	: bool
+	| name
+	| NUMBER
+	| TIMEVAL
+	;
+//---------------------------------------- EXPR_SEQ <exprSeq> ::= ( <expr> { ( ; | <eol>) <expr> }
+exprSeq:
 	lp
 		(expr (lbk expr)*)?
 	rp
 	;
 
 //---------------------------------------- TYPES
-box2:
+// Unified vector literal: [expr, expr, ...] — covers Point2, Point3, Box2, etc.
+vector:
     lb
-        expr comma expr comma expr comma expr
-    rb
-	;
-
-point3:
-    lb
-        expr comma expr comma expr
-    rb
-	;
-
-point2:
-    lb
-        expr comma expr
+        expr (comma expr)*
     rb
 	;
 
 // BitArray
-// bitArray: SHARP NL* lc (bitexpr ( comma bitexpr)*)? rc
 bitArray: SHARP NL* lc bitList? rc
 	;
-bitList: bitexpr ( comma bitexpr)* ;
+bitList: bitexpr ( comma bitexpr)*
+	;
+// Current: SLL conflict — both alts start with expr
+// bitexpr: expr NL* DOTDOT NL* expr | expr
 
-bitexpr: expr NL* DOTDOT NL* expr | expr
+// Fix: factor common prefix — fully LL(1) after parsing expr
+bitexpr: expr (NL* DOTDOT NL* expr)?
 	;
 
 // Array
-// array: SHARP NL* lp (expr ( comma expr)*)? rp
 array: SHARP NL* lp arrayList? rp
 	;
-arrayList: expr ( comma expr)* ;
+arrayList: expr ( comma expr)*
+	;
+
+// Dereference operator: *identifier, *path, *accessor
+deRef: {this.noWSBeNext()}? PROD (reference | path) accessor*
+	;
+// Reference operator: &identifier, &path, &accessor
+// by_ref: {this.noWSBeNext()}? AMP (accessor | reference | path);
 
 // Identifiers
 reference
 	: GLOB identifier
-	| {this.noWSBeNext()}? AMP identifier
+	| {this.noWSBeNext()}? AMP identifier //by_ref
 	| identifier
 	;
 
-identifier: (ID | QUOTED_ID | kw_reserved)
+identifier
+	: (ID | QUOTED_ID | kwReserved)
 	;
 
 path
@@ -682,20 +695,13 @@ path
 name: NAME
 	;
 
-de_ref: {this.noWSBeNext()}? PROD (accessor | identifier | path)
-	;
-// by_ref: {this.noWSBeNext()}? AMP (ids | path) ;
-
-// Boolean
 bool: (TRUE | FALSE | OFF | ON)
 	;
-//---------------------------------------- OVERRIDABLE KEYWORDS CONTEXTUAL KEYWORDS...can be used as
-// identifiers outside the context...
-kw_reserved
+//---------------------------------------- OVERRIDABLE KEYWORDS CONTEXTUAL KEYWORDS
+//...can be used as identifiers outside the context...
+kwReserved
 	: rolloutControlType |
-	( CHANGE
-	| DELETED
-	| Group
+	( Group
 	| LEVEL
 	| MenuItem
 	| Separator
@@ -706,7 +712,7 @@ kw_reserved
 	| PrintAllElements )
 	;
 
-kw_override
+kwOverride
 	: ( Attributes
 	| Parameters
 	| Plugin

@@ -1,45 +1,79 @@
-/*
-TODO:
- - Fix definition for symbols with the same name or referenced from an enclosed construct (linke calling a method of a structure that initiated into a variable)
- - I should implement a method to derive a reference tree, instead of looking at the symbol table, of find a better implementation of the symbol table, keeping track of references in the listener
- - keep track of named symbols, definition, references and aliases (assignations and re-assignation). respect scope
-*/
 import {
-  CancellationToken, Definition, DefinitionLink, DefinitionProvider,
-  Location, Position, ProviderResult, TextDocument,
-  Uri,
+    CancellationToken, Definition, DefinitionLink, DefinitionProvider,
+    Location, Position, ProviderResult, TextDocument, Uri,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
-import { Utilities } from './utils.js';
+import { mxsBackend } from '@backend/Backend';
+import { Utilities } from './utils';
+import { IMaxScriptSettings } from './types';
 
 export class mxsDefinitionProvider implements DefinitionProvider
 {
-    public constructor(private backend: mxsBackend) { }
+    public constructor(private backend: mxsBackend, private options?: IMaxScriptSettings) { }
+
+    private nowMs(): number {
+        return typeof performance !== 'undefined' ? performance.now() : Date.now();
+    }
 
     provideDefinition(
         document: TextDocument,
         position: Position,
         token: CancellationToken): ProviderResult<Definition | DefinitionLink[]>
     {
-        return new Promise((resolve) =>
-        {
-            const info = this.backend.getContext(document.uri.toString())?.symbolDefinition(  
-                position.line + 1,
-                position.character);
+        if (token.isCancellationRequested) {
+            return null;
+        }
 
-            if (info) {
-                // VS code shows the text for the range given here on holding ctrl/cmd, which is rather
-                // useless given that we show this info already in the hover provider. So, in order
-                // to limit the amount of text we only pass on the smallest range which is possible.
-                // Yet we need the correct start position to not break the goto-definition feature.
-                if (info.definition) {
-                    resolve(new Location(Uri.parse(info.source), Utilities.lexicalRangeToRange(info.definition.range)));
-                } else {
-                    // Empty for built-in entities.
-                    resolve(new Location(Uri.parse(""), new Position(0, 0)));
-                }
-            } else resolve(null);
-        });
+        const context = this.backend.borrowContext(document.uri.toString());
+
+        const traceRouting = this.options?.debug?.traceRouting || false;
+        const tracePerformance = this.options?.debug?.tracePerformance || false;
+
+        const providerStart = tracePerformance ? this.nowMs() : 0;
+        const logPerformance = (route: 'AST' | 'None', scope?: 'local' | 'xfile', reason?: string): void => {
+            if (!tracePerformance) {
+                return;
+            }
+            const scopePart = scope ? ` scope=${scope}` : '';
+            const reasonPart = reason ? ` reason=${reason}` : '';
+            console.log(`[language-maxscript][Performance] definitionProvider uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route}${scopePart}${reasonPart}`);
+        };
+
+        const currentLineText = document.lineAt(position.line).text;
+        const definitionTarget = context.getAstDefinitionTarget(
+            position.line + 1,
+            position.character,
+            currentLineText,
+            (row1Based) => {
+                const lineIndex = row1Based - 1;
+                return lineIndex >= 0 && lineIndex < document.lineCount
+                    ? document.lineAt(lineIndex).text
+                    : undefined;
+            },
+            () => token.isCancellationRequested,
+        );
+        if (definitionTarget) {
+            if (traceRouting) {
+                const scope = definitionTarget.targetUri === context.sourceUri ? 'local' : 'xfile';
+                console.log(`[language-maxscript][DefinitionProvider] route=AST scope=${scope}`);
+            }
+            logPerformance(
+                'AST',
+                definitionTarget.targetUri === context.sourceUri ? 'local' : 'xfile',
+            );
+            return new Location(
+                definitionTarget.targetUri === context.sourceUri
+                    ? document.uri
+                    : Uri.parse(definitionTarget.targetUri),
+                Utilities.lexicalRangeToRange(definitionTarget.range),
+            );
+        }
+
+        if (traceRouting) {
+            console.log('[language-maxscript][DefinitionProvider] route=None reason=ast-miss');
+        }
+
+        logPerformance('None', undefined, 'ast-miss');
+        return null;
     }
 }

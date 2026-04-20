@@ -2,10 +2,14 @@
 */
 import { Diagnostic, DiagnosticSeverity } from 'vscode';
 
-import { DiagnosticType, IDiagnosticEntry } from './types.js';
-import { Utilities } from './utils.js';
+import { DiagnosticType, IDiagnosticEntry } from '@backend/types';
+import { Utilities } from './utils';
 
 const diagnosticTypeMap = new Map<DiagnosticType, DiagnosticSeverity>();
+diagnosticTypeMap.set(DiagnosticType.Hint, DiagnosticSeverity.Hint);
+diagnosticTypeMap.set(DiagnosticType.Info, DiagnosticSeverity.Information);
+diagnosticTypeMap.set(DiagnosticType.Warning, DiagnosticSeverity.Warning);
+diagnosticTypeMap.set(DiagnosticType.Error, DiagnosticSeverity.Error);
 
 export function diagnosticAdapter(entries: IDiagnosticEntry[]): Diagnostic[]
 {

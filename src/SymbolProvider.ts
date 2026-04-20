@@ -1,74 +1,131 @@
 import {
   CancellationToken, DocumentSymbol, DocumentSymbolProvider, ProviderResult,
-  SymbolInformation, TextDocument,
+  Range, SymbolInformation, TextDocument, workspace,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
-import { symbolDescriptionFromEnum, translateSymbolKind } from './Symbol.js';
-import { ISymbolInfo } from './types.js';
-import { Utilities } from './utils.js';
+import { mxsBackend } from '@backend/Backend';
+import { symbolDescriptionFromEnum, translateSymbolKind } from './SymbolTranslator';
+import { ISymbolInfo } from '@backend/types';
+import { Utilities } from './utils';
+import { IMaxScriptSettings } from './types';
 
 export class mxsSymbolProvider implements DocumentSymbolProvider
 {
-    public constructor(private backend: mxsBackend) { }
+    public constructor(private backend: mxsBackend, private options?: IMaxScriptSettings) { }
 
-    private collectAllChildren(symbol: ISymbolInfo): DocumentSymbol
-    {
-        function dfs(currentSymbol: ISymbolInfo): DocumentSymbol    
-        {
-            // if (!currentSymbol.definition) { return; }
-            const range = Utilities.lexicalRangeToRange(currentSymbol.definition!.range);
-
-            const info = new DocumentSymbol(
-                currentSymbol.name,
-                symbolDescriptionFromEnum(currentSymbol.kind),
-                translateSymbolKind(currentSymbol.kind),
-                range,
-                range // TODO: SelectionRange
-            );
-
-            if (currentSymbol.children?.length) {
-                info.children = currentSymbol.children
-                    .filter(child => 'name' in child && 'definition' in child)
-                    .map(child => dfs(child))
-            }
-            return info;
-        }
-        return dfs(symbol);
+    private nowMs(): number {
+        return typeof performance !== 'undefined' ? performance.now() : Date.now();
     }
 
-    provideDocumentSymbols(document: TextDocument, _token: CancellationToken):
+    /**
+     * Convert ISymbolInfo to VS Code DocumentSymbol
+     */
+    private symbolInfoToDocumentSymbol(symbol: ISymbolInfo): DocumentSymbol
+    {
+        // Use definition range if available, otherwise create a default range
+        const range = symbol.definition 
+            ? Utilities.lexicalRangeToRange(symbol.definition.range)
+            : new Range(0, 0, 0, 0);
+
+        const documentSymbol = new DocumentSymbol(
+            symbol.name,
+            symbolDescriptionFromEnum(symbol.kind),
+            translateSymbolKind(symbol.kind),
+            range,
+            range // TODO: SelectionRange - should be the identifier range only
+        );
+
+        if (symbol.children?.length) {
+            documentSymbol.children = symbol.children
+                .filter(child => child.name && child.definition)
+                .map(child => this.symbolInfoToDocumentSymbol(child));
+        }
+
+        return documentSymbol;
+    }
+
+    provideDocumentSymbols(document: TextDocument, token: CancellationToken):
         ProviderResult<SymbolInformation[] | DocumentSymbol[]>
     {
-        return new Promise((resolve) =>
-        {
-            const symbols =
-                this.backend.getContext(document.uri.toString())?.listTopLevelSymbols(false);
-            const symbolsList: DocumentSymbol[] = [];
+        if (token.isCancellationRequested) {
+            return [];
+        }
 
-            for (const symbol of symbols) {
-                if (!symbol.definition || !symbol.name) {
-                    continue;
-                }
-                if (symbol.children?.length) {
-                    // childrens
-                    symbolsList.push(this.collectAllChildren(symbol));
-                } else {
-                    // symbol does not have children
-                    const range = Utilities.lexicalRangeToRange(symbol.definition.range);
-                    // /*
-                    symbolsList.push(new DocumentSymbol(
-                        symbol.name,
-                        symbolDescriptionFromEnum(symbol.kind),
-                        translateSymbolKind(symbol.kind),
-                        range,
-                        range // TODO: selectionRange
-                    ));
-                    // */
-                }
+        const useAst = this.options?.providers?.astSymbolProvider ?? true;
+        const traceRouting = this.options?.debug?.traceRouting || false;
+        const tracePerformance = this.options?.debug?.tracePerformance || false;
+        
+        const providerStart = tracePerformance ? this.nowMs() : 0;
+        let route = 'None';
+        const logPerformance = (count: number): void => {
+            if (!tracePerformance) {
+                return;
             }
-            resolve(symbolsList);
-            // resolve([]);
-        });
+            console.log(`[language-maxscript][Performance] symbolProvider uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route} symbols=${count}`);
+        };
+
+        const sourceContext = this.backend.borrowContext(document.uri.toString());
+
+        if (traceRouting && !sourceContext) {
+            console.log(`[language-maxscript][SymbolProvider] sourceContext=undefined for ${document.uri.toString()}`);
+        }
+
+        let symbols: ISymbolInfo[] = [];
+
+        if (useAst) {
+            const astQueryStart = tracePerformance ? this.nowMs() : 0;
+            symbols = sourceContext?.buildSymbolTree(traceRouting) ?? [];
+            if (traceRouting) {
+                console.log(`[language-maxscript][SymbolProvider] route=AST symbols=${symbols.length}`);
+            }
+            if (symbols.length > 0) {
+                route = 'AST';
+            }
+            if (tracePerformance) {
+                console.log(`[language-maxscript][Performance] symbolProvider.astQuery uri=${document.uri.toString()} duration=${(this.nowMs() - astQueryStart).toFixed(2)}ms symbols=${symbols.length}`);
+            }
+        }
+
+        if (!useAst || symbols.length === 0)
+        {
+            const legacyQueryStart = tracePerformance ? this.nowMs() : 0;
+            symbols = sourceContext?.listTopLevelSymbols(false) ?? [];
+            if (traceRouting) {
+                console.log(`[language-maxscript][SymbolProvider] route=Legacy symbols=${symbols.length}`);
+            }
+            if (symbols.length > 0) {
+                route = 'Legacy';
+            }
+            if (tracePerformance) {
+                console.log(`[language-maxscript][Performance] symbolProvider.legacyQuery uri=${document.uri.toString()} duration=${(this.nowMs() - legacyQueryStart).toFixed(2)}ms symbols=${symbols.length}`);
+            }
+        }
+
+        if (!symbols || symbols.length === 0) {
+            logPerformance(0);
+            return [];
+        }
+
+        const symbolsList: DocumentSymbol[] = [];
+        const materializeStart = tracePerformance ? this.nowMs() : 0;
+
+        for (const symbol of symbols) {
+            if (token.isCancellationRequested) {
+                return [];
+            }
+
+            if (!symbol.definition || !symbol.name) {
+                continue;
+            }
+            symbolsList.push(this.symbolInfoToDocumentSymbol(symbol));
+        }
+
+        if (tracePerformance) {
+            console.log(`[language-maxscript][Performance] symbolProvider.materialize uri=${document.uri.toString()} duration=${(this.nowMs() - materializeStart).toFixed(2)}ms documentSymbols=${symbolsList.length}`);
+        }
+
+        logPerformance(symbolsList.length);
+
+        return symbolsList;
     }
 }

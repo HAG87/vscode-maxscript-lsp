@@ -1,48 +1,84 @@
 /*
 TODO:
- - Fix references for symbols with the same name or referenced from an enclosed construct (like calling a method of a structure that initiated into a variable)
+ - Fix references for symbols referenced from an enclosed construct (e.g. calling a method of a
+   struct instance variable — requires tracking struct instance types at call sites)
 */
 import {
-  CancellationToken, Location, Position, ProviderResult,
-  ReferenceContext, ReferenceProvider, TextDocument, Uri,
+    CancellationToken, Location, Position, ProviderResult,
+    ReferenceContext, ReferenceProvider, TextDocument, Uri,
 } from 'vscode';
 
-import { mxsBackend } from './backend/Backend.js';
-import { Utilities } from './utils.js';
+import { mxsBackend } from '@backend/Backend';
+import { Utilities } from './utils';
+import { IMaxScriptSettings } from './types';
 
 export class mxsReferenceProvider implements ReferenceProvider
 {
-    public constructor(private backend: mxsBackend) { }
+    public constructor(private backend: mxsBackend, private options?: IMaxScriptSettings) { }
+
+    private nowMs(): number {
+        return typeof performance !== 'undefined' ? performance.now() : Date.now();
+    }
 
     provideReferences(
         document: TextDocument,
         position: Position,
-        _context: ReferenceContext,
-        _token: CancellationToken): ProviderResult<Location[]>
+        context: ReferenceContext,
+        token: CancellationToken): ProviderResult<Location[]>
     {
-        return new Promise((resolve) =>
-        {
-            const occurrences =
-                this.backend.getContext(document.uri.toString()).symbolInfoAtPositionCtxOccurrences(
-                    position.line + 1,
-                    position.character);
+        if (token.isCancellationRequested) {
+            return undefined;
+        }
 
-            if (occurrences) {
-                const result: Location[] = [];
-                for (const symbol of occurrences) {
-                    if (symbol.definition) {
-                        const location =
-                            new Location(
-                                Uri.parse(symbol.source),
-                                Utilities.symbolNameRange(symbol)
-                            );
-                        result.push(location);
-                    }
-                }
-                resolve(result);
-            } else {
-                resolve(undefined);
+        const sourceContext = this.backend.borrowContext(document.uri.toString());
+
+        const traceRouting = this.options?.debug?.traceRouting || false;
+        const tracePerformance = this.options?.debug?.tracePerformance || false;
+        
+        const providerStart = tracePerformance ? this.nowMs() : 0;
+        const logPerformance = (route: 'AST' | 'None', refs: number, reason?: string): void => {
+            if (!tracePerformance) {
+                return;
             }
-        });
+            const reasonPart = reason ? ` reason=${reason}` : '';
+            console.log(`[language-maxscript][Performance] referenceProvider uri=${document.uri.toString()} duration=${(this.nowMs() - providerStart).toFixed(2)}ms route=${route} refs=${refs}${reasonPart}`);
+        };
+
+        const sourceLineText = document.lineAt(position.line).text;
+        const astReferences = sourceContext.getAstReferenceLocations(
+            position.line + 1,
+            position.character,
+            context.includeDeclaration,
+            sourceLineText,
+        );
+
+        if (astReferences) {
+            const parsedUris = new Map<string, Uri>();
+            const result = astReferences.map((reference) =>
+                new Location(
+                    parsedUris.get(reference.uri)
+                    ?? (() => {
+                        const parsed = reference.uri === document.uri.toString()
+                            ? document.uri
+                            : Uri.parse(reference.uri);
+                        parsedUris.set(reference.uri, parsed);
+                        return parsed;
+                    })(),
+                    Utilities.lexicalRangeToRange(reference.range),
+                ));
+
+            if (traceRouting) {
+                console.log(`[language-maxscript][ReferenceProvider] route=AST refs=${result.length}`);
+            }
+            logPerformance('AST', result.length);
+            return result;
+        }
+
+        if (traceRouting) {
+            console.log('[language-maxscript][ReferenceProvider] route=None reason=ast-miss');
+        }
+
+        logPerformance('None', 0, 'ast-miss');
+        return undefined;
     }
 }

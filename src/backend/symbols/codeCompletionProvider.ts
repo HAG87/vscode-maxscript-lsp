@@ -1,16 +1,29 @@
-import { BaseSymbol, CodeCompletionCore, ScopedSymbol } from 'antlr4-c3';
+import { BaseSymbol, CandidatesCollection, CodeCompletionCore, ICandidateRule, ScopedSymbol } from 'antlr4-c3';
 import { CommonTokenStream, ParseTree, ParserRuleContext, Token } from 'antlr4ng';
 
-import { mxsLexer } from '../../parser/mxsLexer.js';
-import { mxsParser } from '../../parser/mxsParser.js';
-import { ISymbolInfo, SymbolKind } from '../../types.js';
-import { BackendUtils } from '../BackendUtils.js';
+import { mxsLexer } from '@parser/mxsLexer.js';
+import { mxsParser } from '@parser/mxsParser.js';
+import { ISymbolInfo, SymbolKind } from '@backend/types.js';
+import { TreeQuery } from '../TreeQuery.js';
 import {
     FnDefinitionSymbol, fnArgsSymbol, fnParamsSymbol, IdentifierSymbol,
-    RolloutControlSymbol, StructDefinitionSymbol, StructMemberSymbol,
+    StructDefinitionSymbol, StructMemberSymbol,
     VariableDeclSymbol,
 } from './symbolTypes.js';
 import { SymbolUtils } from './symbolUtils.js';
+
+/**
+ * Rollout control type keyword names — mirrors the grammar's rolloutControlType rule.
+ * Listed here because RULE_rolloutControl is a preferred rule that suppresses the
+ * individual keyword token candidates, so we must emit them manually.
+ */
+const ROLLOUT_CONTROL_TYPE_NAMES: readonly string[] = [
+    'Angle', 'Bitmap', 'Button', 'CheckBox', 'CheckButton', 'ColorPicker',
+    'ComboBox', 'CurveControl', 'DotnetControl', 'DropdownList', 'EditText',
+    'GroupBox', 'Hyperlink', 'ImgTag', 'Label', 'ListBox', 'MapButton',
+    'MaterialButton', 'MultilistBox', 'PickButton', 'PopupBenu', 'Progressbar',
+    'RadioButtons', 'Slider', 'Spinner', 'Subrollout', 'Timer',
+];
 
 /**
  * Configuration for code completion behavior
@@ -71,13 +84,19 @@ const IGNORED_TOKENS = new Set([
  * These rules provide the most relevant completion contexts.
  */
 const PREFERRED_RULES = new Set([
-    mxsParser.RULE_identifier,
-    mxsParser.RULE_path,
+    mxsParser.RULE_accesibleFactor,
+    mxsParser.RULE_accessor,
+    mxsParser.RULE_basicFactor,
+    mxsParser.RULE_factor,
+    // mxsParser.RULE_identifier,
     mxsParser.RULE_name,
+    mxsParser.RULE_path,
+    mxsParser.RULE_postfixExpr,
+    mxsParser.RULE_postfixOp,
     mxsParser.RULE_property,
-    mxsParser.RULE_rolloutControl,
     mxsParser.RULE_rcmenuControl,
-    mxsParser.RULE_struct_member,
+    mxsParser.RULE_rolloutControl,
+    mxsParser.RULE_structMember,
 ]);
 
 /**
@@ -179,7 +198,7 @@ export class CodeCompletionProvider
      * Returns an array of promises that resolve to symbol arrays.
      */
     private static processRuleCandidates(
-        candidates: Map<number, any>,
+        candidates: CandidatesCollection['rules'],
         tree: ParserRuleContext,
         symbolTable: any,
         row: number,
@@ -190,12 +209,25 @@ export class CodeCompletionProvider
         const promises: Array<Promise<BaseSymbol[] | undefined>> = [];
         const keywords: ISymbolInfo[] = [];
 
-        candidates.forEach((candidateRule, key) =>
+        candidates.forEach((candidateRule: ICandidateRule, key: number) =>
         {
             switch (key) {
+                case mxsParser.RULE_rolloutControl:
+                    for (const name of ROLLOUT_CONTROL_TYPE_NAMES) {
+                        keywords.push({ kind: SymbolKind.Keyword, name, source: sourceUri });
+                    }
+                    break;
+
+                case mxsParser.RULE_rcmenuControl:
+                    keywords.push(
+                        { kind: SymbolKind.Keyword, name: 'MenuItem', source: sourceUri },
+                        { kind: SymbolKind.Keyword, name: 'Separator', source: sourceUri },
+                    );
+                    break;
+
                 case mxsParser.RULE_identifier:
                     {
-                        const context = BackendUtils.parseTreeFromPosition(tree as ParseTree, row, column);
+                        const context = TreeQuery.parseTreeFromPosition(tree as ParseTree, row, column);
                         if (!context) { return; }
 
                         const currentSymbol = symbolTable.symbolContainingContext(context);
@@ -219,7 +251,7 @@ export class CodeCompletionProvider
                         break;
                     }
 
-                case mxsParser.RULE_struct_member:
+                case mxsParser.RULE_structMember:
                     keywords.push(
                         {
                             kind: SymbolKind.Keyword,
@@ -322,8 +354,8 @@ export class CodeCompletionProvider
         // Find token at position
         const tokenIndex = CodeCompletionProvider.findTokenIndex(tokenStream, row, column);
 
-        // Collect candidates
-        const candidates = core.collectCandidates(tokenIndex);
+        // Collect candidates — pass tree to bound ATN walk to this rule context (faster)
+        const candidates = core.collectCandidates(tokenIndex, tree);
 
         // Process token candidates
         const tokenResults = CodeCompletionProvider.processTokenCandidates(
