@@ -433,7 +433,7 @@ forLoopStatement
 
 forBody : var = reference ( comma index_name = reference ( comma filtered_index_name = reference )? )?
 	;
-forSequence : expr ( NL* forTo NL* forBy? )? ( NL* (forWhile NL* forWhere? | forWhere) )?
+forSequence : expr ( NL* forTo NL* forBy? )? ( NL* (forWhile NL* forWhere? | forWhere NL* forWhile?) )?
 	;
 forTo: TO NL* expr
 	;
