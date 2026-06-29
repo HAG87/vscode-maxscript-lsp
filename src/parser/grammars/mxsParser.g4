@@ -716,6 +716,7 @@ kwOverride
 	: ( Attributes
 	| Parameters
 	| Plugin
+	| QUIET
 	| RCmenu
 	| RETURN
 	| REDRAW
