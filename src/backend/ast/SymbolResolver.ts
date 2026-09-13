@@ -75,6 +75,10 @@ import {
 export class SymbolResolver {
     // Track current scope during traversal
     private currentScope: ScopeNode;
+
+    // A freshly built AST already has empty reference links, so the reset walk
+    // is only needed from the second resolve() call onward (idempotent re-resolve).
+    private hasResolvedOnce = false;
     
     constructor(private program: Program, references: VariableReference[] = []) {
         this.currentScope = program;
@@ -86,9 +90,12 @@ export class SymbolResolver {
      * Now uses a single tree walk that respects scope boundaries
      */
     resolve(): void {
-        this.resetResolutionState();
+        if (this.hasResolvedOnce) {
+            this.resetResolutionState();
+        }
         // Single pass: walk AST respecting scope boundaries
         this.visitProgram(this.program);
+        this.hasResolvedOnce = true;
     }
 
     /**
@@ -395,6 +402,35 @@ export class SymbolResolver {
         this.currentScope = previousScope;
     }
     
+    // O(1) constructor -> handler lookup, replacing a linear instanceof chain.
+    // Subclasses of VariableDeclaration (RolloutControl, RcMenuItem, ParameterDefinition)
+    // share visitVariableDeclaration, matching the previous instanceof-based fallthrough.
+    private static readonly dispatch = new Map<new (...args: any[]) => object, (self: SymbolResolver, node: any) => void>([
+        [Program, (self, node) => self.visitProgram(node)],
+        [VariableDeclaration, (self, node) => self.visitVariableDeclaration(node)],
+        [RolloutControl, (self, node) => self.visitVariableDeclaration(node)],
+        [RcMenuItem, (self, node) => self.visitVariableDeclaration(node)],
+        [ParameterDefinition, (self, node) => self.visitVariableDeclaration(node)],
+        [VariableReference, (self, node) => self.visitVariableReference(node)],
+        [FunctionDefinition, (self, node) => self.visitFunctionDefinition(node)],
+        [StructDefinition, (self, node) => self.visitStructDefinition(node)],
+        [BlockExpression, (self, node) => self.visitBlockExpression(node)],
+        [AssignmentExpression, (self, node) => self.visitAssignmentExpression(node)],
+        [ReferenceExpression, (self, node) => self.visitReferenceExpression(node)],
+        [IfStatement, (self, node) => self.visitIfStatement(node)],
+        [WhileStatement, (self, node) => self.visitWhileStatement(node)],
+        [DoWhileStatement, (self, node) => self.visitDoWhileStatement(node)],
+        [ForStatement, (self, node) => self.visitForStatement(node)],
+        [TryStatement, (self, node) => self.visitTryStatement(node)],
+        [CaseStatement, (self, node) => self.visitCaseStatement(node)],
+        [ReturnStatement, (self, node) => self.visitReturnStatement(node)],
+        [ExitStatement, (self, node) => self.visitExitStatement(node)],
+        [ContextStatement, (self, node) => self.visitContextStatement(node)],
+        [WhenStatement, (self, node) => self.visitWhenStatement(node)],
+        [EventHandlerStatement, (self, node) => self.visitEventHandlerStatement(node)],
+        [DefinitionBlock, (self, node) => self.visitDefinitionBlock(node)],
+    ]);
+
     /**
      * Generic visit dispatcher
      * FIX #2: Added catch-all for expression nodes not explicitly handled
@@ -411,55 +447,19 @@ export class SymbolResolver {
             }
             return;
         }
-        
-        if (node instanceof Program) {
-            this.visitProgram(node);
-        } else if (node instanceof VariableDeclaration) {
-            this.visitVariableDeclaration(node);
-        } else if (node instanceof VariableReference) {
-            this.visitVariableReference(node);
-        } else if (node instanceof FunctionDefinition) {
-            this.visitFunctionDefinition(node);
-        } else if (node instanceof StructDefinition) {
-            this.visitStructDefinition(node);
-        } else if (node instanceof BlockExpression) {
-            this.visitBlockExpression(node);
-        } else if (node instanceof AssignmentExpression) {
-            this.visitAssignmentExpression(node);
-        } else if (node instanceof ReferenceExpression) {
-            this.visitReferenceExpression(node);
-        } else if (node instanceof IfStatement) {
-            this.visitIfStatement(node);
-        } else if (node instanceof WhileStatement) {
-            this.visitWhileStatement(node);
-        } else if (node instanceof DoWhileStatement) {
-            this.visitDoWhileStatement(node);
-        } else if (node instanceof ForStatement) {
-            this.visitForStatement(node);
-        } else if (node instanceof TryStatement) {
-            this.visitTryStatement(node);
-        } else if (node instanceof CaseStatement) {
-            this.visitCaseStatement(node);
-        } else if (node instanceof ReturnStatement) {
-            this.visitReturnStatement(node);
-        } else if (node instanceof ExitStatement) {
-            this.visitExitStatement(node);
-        } else if (node instanceof ContextStatement) {
-            this.visitContextStatement(node);
-        } else if (node instanceof WhenStatement) {
-            this.visitWhenStatement(node);
-        } else if (node instanceof EventHandlerStatement) {
-            this.visitEventHandlerStatement(node);
-        } else if (node instanceof DefinitionBlock) {
-            this.visitDefinitionBlock(node);
-        } else {
-            // Catch-all for expression nodes (BinaryExpression, CallExpression, etc)
-            // Walk immediate children to find any nested VariableReferences
-            const children = (node as { children?: unknown }).children;
-            if (Array.isArray(children)) {
-                for (const child of children) {
-                    this.visit(child);
-                }
+
+        const handler = SymbolResolver.dispatch.get(node.constructor);
+        if (handler) {
+            handler(this, node);
+            return;
+        }
+
+        // Catch-all for expression nodes (BinaryExpression, CallExpression, etc)
+        // Walk immediate children to find any nested VariableReferences
+        const children = (node as { children?: unknown }).children;
+        if (Array.isArray(children)) {
+            for (const child of children) {
+                this.visit(child);
             }
         }
     }

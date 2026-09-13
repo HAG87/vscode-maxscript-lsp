@@ -157,25 +157,23 @@ export class SymbolTreeBuilder {
     /**
      * Build symbol info for any node type (dispatcher)
      */
+    // O(1) constructor -> builder lookup, replacing a linear instanceof chain.
+    // Subclasses of VariableDeclaration (RolloutControl, RcMenuItem, ParameterDefinition)
+    // share buildVariableSymbol, matching the previous instanceof-based fallthrough.
+    private static readonly nodeBuilders = new Map<new (...args: any[]) => object, (self: typeof SymbolTreeBuilder, node: any, sourceUri: string) => ISymbolInfo>([
+        [FunctionDefinition, (self, node, sourceUri) => self.buildFunctionSymbol(node, sourceUri)],
+        [StructDefinition, (self, node, sourceUri) => self.buildStructSymbol(node, sourceUri)],
+        [DefinitionBlock, (self, node, sourceUri) => self.buildDefinitionBlockSymbol(node, sourceUri)],
+        [VariableDeclaration, (self, node, sourceUri) => self.buildVariableSymbol(node, sourceUri)],
+        [RolloutControl, (self, node, sourceUri) => self.buildVariableSymbol(node, sourceUri)],
+        [RcMenuItem, (self, node, sourceUri) => self.buildVariableSymbol(node, sourceUri)],
+        [ParameterDefinition, (self, node, sourceUri) => self.buildVariableSymbol(node, sourceUri)],
+        [EventHandlerStatement, (self, node, sourceUri) => self.buildEventHandlerSymbol(node, sourceUri)],
+    ]);
+
     private static buildSymbolForNode(node: any, sourceUri: string): ISymbolInfo | null {
-        if (node instanceof FunctionDefinition) {
-            return this.buildFunctionSymbol(node, sourceUri);
-        }
-        if (node instanceof StructDefinition) {
-            return this.buildStructSymbol(node, sourceUri);
-        }
-        if (node instanceof DefinitionBlock) {
-            return this.buildDefinitionBlockSymbol(node, sourceUri);
-        }
-        if (node instanceof VariableDeclaration) {
-            return this.buildVariableSymbol(node, sourceUri);
-        }
-        if (node instanceof EventHandlerStatement) {
-            return this.buildEventHandlerSymbol(node, sourceUri);
-        }
-        // Add more node types here as needed
-        
-        return null; // Unknown node type, skip
+        const builder = this.nodeBuilders.get(node?.constructor);
+        return builder ? builder(this, node, sourceUri) : null; // Unknown node type, skip
     }
     
     /**

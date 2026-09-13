@@ -767,9 +767,11 @@ export class ASTBuilder extends mxsParserVisitor<any> {
         
         const field = new StructMemberField(fieldName, initializer, position);
         
-        // Also add as declaration to struct scope for symbol resolution
+        // Also add as declaration to struct scope for symbol resolution.
+        // scope='local' is intentional: fields resolve unqualified within struct scope
+        // (like locals) and must never be treated as global/persistent. The richer
+        // StructMemberField node (kind=Field) is what the outline/hover surfaces use.
         const structDef = this.getCurrentScope() as StructDefinition;
-        // TODO: Review this part, it is correct?
         const fieldDecl = new VariableDeclaration(fieldName, 'local', position);
         structDef.addDeclaration(fieldDecl);
         
@@ -1116,10 +1118,11 @@ export class ASTBuilder extends mxsParserVisitor<any> {
             const left = this.visit(ctx._left) as Expression;
             const right = this.visit(ctx._right) as Expression;
             
-            // Type cast (as)
+            // Type cast (as): kept as a generic BinaryExpression, not a dedicated node.
+            // No consumer currently needs cast-specific semantics (resolution still
+            // walks into left/right via the generic children fallback); revisit if a
+            // provider needs to distinguish `as` from real binary operators.
             if (ctx.AS()) {
-                // TODO: Implement type cast expression
-                // For now, treat as binary expression
                 return new BinaryExpression('as', left, right, position);
             }
             
