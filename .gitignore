@@ -11,3 +11,4 @@ src/parser/*
 !src/parser/grammars/*.g4
 !src/parser/base/
 !src/parser/base/**
+/src/backend/ast/test/samples/sample.ms
