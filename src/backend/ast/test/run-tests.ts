@@ -4,14 +4,20 @@
  */
 
 import { spawn } from 'child_process';
-import { dirname, join } from 'path';
+import { join } from 'path';
 
+// Kept in sync with the test:ast:* scripts in package.json.
+// Ad-hoc/manual debug scripts (test-ast-debug.ts, POC_Test.ts, etc.) are intentionally excluded.
 const tests = [
-    'test-simple.js',
-    'test-functions.js',
-    'test-nested.js',
-    'test-performance.js',
-    'test-symboltree.js'
+    'test-simple.ts',
+    'test-functions.ts',
+    'test-nested.ts',
+    'test-performance.ts',
+    'test-symboltree.ts',
+    'test-control-flow.ts',
+    'test-context-handlers.ts',
+    'test-definition-blocks.ts',
+    'test-query-positions.ts',
 ];
 
 console.log('========================================');
@@ -28,7 +34,7 @@ async function runTest(testFile: string): Promise<boolean> {
         console.log('----------------------------------------');
         
         const testPath = join(__dirname, testFile);
-        const proc = spawn('node', [testPath], {
+        const proc = spawn('npx', ['tsx', testPath], {
             stdio: 'inherit',
             shell: true
         });
@@ -64,6 +70,7 @@ async function runAll() {
     if (failed > 0) {
         console.log();
         console.log('❌ Some tests failed');
+        process.exitCode = 1;
     } else {
         console.log();
         console.log('✅ All tests passed!');
@@ -71,3 +78,4 @@ async function runAll() {
 }
 
 runAll();
+
