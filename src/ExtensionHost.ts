@@ -1,4 +1,4 @@
-import { writeFile } from 'fs/promises';
+import { mkdir, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { dirname, isAbsolute, resolve } from 'path';
 import { basename } from 'path';
@@ -835,7 +835,9 @@ export class ExtensionHost
                 
                 // console.log(prefix)
 
-                writeFile(filename, minResult)
+                // ensure the target folder (possibly part of the prefix) exists before writing
+                mkdir(dirname(filename), { recursive: true })
+                    .then(() => writeFile(filename, minResult))
                     .then(
                         () =>
                         {
@@ -874,7 +876,9 @@ export class ExtensionHost
             if (prettyResult) {
                 //save file
                 const filename = Utilities.prefixFile(uri.fsPath, prefix)
-                writeFile(filename, prettyResult)
+                // ensure the target folder (possibly part of the prefix) exists before writing
+                mkdir(dirname(filename), { recursive: true })
+                    .then(() => writeFile(filename, prettyResult))
                     .then(
                         () =>
                         {
