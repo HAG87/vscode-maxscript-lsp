@@ -22,3 +22,4 @@ parser/grammars/**
 tokenColorCustomizations-example.jsonc
 syntaxes/*.yaml
 images/**
+tree-sitter-maxscript/**
