@@ -342,7 +342,7 @@ fragment Cnot: ( [eEdD] ([+-]? Int+)? | [LP] )
 fragment Hex: '0' [xX] (Int | [a-fA-F])+
 	;
 
-fragment String_regular: '"' (~["\r\n] | '\\"')* '"'
+fragment String_regular: '"' ( '\\' . | ~["\\\r\n] )* '"'
 	;
 fragment String_verbatim: '@"' ~["]* '"'
 	;
@@ -450,7 +450,7 @@ fragment Z: [zZ]
  '\uD7FF'
  | '\uF900' .. '\uFDCF'
  | '\uFDF0' .. '\uFFFD'
- // ignores | ['\u10000-'\uEFFFF]
+ // ignores | ['\u10000-'\uEFFFF']
  ;
  */
 fragment Backslash: '\\'
