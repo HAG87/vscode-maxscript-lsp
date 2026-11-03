@@ -364,6 +364,11 @@
       {
         "title": "Minifier",
         "properties": {
+          "maxScript.minifier.useEnhancedFormatter": {
+            "type": "boolean",
+            "default": false,
+            "description": "Use the enhanced formatter-based minifier instead of the legacy minifier"
+          },
           "maxScript.minifier.condenseWhitespace": {
             "type": "boolean",
             "default": true,

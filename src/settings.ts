@@ -104,6 +104,7 @@ export const defaultSettings: IMaxScriptSettings = {
     },
     minifier: {
         filePrefix: 'min_',
+        useEnhancedFormatter: false,
         removeUnnecessaryScopes: false,
         condenseWhitespace: true,
     },

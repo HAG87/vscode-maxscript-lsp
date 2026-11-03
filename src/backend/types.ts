@@ -53,6 +53,7 @@ export interface IPrettifySettings
 export interface IMinifySettings
 {
     filePrefix?: string,
+    useEnhancedFormatter?: boolean,
     condenseWhitespace: boolean,
     removeUnnecessaryScopes: boolean,
 }
