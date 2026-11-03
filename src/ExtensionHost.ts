@@ -736,6 +736,7 @@ export class ExtensionHost
                             return this.minifyFile(
                                 uri,
                                 false,
+                                false,
                                 minifySettings.filePrefix
                             )
                         }
@@ -812,7 +813,7 @@ export class ExtensionHost
         )
     }
     // commands support
-    private minifyDocument(uri: Uri, shouldUnload: boolean = false, enhanced: boolean = true): string | null
+    private minifyDocument(uri: Uri, shouldUnload: boolean = false, enhanced: boolean = false): string | null
     {
         // minify
         const minResult = this.backend.acquireContext(uri.toString())?.minifyCode(minifySettings, enhanced)
@@ -823,11 +824,11 @@ export class ExtensionHost
         return minResult
     }
 
-    private minifyFile(uri: Uri, shouldUnload: boolean = false, prefix: string = 'min_')
+    private minifyFile(uri: Uri, shouldUnload: boolean = false, enhanced: boolean = false, prefix: string = 'min_')
     {
         return new Promise<void>((resolve, reject) =>
         {
-            const minResult = this.minifyDocument(uri, shouldUnload, true)
+            const minResult = this.minifyDocument(uri, shouldUnload, enhanced)
             // result ok
             if (minResult) {
                 //save file

@@ -63,6 +63,57 @@ try {
         `Regression: attributes in a block expression must be followed by the configured line separator: ${blockAttributesMinified}`
     );
 
+    const functionAttributesMinified = minifyWithFallback(
+        `fn camAttributes =
+        (
+            attributes cameraCustomOutput version:1 attribID:#(0x6154bb3a, 0x187bb5e2) silentErrors:false
+            (
+                parameters main rollout:cameraOutput
+                (
+                    w_res type:#integer default:800 ui:spn_w
+                    h_res type:#integer default:600 ui:spn_h
+                    aspect_ratio type:#float default:1.33 ui:spn_r
+                )
+                rollout cameraOutput "Camera Output"
+                (
+                    spinner spn_w "Width" type:#integer range:[1,30000,800]
+                    spinner spn_h "Height" type:#integer range:[1,30000,800]
+                    spinner spn_r "Image aspect" type:#float range:[0.01,10.0,1.33]
+                    button btn_apply "Apply to render settings"
+                    on btn_apply pressed do
+                    (
+                        if renderSceneDialog.isOpen() then renderSceneDialog.close()
+                        undo "Change render output" on (renderWidth=w_res; renderHeight=h_res)
+                        redrawViews()
+                    )
+                    on spn_r changed val do
+                    (
+                        if w_res > h_res then h_res=(floor(w_res/val))as integer
+                        else w_res=(floor(val*h_res))as integer
+                    )
+                    on spn_h changed val do (aspect_ratio=w_res as float/h_res as float)
+                    on spn_w changed val do (aspect_ratio=w_res as float/h_res as float)
+                )
+            )
+        )`,
+        { ...minifySettings, removeUnnecessaryScopes: false }
+    );
+    console.log('Problematic attributes minifier output:');
+    console.log(functionAttributesMinified);
+    assert.ok(
+        functionAttributesMinified.endsWith('aspect_ratio=w_res as float/h_res as float)));)'),
+        `Regression: attributes inside a function expression must be followed by a statement separator before its closing parenthesis: ${functionAttributesMinified}`
+    );
+    const minifiedAttributesParser = new mxsParser(
+        new CommonTokenStream(new mxsLexer(CharStream.fromString(functionAttributesMinified)))
+    );
+    minifiedAttributesParser.program();
+    assert.equal(
+        minifiedAttributesParser.numberOfSyntaxErrors,
+        0,
+        `Regression: minified attributes function should remain parsable: ${functionAttributesMinified}`
+    );
+
     const topLevelAttributesMinified = minifyWithFallback(
         'attributes customOutput version:1 (parameters main (width type:#integer))',
         { ...minifySettings, newLineChar: '<LINE>' }

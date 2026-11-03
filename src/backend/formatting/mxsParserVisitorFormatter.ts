@@ -1476,15 +1476,16 @@ export class mxsParserVisitorFormatter extends mxsParserVisitor<R | R[]>
         const exprs = ctx.expr()
         const singleCaseExpr = exprs.length === 1 && this.shouldForceCaseTailSeparator(exprs[0])
         const lastExprIsCase = exprs.length > 0 && this.shouldForceCaseTailSeparator(exprs[exprs.length - 1])
+        const lastExprIsAttributes = exprs.length > 0 && Boolean(exprs[exprs.length - 1].attributesDefinition())
         // add linebreaks
         if (res.some(item => item.hasLineBreaks()) || res.length > 1) {
             start.push(this.emmitLineBreak())
             end.unshift(
-                lastExprIsCase
+                lastExprIsCase || lastExprIsAttributes
                     ? this.emmitLineBreak(true, this.indentLevel > 0 ? this.indentLevel - 1 : 0)
                     : this.emmitLineBreak(false, this.indentLevel > 0 ? this.indentLevel - 1 : 0)
             )
-        } else if (singleCaseExpr) {
+        } else if (singleCaseExpr || lastExprIsAttributes) {
             end.unshift(this.emmitLineBreak(true, this.indentLevel > 0 ? this.indentLevel - 1 : 0))
         }
         const block = new codeBlock(res, this.indentLevel, start, end, blockTypes.SEQUENCE)

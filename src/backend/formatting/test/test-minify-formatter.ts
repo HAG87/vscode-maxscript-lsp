@@ -86,6 +86,23 @@ function formatWithFormatter(input: string, settings: ICodeFormatSettings & IMin
 console.log('=== Formatter Minify Regression Test ===');
 
 try {
+    const attributesMinified = minifyWithFormatter(
+        'fn camAttributes=(attributes customOutput version:1 (parameters main (width type:#integer)))'
+    );
+    assert.ok(
+        attributesMinified.includes('width type:#integer));)'),
+        `Regression: enhanced minifier must separate an attributes definition from its enclosing expression: ${attributesMinified}`
+    );
+    const attributesParser = new mxsParser(
+        new CommonTokenStream(new mxsLexer(CharStream.fromString(attributesMinified)))
+    );
+    attributesParser.program();
+    assert.equal(
+        attributesParser.numberOfSyntaxErrors,
+        0,
+        `Regression: enhanced minifier output for attributes must remain parsable: ${attributesMinified}`
+    );
+
     const minified = minifyWithFormatter(source);
 
     // Must preserve mandatory spaces between keywords and identifiers.
