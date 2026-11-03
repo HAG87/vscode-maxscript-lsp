@@ -20,14 +20,17 @@ const minifySettings: ICodeFormatSettings & IMinifySettings = {
     removeUnnecessaryScopes: true,
 };
 
-function minifyWithFallback(input: string): string {
+function minifyWithFallback(
+    input: string,
+    settings: ICodeFormatSettings & IMinifySettings = minifySettings
+): string {
     const stream = CharStream.fromString(input);
     const lexer = new mxsLexer(stream);
     const tokens = new CommonTokenStream(lexer);
     const parser = new mxsParser(tokens);
     const tree = parser.program();
 
-    const visitor = new mxsParserVisitorMinifier(minifySettings);
+    const visitor = new mxsParserVisitorMinifier(settings);
     return visitor.visit(tree as ParseTree) ?? '';
 }
 
@@ -49,6 +52,25 @@ try {
     assert.ok(
         rolloutFnsMinified.includes('local x=1;fn a=();fn b=()'),
         'Regression: missing mandatory separator between rollout declarations/functions in fallback minifier'
+    );
+
+    const blockAttributesMinified = minifyWithFallback(
+        '(attributes customOutput version:1 (parameters main (width type:#integer)))',
+        { ...minifySettings, newLineChar: '<LINE>' }
+    );
+    assert.ok(
+        blockAttributesMinified.includes(')<LINE>'),
+        `Regression: attributes in a block expression must be followed by the configured line separator: ${blockAttributesMinified}`
+    );
+
+    const topLevelAttributesMinified = minifyWithFallback(
+        'attributes customOutput version:1 (parameters main (width type:#integer))',
+        { ...minifySettings, newLineChar: '<LINE>' }
+    );
+    assert.equal(
+        topLevelAttributesMinified.includes('<LINE>'),
+        false,
+        'Regression: top-level attributes definitions should not gain a line separator'
     );
 
     // 2) Keep mandatory boundaries between alnum/keyword tokens.

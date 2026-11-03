@@ -131,12 +131,24 @@ export class mxsParserVisitorMinifier extends mxsParserVisitor<string>
         )
     //-------------------------------------------------------
     visitAttributesDefinition = (ctx: AttributesDefinitionContext): string =>
-        this.joinParts(
+    {
+        const result = this.joinParts(
             this.visit(ctx.attributesClause())!,
             this.visit(ctx.lp())!,
             this.joinWithMandatorySeparator(ctx.attributesMembers()),
             this.visit(ctx.rp())!,
-        )
+        );
+
+        let parent = ctx.parent;
+        while (parent) {
+            if (parent.ruleIndex === mxsParser.RULE_exprSeq) {
+                return result + this.options.newLineChar;
+            }
+            parent = parent.parent;
+        }
+
+        return result;
+    }
     visitWhenStatement = (ctx: WhenStatementContext): string =>
         this.visitChildren(ctx)!
     //-------------------------------------------------------
